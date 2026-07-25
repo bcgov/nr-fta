@@ -59,12 +59,17 @@ export async function gotoPage(page: Page, def: PageDef): Promise<void> {
  * (e.g. District Notification for a non-admin) so callers can still
  * assert the route guard's behaviour.
  */
+/** Escape every regex metacharacter so a literal path can be used in a RegExp. */
+function escapeRegExp(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+}
+
 export async function navClick(page: Page, def: PageDef): Promise<void> {
   if (!def.navId) {
     throw new Error(`navClick called for a page with no navId (path=${def.path})`);
   }
   await page.getByTestId(`side-nav-link-${def.navId}`).click();
-  await expect(page).toHaveURL(new RegExp(def.path.replace(/\//g, '\\/')));
+  await expect(page).toHaveURL(new RegExp(escapeRegExp(def.path)));
   await expect(page.getByRole('heading', { name: def.heading, level: 1 })).toBeVisible({
     timeout: 30_000,
   });
