@@ -2,6 +2,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/node,java,python,go
 # Edit at https://www.toptal.com/developers/gitignore?templates=node,java,python,go
 
+### macOS ###
+.DS_Store
+
 ### Go ###
 # If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
@@ -387,6 +390,10 @@ pyrightconfig.json
 **/application-secrets.properties
 **/application-*.yml
 **/bootstrap-local.yml
+# ...but application-oracle.yml is tracked config (env placeholders only, no secrets)
+!**/application-oracle.yml
+# Oracle truststore — copied from a running pod at dev time; never commit
+**/src/main/resources/cert/
 **/bootstrap-prod.yml
 # Other common credential/config files
 **/credentials.json
@@ -398,9 +405,8 @@ pyrightconfig.json
 **/*.p12
 **/*.pfx
 
-# AI
-.workspaces
-.tmp
+# IDE
+.codebuddy
 
 # Specs directory (symlinked to external location, excluded from main branch)
 # The symlink points to ~/Documents/4-Specs/quickstart-openshift
@@ -409,3 +415,4 @@ specs
 
 # Prisma 7 generated client
 backend/generated/
+/frontend/.env.production

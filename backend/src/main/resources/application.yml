@@ -1,0 +1,184 @@
+# General application
+server:
+  servlet:
+    context-path: /
+  error:
+    include-message: always
+  # Use the SERVER_PORT placeholder so application-local.yml's SERVER_PORT
+  # value (and the OpenShift env var) can override the default. Local dev
+  # needs 8080 because Vite's dev server claims 3000.
+  port: ${SERVER_PORT:3000}
+  shutdown: graceful
+  max-http-request-header-size: 16KB
+  # Honor X-Forwarded-* from the Caddy reverse proxy when reconstructing the
+  # request URL. Without this, Spring sees Host=fta-backend:8080 and the
+  # browser-issued Origin=https://fta-a582fc-dev... is treated as cross-origin,
+  # triggering a CORS allow-list check on every POST/PUT/DELETE.
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: fta-backend
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AWS_COGNITO_ISSUER_URI}
+          jwk-set-uri: ${AWS_COGNITO_ISSUER_URI}/.well-known/jwks.json
+  # Datasource is intentionally left un-configured for the POC. The application will expect
+  # environment-specific JDBC settings (e.g. Oracle) to be provided at runtime. Flyway and
+  # Postgres-specific settings were removed for this POC.
+  jpa:
+    show-sql: false
+
+  mvc:
+    problemdetails:
+      enabled: true
+  sleuth:
+    propagation-keys:
+      - X-TRACE-ID
+      - X-USER
+    baggage-keys:
+      - X-TRACE-ID
+      - X-USER
+    log:
+      slf4j:
+        whitelisted-mdc-keys:
+          - X-TRACE-ID
+          - X-USER
+  jackson:
+    serialization:
+      FAIL_ON_EMPTY_BEANS: false
+
+# Actuator and ops
+management:
+  enable-native-support: true
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,prometheus"
+  endpoint:
+    metrics:
+      enabled: false
+    health:
+      show-details: always
+
+# Application metadata (consumed by FtaMetricConfiguration + Actuator /info endpoint)
+info:
+  app:
+    name: ${spring.application.name}
+    version: ${APP_VERSION:0.0.1-SNAPSHOT}
+    zone: ${APP_ZONE:local}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      breaker:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+  retry:
+    instances:
+      apiRetry:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - ca.bc.gov.nrs.fta.exception.RetriableException
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+          - ca.bc.gov.nrs.fta.exception.TooManyRequestsException
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+          - ca.bc.gov.nrs.fta.exception.UnretriableException
+
+
+
+# Certificate for the Database
+ca:
+  bc:
+    gov:
+      nrs:
+        self-uri: http://localhost:3000
+        identity-lookup:
+          base-url: ${IDENTITY_LOOKUP_BASE_URL}
+          default-page-size: 10
+          connect-timeout: 15s
+          read-timeout: 30s
+        cognito:
+          userinfo-uri: ${COGNITO_USERINFO_URI}
+        frontend:
+          url: http://localhost:3000
+          cors:
+            headers:
+              - x-requested-with
+              - X-REQUESTED-WITH
+              - authorization
+              - Authorization
+              - Content-Type
+              - content-type
+              - credential
+              - CREDENTIAL
+              - X-XSRF-TOKEN
+              - access-control-allow-origin
+              - Access-Control-Allow-Origin
+              - DNT
+              - Keep-Alive,
+              - User-Agent,
+              - X-Requested-With,
+              - If-Modified-Since,
+              - Cache-Control,
+              - Content-Range,
+              - Range
+              - Location
+              - location
+            methods:
+              - OPTIONS
+              - GET
+              - POST
+              - PUT
+              - DELETE
+            age: 5m
+
+# Logging — Spring Boot default stack (SLF4j + Logback).
+#
+# Per-category levels default to INFO; override at runtime via env vars
+# (Spring's relaxed binding maps UPPERCASE_WITH_UNDERSCORES → dot.case):
+#   APP_LOG_LEVEL                              → ca.bc.gov.nrs.fta
+#   HIKARI_LOG_LEVEL                           → com.zaxxer.hikari
+#   HIBERNATE_SQL_LOG_LEVEL                    → org.hibernate.SQL
+#   HIBERNATE_BIND_LOG_LEVEL                   → org.hibernate.orm.jdbc.bind
+#   HIBERNATE_CONNECTIONS_LOG_LEVEL            → org.hibernate.engine.jdbc.connections
+#   ORACLE_JDBC_LOG_LEVEL                      → oracle.jdbc
+#   LOGGING_LEVEL_ROOT                         → root logger
+#   LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY → Spring Security
+#
+# Console pattern includes X-TRACE-ID and X-USER MDC keys populated by the
+# request filter, plus PID and app name. To switch to structured JSON output
+# (e.g. in containers), set the env var directly:
+#   LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs   (Elastic Common Schema)
+#   LOGGING_STRUCTURED_FORMAT_CONSOLE=logstash
+# Setting it via relaxed binding lets Spring Boot 3.4+ install the right
+# structured layout. Don't wire an empty-default placeholder here — Spring
+# treats "" as "structured logging on, no format" and fails layout init.
+logging:
+  level:
+    ca.bc.gov.nrs.fta: ${APP_LOG_LEVEL:INFO}
+    com.zaxxer.hikari: ${HIKARI_LOG_LEVEL:INFO}
+    org.hibernate.SQL: ${HIBERNATE_SQL_LOG_LEVEL:INFO}
+    org.hibernate.orm.jdbc.bind: ${HIBERNATE_BIND_LOG_LEVEL:INFO}
+    org.hibernate.engine.jdbc.connections: ${HIBERNATE_CONNECTIONS_LOG_LEVEL:INFO}
+    oracle.jdbc: ${ORACLE_JDBC_LOG_LEVEL:INFO}
+    # Suppress Hibernate 6's "Database info: ... undefined/unknown ..." block.
+    # Those fields read as undefined when Spring (not Hibernate) owns the
+    # HikariCP pool, so the line is noise rather than diagnostic.
+    org.hibernate.orm.connections.pooling: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [${spring.application.name}] [%X{X-TRACE-ID:-},${PID:-}] [%t] %logger:%L - %m%n%wEx"

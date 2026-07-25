@@ -1,0 +1,14 @@
+.mark-app__form {
+  max-width: 64rem;
+}
+
+.mark-app__readonly {
+  margin-bottom: 1.5rem;
+  color: var(--cds-text-secondary);
+}
+
+.mark-app__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}

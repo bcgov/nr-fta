@@ -1,0 +1,12 @@
+.exhibit-a__map {
+  height: 480px;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--cds-border-subtle);
+
+  // Leaflet controls default to a very high z-index; keep them under Carbon
+  // overlays (modals, header panel) which sit at 8000+.
+  .leaflet-container {
+    z-index: 0;
+  }
+}

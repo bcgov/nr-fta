@@ -41,18 +41,18 @@
 		Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate"
 		X-Content-Type-Options "nosniff"
 		Strict-Transport-Security "max-age=31536000"
-		Content-Security-Policy "default-src 'self' https://*.gov.bc.ca;
-			script-src 'self' https://*.gov.bc.ca;
-			style-src 'self' https://fonts.googleapis.com https://use.fontawesome.com 'unsafe-inline'; 
-			font-src 'self' https://fonts.gstatic.com; 
+		Content-Security-Policy "default-src 'self' https://*.gov.bc.ca;;
+			script-src 'self'  https://*.gov.bc.ca ;
+			style-src 'self' https://fonts.googleapis.com https://use.fontawesome.com 'unsafe-inline';
+			font-src 'self' https://fonts.gstatic.com;
 			img-src 'self' data: https://fonts.googleapis.com https://www.w3.org https://*.gov.bc.ca https://*.tile.openstreetmap.org;
-			frame-ancestors 'self'; 
+			frame-ancestors 'self';
 			form-action 'self';
 			block-all-mixed-content;
-			connect-src 'self' https://*.gov.bc.ca wss://*.gov.bc.ca;"
+			connect-src 'self' https://*.gov.bc.ca wss://*.gov.bc.ca https://*.amazoncognito.com https://cognito-idp.ca-central-1.amazonaws.com;"
 		Referrer-Policy "same-origin"
 		Permissions-Policy "fullscreen=(self), camera=(), microphone=()"
-		Cross-Origin-Resource-Policy "same-origin"
+		Cross-Origin-Resource-Policy "cross-origin"
 		Cross-Origin-Opener-Policy "same-origin"
 	}
 }

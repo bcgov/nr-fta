@@ -1,0 +1,11 @@
+/* App-level fallbacks. The Carbon UI Shell + Layout component own most of
+   the chrome now; the few page-specific styles that remain live next to
+   their pages (e.g. src/pages/LandingPage.scss). */
+
+/* Shared "back to search" link used at the top of detail screens. */
+.fta-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}

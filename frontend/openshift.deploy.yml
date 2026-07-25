@@ -1,127 +1,245 @@
+---
+# Frontend deploy Template — consumed by `oc process` in reusable-deploy.yml.
+#
+# VITE_* values are injected into /srv/config.js by docker-entrypoint.sh at
+# container start (runtime config). The Vite-built bundle is env-agnostic;
+# the same image binary serves DEV preview, TEST, and PROD.
 apiVersion: template.openshift.io/v1
 kind: Template
+metadata:
+  name: nr-fspts-frontend-deploy
 parameters:
   - name: NAME
-    description: Module name
-    required: true
-  - name: COMPONENT
-    description: Component name
-    value: frontend
+    description: App name prefix
+    value: nr-fspts
   - name: ZONE
-    description: Deployment zone, e.g. pr-### or prod
+    description: PR number, 'test', or 'prod'
     required: true
+  # SLOT decouples the public-facing Route hostname from the OpenShift object
+  # names so per-PR previews can share a fixed pool of Cognito callback URIs.
+  # AWS Cognito user pool app clients don't accept wildcards in CallbackURLs;
+  # we pre-register 50 URIs (nr-fspts-0…nr-fspts-49.apps.silver.devops.gov.bc.ca)
+  # and bucket PRs into them via PR % 50.
+  # pr-open.yml computes SLOT = PR % 50; merge.yml passes SLOT = ZONE = test/prod.
+  - name: SLOT
+    description: Route hostname slot — PR % 50 for previews, or test/prod for those targets
+    required: true
+  - name: REPLICAS
+    description: Pod count; PR previews get 1 via lite_mode, TEST=2, PROD=3
+    value: "2"
   - name: IMAGE_TAG
-    description: Image tag to use
-    required: true
+    description: Container image tag (PR number, 'test', or 'prod')
+    value: latest
   - name: REGISTRY
-    description: Container registry to import from
-    value: ghcr.io
-  - name: ORG_NAME
-    description: Organization name
-    value: bcgov
+    description: Image registry path (no tag)
+    value: ghcr.io/bcgov/nr-fspts/frontend
   - name: DOMAIN
+    description: Cluster apps domain (do not include leading dot)
     value: apps.silver.devops.gov.bc.ca
-  - name: MIN_REPLICAS
-    description: The minimum amount of replicas for the horizontal pod autoscaler.
-    value: "1"
-  - name: MAX_REPLICAS
-    description: The maximum amount of replicas for the horizontal pod autoscaler.
-    value: "5"
-  - name: CPU_REQUEST
-    value: "25m"
-  - name: MEMORY_REQUEST
-    value: "50Mi"
-  - name: LOG_LEVEL
-    description: Caddy log level (debug|info|warn|error)
-    value: "info"
+  - name: FRONTEND_LOG_LEVEL
+    value: INFO
+  # Runtime VITE_* config (rendered into /srv/config.js by the entrypoint
+  # and read at SPA boot via src/env.ts — see docker-entrypoint.sh).
+  # Cognito (FAM via AWS Amplify):
+  - name: VITE_USER_POOLS_ID
+    description: Cognito user pool ID (e.g. ca-central-1_AbCdEf123)
+    required: true
+  - name: VITE_USER_POOLS_WEB_CLIENT_ID
+    description: Cognito app-client ID (public)
+    required: true
+  - name: VITE_REDIRECT_SIGN_OUT
+    description: Full BC Gov logoff chain URL — must match a Cognito-registered sign-out URL
+    required: true
+  - name: VITE_API_BASE_URL
+    description: Browser-facing API base path; usually '/api'
+    value: /api
+  - name: VITE_APP_NAME
+    value: Forest Stewardship Plan Tracking System
+  # VITE_ZONE drives the Cognito identity_provider prefix (DEV-IDIR /
+  # TEST-IDIR / IDIR). Numeric zones (PR previews) fall back to TEST in
+  # AuthProvider so they don't try to call <PR>-IDIR.
+  - name: VITE_ZONE
+    value: dev
+  # Public FOM site base for the "Associated FOMs" links. Point at the same
+  # host the backend's FOM_API_URL uses: test FOM on TEST, prod on PROD.
+  # Supply per-env via the GitHub repo variable VITE_FOM_PUBLIC_URL.
+  #   Test:  https://fom-test.apps.silver.devops.gov.bc.ca
+  #   Prod:  https://fom.nrs.gov.bc.ca
+  - name: VITE_FOM_PUBLIC_URL
+    description: Public FOM site base URL (test FOM on TEST, prod on PROD)
+    value: https://fom.nrs.gov.bc.ca
+
 objects:
+  # ── Deployment ────────────────────────────────────────────
   - apiVersion: apps/v1
     kind: Deployment
     metadata:
+      name: ${NAME}-frontend-${ZONE}
       labels:
-        app: ${NAME}-${ZONE}
-      name: ${NAME}-${ZONE}-${COMPONENT}
+        app: ${NAME}-frontend-${ZONE}
+        app.kubernetes.io/name: ${NAME}-frontend
+        app.kubernetes.io/instance: ${ZONE}
     spec:
+      replicas: ${{REPLICAS}}
       selector:
         matchLabels:
-          deployment: ${NAME}-${ZONE}-${COMPONENT}
-      strategy:
-        type: RollingUpdate
+          app: ${NAME}-frontend-${ZONE}
       template:
         metadata:
           labels:
-            app: ${NAME}-${ZONE}
-            deployment: ${NAME}-${ZONE}-${COMPONENT}
+            app: ${NAME}-frontend-${ZONE}
+            app.kubernetes.io/instance: ${ZONE}
         spec:
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+          initContainers:
+            - name: seed-srv
+              image: ${REGISTRY}:${IMAGE_TAG}
+              command:
+                - sh
+                - -c
+                - 'cp -r /srv/. /srv-rw/'
+              volumeMounts:
+                - name: srv
+                  mountPath: /srv-rw
+              resources:
+                requests:
+                  cpu: "20m"
+                  memory: "32Mi"
+                  ephemeral-storage: "50Mi"
+                limits:
+                  cpu: "100m"
+                  memory: "64Mi"
+                  ephemeral-storage: "100Mi"
+              securityContext:
+                allowPrivilegeEscalation: false
+                runAsNonRoot: true
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
           containers:
-            - name: ${NAME}
-              image: ${REGISTRY}/${ORG_NAME}/${NAME}/${COMPONENT}:${IMAGE_TAG}
-              imagePullPolicy: Always
+            - name: ${NAME}-frontend
+              image: ${REGISTRY}:${IMAGE_TAG}
               ports:
                 - name: http
                   containerPort: 3000
+                - name: health
+                  containerPort: 3001
               env:
                 - name: LOG_LEVEL
-                  value: ${LOG_LEVEL}
+                  value: ${FRONTEND_LOG_LEVEL}
+                # Caddy reverse-proxies /api* to the same-zone backend Service.
                 - name: BACKEND_URL
-                  value: http://${NAME}-${ZONE}-backend
+                  value: http://${NAME}-backend-${ZONE}:8080
+                - name: XDG_DATA_HOME
+                  value: /tmp
+                - name: XDG_CONFIG_HOME
+                  value: /tmp
+                - name: VITE_USER_POOLS_ID
+                  value: ${VITE_USER_POOLS_ID}
+                - name: VITE_USER_POOLS_WEB_CLIENT_ID
+                  value: ${VITE_USER_POOLS_WEB_CLIENT_ID}
+                - name: VITE_REDIRECT_SIGN_OUT
+                  value: ${VITE_REDIRECT_SIGN_OUT}
+                - name: VITE_API_BASE_URL
+                  value: ${VITE_API_BASE_URL}
+                - name: VITE_APP_NAME
+                  value: ${VITE_APP_NAME}
+                - name: VITE_ZONE
+                  value: ${VITE_ZONE}
+                - name: VITE_FOM_PUBLIC_URL
+                  value: ${VITE_FOM_PUBLIC_URL}
+              volumeMounts:
+                - name: srv
+                  mountPath: /srv
+                - name: tmp
+                  mountPath: /tmp
               resources:
                 requests:
-                  cpu: ${CPU_REQUEST}
-                  memory: ${MEMORY_REQUEST}
-              readinessProbe:
-                httpGet:
-                  path: /
-                  port: http
+                  cpu: "50m"
+                  memory: "64Mi"
+                  ephemeral-storage: "100Mi"
+                limits:
+                  cpu: "200m"
+                  memory: "128Mi"
+                  ephemeral-storage: "200Mi"
               livenessProbe:
                 httpGet:
-                  path: /
-                  port: http
+                  path: /health
+                  port: 3001
+                initialDelaySeconds: 5
+                periodSeconds: 10
+              readinessProbe:
+                httpGet:
+                  path: /health
+                  port: 3001
+                initialDelaySeconds: 3
+                periodSeconds: 5
+              securityContext:
+                allowPrivilegeEscalation: false
+                runAsNonRoot: true
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: srv
+              emptyDir: {}
+            - name: tmp
+              emptyDir: {}
+
+  # ── Service ───────────────────────────────────────────────
   - apiVersion: v1
     kind: Service
     metadata:
+      name: ${NAME}-frontend-${ZONE}
       labels:
-        app: ${NAME}-${ZONE}
-      name: ${NAME}-${ZONE}-${COMPONENT}
+        app: ${NAME}-frontend-${ZONE}
+        app.kubernetes.io/instance: ${ZONE}
     spec:
+      selector:
+        app: ${NAME}-frontend-${ZONE}
       ports:
         - name: http
-          port: 80
+          protocol: TCP
+          port: 3000
           targetPort: 3000
-      selector:
-        deployment: ${NAME}-${ZONE}-${COMPONENT}
+
+  # ── Route ─────────────────────────────────────────────────
   - apiVersion: route.openshift.io/v1
     kind: Route
     metadata:
+      name: ${NAME}-frontend-${ZONE}
       labels:
-        app: ${NAME}-${ZONE}
-      name: ${NAME}-${ZONE}-${COMPONENT}
+        app: ${NAME}-frontend-${ZONE}
+        app.kubernetes.io/instance: ${ZONE}
     spec:
-      host: ${NAME}-${ZONE}.${DOMAIN}
+      host: ${NAME}-${SLOT}.${DOMAIN}
       to:
         kind: Service
-        name: ${NAME}-${ZONE}-${COMPONENT}
-        weight: 100
+        name: ${NAME}-frontend-${ZONE}
+      port:
+        targetPort: http
       tls:
         termination: edge
         insecureEdgeTerminationPolicy: Redirect
-  - apiVersion: autoscaling/v2
-    kind: HorizontalPodAutoscaler
+
+  # ── NetworkPolicy: ingress from OpenShift router ───────────
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
     metadata:
+      name: ${NAME}-frontend-${ZONE}-ingress
       labels:
-        app: ${NAME}-${ZONE}
-      name: ${NAME}-${ZONE}-${COMPONENT}
+        app: ${NAME}-frontend-${ZONE}
+        app.kubernetes.io/instance: ${ZONE}
     spec:
-      scaleTargetRef:
-        apiVersion: apps/v1
-        kind: Deployment
-        name: ${NAME}-${ZONE}-${COMPONENT}
-      minReplicas: ${{MIN_REPLICAS}}
-      maxReplicas: ${{MAX_REPLICAS}}
-      metrics:
-        - type: Resource
-          resource:
-            name: cpu
-            target:
-              type: Utilization
-              averageUtilization: 80
+      podSelector:
+        matchLabels:
+          app: ${NAME}-frontend-${ZONE}
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  network.openshift.io/policy-group: ingress
+      policyTypes:
+        - Ingress
