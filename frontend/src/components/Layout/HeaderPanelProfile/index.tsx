@@ -7,9 +7,10 @@ import { useAuth } from '@/context/auth/useAuth';
 import { useTheme } from '@/context/theme/useTheme';
 import './HeaderPanelProfile.css';
 
-// Cognito's idpProvider claim arrives in shouty all-caps. FTA is IDIR-only,
-// but keep the map so an unrecognised claim falls back to its raw value
-// rather than silently mislabelling the IDP.
+// authUtils.parseIdpProvider normalises the realm's `azureidir` alias to
+// 'IDIR' before it reaches here. FTA is IDIR-only, but keep the map so an
+// unrecognised value falls back to its raw form rather than silently
+// mislabelling the IDP.
 const PROVIDER_LABEL: Record<string, string> = {
   IDIR: 'IDIR',
 };

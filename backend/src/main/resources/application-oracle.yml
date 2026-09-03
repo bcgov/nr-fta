@@ -24,7 +24,7 @@ spring:
       # using KEYSTORE_SECRET as the password — that's the production default. For
       # local dev, copy the file out of a running pod and set TRUSTSTORE_PATH to
       # its absolute path on your machine:
-      #   oc cp $(oc get pod -l app=rept-backend -o name | head -1 | cut -d/ -f2):/cert/jssecacerts ./jssecacerts
+      #   oc cp $(oc get pod -l app=fta-backend -o name | head -1 | cut -d/ -f2):/cert/jssecacerts ./jssecacerts
       #   export TRUSTSTORE_PATH=$(pwd)/jssecacerts
       data-source-properties:
         javax.net.ssl.trustStoreType: JKS

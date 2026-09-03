@@ -110,7 +110,7 @@ public class ApiAuthorizationCustomizer implements
         .permitAll();
 
     // SPA fallback — allows the browser to receive index.html for any
-    // client-side route (e.g. /pub/fta/dashboard after Cognito redirect).
+    // client-side route (e.g. /pub/fta/authCallback after the Keycloak redirect).
     // API paths are already matched and enforced above, so this cannot
     // expose any protected /api/** endpoint.
     authorize

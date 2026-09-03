@@ -23,7 +23,7 @@ on:
       slot:
         description: |
           Route hostname slot — PR # mod-50'd into a fixed pool of pre-registered
-          Cognito callback URIs (see pr-open.yml). Omit for TEST/PROD; defaults to
+          redirect URIs (see pr-open.yml). Omit for TEST/PROD; defaults to
           `target` in that case so the host stays `nr-fta-{test,prod}.apps...`.
         default: ""
         type: string
@@ -126,9 +126,8 @@ jobs:
             -p IMAGE_TAG="${{ inputs.tag }}"
             -p MIN_REPLICAS="${{ inputs.backend_replicas }}"
             -p MAX_REPLICAS="${{ inputs.backend_replicas }}"
-            -p AWS_COGNITO_ISSUER_URI="${{ vars.AWS_COGNITO_ISSUER_URI }}"
-            -p COGNITO_USERINFO_URI="${{ vars.COGNITO_USERINFO_URI }}"
-            -p IDENTITY_LOOKUP_BASE_URL="${{ vars.IDENTITY_LOOKUP_BASE_URL }}"
+            -p KEYCLOAK_ISSUER_URI="${{ vars.KEYCLOAK_ISSUER_URI }}"
+            -p KEYCLOAK_CLIENT_ID="${{ vars.KEYCLOAK_CLIENT_ID }}"
             -p DATABASE_HOST="${{ secrets.database_host }}"
             -p DATABASE_SERVICE_NAME="${{ secrets.database_service_name }}"
             -p DATABASE_USER="${{ secrets.database_user }}"
@@ -168,10 +167,8 @@ jobs:
             -p NAME="nr-fta"
             -p IMAGE_TAG="${{ inputs.tag }}"
             -p REPLICAS="${{ inputs.frontend_replicas }}"
-            -p VITE_USER_POOLS_ID="${{ vars.VITE_USER_POOLS_ID }}"
-            -p VITE_USER_POOLS_WEB_CLIENT_ID="${{ vars.VITE_USER_POOLS_WEB_CLIENT_ID }}"
-            -p VITE_REDIRECT_SIGN_OUT="${{ vars.VITE_REDIRECT_SIGN_OUT }}"
-            -p VITE_BACKEND_URL="${{ vars.VITE_BACKEND_URL }}"
+            -p VITE_KEYCLOAK_URL="${{ vars.VITE_KEYCLOAK_URL }}"
+            -p VITE_KEYCLOAK_CLIENT_ID="${{ vars.VITE_KEYCLOAK_CLIENT_ID }}"
             -p VITE_APP_NAME="${{ vars.VITE_APP_NAME }}"
             -p VITE_ZONE="${{ vars.VITE_ZONE }}"
           triggers: ${{ inputs.triggers }}

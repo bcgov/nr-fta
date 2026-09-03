@@ -1,34 +1,33 @@
-import { fetchAuthSession } from 'aws-amplify/auth';
-
 import { env } from '@/env';
 
 import { ensureSessionFresh } from '@/context/auth/refreshSession';
 import { safeErrorMessage } from '@/lib/errorMessage';
+import { ensureFreshUser, getUserManager } from '@/services/keycloak';
 
 const API_BASE_URL = env.VITE_API_BASE_URL ?? '';
 
 /**
- * Reads the current Cognito access token via Amplify's auth session.
- * Mirrors nr-rept's services/http/headers.ts pattern: parse the token
- * from Amplify rather than from document.cookie. The configured
- * CookieStorage doesn't always write tokens as DOM-visible cookies
- * depending on Amplify's internal flow (httpOnly, secure-only, or an
- * in-memory fallback), so document.cookie-based reads silently return
- * nothing in deployed environments — producing 401s on every API call.
+ * Reads the current access token from the oidc-client-ts user store.
+ *
+ * `ensureFreshUser` returns the stored user, renewing only if the token is at
+ * or near expiry, so this is the same call `ensureSessionFresh` just made and
+ * is a no-op the second time. Reading the token off the returned user — rather
+ * than fetching it separately — is what guarantees the header carries the token
+ * that was just renewed, not the one it replaced.
  */
 const getAccessToken = async (): Promise<string | undefined> => {
   try {
-    const { tokens } = (await fetchAuthSession()) ?? {};
-    return tokens?.accessToken?.toString();
+    const user = await ensureFreshUser(getUserManager());
+    return user?.access_token;
   } catch {
     return undefined;
   }
 };
 
 /**
- * Fetch wrapper that refreshes the Cognito session if its access token
- * is near expiry, attaches the current access token as a Bearer header,
- * and prefixes paths with the configured API base URL.
+ * Fetch wrapper that refreshes the session if its access token is near
+ * expiry, attaches the current access token as a Bearer header, and prefixes
+ * paths with the configured API base URL.
  *
  * Pair every service-layer call with this helper rather than calling
  * fetch() directly — the ensureSessionFresh pre-check is what lets idle

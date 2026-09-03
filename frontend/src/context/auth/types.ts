@@ -1,12 +1,11 @@
-import type { JWT as AmplifyJWT } from '@aws-amplify/core';
-
-export type JWT = AmplifyJWT;
-
 /**
- * Recognized Cognito groups that map to FTA application roles. Mirrors the
+ * Recognized CSS/Keycloak roles that map to FTA application roles. Mirrors the
  * backend's ca.bc.gov.nrs.fta.dto.Role enum — keep these two lists in sync.
- * Org-suffixed Cognito groups (e.g. FTA_ADMIN_DPG) canonicalise to their
- * root role; see authUtils.canonicalRoleFor.
+ *
+ * The codes are unchanged from the Cognito groups they replace, and FTA scopes
+ * no role by district, region or forest client — org-unit filtering is a query
+ * concern, not an authorisation one. So these arrive on the token spelled
+ * exactly as written here, and exact matching stays correct.
  */
 export const AVAILABLE_ROLES = ['FTA_ADMIN', 'FTA_VIEWER'] as const;
 
@@ -20,12 +19,6 @@ export type USER_PRIVILEGE_TYPE = Partial<Record<ROLE_TYPE, RoleValue>>;
 export const validIdpProviders = ['IDIR'] as const;
 
 export type IdpProviderType = (typeof validIdpProviders)[number];
-
-/**
- * Provider identifier passed to AuthProvider.login() — translated into the
- * Cognito custom identity_provider name (e.g. 'idir' → 'DEV-IDIR' in dev).
- */
-export type LoginProvider = 'idir';
 
 export type FamLoginUser = {
   providerUsername?: string;

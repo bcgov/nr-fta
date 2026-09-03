@@ -10,10 +10,15 @@ concurrency:
 permissions: {}
 
 jobs:
-  # AWS Cognito user pool app clients don't accept wildcards in CallbackURLs,
-  # and registering one per PR via the Cognito API on every open/close is
-  # rate-limited and race-prone. Instead, the Cognito client is configured
-  # once with 50 fixed redirect URIs of the form
+  # The OIDC client is configured with a fixed pool of redirect URIs and each
+  # PR is bucketed into one, rather than registering a URI per PR on every
+  # open/close. Originally forced by Cognito, whose app clients reject
+  # wildcards in CallbackURLs; the redirect URIs now live on the CSS
+  # integration, so if CSS permits a wildcard there this whole scheme can be
+  # deleted and every PR can have its own hostname. Worth asking CSS before
+  # carrying it forward out of habit — nothing else depends on the modulo.
+  #
+  # The client is configured once with 50 fixed redirect URIs of the form
   #   https://nr-fta-<N>.apps.silver.devops.gov.bc.ca/...   for N in 0..49
   # and each PR is bucketed into a slot via `slot = PR # mod 50`. The PR's
   # OpenShift objects still carry the full PR # (so cleanup is unambiguous),
@@ -33,7 +38,7 @@ jobs:
         run: |
           slot=$(( ${{ github.event.number }} % 50 ))
           echo "slot=${slot}" >> "$GITHUB_OUTPUT"
-          echo "PR ${{ github.event.number }} -> Cognito slot ${slot}"
+          echo "PR ${{ github.event.number }} -> redirect-URI slot ${slot}"
 
   # Build per-PR images tagged with the PR number. `tag_fallback: latest`
   # means a frontend-only PR doesn't trigger a backend rebuild — the action

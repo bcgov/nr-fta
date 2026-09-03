@@ -26,8 +26,8 @@ spec:
         prometheus.io/port: '8080'
         prometheus.io/scrape: 'true'
     spec:
-      # The Spring Boot app talks to Oracle, Cognito, and the IDIR lookup
-      # service — never the Kubernetes API. Suppress the auto-mounted
+      # The Spring Boot app talks to Oracle and the BC Gov SSO realm's JWKS
+      # endpoint — never the Kubernetes API. Suppress the auto-mounted
       # default service-account token to close the SonarCloud "Service
       # account permissions should be restricted" finding.
       automountServiceAccountToken: false
@@ -92,15 +92,11 @@ spec:
             - name: SERVER_PORT
               value: "8080"
 
-            # ── Cognito / OAuth2 resource server ──────────────
-            - name: AWS_COGNITO_ISSUER_URI
-              value: ${AWS_COGNITO_ISSUER_URI}
-            - name: COGNITO_USERINFO_URI
-              value: ${COGNITO_USERINFO_URI}
-
-            # ── Identity-lookup (IDIR user search) ────────────
-            - name: IDENTITY_LOOKUP_BASE_URL
-              value: ${IDENTITY_LOOKUP_BASE_URL}
+            # ── BC Gov SSO (Keycloak) / OAuth2 resource server ─
+            - name: KEYCLOAK_ISSUER_URI
+              value: ${KEYCLOAK_ISSUER_URI}
+            - name: KEYCLOAK_CLIENT_ID
+              value: ${KEYCLOAK_CLIENT_ID}
 
             # ── Oracle DB (consumed by application-oracle.yml) ─
             - name: DATABASE_HOST

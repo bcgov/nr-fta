@@ -14,7 +14,7 @@ forest-tenure business lines for the BC Ministry of Forests:
 | Frontend | React 19, TypeScript, Carbon Design System |
 | Backend | Spring Boot 3.5, Java 21 (modular monolith) |
 | Database | Oracle (shared, BC Gov-managed FDS) |
-| Auth | AWS Cognito (FAM) |
+| Auth | BC Gov SSO (Keycloak) via CSS |
 
 ## Architecture
 
@@ -67,7 +67,7 @@ These are all gitignored — you set them up once and they stay on your machine.
 
 #### `backend/src/main/resources/application-local.yml`
 
-Activated by the Spring `local` profile. Holds DB credentials, Cognito issuer/userinfo URIs, IDIR base URL, and `TRUSTSTORE_PATH`. The header comment in that file documents every field. Copy from a teammate or from the `oc cp` template in the file's comment block.
+Activated by the Spring `local` profile. Holds DB credentials, `KEYCLOAK_ISSUER_URI` / `KEYCLOAK_CLIENT_ID`, and `TRUSTSTORE_PATH`. The header comment in that file documents every field. Copy from a teammate or from the `oc cp` template in the file's comment block.
 
 Note for Option B: the absolute `TRUSTSTORE_PATH` you set here is overridden inside Docker to `/app/src/main/resources/cert/jssecacerts` via compose env — no edit needed.
 
@@ -82,7 +82,9 @@ oc cp $(oc get pod -l app=fta-backend -o jsonpath='{.items[0].metadata.name}'):/
 
 #### `frontend/.env`
 
-Copy `frontend/.env.example` and fill in the Cognito client IDs. `VITE_USER_POOLS_ID`, `VITE_USER_POOLS_WEB_CLIENT_ID`, `VITE_REDIRECT_SIGN_OUT`, `VITE_BACKEND_URL`, `VITE_ZONE`, `VITE_APP_NAME` are inlined into the app bundle by Vite (via `import.meta.env`); changing `.env` requires restarting `npm run dev`. For local dev, `http://localhost:3000` must be in the Cognito user-pool client's allowed-callback list — already configured via the slot-bucketing scheme (see `.github/workflows/pr-open.yml` for context).
+Copy `frontend/.env.example` and fill in `VITE_KEYCLOAK_URL` (the realm issuer URI) and `VITE_KEYCLOAK_CLIENT_ID` (the CSS integration's client id — it must equal the backend's `KEYCLOAK_CLIENT_ID`, which is checked as the token's `azp`). Those, plus `VITE_API_BASE_URL`, `VITE_ZONE` and `VITE_APP_NAME`, are inlined into the app bundle by Vite (via `import.meta.env`); changing `.env` requires restarting `npm run dev`. In a container they are re-supplied at runtime instead — `docker-entrypoint.sh` renders them into `/srv/config.js` and `src/env.ts` merges those over `import.meta.env`, so one built image serves every environment.
+
+There is nothing else to configure: `oidc-client-ts` discovers the authorize, token and end-session endpoints from the issuer URI. For local dev, `http://localhost:3000/authCallback` must be registered as a redirect URI on the CSS integration, and `http://localhost:3000` as a post-logout redirect URI.
 
 ### Option A — direct on host (recommended for backend work)
 
@@ -143,11 +145,12 @@ That builds the real `frontend/Dockerfile` (Caddy + Coraza WAF + runtime config.
 
 Regardless of option:
 - `curl http://localhost:8080/actuator/health` → `{"status":"UP"}`
-- Open `http://localhost:3000` → app loads, Cognito login round-trips.
+- Open `http://localhost:3000` → app loads, IDIR login round-trips through `/authCallback`.
 
 If `/actuator/health` returns `DOWN`, the most likely cause is the Oracle connection — check VPN, `application-local.yml` credentials, and the truststore path.
 
 ## Component docs
 
 - [backend/README.md](backend/README.md) — Spring profile reference, env-var table, API endpoints, test commands.
-- [frontend/README.md](frontend/README.md) — Vite scripts, env-var table, project structure, testing libraries.
+- [docs/architecture.md](docs/architecture.md) — runtime topology, the auth model end to end, and the delivery pipeline.
+- [frontend/README.md](frontend/README.md) — Vite scripts, project structure, routing/access model, auth flow.
