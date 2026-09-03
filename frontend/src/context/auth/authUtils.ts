@@ -1,71 +1,118 @@
-import { env } from '@/env';
-
 import {
   AVAILABLE_ROLES,
   validIdpProviders,
   type FamLoginUser,
   type IdpProviderType,
-  type JWT,
   type ROLE_TYPE,
   type USER_PRIVILEGE_TYPE,
 } from './types';
 
-// ── Cookie helpers ───────────────────────────────────────────────────
-
-/** Reads a browser cookie value by name. Returns '' if not found. */
-export const getCookie = (name: string): string => {
-  const cookie = document.cookie
-    .split(';')
-    .find((cookieValue) => cookieValue.trim().startsWith(name));
-  return cookie ? (cookie.split('=')[1] ?? '') : '';
-};
-
 /**
- * Reads the Cognito **access token** from cookies set by AWS Amplify's
- * CookieStorage. This is the token sent to the backend API as a Bearer
- * token.
+ * The claims FTA reads off a BC Gov SSO access token.
  *
- * Access tokens carry `cognito:groups` (for authorization) and `sub` but
- * do NOT carry the `custom:idp_*` profile claims — those live only in
- * the ID token.
+ * Names follow the SSO identity-mappers reference for the *IDIR - MFA*
+ * integration:
+ * https://bcgov.github.io/sso-docs/advanced/identity-mappers#idir---mfa
+ *
+ * All of these ride the access token, which is the change that let the backend
+ * drop its per-request `/oauth2/userInfo` call — and let this module stop
+ * reading two different tokens out of two different cookies.
  */
-export const getAccessTokenFromCookie = (): string | undefined => {
-  const baseCookieName = `CognitoIdentityServiceProvider.${env.VITE_USER_POOLS_WEB_CLIENT_ID}`;
-  const userId = encodeURIComponent(getCookie(`${baseCookieName}.LastAuthUser`));
-  if (userId) {
-    const token = getCookie(`${baseCookieName}.${userId}.accessToken`);
-    return token || undefined;
-  }
-  return undefined;
+export type KeycloakProfile = {
+  /** `<guid>@azureidir`. The OIDC subject, stable per user per provider. */
+  preferred_username?: string;
+  idir_username?: string;
+  idir_user_guid?: string;
+  /** `azureidir` for the IDIR - MFA integration. */
+  identity_provider?: string;
+  display_name?: string;
+  given_name?: string;
+  family_name?: string;
+  email?: string;
+  name?: string;
+  /** Roles CSS attaches for the client the token was issued to. */
+  client_roles?: string[];
+  resource_access?: Record<string, { roles?: string[] }>;
+  azp?: string;
+  [claim: string]: unknown;
 };
 
 /**
- * Reads the Cognito **ID token** from cookies set by AWS Amplify's
- * CookieStorage. Used **only** on the frontend to populate the local
- * user profile (display name, email, IDP provider, etc.). Never sent to
- * the backend.
+ * FAM's own bookkeeping roles, which reach the token like any other role.
+ *
+ * Per-grant expiry dates are recorded in CSS as roles assigned to the person —
+ * `FAM:EXPIRES:2026-09-30:FTA_ADMIN` — because a role is a name and nothing
+ * else, so it is the only way CSS can record something about one grant. FTA
+ * never matches one, but they must not be mistaken for privileges.
  */
-export const getIdTokenFromCookie = (): string | undefined => {
-  const baseCookieName = `CognitoIdentityServiceProvider.${env.VITE_USER_POOLS_WEB_CLIENT_ID}`;
-  const userId = encodeURIComponent(getCookie(`${baseCookieName}.LastAuthUser`));
-  if (userId) {
-    const token = getCookie(`${baseCookieName}.${userId}.idToken`);
-    return token || undefined;
-  }
-  return undefined;
-};
-
-// ── Token parsing ────────────────────────────────────────────────────
+const FAM_SIDECAR_PREFIX = 'FAM:';
 
 /**
- * Maps a possibly org-suffixed Cognito group (e.g. FTA_ADMIN_DPG) to its
- * canonical role (FTA_ADMIN). Mirrors the backend's role resolution.
+ * Normalises the realm's provider alias to the one name FTA knows.
+ *
+ * The standard realm federates IDIR through Azure AD and reports `azureidir`;
+ * the legacy alias is `idir`. Both are IDIR as far as this application is
+ * concerned. Anything else is left undefined rather than guessed at.
+ *
+ * Falls back to the `preferred_username` suffix (`<guid>@azureidir`), which the
+ * identity-mappers reference documents and which is always present —
+ * `identity_provider` is added by the broker rather than by a mapper.
  */
-function canonicalRoleFor(group: string): ROLE_TYPE | undefined {
-  for (const role of AVAILABLE_ROLES) {
-    if (group === role || group.startsWith(`${role}_`)) return role;
+export const parseIdpProvider = (profile: KeycloakProfile): IdpProviderType | undefined => {
+  const raw = profile.identity_provider ?? profile.preferred_username?.split('@')[1] ?? '';
+
+  const normalized =
+    raw.toLowerCase() === 'azureidir' || raw.toLowerCase() === 'idir' ? 'IDIR' : '';
+
+  return validIdpProviders.includes(normalized as IdpProviderType)
+    ? (normalized as IdpProviderType)
+    : undefined;
+};
+
+/**
+ * Reads the caller's roles for the client the token was issued to.
+ *
+ * Under CSS these arrive as `client_roles`. Falls back to
+ * `resource_access.<azp>.roles`, which is where stock Keycloak puts them —
+ * which one appears depends on the realm's mappers, so both are read.
+ */
+export const extractRoles = (profile: KeycloakProfile | undefined): string[] => {
+  if (!profile) return [];
+
+  const clientRoles = profile.client_roles;
+  if (Array.isArray(clientRoles) && clientRoles.length > 0) {
+    return clientRoles;
   }
-  return undefined;
+
+  const clientId = profile.azp;
+  if (!clientId) return [];
+
+  const roles = profile.resource_access?.[clientId]?.roles;
+  return Array.isArray(roles) ? roles : [];
+};
+
+/**
+ * Parses role strings into a user privilege object.
+ *
+ * Recognizes roles that **exactly** match {@link AVAILABLE_ROLES}. The Cognito
+ * version also accepted an org-code suffix (`FTA_ADMIN_DPG` → `FTA_ADMIN`),
+ * which was always broader than the backend, whose `hasAuthority()` checks have
+ * only ever matched the bare code — so a suffixed group would have unlocked the
+ * UI and then been refused by the API. Nothing on a CSS token carries a suffix
+ * either, so exact matching is both correct and now agrees with the server.
+ *
+ * FAM's `FAM:`-prefixed bookkeeping roles are dropped explicitly rather than
+ * left to fall through, so they cannot be read as privileges.
+ */
+export function parsePrivileges(input: string[]): USER_PRIVILEGE_TYPE {
+  const result: USER_PRIVILEGE_TYPE = {};
+  for (const item of input) {
+    if (item.startsWith(FAM_SIDECAR_PREFIX)) continue;
+    if (AVAILABLE_ROLES.includes(item as ROLE_TYPE)) {
+      result[item as ROLE_TYPE] = null; // null = global (non-scoped) role
+    }
+  }
+  return result;
 }
 
 /**
@@ -83,71 +130,38 @@ export function highestRole(roles: ROLE_TYPE[]): ROLE_TYPE | undefined {
 }
 
 /**
- * Parses a Cognito ID token JWT into FTA's FamLoginUser shape. Extracts
- * display name, IDP provider, and rolls up Cognito groups into the
- * AVAILABLE_ROLES set.
+ * Parses an oidc-client-ts profile into FTA's FamLoginUser shape.
  *
- * NOTE: Must be called with the **ID token**, not the access token —
- * only the ID token carries the `custom:idp_*` profile claims.
+ * `given_name` and `family_name` are real claims on this realm, so the name is
+ * read directly rather than split out of the display name — Cognito carried only
+ * `custom:idp_display_name`, which forced a guess at whether "Smith, Jane" or
+ * "Jane Smith" was intended.
  */
-export const parseToken = (idToken: JWT | undefined): FamLoginUser | undefined => {
-  if (!idToken) return undefined;
-  const decodedIdToken = idToken?.payload;
-  const displayName = (decodedIdToken?.['custom:idp_display_name'] as string) || '';
-  const idpProvider = validIdpProviders.includes(
-    (decodedIdToken?.['custom:idp_name'] as string)?.toUpperCase() as IdpProviderType,
-  )
-    ? ((decodedIdToken?.['custom:idp_name'] as string).toUpperCase() as IdpProviderType)
-    : undefined;
-  const hasComma = displayName.includes(',');
-  let [lastName, firstName] = hasComma ? displayName.split(', ') : displayName.split(' ');
-  if (!hasComma) [lastName, firstName] = [firstName, lastName];
-  const sanitizedFirstName = hasComma ? firstName?.split(' ')[0]?.trim() : firstName || '';
-  const userName = (decodedIdToken?.['custom:idp_username'] as string) || '';
-  const email = (decodedIdToken?.['email'] as string) || '';
-  const cognitoGroups = extractGroups(decodedIdToken);
-  const privileges = parsePrivileges(cognitoGroups);
-  // No role stacking: collapse to the single highest effective role.
+export const parseToken = (profile: KeycloakProfile | undefined): FamLoginUser | undefined => {
+  if (!profile) return undefined;
+
+  const idpProvider = parseIdpProvider(profile);
+  const userName = profile.idir_username ?? '';
+  const firstName = profile.given_name ?? '';
+  const lastName = profile.family_name ?? '';
+  const displayName =
+    profile.display_name ?? profile.name ?? [firstName, lastName].filter(Boolean).join(' ');
+
+  const privileges = parsePrivileges(extractRoles(profile));
+  // No role stacking: collapse to the single highest effective role, which is
+  // what routes/access.ts reads as `roles[0]`.
   const derivedRoles = Object.keys(privileges) as ROLE_TYPE[];
   const effectiveRole = highestRole(derivedRoles);
+
   return {
     userName,
     displayName,
-    email,
+    email: profile.email ?? '',
     idpProvider,
     privileges,
     roles: effectiveRole ? [effectiveRole] : [],
-    firstName: sanitizedFirstName,
+    firstName,
     lastName,
     providerUsername: idpProvider ? `${idpProvider}\\${userName}` : undefined,
   };
 };
-
-/**
- * Parses Cognito group strings into a user privilege object. Recognises
- * groups that match any AVAILABLE_ROLES root (with or without an org-code
- * suffix). FTA is IDIR-only, so any suffix (e.g. an org code) flattens to
- * the global role — org-unit filtering is handled server-side.
- */
-export function parsePrivileges(input: string[]): USER_PRIVILEGE_TYPE {
-  const result: USER_PRIVILEGE_TYPE = {};
-  for (const item of input) {
-    const canonical = canonicalRoleFor(item);
-    if (!canonical) continue;
-    if (!(canonical in result)) {
-      result[canonical] = null;
-    }
-  }
-  return result;
-}
-
-/**
- * Extracts Cognito groups from a decoded JWT payload.
- */
-export function extractGroups(decodedIdToken: object | undefined): string[] {
-  if (!decodedIdToken) return [];
-  if ('cognito:groups' in decodedIdToken) {
-    return decodedIdToken['cognito:groups'] as string[];
-  }
-  return [];
-}

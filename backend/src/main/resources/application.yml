@@ -4,9 +4,10 @@ server:
     context-path: /
   error:
     include-message: always
-  # Use the SERVER_PORT placeholder so application-local.yml's SERVER_PORT
-  # value (and the OpenShift env var) can override the default. Local dev
-  # needs 8080 because Vite's dev server claims 3000.
+  # SERVER_PORT is a placeholder so application-local.yml and the OpenShift env
+  # var can override it. Set it to 8080 for local dev — Vite's dev server claims
+  # 3000 and proxies /api to :8080 (frontend/vite.config.ts). The 3000 default
+  # below is a leftover and will collide with Vite if SERVER_PORT is left unset.
   port: ${SERVER_PORT:3000}
   shutdown: graceful
   max-http-request-header-size: 16KB
@@ -26,8 +27,13 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${AWS_COGNITO_ISSUER_URI}
-          jwk-set-uri: ${AWS_COGNITO_ISSUER_URI}/.well-known/jwks.json
+          # BC Gov SSO (Keycloak) standard realm, e.g.
+          #   https://test.loginproxy.gov.bc.ca/auth/realms/standard
+          # Note the JWKS path: Keycloak publishes its keys at
+          # /protocol/openid-connect/certs, NOT the /.well-known/jwks.json that
+          # Cognito used.
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
+          jwk-set-uri: ${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/certs
   # Datasource is intentionally left un-configured for the POC. The application will expect
   # environment-specific JDBC settings (e.g. Oracle) to be provided at runtime. Flyway and
   # Postgres-specific settings were removed for this POC.
@@ -107,13 +113,11 @@ ca:
     gov:
       nrs:
         self-uri: http://localhost:3000
-        identity-lookup:
-          base-url: ${IDENTITY_LOOKUP_BASE_URL}
-          default-page-size: 10
-          connect-timeout: 15s
-          read-timeout: 30s
-        cognito:
-          userinfo-uri: ${COGNITO_USERINFO_URI}
+        keycloak:
+          # The CSS integration's client id. Tokens must carry it as `azp` or
+          # they are refused — see Oauth2SecurityCustomizer. Required: a blank
+          # value would accept every token the realm signs, for any client.
+          client-id: ${KEYCLOAK_CLIENT_ID}
         frontend:
           url: http://localhost:3000
           cors:

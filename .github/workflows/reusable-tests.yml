@@ -1,8 +1,12 @@
 # Reusable Tests
 #
 # Adapted from BCGov quickstart-openshift to:
-#   - Drop integration-tests (no common/tests/integration in this repo).
-#   - Drop load-tests   (no k6 scripts; would hammer shared Oracle DEV).
+#   - Drop integration-tests. `tests/integration/` is unmodified quickstart
+#     scaffolding (suites for FastAPI/Fiber/Nest/Quarkus backends FTA doesn't
+#     use), so there is nothing here for it to run.
+#   - Drop load-tests. `tests/load/*.js` are the quickstart k6 samples and
+#     still target its `/v1/users` endpoint, which FTA does not expose; running
+#     them would also hammer the shared Oracle DEV instance.
 #   - Keep e2e-tests using our existing Playwright suite. Auth is wired up
 #     programmatically via E2E_IDIR_USER / E2E_IDIR_PASSWORD secrets so the
 #     suite can run unattended in CI.

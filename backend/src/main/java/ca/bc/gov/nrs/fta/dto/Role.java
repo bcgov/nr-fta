@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
  * Enum representing all roles in the system, each associated with a {@link RoleType}.
  * Used for authorization checks in conjunction with Spring Security's URL-level access control.
  *
- * <p>The role names must match the AWS Cognito group names exactly:
+ * <p>The role names must match the CSS/Keycloak role names exactly:
  * <ul>
  *   <li>{@code FTA_ADMIN} — full CRUD access to all resources</li>
  *   <li>{@code FTA_VIEWER} — read-only access (GET requests only)</li>
@@ -17,14 +17,14 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public enum Role {
-    /** Full read/write access — maps to Cognito group "FTA_ADMIN". */
+    /** Full read/write access — maps to the CSS role "FTA_ADMIN". */
     FTA_ADMIN(RoleType.CONCRETE),
-    /** Read-only access — maps to Cognito group "FTA_VIEWER". */
+    /** Read-only access — maps to the CSS role "FTA_VIEWER". */
     FTA_VIEWER(RoleType.CONCRETE);
 
     private final RoleType type;
 
-    /** The Spring Security authority string (matches the Cognito group name). */
+    /** The Spring Security authority string (matches the CSS role name). */
     public String authority() {
         return name();
     }

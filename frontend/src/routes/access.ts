@@ -54,7 +54,7 @@ export function isPathAllowedForUser(
 }
 
 /**
- * Where to land the user on `/`, `/auth/callback`, or any page pulled out from
+ * Where to land the user on `/`, `/authCallback`, or any page pulled out from
  * under them. Everyone lands on the Welcome home page — the legacy app's
  * post-login landing (fta00Welcome).
  */

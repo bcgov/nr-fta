@@ -25,8 +25,11 @@ import org.springframework.stereotype.Component;
  *   <li>{@code form-action 'self'} — prevents XSS payloads from exfiltrating
  *       data via rogue {@code <form>} submissions to attacker-controlled
  *       hosts.</li>
- *   <li>{@code connect-src} explicitly lists the Cognito domain so that
- *       Amplify token refresh and userInfo calls are permitted.</li>
+ *   <li>{@code connect-src} names no identity-provider host. It used to list two
+ *       AWS domains for Amplify's token refresh and {@code /oauth2/userInfo} calls;
+ *       BC Gov SSO lives on {@code *.loginproxy.gov.bc.ca}, which the
+ *       {@code https://*.gov.bc.ca} entry already covers, and the userInfo round-trip
+ *       is gone entirely — the profile claims ride the access token now.</li>
  * </ul>
  *
  * <h3>HSTS</h3>
@@ -81,8 +84,7 @@ public class HeadersSecurityCustomizer implements Customizer<HeadersConfigurer<H
       policyDirectives = String.join("; ",
           "default-src 'self'",
           "connect-src 'self' " + selfUri
-              + " https://cognito-idp.ca-central-1.amazonaws.com"
-              + " https://lza-prod-fam-user-pool-domain.auth.ca-central-1.amazoncognito.com",
+              + " https://*.gov.bc.ca wss://*.gov.bc.ca",
           "script-src 'self'",
           "style-src 'self' 'unsafe-inline'",
           "img-src 'self' data:",

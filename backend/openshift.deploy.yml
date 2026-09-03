@@ -48,11 +48,14 @@ parameters:
     value: INFO
   - name: SPRING_JPA_SHOW_SQL
     value: "false"
-  - name: AWS_COGNITO_ISSUER_URI
+  # BC Gov SSO (Keycloak) standard realm, e.g.
+  # https://test.loginproxy.gov.bc.ca/auth/realms/standard
+  - name: KEYCLOAK_ISSUER_URI
     required: true
-  - name: COGNITO_USERINFO_URI
-    required: true
-  - name: IDENTITY_LOOKUP_BASE_URL
+  # The CSS integration's client id. Tokens must carry it as `azp` or the API
+  # refuses them (Oauth2SecurityCustomizer). Required on purpose: a blank value
+  # would accept any token the shared realm signs, for any client.
+  - name: KEYCLOAK_CLIENT_ID
     required: true
   - name: DATABASE_HOST
     required: true
@@ -146,12 +149,10 @@ objects:
                   value: oracle
                 - name: SERVER_PORT
                   value: "8080"
-                - name: AWS_COGNITO_ISSUER_URI
-                  value: ${AWS_COGNITO_ISSUER_URI}
-                - name: COGNITO_USERINFO_URI
-                  value: ${COGNITO_USERINFO_URI}
-                - name: IDENTITY_LOOKUP_BASE_URL
-                  value: ${IDENTITY_LOOKUP_BASE_URL}
+                - name: KEYCLOAK_ISSUER_URI
+                  value: ${KEYCLOAK_ISSUER_URI}
+                - name: KEYCLOAK_CLIENT_ID
+                  value: ${KEYCLOAK_CLIENT_ID}
                 - name: DATABASE_HOST
                   value: ${DATABASE_HOST}
                 - name: DATABASE_SERVICE_NAME

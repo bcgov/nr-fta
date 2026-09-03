@@ -6,6 +6,7 @@ import { useAuth } from './context/auth/useAuth';
 import { defaultRouteForUser, isPathAllowedForUser } from './routes/access';
 
 // Core pages
+import AuthCallback from './pages/AuthCallback';
 import LandingPage from './pages/LandingPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import ForbiddenPage from './pages/ForbiddenPage';
@@ -86,11 +87,16 @@ export default function App() {
     <BrowserRouter>
       {isLoggedIn && !hasFtaRole ? (
         <Routes>
+          <Route path="/authCallback" element={<AuthCallback />} />
           <Route path="*" element={<UnauthorizedPage />} />
         </Routes>
       ) : isLoggedIn ? (
         <Routes>
-          <Route path="/auth/callback" element={<Navigate to={defaultRouteForUser(user)} replace />} />
+          {/* A callback that lands here has already been exchanged — the auth
+              state flipped, so this table replaced the public one mid-render.
+              AuthCallback has itself rewritten the URL; this is the belt-and-
+              braces path for a reload of a spent callback URL. */}
+          <Route path="/authCallback" element={<Navigate to={defaultRouteForUser(user)} replace />} />
           <Route path="/" element={<Navigate to={defaultRouteForUser(user)} replace />} />
 
           {/* Home */}
@@ -178,9 +184,16 @@ export default function App() {
         </Routes>
       ) : (
         <Routes>
-          {/* Unauthenticated — every URL falls through to Landing. Amplify
-              handles ?code=&state= at boot (main.tsx) before AuthProvider
-              hydrates and the authenticated branch takes over. */}
+          {/* MUST stay above the catch-all below. The session does not exist
+              until this route creates it, so the callback arrives while the
+              public table is mounted — and a `*` matched first would bounce it,
+              query string and all, to the Landing page before the authorization
+              code could be exchanged. Under Cognito there was no such ordering
+              hazard because Amplify.configure() consumed ?code=&state= at boot,
+              before any route rendered. */}
+          <Route path="/authCallback" element={<AuthCallback />} />
+
+          {/* Unauthenticated — every other URL falls through to Landing. */}
           <Route path="*" element={<LandingPage />} />
         </Routes>
       )}

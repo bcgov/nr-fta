@@ -1,5 +1,10 @@
 # FTA Frontend Reset — Progress Tracker
 
+> **Historical tracker, not current documentation.** It records the July 2026
+> frontend reset. Notably, auth has since moved from FAM/Cognito to BC Gov SSO
+> (Keycloak) — see [../docs/architecture.md](../docs/architecture.md) and
+> [README.md](README.md) for how authentication actually works now.
+
 Goal: reset the FTA frontend to mirror **nr-fsp-new**'s shell/styling exactly, and
 re-implement the **fta-archive** (legacy Struts/JSP) screens as Carbon React pages
 driven by **mock data** (no backend APIs yet).

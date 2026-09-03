@@ -1,17 +1,18 @@
 import { createContext, type ReactNode } from 'react';
 
-import type { FamLoginUser, LoginProvider } from './types';
+import type { FamLoginUser } from './types';
 
 export type AuthContextType = {
   user: FamLoginUser | undefined;
   isLoggedIn: boolean;
   isLoading: boolean;
   /**
-   * Trigger an OAuth2 redirect to Cognito's hosted UI, scoped to the
-   * chosen identity provider (IDIR for ministry staff, BCeID Business
-   * for industry users).
+   * Redirect to BC Gov SSO to sign in. Takes no provider argument: the
+   * Cognito version needed a per-environment identity_provider name
+   * (`DEV-IDIR`, `TEST-IDIR`, `IDIR`), whereas the Keycloak IdP hint is the
+   * constant `azureidir` everywhere (see services/keycloak.ts).
    */
-  login: (provider: LoginProvider) => void;
+  login: () => void;
   logout: () => void;
   userToken: () => string | undefined;
   /**
@@ -20,6 +21,12 @@ export type AuthContextType = {
    * the session has expired (user is signed out automatically).
    */
   ensureFreshToken: () => Promise<string | undefined>;
+  /**
+   * Completes the authorization-code exchange after Keycloak redirects back.
+   * Called only by the /authCallback route; rejects if the callback URL carries
+   * no usable code or its state has already been consumed.
+   */
+  completeLogin: () => Promise<void>;
 };
 
 export type AuthProviderProps = {
