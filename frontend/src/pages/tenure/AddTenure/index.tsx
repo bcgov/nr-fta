@@ -1,3 +1,4 @@
+import { Save, Reset } from '@carbon/icons-react';
 import {
   Button,
   Column,
@@ -8,13 +9,13 @@ import {
   SelectItem,
   TextInput,
 } from '@carbon/react';
-import { Save, Reset } from '@carbon/icons-react';
 import { useState, type FC, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
-import { canEdit } from '@/routes/access';
 import PageLayout from '@/pages/PageLayout';
+import { canEdit } from '@/routes/access';
 import { createTenure } from '@/services/tenure_write';
 import './AddTenure.scss';
 
@@ -110,34 +111,75 @@ const AddTenure: FC = () => {
       <form className="add-tenure__form" onSubmit={onSubmit}>
         <Grid narrow>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="at-file" labelText="Forest File ID" placeholder="e.g. A19999"
-              disabled={readOnly} value={form.fileId} onChange={(e) => set('fileId')(e.target.value)} required />
+            <TextInput
+              id="at-file"
+              labelText="Forest File ID"
+              placeholder="e.g. A19999"
+              disabled={readOnly}
+              value={form.fileId}
+              onChange={(e) => set('fileId')(e.target.value)}
+              required
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <Select id="at-type" labelText="File Type" disabled={readOnly}
-              value={form.fileType} onChange={(e) => set('fileType')(e.target.value)}>
+            <Select
+              id="at-type"
+              labelText="File Type"
+              disabled={readOnly}
+              value={form.fileType}
+              onChange={(e) => set('fileType')(e.target.value)}
+            >
               <SelectItem value="" text="Choose a type" />
-              {FILE_TYPES.map((t) => <SelectItem key={t.code} value={t.code} text={t.label} />)}
+              {FILE_TYPES.map((t) => (
+                <SelectItem key={t.code} value={t.code} text={t.label} />
+              ))}
             </Select>
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <Select id="at-org" labelText="Org Unit" disabled={readOnly}
-              value={form.orgUnit} onChange={(e) => set('orgUnit')(e.target.value)}>
+            <Select
+              id="at-org"
+              labelText="Org Unit"
+              disabled={readOnly}
+              value={form.orgUnit}
+              onChange={(e) => set('orgUnit')(e.target.value)}
+            >
               <SelectItem value="" text="Choose an org unit" />
-              {ORG_UNITS.map((o) => <SelectItem key={o.code} value={o.code} text={o.label} />)}
+              {ORG_UNITS.map((o) => (
+                <SelectItem key={o.code} value={o.code} text={o.label} />
+              ))}
             </Select>
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="at-licensee" labelText="Licensee / Client" placeholder="e.g. West Fraser Mills Ltd."
-              disabled={readOnly} value={form.licensee} onChange={(e) => set('licensee')(e.target.value)} />
+            <TextInput
+              id="at-licensee"
+              labelText="Licensee / Client"
+              placeholder="e.g. West Fraser Mills Ltd."
+              disabled={readOnly}
+              value={form.licensee}
+              onChange={(e) => set('licensee')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="at-client" labelText="Client Number" placeholder="8-digit number"
-              disabled={readOnly} value={form.clientNumber} onChange={(e) => set('clientNumber')(e.target.value)} />
+            <TextInput
+              id="at-client"
+              labelText="Client Number"
+              placeholder="8-digit number"
+              disabled={readOnly}
+              value={form.clientNumber}
+              onChange={(e) => set('clientNumber')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <DatePicker datePickerType="single" onChange={(d) => set('issueDate')(d[0]?.toISOString().slice(0, 10) ?? '')}>
-              <DatePickerInput id="at-issue" labelText="Issue Date" placeholder="yyyy-mm-dd" disabled={readOnly} />
+            <DatePicker
+              datePickerType="single"
+              onChange={(d) => set('issueDate')(d[0]?.toISOString().slice(0, 10) ?? '')}
+            >
+              <DatePickerInput
+                id="at-issue"
+                labelText="Issue Date"
+                placeholder="yyyy-mm-dd"
+                disabled={readOnly}
+              />
             </DatePicker>
           </Column>
         </Grid>
@@ -145,7 +187,15 @@ const AddTenure: FC = () => {
           <Button type="submit" renderIcon={Save} disabled={readOnly || saving}>
             {saving ? 'Creating…' : 'Create tenure'}
           </Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={() => setForm(EMPTY)} disabled={readOnly || saving}>Clear</Button>
+          <Button
+            type="button"
+            kind="ghost"
+            renderIcon={Reset}
+            onClick={() => setForm(EMPTY)}
+            disabled={readOnly || saving}
+          >
+            Clear
+          </Button>
         </div>
       </form>
     </PageLayout>

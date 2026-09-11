@@ -1,8 +1,10 @@
-import { Button } from '@carbon/react';
 import { ArrowRight } from '@carbon/icons-react';
-import type { FC } from 'react';
+import { Button } from '@carbon/react';
 import { useNavigate } from 'react-router-dom';
+
 import PageLayout from '@/pages/PageLayout';
+
+import type { FC } from 'react';
 
 /**
  * In-shell 404 for authenticated users who hit an unknown path under a valid

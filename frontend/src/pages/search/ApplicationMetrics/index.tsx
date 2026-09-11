@@ -1,11 +1,12 @@
-import { Button, Column, Grid, Select, SelectItem, TextInput } from '@carbon/react';
 import { Search as SearchIcon, Reset, Download } from '@carbon/icons-react';
+import { Button, Column, Grid, Select, SelectItem, TextInput } from '@carbon/react';
 import { useState, type FC, type FormEvent } from 'react';
+
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
 import { useNotification } from '@/context/notification/useNotification';
-import PageLayout from '@/pages/PageLayout';
 import { MOCK_APPLICATIONS, findApplication } from '@/mocks/applications';
 import { ORG_UNITS } from '@/mocks/reference';
+import PageLayout from '@/pages/PageLayout';
 
 interface MetricRow {
   id: string;
@@ -77,9 +78,16 @@ const ApplicationMetrics: FC = () => {
       <form style={{ maxWidth: '64rem', marginBottom: '2rem' }} onSubmit={onSearch}>
         <Grid narrow>
           <Column sm={4} md={4} lg={5}>
-            <Select id="am-org" labelText="Org Unit" value={orgUnit} onChange={(e) => setOrgUnit(e.target.value)}>
+            <Select
+              id="am-org"
+              labelText="Org Unit"
+              value={orgUnit}
+              onChange={(e) => setOrgUnit(e.target.value)}
+            >
               <SelectItem value="" text="All org units" />
-              {ORG_UNITS.map((o) => <SelectItem key={o} value={o} text={o} />)}
+              {ORG_UNITS.map((o) => (
+                <SelectItem key={o} value={o} text={o} />
+              ))}
             </Select>
           </Column>
           <Column sm={4} md={2} lg={3}>
@@ -90,10 +98,16 @@ const ApplicationMetrics: FC = () => {
           </Column>
         </Grid>
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
-          <Button type="submit" renderIcon={SearchIcon}>Search</Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>Reset</Button>
+          <Button type="submit" renderIcon={SearchIcon}>
+            Search
+          </Button>
+          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
+            Reset
+          </Button>
           {rows !== null && rows.length > 0 && (
-            <Button type="button" kind="tertiary" renderIcon={Download} onClick={onExport}>Export CSV</Button>
+            <Button type="button" kind="tertiary" renderIcon={Download} onClick={onExport}>
+              Export CSV
+            </Button>
           )}
         </div>
       </form>

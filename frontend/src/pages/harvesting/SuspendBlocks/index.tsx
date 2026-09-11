@@ -1,3 +1,4 @@
+import { ArrowLeft, Pause } from '@carbon/icons-react';
 import {
   Button,
   Checkbox,
@@ -10,15 +11,15 @@ import {
   TableRow,
   TextArea,
 } from '@carbon/react';
-import { ArrowLeft, Pause } from '@carbon/icons-react';
 import { useState, type FC } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
-import { canEdit } from '@/routes/access';
-import PageLayout from '@/pages/PageLayout';
 import { findHarvestingAuthority, cutBlocksForCp, cbSkeyFor } from '@/mocks/harvesting';
+import PageLayout from '@/pages/PageLayout';
+import { canEdit } from '@/routes/access';
 import { suspendBlocks } from '@/services/suspend_blocks';
 
 /**
@@ -51,7 +52,11 @@ const SuspendBlocks: FC = () => {
   const toggle = (id: string) =>
     setSelected((s) => {
       const next = new Set(s);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
 
@@ -60,7 +65,9 @@ const SuspendBlocks: FC = () => {
     try {
       const { suspended } = await suspendBlocks(cp.cpId, {
         forestFileId: cp.fileId,
-        cbSkeys: blocks.filter((b) => selected.has(b.blockId)).map((b) => String(cbSkeyFor(b.blockId))),
+        cbSkeys: blocks
+          .filter((b) => selected.has(b.blockId))
+          .map((b) => String(cbSkeyFor(b.blockId))),
         suspendAllBlocks: false,
         partitionCode: null,
         suspOrderNumber: null,
@@ -144,7 +151,11 @@ const SuspendBlocks: FC = () => {
           onChange={(e) => setReason(e.target.value)}
         />
         <div style={{ marginTop: '1.5rem' }}>
-          <Button renderIcon={Pause} disabled={readOnly || saving || selected.size === 0 || !reason.trim()} onClick={onSubmit}>
+          <Button
+            renderIcon={Pause}
+            disabled={readOnly || saving || selected.size === 0 || !reason.trim()}
+            onClick={onSubmit}
+          >
             {saving ? 'Suspending…' : `Suspend ${selected.size} block(s)`}
           </Button>
         </div>

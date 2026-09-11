@@ -82,7 +82,7 @@ oc cp $(oc get pod -l app=fta-backend -o jsonpath='{.items[0].metadata.name}'):/
 
 #### `frontend/.env`
 
-Copy `frontend/.env.example` and fill in `VITE_KEYCLOAK_URL` (the realm issuer URI) and `VITE_KEYCLOAK_CLIENT_ID` (the CSS integration's client id — it must equal the backend's `KEYCLOAK_CLIENT_ID`, which is checked as the token's `azp`). Those, plus `VITE_API_BASE_URL`, `VITE_ZONE` and `VITE_APP_NAME`, are inlined into the app bundle by Vite (via `import.meta.env`); changing `.env` requires restarting `npm run dev`. In a container they are re-supplied at runtime instead — `docker-entrypoint.sh` renders them into `/srv/config.js` and `src/env.ts` merges those over `import.meta.env`, so one built image serves every environment.
+Copy `frontend/.env.example` and fill in `VITE_KEYCLOAK_URL` (the realm issuer URI) and `VITE_KEYCLOAK_CLIENT_ID` (the CSS integration's client id — it must equal the backend's `KEYCLOAK_CLIENT_ID`, which is checked as the token's `azp`). Those, plus `VITE_API_BASE_URL` and `VITE_APP_NAME`, are inlined into the app bundle by Vite (via `import.meta.env`); changing `.env` requires restarting `npm run dev`. In a container they are re-supplied at runtime instead — `docker-entrypoint.sh` renders them into `/srv/config.js` and `src/env.ts` merges those over `import.meta.env`, so one built image serves every environment.
 
 There is nothing else to configure: `oidc-client-ts` discovers the authorize, token and end-session endpoints from the issuer URI. For local dev, `http://localhost:3000/authCallback` must be registered as a redirect URI on the CSS integration, and `http://localhost:3000` as a post-logout redirect URI.
 

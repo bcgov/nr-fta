@@ -1,3 +1,4 @@
+import { ArrowLeft, Edit } from '@carbon/icons-react';
 import {
   Button,
   Tab,
@@ -14,17 +15,17 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { ArrowLeft, Edit } from '@carbon/icons-react';
 import { useCallback, type FC } from 'react';
 import { Link, useParams } from 'react-router-dom';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
-import { canEdit } from '@/routes/access';
 import PageLayout from '@/pages/PageLayout';
+import { canEdit } from '@/routes/access';
 import { getMarkDetail } from '@/services/mark_detail';
 
 // Carbon Tag colour per private-mark status code (PI/PA/HI/HX/DV/DD/…), with a
@@ -81,7 +82,9 @@ const MarkDetail: FC = () => {
                 {
                   label: 'Status',
                   value: mark.markStatusCode ? (
-                    <Tag type={STATUS_TAG[mark.markStatusCode] ?? 'gray'}>{mark.markStatusCode}</Tag>
+                    <Tag type={STATUS_TAG[mark.markStatusCode] ?? 'gray'}>
+                      {mark.markStatusCode}
+                    </Tag>
                   ) : (
                     '—'
                   ),
@@ -94,7 +97,9 @@ const MarkDetail: FC = () => {
               ]}
               action={
                 canEdit(user) ? (
-                  <Button size="sm" kind="tertiary" renderIcon={Edit} onClick={onAmend}>Amend mark</Button>
+                  <Button size="sm" kind="tertiary" renderIcon={Edit} onClick={onAmend}>
+                    Amend mark
+                  </Button>
                 ) : undefined
               }
             />
@@ -114,7 +119,10 @@ const MarkDetail: FC = () => {
                       { label: 'Certificate', value: dash(mark.certificate) },
                       { label: 'File Type', value: dash(mark.fileTypeCode) },
                       { label: 'Timber Origin', value: dash(mark.crownGrantedAcqDesc) },
-                      { label: 'Holder', value: `${dash(mark.clientName)} (${dash(mark.clientNumber)})` },
+                      {
+                        label: 'Holder',
+                        value: `${dash(mark.clientName)} (${dash(mark.clientNumber)})`,
+                      },
                       { label: 'Issue Date', value: dash(mark.markIssueDate) },
                       { label: 'Expiry Date', value: dash(mark.markExpiryDate) },
                       { label: 'Tenure Term', value: dash(mark.tenureTerm) },
@@ -124,7 +132,10 @@ const MarkDetail: FC = () => {
                 </TabPanel>
 
                 <TabPanel>
-                  <TableContainer title="Mark Land Index" description={`${mark.landIndex.length} parcel(s)`}>
+                  <TableContainer
+                    title="Mark Land Index"
+                    description={`${mark.landIndex.length} parcel(s)`}
+                  >
                     <Table>
                       <TableHead>
                         <TableRow>
@@ -136,9 +147,18 @@ const MarkDetail: FC = () => {
                       </TableHead>
                       <TableBody>
                         {mark.landIndex.map((p) => (
-                          <TableRow key={p.markLandIndexSkey ?? `${p.primaryLandIndexCode}-${p.secondaryLandIndexCode}`}>
-                            <TableCell>{dash(p.primaryLandIndexCodeDesc ?? p.primaryLandIndexCode)}</TableCell>
-                            <TableCell>{dash(p.secondaryLandIndexCodeDesc ?? p.secondaryLandIndexCode)}</TableCell>
+                          <TableRow
+                            key={
+                              p.markLandIndexSkey ??
+                              `${p.primaryLandIndexCode}-${p.secondaryLandIndexCode}`
+                            }
+                          >
+                            <TableCell>
+                              {dash(p.primaryLandIndexCodeDesc ?? p.primaryLandIndexCode)}
+                            </TableCell>
+                            <TableCell>
+                              {dash(p.secondaryLandIndexCodeDesc ?? p.secondaryLandIndexCode)}
+                            </TableCell>
                             <TableCell>{dash(p.markLandIndexDesc)}</TableCell>
                             <TableCell>{dash(p.indexDeactivateDate)}</TableCell>
                           </TableRow>
@@ -161,7 +181,9 @@ const MarkDetail: FC = () => {
                       </TableHead>
                       <TableBody>
                         {mark.clients.map((c) => (
-                          <TableRow key={c.forClientLinkSkey ?? `${c.clientNumber}-${c.fileClientType}`}>
+                          <TableRow
+                            key={c.forClientLinkSkey ?? `${c.clientNumber}-${c.fileClientType}`}
+                          >
                             <TableCell>{dash(c.clientNumber)}</TableCell>
                             <TableCell>{dash(c.clientName)}</TableCell>
                             <TableCell>{dash(c.clientCity)}</TableCell>

@@ -41,7 +41,11 @@ export const PAGES = {
     heading: 'Timber Mark Search',
     navId: 'Timber Mark Search',
   },
-  cutBlockSearch: { path: '/search/cut-block', heading: 'Cut Block Search', navId: 'Cut Block Search' },
+  cutBlockSearch: {
+    path: '/search/cut-block',
+    heading: 'Cut Block Search',
+    navId: 'Cut Block Search',
+  },
   rangeTenureSearch: {
     path: '/search/range-tenure',
     heading: 'Range Tenure Search',
@@ -72,7 +76,11 @@ export const PAGES = {
   tenures: { path: '/tenures', heading: /Tenure/i, navId: 'Tenure' },
 
   // Private Marks
-  markList: { path: '/marks', heading: /Application\/Amendment List/i, navId: 'Application/Amendment List' },
+  markList: {
+    path: '/marks',
+    heading: /Application\/Amendment List/i,
+    navId: 'Application/Amendment List',
+  },
   markApplication: {
     path: '/marks/application',
     heading: /Mark Application/i,
@@ -80,7 +88,12 @@ export const PAGES = {
   },
 
   // Admin — FTA_ADMIN only
-  auditReport: { path: '/admin/audit', heading: 'Audit Report', navId: 'Audit Report', role: 'FTA_ADMIN' },
+  auditReport: {
+    path: '/admin/audit',
+    heading: 'Audit Report',
+    navId: 'Audit Report',
+    role: 'FTA_ADMIN',
+  },
   rentsFees: {
     path: '/admin/rents-fees',
     heading: /Annual Rents & Fees/i,

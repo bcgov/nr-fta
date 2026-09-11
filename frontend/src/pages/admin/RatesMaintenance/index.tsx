@@ -1,3 +1,4 @@
+import { Save } from '@carbon/icons-react';
 import {
   Button,
   Table,
@@ -8,8 +9,8 @@ import {
   TableHeader,
   TableRow,
 } from '@carbon/react';
-import { Save } from '@carbon/icons-react';
 import { useCallback, useEffect, useState, type FC } from 'react';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
@@ -86,7 +87,9 @@ const RatesMaintenance: FC = () => {
             </TableHead>
             <TableBody>
               {rates.map((r) => (
-                <TableRow key={r.rangeBillRateId ?? `${r.rangeRateTypeCode}-${r.rangeFileTypeCode}`}>
+                <TableRow
+                  key={r.rangeBillRateId ?? `${r.rangeRateTypeCode}-${r.rangeFileTypeCode}`}
+                >
                   <TableCell>{r.rangeRateTypeCode ?? '—'}</TableCell>
                   <TableCell>{r.rangeFileTypeCode ?? '—'}</TableCell>
                   <TableCell>{r.revenueClassnCode ?? '—'}</TableCell>

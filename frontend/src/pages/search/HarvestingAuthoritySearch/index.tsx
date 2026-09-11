@@ -1,7 +1,8 @@
-import { Button, Column, Grid, TextInput } from '@carbon/react';
 import { Search as SearchIcon, Reset } from '@carbon/icons-react';
+import { Button, Column, Grid, TextInput } from '@carbon/react';
 import { useState, type FC, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
 import PageLayout from '@/pages/PageLayout';
@@ -63,29 +64,58 @@ const HarvestingAuthoritySearch: FC = () => {
       <form className="ha-search__form" onSubmit={onSearch}>
         <Grid narrow>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="ha-cp" labelText="Cutting Permit" placeholder="e.g. CP-01"
-              value={criteria.cuttingPermitId ?? ''} onChange={(e) => onField('cuttingPermitId')(e.target.value)} />
+            <TextInput
+              id="ha-cp"
+              labelText="Cutting Permit"
+              placeholder="e.g. CP-01"
+              value={criteria.cuttingPermitId ?? ''}
+              onChange={(e) => onField('cuttingPermitId')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="ha-mark" labelText="Timber Mark" placeholder="e.g. 52/1234"
-              value={criteria.timberMark ?? ''} onChange={(e) => onField('timberMark')(e.target.value)} />
+            <TextInput
+              id="ha-mark"
+              labelText="Timber Mark"
+              placeholder="e.g. 52/1234"
+              value={criteria.timberMark ?? ''}
+              onChange={(e) => onField('timberMark')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="ha-file" labelText="Forest File ID" placeholder="e.g. A19201"
-              value={criteria.forestFileId ?? ''} onChange={(e) => onField('forestFileId')(e.target.value)} />
+            <TextInput
+              id="ha-file"
+              labelText="Forest File ID"
+              placeholder="e.g. A19201"
+              value={criteria.forestFileId ?? ''}
+              onChange={(e) => onField('forestFileId')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="ha-client" labelText="Licensee / Client" placeholder="e.g. West Fraser"
-              value={criteria.clientName ?? ''} onChange={(e) => onField('clientName')(e.target.value)} />
+            <TextInput
+              id="ha-client"
+              labelText="Licensee / Client"
+              placeholder="e.g. West Fraser"
+              value={criteria.clientName ?? ''}
+              onChange={(e) => onField('clientName')(e.target.value)}
+            />
           </Column>
         </Grid>
         <div className="ha-search__actions">
-          <Button type="submit" renderIcon={SearchIcon}>Search</Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>Reset</Button>
+          <Button type="submit" renderIcon={SearchIcon}>
+            Search
+          </Button>
+          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
+            Reset
+          </Button>
         </div>
       </form>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={() => void runSearch(criteria)} loadingText="Searching…">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        onRetry={() => void runSearch(criteria)}
+        loadingText="Searching…"
+      >
         {rows !== null && (
           <SearchResultsTable
             rows={rows.map((r, i) => ({
@@ -97,12 +127,18 @@ const HarvestingAuthoritySearch: FC = () => {
             renderCell={(row, key) => {
               if (key === 'cuttingPermitId')
                 return row.cuttingPermitId ? (
-                  <Link to={`/harvesting-authority/${row.cuttingPermitId}`}>{row.cuttingPermitId}</Link>
-                ) : '—';
+                  <Link to={`/harvesting-authority/${row.cuttingPermitId}`}>
+                    {row.cuttingPermitId}
+                  </Link>
+                ) : (
+                  '—'
+                );
               if (key === 'forestFileId')
                 return row.forestFileId ? (
                   <Link to={`/tenures/${row.forestFileId}`}>{row.forestFileId}</Link>
-                ) : '—';
+                ) : (
+                  '—'
+                );
               if (key === 'clientName') return row.clientName ?? '—';
               return undefined;
             }}

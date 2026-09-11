@@ -7,17 +7,17 @@
 apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
-  name: nr-fspts-frontend-deploy
+  name: nr-fta-frontend-deploy
 parameters:
   - name: NAME
     description: App name prefix
-    value: nr-fspts
+    value: nr-fta
   - name: ZONE
     description: PR number, 'test', or 'prod'
     required: true
   # SLOT decouples the public-facing Route hostname from the OpenShift object
   # names so per-PR previews can share a fixed pool of registered redirect URIs.
-  # We pre-register 50 (nr-fspts-0…nr-fspts-49.apps.silver.devops.gov.bc.ca) and
+  # We pre-register 50 (nr-fta-0…nr-fta-49.apps.gold.devops.gov.bc.ca) and
   # bucket PRs into them via PR % 50.
   #
   # This scheme was forced by Cognito, whose app clients reject wildcards in
@@ -37,10 +37,10 @@ parameters:
     value: latest
   - name: REGISTRY
     description: Image registry path (no tag)
-    value: ghcr.io/bcgov/nr-fspts/frontend
+    value: ghcr.io/bcgov/nr-fta/frontend
   - name: DOMAIN
     description: Cluster apps domain (do not include leading dot)
-    value: apps.silver.devops.gov.bc.ca
+    value: apps.gold.devops.gov.bc.ca
   - name: FRONTEND_LOG_LEVEL
     value: INFO
   # Runtime VITE_* config (rendered into /srv/config.js by the entrypoint
@@ -60,14 +60,10 @@ parameters:
   - name: VITE_API_BASE_URL
     description: Browser-facing API base path; usually '/api'
     value: /api
+  # The product name — identical in every environment, so CI doesn't pass it
+  # and this default is the one place it is set.
   - name: VITE_APP_NAME
     value: Forest Tenure Administration
-  # VITE_ZONE = the deploy zone, surfaced to the UI. It no longer selects an
-  # identity provider: Cognito needed a per-environment provider name
-  # (TEST-IDIR), whereas the Keycloak IdP hint is the constant `azureidir` in
-  # every environment (services/keycloak.ts). A numeric PR zone is now harmless.
-  - name: VITE_ZONE
-    value: dev
 
 objects:
   # ── Deployment ────────────────────────────────────────────
@@ -144,8 +140,6 @@ objects:
                   value: ${VITE_API_BASE_URL}
                 - name: VITE_APP_NAME
                   value: ${VITE_APP_NAME}
-                - name: VITE_ZONE
-                  value: ${VITE_ZONE}
               volumeMounts:
                 - name: srv
                   mountPath: /srv

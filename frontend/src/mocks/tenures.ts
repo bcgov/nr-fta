@@ -137,9 +137,27 @@ const DETAIL_EXTRAS = {
   managementUnit: 'TSA 27 — Williams Lake',
   aacCubicMetres: 1_450_000,
   cuttingPermits: [
-    { cpId: 'CP-01', timberMark: '52/1234', status: 'Issued', issueDate: '2021-04-01', volume: 42000 },
-    { cpId: 'CP-02', timberMark: '52/1235', status: 'Issued', issueDate: '2022-06-15', volume: 38500 },
-    { cpId: 'CP-03', timberMark: '52/1236', status: 'Pending', issueDate: '2024-02-01', volume: 51000 },
+    {
+      cpId: 'CP-01',
+      timberMark: '52/1234',
+      status: 'Issued',
+      issueDate: '2021-04-01',
+      volume: 42000,
+    },
+    {
+      cpId: 'CP-02',
+      timberMark: '52/1235',
+      status: 'Issued',
+      issueDate: '2022-06-15',
+      volume: 38500,
+    },
+    {
+      cpId: 'CP-03',
+      timberMark: '52/1236',
+      status: 'Pending',
+      issueDate: '2024-02-01',
+      volume: 51000,
+    },
   ],
   cutBlocks: [
     { blockId: 'BLK-001', cpId: 'CP-01', status: 'Harvested', areaHa: 24.6 },
@@ -147,21 +165,54 @@ const DETAIL_EXTRAS = {
     { blockId: 'BLK-003', cpId: 'CP-02', status: 'Active', areaHa: 18.9 },
   ],
   associatedClients: [
-    { clientNumber: '00001012', name: 'Northwood Timber Ltd.', relationship: 'Licensee', location: '00' },
-    { clientNumber: '00088204', name: 'Ridgeline Logging Co.', relationship: 'Contractor', location: '01' },
+    {
+      clientNumber: '00001012',
+      name: 'Northwood Timber Ltd.',
+      relationship: 'Licensee',
+      location: '00',
+    },
+    {
+      clientNumber: '00088204',
+      name: 'Ridgeline Logging Co.',
+      relationship: 'Contractor',
+      location: '01',
+    },
   ],
   notes: [
     { date: '2023-08-14', author: 'M. Clarke', text: 'Annual rent invoice issued.' },
     { date: '2022-11-02', author: 'L. Ferris', text: 'AAC apportionment reviewed — no change.' },
   ],
   roads: [
-    { roadId: 'RD-4001', name: 'Beaver Creek FSR', status: 'Active', lengthKm: 12.4, tenureType: 'Road Permit' },
-    { roadId: 'RD-4002', name: 'Ridge Mainline', status: 'Active', lengthKm: 8.1, tenureType: 'Road Permit' },
-    { roadId: 'RD-4003', name: 'Spur 12', status: 'Retired', lengthKm: 2.7, tenureType: 'Section 115' },
+    {
+      roadId: 'RD-4001',
+      name: 'Beaver Creek FSR',
+      status: 'Active',
+      lengthKm: 12.4,
+      tenureType: 'Road Permit',
+    },
+    {
+      roadId: 'RD-4002',
+      name: 'Ridge Mainline',
+      status: 'Active',
+      lengthKm: 8.1,
+      tenureType: 'Road Permit',
+    },
+    {
+      roadId: 'RD-4003',
+      name: 'Spur 12',
+      status: 'Retired',
+      lengthKm: 2.7,
+      tenureType: 'Section 115',
+    },
   ],
   associatedFiles: [
     { fileId: 'A20115', relationship: 'Adjacent', fileType: 'Forest Licence', status: 'Active' },
-    { fileId: 'A62009', relationship: 'Overlapping', fileType: 'Tree Farm Licence', status: 'Active' },
+    {
+      fileId: 'A62009',
+      relationship: 'Overlapping',
+      fileType: 'Tree Farm Licence',
+      status: 'Active',
+    },
   ],
   saleInfo: {
     saleType: 'Timber Sale Licence',
@@ -194,9 +245,12 @@ export interface TenureSearchCriteria {
 
 export function searchTenures(criteria: TenureSearchCriteria): TenureSummary[] {
   return MOCK_TENURES.filter((t) => {
-    if (criteria.fileId && !t.fileId.toLowerCase().includes(criteria.fileId.toLowerCase())) return false;
-    if (criteria.licensee && !t.licensee.toLowerCase().includes(criteria.licensee.toLowerCase())) return false;
-    if (criteria.orgUnit && !t.orgUnit.toLowerCase().includes(criteria.orgUnit.toLowerCase())) return false;
+    if (criteria.fileId && !t.fileId.toLowerCase().includes(criteria.fileId.toLowerCase()))
+      return false;
+    if (criteria.licensee && !t.licensee.toLowerCase().includes(criteria.licensee.toLowerCase()))
+      return false;
+    if (criteria.orgUnit && !t.orgUnit.toLowerCase().includes(criteria.orgUnit.toLowerCase()))
+      return false;
     if (criteria.status && t.status !== criteria.status) return false;
     return true;
   });

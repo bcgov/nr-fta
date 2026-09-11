@@ -1,11 +1,12 @@
 import { ArrowRight, Logout } from '@carbon/icons-react';
 import { Button, Column, Grid } from '@carbon/react';
-import type { FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/context/auth/useAuth';
 import { useTheme } from '@/context/theme/useTheme';
 import { defaultRouteForUser } from '@/routes/access';
+
+import type { FC } from 'react';
 
 import './LandingPage.scss';
 

@@ -161,14 +161,21 @@ jobs:
           # commit that uses NON-sensitive placeholder values.
           debug: false
           overwrite: true
+          # The SPA's issuer and client id come from the same variables the
+          # backend validates tokens against (issuer + `azp`), so the two
+          # sides can't drift apart.
+          #
+          # VITE_APP_NAME is deliberately NOT passed: it is the product name,
+          # identical everywhere, so the template default is the one place it
+          # is written down. VITE_ZONE is gone entirely — nothing in the app
+          # read it (it used to pick the Cognito IdP per environment; the
+          # Keycloak hint is the constant `azureidir`).
           parameters:
             -p ZONE="${{ inputs.target }}"
             -p SLOT="${{ inputs.slot || inputs.target }}"
             -p NAME="nr-fta"
             -p IMAGE_TAG="${{ inputs.tag }}"
             -p REPLICAS="${{ inputs.frontend_replicas }}"
-            -p VITE_KEYCLOAK_URL="${{ vars.VITE_KEYCLOAK_URL }}"
-            -p VITE_KEYCLOAK_CLIENT_ID="${{ vars.VITE_KEYCLOAK_CLIENT_ID }}"
-            -p VITE_APP_NAME="${{ vars.VITE_APP_NAME }}"
-            -p VITE_ZONE="${{ vars.VITE_ZONE }}"
+            -p VITE_KEYCLOAK_URL="${{ vars.KEYCLOAK_ISSUER_URI }}"
+            -p VITE_KEYCLOAK_CLIENT_ID="${{ vars.KEYCLOAK_CLIENT_ID }}"
           triggers: ${{ inputs.triggers }}

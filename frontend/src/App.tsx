@@ -1,12 +1,17 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import type { FC, ReactNode } from 'react';
 
 import Layout from './components/Layout';
 import { useAuth } from './context/auth/useAuth';
-import { defaultRouteForUser, isPathAllowedForUser } from './routes/access';
+import ArchiveTenures from './pages/admin/ArchiveTenures';
+import AuditReport from './pages/admin/AuditReport';
+import BillingReportScreen from './pages/admin/BillingReportScreen';
+import ManageZone from './pages/admin/ManageZone';
+import MarkTransfer from './pages/admin/MarkTransfer';
+import OrgUnitMaintenance from './pages/admin/OrgUnitMaintenance';
+import RatesMaintenance from './pages/admin/RatesMaintenance';
+import AuthCallback from './pages/AuthCallback';
 
 // Core pages
-import AuthCallback from './pages/AuthCallback';
 import LandingPage from './pages/LandingPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import ForbiddenPage from './pages/ForbiddenPage';
@@ -41,13 +46,9 @@ import TimberMarkSearch from './pages/search/TimberMarkSearch';
 import ClientSearch from './pages/search/ClientSearch';
 import ManagementUnitSearch from './pages/search/ManagementUnitSearch';
 import ApplicationMetrics from './pages/search/ApplicationMetrics';
-import BillingReportScreen from './pages/admin/BillingReportScreen';
-import AuditReport from './pages/admin/AuditReport';
-import RatesMaintenance from './pages/admin/RatesMaintenance';
-import ManageZone from './pages/admin/ManageZone';
-import OrgUnitMaintenance from './pages/admin/OrgUnitMaintenance';
-import MarkTransfer from './pages/admin/MarkTransfer';
-import ArchiveTenures from './pages/admin/ArchiveTenures';
+import { defaultRouteForUser, isPathAllowedForUser } from './routes/access';
+
+import type { FC, ReactNode } from 'react';
 
 import './App.css';
 
@@ -63,7 +64,11 @@ const RoleGuarded: FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const location = useLocation();
   if (!isPathAllowedForUser(user, location.pathname)) {
-    return <Layout><ForbiddenPage /></Layout>;
+    return (
+      <Layout>
+        <ForbiddenPage />
+      </Layout>
+    );
   }
   return <>{children}</>;
 };
@@ -96,7 +101,10 @@ export default function App() {
               state flipped, so this table replaced the public one mid-render.
               AuthCallback has itself rewritten the URL; this is the belt-and-
               braces path for a reload of a spent callback URL. */}
-          <Route path="/authCallback" element={<Navigate to={defaultRouteForUser(user)} replace />} />
+          <Route
+            path="/authCallback"
+            element={<Navigate to={defaultRouteForUser(user)} replace />}
+          />
           <Route path="/" element={<Navigate to={defaultRouteForUser(user)} replace />} />
 
           {/* Home */}
@@ -106,18 +114,27 @@ export default function App() {
           <Route path="/inbox" element={guarded(withLayout(<Inbox />))} />
           <Route path="/inbox/:esfId" element={guarded(withLayout(<ApplicationDetail />))} />
           <Route path="/exhibit-a/:esfId" element={guarded(withLayout(<ExhibitAMap />))} />
-          <Route path="/exhibit-a/:esfId/upload" element={guarded(withLayout(<UploadExhibitA />))} />
+          <Route
+            path="/exhibit-a/:esfId/upload"
+            element={guarded(withLayout(<UploadExhibitA />))}
+          />
 
           {/* ── Search ─────────────────────────────────────────────── */}
           <Route path="/search/tenure" element={guarded(withLayout(<TenureSearch />))} />
-          <Route path="/search/harvesting-authority" element={guarded(withLayout(<HarvestingAuthoritySearch />))} />
+          <Route
+            path="/search/harvesting-authority"
+            element={guarded(withLayout(<HarvestingAuthoritySearch />))}
+          />
           <Route path="/search/timber-mark" element={guarded(withLayout(<TimberMarkSearch />))} />
           <Route path="/search/cut-block" element={guarded(withLayout(<CutBlockSearch />))} />
           <Route path="/search/range-tenure" element={guarded(withLayout(<RangeTenureSearch />))} />
           <Route path="/search/range-unit" element={guarded(withLayout(<RangeUnitSearch />))} />
           <Route path="/search/metrics" element={guarded(withLayout(<ApplicationMetrics />))} />
           <Route path="/search/client" element={guarded(withLayout(<ClientSearch />))} />
-          <Route path="/search/management-unit" element={guarded(withLayout(<ManagementUnitSearch />))} />
+          <Route
+            path="/search/management-unit"
+            element={guarded(withLayout(<ManagementUnitSearch />))}
+          />
 
           {/* ── Tenures ────────────────────────────────────────────── */}
           <Route path="/tenures" element={guarded(withLayout(<TenureLanding />))} />
@@ -125,11 +142,23 @@ export default function App() {
           <Route path="/tenures/:fileId" element={guarded(withLayout(<TenureDetail />))} />
 
           {/* ── Harvesting Authority / Cutting Permits & Cut Blocks ── */}
-          <Route path="/harvesting-authority/:cpId" element={guarded(withLayout(<CuttingPermitDetail />))} />
-          <Route path="/harvesting-authority/:cpId/suspend-blocks" element={guarded(withLayout(<SuspendBlocks />))} />
-          <Route path="/harvesting-authority/:cpId/assign-marks" element={guarded(withLayout(<AssignMarks />))} />
+          <Route
+            path="/harvesting-authority/:cpId"
+            element={guarded(withLayout(<CuttingPermitDetail />))}
+          />
+          <Route
+            path="/harvesting-authority/:cpId/suspend-blocks"
+            element={guarded(withLayout(<SuspendBlocks />))}
+          />
+          <Route
+            path="/harvesting-authority/:cpId/assign-marks"
+            element={guarded(withLayout(<AssignMarks />))}
+          />
           <Route path="/cut-block/:blockId" element={guarded(withLayout(<CutBlockDetail />))} />
-          <Route path="/cut-block/:blockId/:action" element={guarded(withLayout(<CutBlockAction />))} />
+          <Route
+            path="/cut-block/:blockId/:action"
+            element={guarded(withLayout(<CutBlockAction />))}
+          />
           <Route path="/road/:roadId" element={guarded(withLayout(<RoadDetail />))} />
 
           {/* ── Private Marks ──────────────────────────────────────── */}
@@ -143,39 +172,87 @@ export default function App() {
 
           {/* ── Admin (FTA_ADMIN only) ─────────────────────────────── */}
           <Route path="/admin/audit" element={guarded(withLayout(<AuditReport />))} />
-          <Route path="/admin/rents-fees" element={guarded(withLayout(
-            <BillingReportScreen title="Annual Rents & Fees Preparation" legacyId="FTA670"
-              actionLabel="Run rents & fees preparation"
-              description="Prepare the annual rent and fee charges for all active tenures in the billing cycle." />
-          ))} />
+          <Route
+            path="/admin/rents-fees"
+            element={guarded(
+              withLayout(
+                <BillingReportScreen
+                  title="Annual Rents & Fees Preparation"
+                  legacyId="FTA670"
+                  actionLabel="Run rents & fees preparation"
+                  description="Prepare the annual rent and fee charges for all active tenures in the billing cycle."
+                />,
+              ),
+            )}
+          />
           <Route path="/admin/mark-transfer" element={guarded(withLayout(<MarkTransfer />))} />
           <Route path="/admin/range-zone" element={guarded(withLayout(<ManageZone />))} />
           <Route path="/admin/org-unit" element={guarded(withLayout(<OrgUnitMaintenance />))} />
-          <Route path="/admin/billing/tenure" element={guarded(withLayout(
-            <BillingReportScreen title="Tenure Billing Instructions" legacyId="FTA680"
-              actionLabel="Save billing instructions"
-              description="Review and confirm the billing instructions for each tenure before the billing run." />
-          ))} />
-          <Route path="/admin/billing/invoice-preview" element={guarded(withLayout(
-            <BillingReportScreen title="Invoice Preview" legacyId="FTA695"
-              actionLabel="Generate invoices"
-              description="Preview the invoices that will be generated for the current billing cycle." />
-          ))} />
-          <Route path="/admin/billing/pre-billing" element={guarded(withLayout(
-            <BillingReportScreen title="Pre Billing Report Submission" legacyId="FTA685"
-              actionLabel="Submit pre-billing report"
-              description="Submit the pre-billing report for review before invoices are issued." />
-          ))} />
-          <Route path="/admin/billing/post-billing" element={guarded(withLayout(
-            <BillingReportScreen title="Post Billing Report Submission" legacyId="FTA686"
-              actionLabel="Submit post-billing report"
-              description="Submit the post-billing reconciliation report after invoices are issued." />
-          ))} />
-          <Route path="/admin/billing/approval" element={guarded(withLayout(
-            <BillingReportScreen title="Tenure Approval Submission" legacyId="FTA690"
-              actionLabel="Submit for approval"
-              description="Submit the prepared billing lines for management approval." />
-          ))} />
+          <Route
+            path="/admin/billing/tenure"
+            element={guarded(
+              withLayout(
+                <BillingReportScreen
+                  title="Tenure Billing Instructions"
+                  legacyId="FTA680"
+                  actionLabel="Save billing instructions"
+                  description="Review and confirm the billing instructions for each tenure before the billing run."
+                />,
+              ),
+            )}
+          />
+          <Route
+            path="/admin/billing/invoice-preview"
+            element={guarded(
+              withLayout(
+                <BillingReportScreen
+                  title="Invoice Preview"
+                  legacyId="FTA695"
+                  actionLabel="Generate invoices"
+                  description="Preview the invoices that will be generated for the current billing cycle."
+                />,
+              ),
+            )}
+          />
+          <Route
+            path="/admin/billing/pre-billing"
+            element={guarded(
+              withLayout(
+                <BillingReportScreen
+                  title="Pre Billing Report Submission"
+                  legacyId="FTA685"
+                  actionLabel="Submit pre-billing report"
+                  description="Submit the pre-billing report for review before invoices are issued."
+                />,
+              ),
+            )}
+          />
+          <Route
+            path="/admin/billing/post-billing"
+            element={guarded(
+              withLayout(
+                <BillingReportScreen
+                  title="Post Billing Report Submission"
+                  legacyId="FTA686"
+                  actionLabel="Submit post-billing report"
+                  description="Submit the post-billing reconciliation report after invoices are issued."
+                />,
+              ),
+            )}
+          />
+          <Route
+            path="/admin/billing/approval"
+            element={guarded(
+              withLayout(
+                <BillingReportScreen
+                  title="Tenure Approval Submission"
+                  legacyId="FTA690"
+                  actionLabel="Submit for approval"
+                  description="Submit the prepared billing lines for management approval."
+                />,
+              ),
+            )}
+          />
           <Route path="/admin/rates-fees" element={guarded(withLayout(<RatesMaintenance />))} />
           <Route path="/admin/archive" element={guarded(withLayout(<ArchiveTenures />))} />
 

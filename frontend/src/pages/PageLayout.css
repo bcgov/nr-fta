@@ -148,7 +148,9 @@
   transition: background 0.15s;
 }
 
-.fsp-tab:hover { background: #dde8f0; }
+.fsp-tab:hover {
+  background: #dde8f0;
+}
 
 .fsp-tab--active {
   background: #003366;

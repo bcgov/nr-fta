@@ -1,3 +1,4 @@
+import { Search as SearchIcon, DocumentAdd } from '@carbon/icons-react';
 import {
   Button,
   Table,
@@ -9,11 +10,12 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { Search as SearchIcon, DocumentAdd } from '@carbon/icons-react';
-import type { FC } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import PageLayout from '@/pages/PageLayout';
+
 import { MOCK_TENURES } from '@/mocks/tenures';
+import PageLayout from '@/pages/PageLayout';
+
+import type { FC } from 'react';
 import './TenureLanding.scss';
 
 /**
@@ -36,7 +38,10 @@ const TenureLanding: FC = () => {
         </Button>
       </div>
 
-      <TableContainer title="Recently accessed tenures" description="Mock — pending backend history">
+      <TableContainer
+        title="Recently accessed tenures"
+        description="Mock — pending backend history"
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -50,10 +55,16 @@ const TenureLanding: FC = () => {
           <TableBody>
             {recent.map((t) => (
               <TableRow key={t.fileId}>
-                <TableCell><Link to={`/tenures/${t.fileId}`}>{t.fileId}</Link></TableCell>
+                <TableCell>
+                  <Link to={`/tenures/${t.fileId}`}>{t.fileId}</Link>
+                </TableCell>
                 <TableCell>{t.fileType}</TableCell>
                 <TableCell>
-                  <Tag type={t.status === 'Active' ? 'green' : t.status === 'Pending' ? 'blue' : 'gray'}>
+                  <Tag
+                    type={
+                      t.status === 'Active' ? 'green' : t.status === 'Pending' ? 'blue' : 'gray'
+                    }
+                  >
                     {t.status}
                   </Tag>
                 </TableCell>

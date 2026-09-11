@@ -1,3 +1,4 @@
+import { ArrowLeft } from '@carbon/icons-react';
 import {
   Button,
   Tab,
@@ -14,13 +15,14 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { ArrowLeft } from '@carbon/icons-react';
-import type { FC } from 'react';
-import { Link, useParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Polygon, CircleMarker, Popup } from 'react-leaflet';
+import { Link, useParams } from 'react-router-dom';
+
 import Tombstone from '@/components/Tombstone';
-import PageLayout from '@/pages/PageLayout';
 import { findExhibitA, type MapFeature } from '@/mocks/spatial';
+import PageLayout from '@/pages/PageLayout';
+
+import type { FC } from 'react';
 import 'leaflet/dist/leaflet.css';
 import './ExhibitAMap.scss';
 
@@ -32,9 +34,9 @@ const SEVERITY_TAG: Record<'High' | 'Medium' | 'Low', 'red' | 'magenta' | 'gray'
 
 const FEATURE_TAG: Record<MapFeature['type'], 'green' | 'blue' | 'teal' | 'red'> = {
   'Cut Block': 'green',
-  Road: 'blue',
-  Reserve: 'teal',
-  Conflict: 'red',
+  'Road': 'blue',
+  'Reserve': 'teal',
+  'Conflict': 'red',
 };
 
 /**
@@ -51,7 +53,9 @@ const ExhibitAMap: FC = () => {
     return (
       <PageLayout title="Exhibit A not found">
         <p style={{ marginBottom: '1.5rem' }}>No spatial submission matches “{esfId}”.</p>
-        <Button as={Link} to="/inbox" renderIcon={ArrowLeft} kind="tertiary">Back to Inbox</Button>
+        <Button as={Link} to="/inbox" renderIcon={ArrowLeft} kind="tertiary">
+          Back to Inbox
+        </Button>
       </PageLayout>
     );
   }
@@ -73,9 +77,14 @@ const ExhibitAMap: FC = () => {
       />
 
       <div className="exhibit-a__map">
-        <MapContainer center={ex.centre} zoom={11} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
+        <MapContainer
+          center={ex.centre}
+          zoom={11}
+          scrollWheelZoom={false}
+          style={{ height: '100%', width: '100%' }}
+        >
           <TileLayer
-            attribution='&copy; OpenStreetMap contributors'
+            attribution="&copy; OpenStreetMap contributors"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <Polygon positions={ex.boundary} pathOptions={{ color: '#0f62fe', fillOpacity: 0.12 }}>
@@ -120,7 +129,9 @@ const ExhibitAMap: FC = () => {
                   {ex.features.map((f) => (
                     <TableRow key={f.featureId}>
                       <TableCell>{f.featureId}</TableCell>
-                      <TableCell><Tag type={FEATURE_TAG[f.type]}>{f.type}</Tag></TableCell>
+                      <TableCell>
+                        <Tag type={FEATURE_TAG[f.type]}>{f.type}</Tag>
+                      </TableCell>
                       <TableCell>{f.label}</TableCell>
                       <TableCell>{f.areaHa != null ? f.areaHa.toFixed(1) : '—'}</TableCell>
                       <TableCell>{f.status}</TableCell>
@@ -132,7 +143,10 @@ const ExhibitAMap: FC = () => {
           </TabPanel>
 
           <TabPanel>
-            <TableContainer title="Spatial conflicts" description={`${ex.conflicts.length} conflict(s)`}>
+            <TableContainer
+              title="Spatial conflicts"
+              description={`${ex.conflicts.length} conflict(s)`}
+            >
               <Table>
                 <TableHead>
                   <TableRow>
@@ -148,7 +162,9 @@ const ExhibitAMap: FC = () => {
                       <TableCell>{c.conflictId}</TableCell>
                       <TableCell>{c.against}</TableCell>
                       <TableCell>{c.overlapHa.toFixed(1)}</TableCell>
-                      <TableCell><Tag type={SEVERITY_TAG[c.severity]}>{c.severity}</Tag></TableCell>
+                      <TableCell>
+                        <Tag type={SEVERITY_TAG[c.severity]}>{c.severity}</Tag>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+
 import { LayoutContext } from './LayoutContext';
 
 // SideNav defaults to expanded and remembers the user's last

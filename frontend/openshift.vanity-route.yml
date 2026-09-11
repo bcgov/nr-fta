@@ -22,16 +22,16 @@
 apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
-  name: nr-fspts-frontend-vanity-route
+  name: nr-fta-frontend-vanity-route
 parameters:
   - name: NAME
     description: App name prefix (must match the main deploy)
-    value: nr-fspts
+    value: nr-fta
   - name: ZONE
     description: Deploy zone — 'prod' (must match the main deploy's object suffix)
     required: true
   - name: VANITY_HOST
-    description: Custom public hostname, e.g. fspts.nrs.gov.bc.ca
+    description: Custom public hostname, e.g. fta.nrs.gov.bc.ca
     required: true
   - name: VANITY_TLS_CERTIFICATE
     description: PEM leaf/server certificate for VANITY_HOST

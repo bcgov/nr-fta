@@ -1,6 +1,7 @@
 import { Asleep, Light, Logout } from '@carbon/icons-react';
 import { SideNavLink } from '@carbon/react';
 import { type FC } from 'react';
+
 import AvatarImage from '@/components/Layout/AvatarImage';
 import type { ROLE_TYPE } from '@/context/auth/types';
 import { useAuth } from '@/context/auth/useAuth';
@@ -28,19 +29,16 @@ const HeaderPanelProfile: FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
 
-  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim()
-    || user?.displayName
-    || '';
+  const fullName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || user?.displayName || '';
 
   const providerLabel = user?.idpProvider
-    ? PROVIDER_LABEL[user.idpProvider] ?? user.idpProvider
+    ? (PROVIDER_LABEL[user.idpProvider] ?? user.idpProvider)
     : 'IDIR';
 
   const primaryRole = ROLE_PRIORITY.find((r) => user?.roles?.includes(r));
   const roleLabel = primaryRole ? ROLE_LABEL[primaryRole] : null;
-  const nameWithRole = roleLabel
-    ? `${fullName || 'User'} (${roleLabel})`
-    : fullName || 'User';
+  const nameWithRole = roleLabel ? `${fullName || 'User'} (${roleLabel})` : fullName || 'User';
 
   return (
     <div className="my-profile-container">

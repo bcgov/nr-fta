@@ -1,6 +1,7 @@
 import { Close } from '@carbon/icons-react';
 import { HeaderPanel, IconButton } from '@carbon/react';
 import { useEffect, type FC } from 'react';
+
 import HeaderPanelProfile from '@/components/Layout/HeaderPanelProfile';
 import { useLayout } from '@/context/layout/useLayout';
 import './LayoutHeaderPanel.css';
@@ -18,10 +19,7 @@ export const LayoutHeaderPanel: FC = () => {
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       if (!target) return;
-      if (
-        target.closest('.profile-panel') ||
-        target.closest('.profile-action-button')
-      ) {
+      if (target.closest('.profile-panel') || target.closest('.profile-action-button')) {
         return;
       }
       closeHeaderPanel();

@@ -1,14 +1,15 @@
-import { Button, TextArea, TextInput } from '@carbon/react';
 import { ArrowLeft, Save } from '@carbon/icons-react';
+import { Button, TextArea, TextInput } from '@carbon/react';
 import { useState, type FC } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
-import { canEdit } from '@/routes/access';
-import PageLayout from '@/pages/PageLayout';
-import { performCutblockAction } from '@/services/cutblock_action';
 import { findCutBlock } from '@/mocks/harvesting';
+import PageLayout from '@/pages/PageLayout';
+import { canEdit } from '@/routes/access';
+import { performCutblockAction } from '@/services/cutblock_action';
 
 type ActionKind = 'amend' | 'suspend' | 'relabel';
 
@@ -51,7 +52,8 @@ const CutBlockAction: FC = () => {
     );
   }
 
-  const canSubmit = !readOnly && (kind === 'relabel' ? newLabel.trim() !== '' : reason.trim() !== '');
+  const canSubmit =
+    !readOnly && (kind === 'relabel' ? newLabel.trim() !== '' : reason.trim() !== '');
 
   const onSubmit = async () => {
     setSaving(true);
@@ -90,7 +92,10 @@ const CutBlockAction: FC = () => {
         ariaLabel="Cut block summary"
         items={[
           { label: 'Block', value: block.blockId },
-          { label: 'Cutting Permit', value: <Link to={`/harvesting-authority/${block.cpId}`}>{block.cpId}</Link> },
+          {
+            label: 'Cutting Permit',
+            value: <Link to={`/harvesting-authority/${block.cpId}`}>{block.cpId}</Link>,
+          },
           { label: 'Status', value: block.status },
           { label: 'Gross Area', value: `${block.areaHa.toFixed(1)} ha` },
         ]}
@@ -110,7 +115,9 @@ const CutBlockAction: FC = () => {
           <TextArea
             id="cba-reason"
             labelText={kind === 'suspend' ? 'Suspension reason' : 'Amendment description'}
-            placeholder={kind === 'suspend' ? 'Why is this block being suspended?' : 'Describe the amendment'}
+            placeholder={
+              kind === 'suspend' ? 'Why is this block being suspended?' : 'Describe the amendment'
+            }
             disabled={readOnly}
             value={reason}
             onChange={(e) => setReason(e.target.value)}

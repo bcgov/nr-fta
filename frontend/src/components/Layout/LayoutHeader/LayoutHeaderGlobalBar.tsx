@@ -1,8 +1,10 @@
 import { UserAvatar } from '@carbon/icons-react';
 import { HeaderGlobalAction, HeaderGlobalBar } from '@carbon/react';
-import type { FC } from 'react';
+
 import ThemeToggle from '@/components/Layout/ThemeToggle';
 import { useLayout } from '@/context/layout/useLayout';
+
+import type { FC } from 'react';
 
 const LayoutHeaderGlobalBar: FC = () => {
   const { toggleHeaderPanel, isHeaderPanelOpen } = useLayout();

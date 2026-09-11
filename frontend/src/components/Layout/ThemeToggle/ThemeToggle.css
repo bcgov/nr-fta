@@ -17,7 +17,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: transform 0.3s, background-color 0.3s;
+  transition:
+    transform 0.3s,
+    background-color 0.3s;
   background-color: var(--cds-background-brand, #0f62fe);
 }
 

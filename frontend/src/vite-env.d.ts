@@ -14,11 +14,8 @@ interface ImportMetaEnv {
   // Backend API base path; usually '/api' so Caddy reverse-proxies to the
   // same-zone backend Service.
   readonly VITE_API_BASE_URL: string;
-  // Display / theming. VITE_ZONE is now purely a label: Cognito needed it to
-  // build a per-environment identity_provider name (DEV-IDIR / TEST-IDIR), and
-  // the Keycloak IdP hint is the constant `azureidir` everywhere.
+  // Display.
   readonly VITE_APP_NAME: string;
-  readonly VITE_ZONE: string;
 }
 
 interface ImportMeta {

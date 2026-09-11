@@ -98,6 +98,9 @@ export const gotoProtected = async (page: Page, path: string): Promise<void> => 
         `  Console (${consoleMessages.length}): ${consoleMessages.slice(-15).join(' | ') || '(none)'}\n` +
         `  Page errors (${pageErrors.length}): ${pageErrors.join(' | ') || '(none)'}\n` +
         `  Original     : ${err instanceof Error ? err.message : String(err)}`,
+      // Keep the original stack reachable — the message above is a summary,
+      // not a replacement for where the failure actually came from.
+      { cause: err },
     );
   } finally {
     page.off('console', onConsole);

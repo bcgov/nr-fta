@@ -15,14 +15,24 @@
     "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.54.2",
     "@types/leaflet": "^1.9.21",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^10.9.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import-x": "^4.17.1",
+    "eslint-plugin-prettier": "^5.5.6",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "globals": "^16.5.0",
     "playwright": "^1.54.2",
+    "prettier": "^3.9.6",
     "sass": "^1.89.0",
     "typescript": "^5.6.0",
+    "typescript-eslint": "^8.69.0",
     "vite": "^6.4.3"
   },
   "overrides": {
@@ -36,7 +46,7 @@
     "build": "vite build",
     "deploy": "npm ci && vite build",
     "preview": "vite preview",
-    "lint": "echo 'lint placeholder — add eslint config in a follow-up' && exit 0",
+    "lint": "eslint . --max-warnings=0",
     "test": "echo 'No unit tests yet' && exit 0",
     "test:ci": "echo 'No unit tests yet' && exit 0",
     "test:coverage": "echo 'No unit tests yet' && exit 0",
@@ -48,6 +58,9 @@
     "e2e:all-browsers": "playwright test",
     "pree2e:ui": "playwright install chromium",
     "e2e:ui": "playwright test --ui",
-    "e2e:report": "playwright show-report"
+    "e2e:report": "playwright show-report",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,scss,css}\" \"e2e/**/*.ts\" \"*.{ts,js,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,scss,css}\" \"e2e/**/*.ts\" \"*.{ts,js,json}\""
   }
 }

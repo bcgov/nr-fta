@@ -1,6 +1,7 @@
-import { Button, Column, Grid, TextInput } from '@carbon/react';
 import { Save, Reset } from '@carbon/icons-react';
+import { Button, Column, Grid, TextInput } from '@carbon/react';
 import { useState, type FC, type FormEvent } from 'react';
+
 import { useNotification } from '@/context/notification/useNotification';
 import PageLayout from '@/pages/PageLayout';
 import { transferMark } from '@/services/mark_transfer';
@@ -77,35 +78,76 @@ const MarkTransfer: FC = () => {
       <form style={{ maxWidth: '48rem' }} onSubmit={onSubmit}>
         <Grid narrow>
           <Column sm={4} md={4} lg={8}>
-            <TextInput id="mt-mark" labelText="Timber Mark" placeholder="e.g. 52/1234"
-              value={form.timberMark} onChange={(e) => set('timberMark')(e.target.value)} required />
+            <TextInput
+              id="mt-mark"
+              labelText="Timber Mark"
+              placeholder="e.g. 52/1234"
+              value={form.timberMark}
+              onChange={(e) => set('timberMark')(e.target.value)}
+              required
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="mt-src-file" labelText="Source Forest File ID" placeholder="e.g. A19201"
-              value={form.sourceForestFileId} onChange={(e) => set('sourceForestFileId')(e.target.value)} required />
+            <TextInput
+              id="mt-src-file"
+              labelText="Source Forest File ID"
+              placeholder="e.g. A19201"
+              value={form.sourceForestFileId}
+              onChange={(e) => set('sourceForestFileId')(e.target.value)}
+              required
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="mt-src-cp" labelText="Source Cutting Permit (optional)" placeholder="e.g. CP-01"
-              value={form.sourceCuttingPermitId} onChange={(e) => set('sourceCuttingPermitId')(e.target.value)} />
+            <TextInput
+              id="mt-src-cp"
+              labelText="Source Cutting Permit (optional)"
+              placeholder="e.g. CP-01"
+              value={form.sourceCuttingPermitId}
+              onChange={(e) => set('sourceCuttingPermitId')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="mt-tgt-file" labelText="Target Forest File ID" placeholder="e.g. A20115"
-              value={form.targetForestFileId} onChange={(e) => set('targetForestFileId')(e.target.value)} required />
+            <TextInput
+              id="mt-tgt-file"
+              labelText="Target Forest File ID"
+              placeholder="e.g. A20115"
+              value={form.targetForestFileId}
+              onChange={(e) => set('targetForestFileId')(e.target.value)}
+              required
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="mt-tgt-cp" labelText="Target Cutting Permit (optional)" placeholder="e.g. CP-02"
-              value={form.targetCuttingPermitId} onChange={(e) => set('targetCuttingPermitId')(e.target.value)} />
+            <TextInput
+              id="mt-tgt-cp"
+              labelText="Target Cutting Permit (optional)"
+              placeholder="e.g. CP-02"
+              value={form.targetCuttingPermitId}
+              onChange={(e) => set('targetCuttingPermitId')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="mt-eff" labelText="Effective date" placeholder="yyyy-mm-dd"
-              value={form.effective} onChange={(e) => set('effective')(e.target.value)} />
+            <TextInput
+              id="mt-eff"
+              labelText="Effective date"
+              placeholder="yyyy-mm-dd"
+              value={form.effective}
+              onChange={(e) => set('effective')(e.target.value)}
+            />
           </Column>
         </Grid>
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
           <Button type="submit" renderIcon={Save} disabled={!canSubmit || saving}>
             {saving ? 'Transferring…' : 'Transfer mark'}
           </Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={() => setForm(EMPTY)} disabled={saving}>Clear</Button>
+          <Button
+            type="button"
+            kind="ghost"
+            renderIcon={Reset}
+            onClick={() => setForm(EMPTY)}
+            disabled={saving}
+          >
+            Clear
+          </Button>
         </div>
       </form>
     </PageLayout>

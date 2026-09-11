@@ -13,9 +13,7 @@ export default function PageLayout({ title, children }: PageLayoutProps) {
         <div className="page-layout__header">
           <h1 className="page-layout__title">{title}</h1>
         </div>
-        <div className="page-layout__body">
-          {children}
-        </div>
+        <div className="page-layout__body">{children}</div>
       </div>
     </main>
   );

@@ -36,7 +36,7 @@ on:
         required: true
 
 env:
-  DOMAIN: apps.silver.devops.gov.bc.ca
+  DOMAIN: apps.gold.devops.gov.bc.ca
   PREFIX: nr-fta-${{ inputs.slot || inputs.target }}
 
 permissions: {}
@@ -44,6 +44,10 @@ permissions: {}
 jobs:
   e2e-tests:
     name: E2E (${{ matrix.project }})
+    # Set the repo variable SKIP_E2E to 'true' to turn the suite off without
+    # editing workflows. Gated here, inside the called workflow, so callers
+    # don't need to know about it.
+    if: vars.SKIP_E2E != 'true'
     defaults:
       run:
         working-directory: frontend

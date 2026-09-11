@@ -1,3 +1,4 @@
+import { ArrowLeft, Save } from '@carbon/icons-react';
 import {
   Button,
   Table,
@@ -9,15 +10,15 @@ import {
   TableRow,
   TextInput,
 } from '@carbon/react';
-import { ArrowLeft, Save } from '@carbon/icons-react';
 import { useState, type FC } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
-import { canEdit } from '@/routes/access';
-import PageLayout from '@/pages/PageLayout';
 import { findHarvestingAuthority, cutBlocksForCp, cbSkeyFor, hvaSkeyFor } from '@/mocks/harvesting';
+import PageLayout from '@/pages/PageLayout';
+import { canEdit } from '@/routes/access';
 import { assignMarks } from '@/services/assign_marks';
 
 /**

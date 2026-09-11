@@ -23,6 +23,10 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+    # Job-level so the Sonar step's `if` can test it: secrets can't be used in
+    # `if:` directly, and GitHub's documented pattern is a job-level env var.
+    env:
+      SONAR_TOKEN: ${{ secrets.sonar_token }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -51,8 +55,6 @@ jobs:
       - name: SonarCloud scan
         if: env.SONAR_TOKEN != ''
         working-directory: backend
-        env:
-          SONAR_TOKEN: ${{ secrets.sonar_token_backend }}
         run: |
           mvn -B sonar:sonar \
             -Dsonar.host.url=https://sonarcloud.io \
@@ -68,15 +70,18 @@ jobs:
     steps:
       - uses: bcgov/action-test-and-analyse@8f699e3fd3fadd9a6adf6f4b1f2638ef7ecfefb9 # v2.0.0
         env:
-          sonar_token: ${{ secrets.sonar_token_frontend }}
+          sonar_token: ${{ secrets.sonar_token }}
         with:
-          # `lint` already runs prettier via eslint-plugin-prettier, so no
-          # separate `format:check` step. `test:coverage` is the real script
-          # name in package.json (Vitest with --coverage; auto-installs
-          # Playwright browsers via the pretest:coverage hook).
+          # `lint` is ESLint only — Prettier is deliberately not run through it
+          # (see frontend/eslint.config.js), so formatting gets its own step.
+          # `typecheck` is the real type gate; `test:coverage` is currently a
+          # placeholder (no unit-test framework — coverage is the Playwright
+          # e2e suite, run separately by reusable-tests.yml).
           commands: |
             npm ci
             npm run lint
+            npm run format:check
+            npm run typecheck
             npm run test:coverage
           dir: frontend
           node_version: "22"

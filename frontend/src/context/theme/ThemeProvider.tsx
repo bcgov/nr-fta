@@ -1,5 +1,6 @@
 import { Theme } from '@carbon/react';
 import { useEffect, useState, type ReactNode } from 'react';
+
 import { ThemeContext, type CarbonTheme } from './ThemeContext';
 
 const STORAGE_KEY = 'fta.theme';
@@ -19,7 +20,11 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     document.documentElement.dataset.carbonTheme = theme;
-    try { localStorage.setItem(STORAGE_KEY, theme); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(STORAGE_KEY, theme);
+    } catch {
+      /* ignore */
+    }
   }, [theme]);
 
   const setTheme = (next: CarbonTheme) => setThemeState(next);

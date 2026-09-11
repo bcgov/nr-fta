@@ -1,11 +1,12 @@
-import { Button, Column, Grid, Select, SelectItem, TextInput } from '@carbon/react';
 import { Save, Reset } from '@carbon/icons-react';
+import { Button, Column, Grid, Select, SelectItem, TextInput } from '@carbon/react';
 import { useState, type FC, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
-import { canEdit } from '@/routes/access';
 import PageLayout from '@/pages/PageLayout';
+import { canEdit } from '@/routes/access';
 import { createMarkApplication } from '@/services/mark_write';
 import './MarkApplication.scss';
 
@@ -27,7 +28,13 @@ interface MarkForm {
   timberOrigin: string;
 }
 
-const EMPTY: MarkForm = { markNumber: '', holderName: '', holderClient: '', orgUnit: '', timberOrigin: '' };
+const EMPTY: MarkForm = {
+  markNumber: '',
+  holderName: '',
+  holderClient: '',
+  orgUnit: '',
+  timberOrigin: '',
+};
 
 /**
  * FTA510 — Private Mark Application. Create form for a new private timber mark.
@@ -84,34 +91,74 @@ const MarkApplication: FC = () => {
       <form className="mark-app__form" onSubmit={onSubmit}>
         <Grid narrow>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="ma-num" labelText="Mark Number" placeholder="e.g. 13 0092"
-              disabled={readOnly} value={form.markNumber} onChange={(e) => set('markNumber')(e.target.value)} required />
+            <TextInput
+              id="ma-num"
+              labelText="Mark Number"
+              placeholder="e.g. 13 0092"
+              disabled={readOnly}
+              value={form.markNumber}
+              onChange={(e) => set('markNumber')(e.target.value)}
+              required
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="ma-holder" labelText="Holder Name" placeholder="e.g. Meadow Ranch Ltd."
-              disabled={readOnly} value={form.holderName} onChange={(e) => set('holderName')(e.target.value)} />
+            <TextInput
+              id="ma-holder"
+              labelText="Holder Name"
+              placeholder="e.g. Meadow Ranch Ltd."
+              disabled={readOnly}
+              value={form.holderName}
+              onChange={(e) => set('holderName')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="ma-client" labelText="Holder Client Number" placeholder="8-digit number"
-              disabled={readOnly} value={form.holderClient} onChange={(e) => set('holderClient')(e.target.value)} />
+            <TextInput
+              id="ma-client"
+              labelText="Holder Client Number"
+              placeholder="8-digit number"
+              disabled={readOnly}
+              value={form.holderClient}
+              onChange={(e) => set('holderClient')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <Select id="ma-org" labelText="Org Unit" disabled={readOnly}
-              value={form.orgUnit} onChange={(e) => set('orgUnit')(e.target.value)}>
+            <Select
+              id="ma-org"
+              labelText="Org Unit"
+              disabled={readOnly}
+              value={form.orgUnit}
+              onChange={(e) => set('orgUnit')(e.target.value)}
+            >
               <SelectItem value="" text="Choose an org unit" />
-              {ORG_UNITS.map((o) => <SelectItem key={o.code} value={o.code} text={o.label} />)}
+              {ORG_UNITS.map((o) => (
+                <SelectItem key={o.code} value={o.code} text={o.label} />
+              ))}
             </Select>
           </Column>
           <Column sm={4} md={4} lg={8}>
-            <TextInput id="ma-origin" labelText="Timber Origin" placeholder="e.g. Private Land — fee simple"
-              disabled={readOnly} value={form.timberOrigin} onChange={(e) => set('timberOrigin')(e.target.value)} />
+            <TextInput
+              id="ma-origin"
+              labelText="Timber Origin"
+              placeholder="e.g. Private Land — fee simple"
+              disabled={readOnly}
+              value={form.timberOrigin}
+              onChange={(e) => set('timberOrigin')(e.target.value)}
+            />
           </Column>
         </Grid>
         <div className="mark-app__actions">
           <Button type="submit" renderIcon={Save} disabled={readOnly || saving}>
             {saving ? 'Submitting…' : 'Submit application'}
           </Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={() => setForm(EMPTY)} disabled={readOnly || saving}>Clear</Button>
+          <Button
+            type="button"
+            kind="ghost"
+            renderIcon={Reset}
+            onClick={() => setForm(EMPTY)}
+            disabled={readOnly || saving}
+          >
+            Clear
+          </Button>
         </div>
       </form>
     </PageLayout>

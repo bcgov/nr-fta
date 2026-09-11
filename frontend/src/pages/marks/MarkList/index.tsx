@@ -1,7 +1,8 @@
-import { Button, Column, Grid, Select, SelectItem, Tag, TextInput } from '@carbon/react';
 import { Search as SearchIcon, Reset, DocumentAdd } from '@carbon/icons-react';
+import { Button, Column, Grid, Select, SelectItem, Tag, TextInput } from '@carbon/react';
 import { useState, type FC, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
 import PageLayout from '@/pages/PageLayout';
@@ -59,7 +60,11 @@ const MarkList: FC = () => {
   return (
     <PageLayout title="Private Marks">
       <div className="mark-list__topbar">
-        <Button kind="tertiary" renderIcon={DocumentAdd} onClick={() => navigate('/marks/application')}>
+        <Button
+          kind="tertiary"
+          renderIcon={DocumentAdd}
+          onClick={() => navigate('/marks/application')}
+        >
           New Mark Application
         </Button>
       </div>
@@ -67,20 +72,39 @@ const MarkList: FC = () => {
       <form className="mark-list__form" onSubmit={onSearch}>
         <Grid narrow>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="mk-num" labelText="Mark Number" placeholder="e.g. 12 3456"
-              value={criteria.timberMark ?? ''} onChange={(e) => onField('timberMark')(e.target.value)} />
+            <TextInput
+              id="mk-num"
+              labelText="Mark Number"
+              placeholder="e.g. 12 3456"
+              value={criteria.timberMark ?? ''}
+              onChange={(e) => onField('timberMark')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="mk-holder" labelText="Holder" placeholder="e.g. Meadow Ranch"
-              value={criteria.clientName ?? ''} onChange={(e) => onField('clientName')(e.target.value)} />
+            <TextInput
+              id="mk-holder"
+              labelText="Holder"
+              placeholder="e.g. Meadow Ranch"
+              value={criteria.clientName ?? ''}
+              onChange={(e) => onField('clientName')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="mk-org" labelText="Org Unit" placeholder="District code or name"
-              value={criteria.orgUnitCode ?? ''} onChange={(e) => onField('orgUnitCode')(e.target.value)} />
+            <TextInput
+              id="mk-org"
+              labelText="Org Unit"
+              placeholder="District code or name"
+              value={criteria.orgUnitCode ?? ''}
+              onChange={(e) => onField('orgUnitCode')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <Select id="mk-status" labelText="Status" value={criteria.markStatusSt ?? ''}
-              onChange={(e) => onField('markStatusSt')(e.target.value)}>
+            <Select
+              id="mk-status"
+              labelText="Status"
+              value={criteria.markStatusSt ?? ''}
+              onChange={(e) => onField('markStatusSt')(e.target.value)}
+            >
               <SelectItem value="" text="Any" />
               <SelectItem value="Active" text="Active" />
               <SelectItem value="Pending" text="Pending" />
@@ -90,15 +114,27 @@ const MarkList: FC = () => {
           </Column>
         </Grid>
         <div className="mark-list__actions">
-          <Button type="submit" renderIcon={SearchIcon}>Search</Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>Reset</Button>
+          <Button type="submit" renderIcon={SearchIcon}>
+            Search
+          </Button>
+          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
+            Reset
+          </Button>
         </div>
       </form>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={() => void runSearch(criteria)} loadingText="Searching…">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        onRetry={() => void runSearch(criteria)}
+        loadingText="Searching…"
+      >
         {rows !== null && (
           <SearchResultsTable
-            rows={rows.map((r, i) => ({ ...r, id: `${r.processType ?? ''}-${r.certificate ?? ''}-${r.timberMark ?? ''}-${i}` }))}
+            rows={rows.map((r, i) => ({
+              ...r,
+              id: `${r.processType ?? ''}-${r.certificate ?? ''}-${r.timberMark ?? ''}-${i}`,
+            }))}
             headers={HEADERS}
             emptyTitle="No marks found"
             renderCell={(row, key) => {

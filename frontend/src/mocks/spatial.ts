@@ -22,7 +22,12 @@ export interface ExhibitA {
   /** Point features (conflicts, reserves) to plot as markers. */
   markers: { id: string; position: LatLng; label: string; kind: 'reserve' | 'conflict' }[];
   features: MapFeature[];
-  conflicts: { conflictId: string; against: string; overlapHa: number; severity: 'High' | 'Medium' | 'Low' }[];
+  conflicts: {
+    conflictId: string;
+    against: string;
+    overlapHa: number;
+    severity: 'High' | 'Medium' | 'Low';
+  }[];
 }
 
 const CENTRE: LatLng = [52.13, -122.14]; // near Williams Lake
@@ -46,8 +51,20 @@ export const MOCK_EXHIBIT_A: ExhibitA = {
     { featureId: 'F-001', type: 'Cut Block', label: 'BLK-001', areaHa: 24.6, status: 'Proposed' },
     { featureId: 'F-002', type: 'Cut Block', label: 'BLK-002', areaHa: 31.2, status: 'Proposed' },
     { featureId: 'F-003', type: 'Road', label: 'Beaver Creek FSR', status: 'Existing' },
-    { featureId: 'F-004', type: 'Reserve', label: 'Riparian Reserve', areaHa: 8.4, status: 'Retained' },
-    { featureId: 'F-005', type: 'Conflict', label: 'WHA overlap', areaHa: 2.1, status: 'Unresolved' },
+    {
+      featureId: 'F-004',
+      type: 'Reserve',
+      label: 'Riparian Reserve',
+      areaHa: 8.4,
+      status: 'Retained',
+    },
+    {
+      featureId: 'F-005',
+      type: 'Conflict',
+      label: 'WHA overlap',
+      areaHa: 2.1,
+      status: 'Unresolved',
+    },
   ],
   conflicts: [
     { conflictId: 'C-1', against: 'A20115 (Forest Licence)', overlapHa: 2.1, severity: 'Medium' },

@@ -1,3 +1,4 @@
+import { ArrowLeft, Edit } from '@carbon/icons-react';
 import {
   Button,
   Table,
@@ -8,17 +9,18 @@ import {
   TableHeader,
   TableRow,
 } from '@carbon/react';
-import { ArrowLeft, Edit } from '@carbon/icons-react';
-import type { FC } from 'react';
 import { Link, useParams } from 'react-router-dom';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
-import { canEdit } from '@/routes/access';
-import PageLayout from '@/pages/PageLayout';
 import { useApiResource } from '@/hooks/useApiResource';
+import PageLayout from '@/pages/PageLayout';
+import { canEdit } from '@/routes/access';
 import { getRangeUnitDetail } from '@/services/range_unit_detail';
+
+import type { FC } from 'react';
 
 /**
  * FTA630 — Maintain Range Unit / Pasture. Tombstone + unit details and a
@@ -28,10 +30,12 @@ import { getRangeUnitDetail } from '@/services/range_unit_detail';
 const RangeUnitDetail: FC = () => {
   const { unitId = '' } = useParams();
   const { user } = useAuth();
-  const { data: unit, loading, error, reload } = useApiResource(
-    () => getRangeUnitDetail(unitId),
-    [unitId],
-  );
+  const {
+    data: unit,
+    loading,
+    error,
+    reload,
+  } = useApiResource(() => getRangeUnitDetail(unitId), [unitId]);
 
   return (
     <PageLayout title={`Range Unit ${unitId}`}>
@@ -39,7 +43,12 @@ const RangeUnitDetail: FC = () => {
         <ArrowLeft size={16} /> Back to Range Unit Search
       </Link>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={reload} loadingText="Loading range unit…">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        onRetry={reload}
+        loadingText="Loading range unit…"
+      >
         {unit && (
           <>
             <Tombstone
@@ -54,7 +63,9 @@ const RangeUnitDetail: FC = () => {
               ]}
               action={
                 canEdit(user) ? (
-                  <Button size="sm" kind="tertiary" renderIcon={Edit}>Edit unit</Button>
+                  <Button size="sm" kind="tertiary" renderIcon={Edit}>
+                    Edit unit
+                  </Button>
                 ) : undefined
               }
             />

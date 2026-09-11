@@ -1,14 +1,14 @@
 apiVersion: backstage.io/v1alpha1
 kind: Component
 spec:
-  system: fsp
+  system: fta
   lifecycle: production
   subcomponentOf:
-    - component:fsp-backend
+    - component:fta-backend
   type: library
   owner: ""
 metadata:
-  name: fsp-frontend
+  name: fta-frontend
   annotations:
     license: Apache-2.0
     playbook.io.nrs.gov.bc.ca/clientId: ""
@@ -16,9 +16,9 @@ metadata:
     playbook.io.nrs.gov.bc.ca/postDeployTestsPath: ""
     playbook.io.nrs.gov.bc.ca/publishArtifactSuffix: dist
     playbook.io.nrs.gov.bc.ca/deployOnPrem: false
-    github.com/project-slug: bcgov-c/nr-fsp
+    github.com/project-slug: bcgov/nr-fta
     playbook.io.nrs.gov.bc.ca/ociArtifacts: ""
     composer.io.nrs.gov.bc.ca/generators: gh-nodejs-build,backstage
     playbook.io.nrs.gov.bc.ca/nodeVersion: "24"
-  description: FSP Frontend
-  title: FSP Frontend
+  description: FTA Frontend
+  title: FTA Frontend

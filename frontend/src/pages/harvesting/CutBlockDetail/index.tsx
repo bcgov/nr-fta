@@ -1,3 +1,4 @@
+import { ArrowLeft, Edit, Pause, Tag as TagIcon } from '@carbon/icons-react';
 import {
   Button,
   Tab,
@@ -14,17 +15,18 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { ArrowLeft, Edit, Pause, Tag as TagIcon } from '@carbon/icons-react';
-import type { FC } from 'react';
 import { Link, useParams } from 'react-router-dom';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
-import { canEdit } from '@/routes/access';
 import { useApiResource } from '@/hooks/useApiResource';
 import PageLayout from '@/pages/PageLayout';
+import { canEdit } from '@/routes/access';
 import { getCutblockDetail } from '@/services/cutblock_detail';
+
+import type { FC } from 'react';
 import './CutBlockDetail.scss';
 
 // Local amendment history for the cut block sub-tab (FTA905 is a separate port).
@@ -59,7 +61,12 @@ const CutBlockDetail: FC = () => {
         <ArrowLeft size={16} /> Back to Cut Block Search
       </Link>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={reload} loadingText="Loading cut block…">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        onRetry={reload}
+        loadingText="Loading cut block…"
+      >
         {data && (
           <>
             <Tombstone
@@ -69,7 +76,9 @@ const CutBlockDetail: FC = () => {
                 {
                   label: 'Cutting Permit',
                   value: data.cuttingPermitId ? (
-                    <Link to={`/harvesting-authority/${data.cuttingPermitId}`}>{data.cuttingPermitId}</Link>
+                    <Link to={`/harvesting-authority/${data.cuttingPermitId}`}>
+                      {data.cuttingPermitId}
+                    </Link>
                   ) : (
                     '—'
                   ),
@@ -93,20 +102,40 @@ const CutBlockDetail: FC = () => {
               ]}
               action={
                 canEdit(user) ? (
-                  <Button size="sm" kind="tertiary" renderIcon={Edit}>Edit block</Button>
+                  <Button size="sm" kind="tertiary" renderIcon={Edit}>
+                    Edit block
+                  </Button>
                 ) : undefined
               }
             />
 
             {canEdit(user) && (
               <div className="cb-detail__actions">
-                <Button size="sm" kind="tertiary" renderIcon={Edit} as={Link} to={`/cut-block/${id}/amend`}>
+                <Button
+                  size="sm"
+                  kind="tertiary"
+                  renderIcon={Edit}
+                  as={Link}
+                  to={`/cut-block/${id}/amend`}
+                >
                   Amend
                 </Button>
-                <Button size="sm" kind="tertiary" renderIcon={TagIcon} as={Link} to={`/cut-block/${id}/relabel`}>
+                <Button
+                  size="sm"
+                  kind="tertiary"
+                  renderIcon={TagIcon}
+                  as={Link}
+                  to={`/cut-block/${id}/relabel`}
+                >
                   Re-label
                 </Button>
-                <Button size="sm" kind="danger--tertiary" renderIcon={Pause} as={Link} to={`/cut-block/${id}/suspend`}>
+                <Button
+                  size="sm"
+                  kind="danger--tertiary"
+                  renderIcon={Pause}
+                  as={Link}
+                  to={`/cut-block/${id}/suspend`}
+                >
                   Suspend
                 </Button>
               </div>
@@ -124,14 +153,23 @@ const CutBlockDetail: FC = () => {
                     items={[
                       { label: 'Gross Area', value: fmtArea(data.plannedGrossBlockArea) },
                       { label: 'Net Area', value: fmtArea(data.plannedNetBlockArea) },
-                      { label: 'Disturbance Gross Area', value: fmtArea(data.disturbanceGrossArea) },
-                      { label: 'Disturbance Start', value: data.disturbanceStartDate ?? 'Not started' },
+                      {
+                        label: 'Disturbance Gross Area',
+                        value: fmtArea(data.disturbanceGrossArea),
+                      },
+                      {
+                        label: 'Disturbance Start',
+                        value: data.disturbanceStartDate ?? 'Not started',
+                      },
                     ]}
                   />
                 </TabPanel>
 
                 <TabPanel>
-                  <TableContainer title="Amendments" description={`${MOCK_AMENDMENTS.length} amendment(s)`}>
+                  <TableContainer
+                    title="Amendments"
+                    description={`${MOCK_AMENDMENTS.length} amendment(s)`}
+                  >
                     <Table>
                       <TableHead>
                         <TableRow>
