@@ -68,6 +68,9 @@ jobs:
   deploy-prod:
     name: PROD Deploys (${{ needs.init.outputs.pr }})
     needs: [tests, init]
+    # Deploy unless something upstream failed or was cancelled, so turning E2E
+    # off with SKIP_E2E doesn't also skip PROD.
+    if: ${{ !failure() && !cancelled() }}
     permissions:
       contents: read
     uses: ./.github/workflows/reusable-deploy.yml

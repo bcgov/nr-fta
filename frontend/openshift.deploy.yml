@@ -7,17 +7,17 @@
 apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
-  name: nr-fspts-frontend-deploy
+  name: nr-fta-frontend-deploy
 parameters:
   - name: NAME
     description: App name prefix
-    value: nr-fspts
+    value: nr-fta
   - name: ZONE
     description: PR number, 'test', or 'prod'
     required: true
   # SLOT decouples the public-facing Route hostname from the OpenShift object
   # names so per-PR previews can share a fixed pool of registered redirect URIs.
-  # We pre-register 50 (nr-fspts-0…nr-fspts-49.apps.silver.devops.gov.bc.ca) and
+  # We pre-register 50 (nr-fta-0…nr-fta-49.apps.silver.devops.gov.bc.ca) and
   # bucket PRs into them via PR % 50.
   #
   # This scheme was forced by Cognito, whose app clients reject wildcards in
@@ -37,7 +37,7 @@ parameters:
     value: latest
   - name: REGISTRY
     description: Image registry path (no tag)
-    value: ghcr.io/bcgov/nr-fspts/frontend
+    value: ghcr.io/bcgov/nr-fta/frontend
   - name: DOMAIN
     description: Cluster apps domain (do not include leading dot)
     value: apps.silver.devops.gov.bc.ca
