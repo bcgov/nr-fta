@@ -22,7 +22,9 @@ async function parse<T>(res: Response): Promise<T> {
 }
 
 /** Build a querystring from a params object, dropping empty/undefined values. */
-export function toQuery(params: Record<string, string | number | boolean | undefined | null>): string {
+export function toQuery(
+  params: Record<string, string | number | boolean | undefined | null>,
+): string {
   const entries = Object.entries(params).filter(
     ([, v]) => v !== undefined && v !== null && v !== '',
   );
@@ -35,7 +37,11 @@ export async function apiGet<T>(path: string): Promise<T> {
   return parse<T>(await apiFetch(path, { method: 'GET' }));
 }
 
-async function writeJson<T>(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown): Promise<T> {
+async function writeJson<T>(
+  method: 'POST' | 'PUT' | 'DELETE',
+  path: string,
+  body?: unknown,
+): Promise<T> {
   const headers: Record<string, string> = { 'X-XSRF-TOKEN': readXsrfToken() };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   return parse<T>(

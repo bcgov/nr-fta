@@ -1,37 +1,37 @@
-@use "sass:map";
+@use 'sass:map';
 
 // Local BCGov bits (inlined from @bcgov-nr/nr-theme 1.8.9; the package was
 // dropped — see src/styles/bcgov/_fonts.scss for why 'light' is aliased to
 // 400, and src/styles/bcgov/_colors.scss for the palette).
-@use "./bcgov/fonts" as types;
-@use "@carbon/type/scss/font-family.scss" with (
+@use './bcgov/fonts' as types;
+@use '@carbon/type/scss/font-family.scss' with (
   $font-families: types.$type-family,
   $font-weights: types.$font-weights
 );
 
-@use "@carbon/themes/scss/utilities";
-@use "./variables" as variables;
+@use '@carbon/themes/scss/utilities';
+@use './variables' as variables;
 
-@use "@carbon/react/scss/themes";
-@use "@carbon/react/scss/theme" with (
+@use '@carbon/react/scss/themes';
+@use '@carbon/react/scss/theme' with (
   $fallback: themes.$white,
   $theme: themes.$white
 );
 
-@use "@carbon/react/scss/components/button/tokens" as button-tokens;
-@use "./bcgov/light-buttons" as light-button-overrides;
-@use "./bcgov/dark-buttons" as dark-button-overrides;
+@use '@carbon/react/scss/components/button/tokens' as button-tokens;
+@use './bcgov/light-buttons' as light-button-overrides;
+@use './bcgov/dark-buttons' as dark-button-overrides;
 
-@use "@carbon/react/scss/components/tag/tokens" as tag-tokens;
-@use "./bcgov/light-tags" as light-tag-overrides;
-@use "./bcgov/dark-tags" as dark-tag-overrides;
+@use '@carbon/react/scss/components/tag/tokens' as tag-tokens;
+@use './bcgov/light-tags' as light-tag-overrides;
+@use './bcgov/dark-tags' as dark-tag-overrides;
 
-@use "@carbon/react/scss/components/notification/tokens" as notification-tokens;
-@use "./bcgov/light-notifications" as light-notification-overrides;
-@use "./bcgov/dark-notifications" as dark-notification-overrides;
+@use '@carbon/react/scss/components/notification/tokens' as notification-tokens;
+@use './bcgov/light-notifications' as light-notification-overrides;
+@use './bcgov/dark-notifications' as dark-notification-overrides;
 
-@use "@carbon/react";
-@use "@carbon/styles/scss/grid";
+@use '@carbon/react';
+@use '@carbon/styles/scss/grid';
 @use '@carbon/react/scss/spacing' as *;
 @use '@carbon/react/scss/breakpoint' as *;
 
@@ -118,7 +118,7 @@
 ------------------------------------------------------- */
 .#{variables.$bcgov-prefix}--number,
 .#{variables.$bcgov-prefix}--number__input-wrapper,
-input[type="number"] {
+input[type='number'] {
   border-top-left-radius: 0.25rem;
   border-top-right-radius: 0.25rem;
 }
@@ -178,8 +178,8 @@ input[type="number"] {
 }
 
 .#{variables.$bcgov-prefix}--time-picker,
-  :last-child,
-  > .#{variables.$bcgov-prefix}--select-input {
+:last-child,
+> .#{variables.$bcgov-prefix}--select-input {
   border-top-left-radius: 0;
   border-top-right-radius: 0.25rem;
 }
@@ -215,7 +215,7 @@ div.#{variables.$bcgov-prefix}--inline-notification--low-contrast::before {
   filter: none;
 }
 
-$types: "error", "info", "success", "warning";
+$types: 'error', 'info', 'success', 'warning';
 @each $notificationType in $types {
   div.#{variables.$bcgov-prefix}--inline-notification--#{$notificationType} {
     border-left: 0.25rem
@@ -223,14 +223,10 @@ $types: "error", "info", "success", "warning";
       var(--#{variables.$bcgov-prefix}-support-#{$notificationType}-inverse);
   }
   div.#{variables.$bcgov-prefix}--inline-notification--low-contrast.#{variables.$bcgov-prefix}--inline-notification--#{$notificationType} {
-    border-left: 0.25rem
-      solid
-      var(--#{variables.$bcgov-prefix}-support-#{$notificationType});
+    border-left: 0.25rem solid var(--#{variables.$bcgov-prefix}-support-#{$notificationType});
   }
   div.#{variables.$bcgov-prefix}--inline-notification--low-contrast.#{variables.$bcgov-prefix}--inline-notification--#{$notificationType}::before {
-    border-color: var(
-      --#{variables.$bcgov-prefix}-notification-border-#{$notificationType}
-    );
+    border-color: var(--#{variables.$bcgov-prefix}-notification-border-#{$notificationType});
   }
 }
 
@@ -245,18 +241,10 @@ $types: "error", "info", "success", "warning";
       var(--#{variables.$bcgov-prefix}-support-#{$notificationType}-inverse);
   }
   div.#{variables.$bcgov-prefix}--toast-notification--low-contrast.#{variables.$bcgov-prefix}--toast-notification--#{$notificationType} {
-    border-left: 0.25rem
-      solid
-      var(--#{variables.$bcgov-prefix}-support-#{$notificationType});
-    border-top-color: var(
-      --#{variables.$bcgov-prefix}-notification-border-#{$notificationType}
-    );
-    border-bottom-color: var(
-      --#{variables.$bcgov-prefix}-notification-border-#{$notificationType}
-    );
-    border-right-color: var(
-      --#{variables.$bcgov-prefix}-notification-border-#{$notificationType}
-    );
+    border-left: 0.25rem solid var(--#{variables.$bcgov-prefix}-support-#{$notificationType});
+    border-top-color: var(--#{variables.$bcgov-prefix}-notification-border-#{$notificationType});
+    border-bottom-color: var(--#{variables.$bcgov-prefix}-notification-border-#{$notificationType});
+    border-right-color: var(--#{variables.$bcgov-prefix}-notification-border-#{$notificationType});
   }
 }
 
@@ -421,8 +409,8 @@ legend.#{variables.$bcgov-prefix}--label {
 - Add a right border for the panel
 ------------------------------------------------------ */
 .#{variables.$bcgov-prefix}--side-nav__menu,
-  .#{variables.$bcgov-prefix}--side-nav__menu-item,
-  a.#{variables.$bcgov-prefix}--side-nav__link,
+.#{variables.$bcgov-prefix}--side-nav__menu-item,
+a.#{variables.$bcgov-prefix}--side-nav__link,
 button.#{variables.$bcgov-prefix}--side-nav__submenu,
 .#{variables.$bcgov-prefix}--side-nav__link {
   height: 3rem;
@@ -436,7 +424,7 @@ button.#{variables.$bcgov-prefix}--side-nav__submenu,
 }
 
 nav.#{variables.$bcgov-prefix}--side-nav--expanded {
-    border-right: 0.063rem solid var(--#{variables.$bcgov-prefix}-border-subtle-01);
+  border-right: 0.063rem solid var(--#{variables.$bcgov-prefix}-border-subtle-01);
 }
 
 /* ------------------ Header ---------------------------
@@ -459,13 +447,12 @@ a.#{variables.$bcgov-prefix}--header__name {
   // NOTE: family is "BC Sans" (with the space) — that's how
   // @bcgov-nr/nr-theme/design-tokens/type-family.scss registers the @font-face.
   // "BCSans" (no space) silently falls through to Noto Sans / Verdana.
-  font-family: "BC Sans", "Noto Sans", Verdana, Arial, sans-serif;
+  font-family: 'BC Sans', 'Noto Sans', Verdana, Arial, sans-serif;
   font-size: 0.875rem;
   font-weight: 700;
   color: #f3f3f5;
   padding-left: 2rem;
 }
-
 
 /* ------------------ Other Overrides-------------------
 - Sets the grid gutter
@@ -496,8 +483,9 @@ nav.#{variables.$bcgov-prefix}--side-nav,
   padding: 0 1.5rem;
 }
 
-.#{variables.$bcgov-prefix}--header ~ .#{variables.$bcgov-prefix}--content, div:has(.#{variables.$bcgov-prefix}--header) ~ .#{variables.$bcgov-prefix}--content {
-    margin-block-start: $layout-05;
+.#{variables.$bcgov-prefix}--header ~ .#{variables.$bcgov-prefix}--content,
+div:has(.#{variables.$bcgov-prefix}--header) ~ .#{variables.$bcgov-prefix}--content {
+  margin-block-start: $layout-05;
 }
 
 .#{variables.$bcgov-prefix}--content .#{variables.$bcgov-prefix}--css-grid {
@@ -563,10 +551,7 @@ page-level hand-rolled rules.
     tr:not(.cds--parent-row):not(.cds--data-table--selected):nth-child(even) {
     background-color: var(--fsp-zebra-stripe);
   }
-  .cds--data-table--zebra
-    tbody
-    tr:not(.cds--parent-row):nth-child(even)
-    td {
+  .cds--data-table--zebra tbody tr:not(.cds--parent-row):nth-child(even) td {
     border-block-start-color: var(--fsp-zebra-stripe);
     border-block-end-color: var(--fsp-zebra-stripe);
   }
@@ -687,32 +672,32 @@ explicitly at the end.
 --------------------------------------------------------------------- */
 :root[data-carbon-theme='g100'] .fsp-submit {
   // Neutrals / layers
-  --fds-background:     var(--cds-background);
-  --fds-layer-01:       var(--cds-layer-01);
-  --fds-text-primary:   var(--cds-text-primary);
+  --fds-background: var(--cds-background);
+  --fds-layer-01: var(--cds-layer-01);
+  --fds-text-primary: var(--cds-text-primary);
   --fds-text-secondary: var(--cds-text-secondary);
-  --fds-border-subtle:  var(--cds-border-subtle-01);
-  --fds-border-strong:  var(--cds-border-strong-01);
+  --fds-border-subtle: var(--cds-border-subtle-01);
+  --fds-border-strong: var(--cds-border-strong-01);
 
   // Interactive blue (primary/ghost buttons, links, stepper dots, dnd label)
-  --fds-interactive:       var(--cds-interactive);
+  --fds-interactive: var(--cds-interactive);
   --fds-interactive-hover: var(--cds-link-primary);
   --fds-interactive-light: var(--cds-layer-hover-01);
 
   // Status colours + notification tints (Carbon notification component
   // tokens flip per-theme; dark fallbacks in case they're unset)
-  --fds-support-error:        var(--cds-support-error);
-  --fds-support-success:      var(--cds-support-success);
-  --fds-support-error-bg:     var(--cds-notification-background-error, #2c1a1c);
-  --fds-support-success-bg:   var(--cds-notification-background-success, #1a2a1c);
-  --fds-support-info-bg:      var(--cds-notification-background-info, #1a2230);
-  --fds-notif-info-border:    var(--cds-support-info);
-  --fds-notif-error-border:   var(--cds-support-error);
+  --fds-support-error: var(--cds-support-error);
+  --fds-support-success: var(--cds-support-success);
+  --fds-support-error-bg: var(--cds-notification-background-error, #2c1a1c);
+  --fds-support-success-bg: var(--cds-notification-background-success, #1a2a1c);
+  --fds-support-info-bg: var(--cds-notification-background-info, #1a2230);
+  --fds-notif-info-border: var(--cds-support-info);
+  --fds-notif-error-border: var(--cds-support-error);
   --fds-notif-success-border: var(--cds-support-success);
 
   // Tables
   --fds-table-header: var(--cds-layer-accent-01);
-  --fds-table-zebra:  var(--fsp-zebra-stripe);
+  --fds-table-zebra: var(--fsp-zebra-stripe);
 
   // Surfaces that hard-code a light value instead of reading a token:
   .vtable tbody tr:nth-child(odd) td {
@@ -775,7 +760,7 @@ spacing so a date field matches its neighbours; loaded after Carbon at
 equal specificity (0,1,0) so it wins.
 --------------------------------------------------------------- */
 .cds--date-picker__input {
-  font-family: "BC Sans", "Noto Sans", Verdana, Arial, sans-serif;
+  font-family: 'BC Sans', 'Noto Sans', Verdana, Arial, sans-serif;
   letter-spacing: 0.16px;
 }
 
@@ -800,7 +785,7 @@ specificity so it wins.
 .cds--select-input,
 .cds--date-picker__input,
 .cds--number__input,
-.cds--number input[type="number"],
+.cds--number input[type='number'],
 .cds--list-box__label,
 .cds--list-box__menu-item__option {
   font-size: 1rem;

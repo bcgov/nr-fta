@@ -1,8 +1,11 @@
 import { Content, HeaderContainer } from '@carbon/react';
-import type { FC, ReactNode } from 'react';
+
 import { LayoutProvider } from '@/context/layout/LayoutProvider';
 import { useLayout } from '@/context/layout/useLayout';
+
 import { LayoutHeader } from './LayoutHeader';
+
+import type { FC, ReactNode } from 'react';
 import './Layout.css';
 
 /**
@@ -13,9 +16,7 @@ import './Layout.css';
 const LayoutShell: FC<{ children: ReactNode }> = ({ children }) => {
   const { isSideNavExpanded } = useLayout();
   return (
-    <div
-      className={`bc-layout${isSideNavExpanded ? ' bc-layout--nav-open' : ''}`}
-    >
+    <div className={`bc-layout${isSideNavExpanded ? ' bc-layout--nav-open' : ''}`}>
       <HeaderContainer render={LayoutHeader} />
       <Content>{children}</Content>
     </div>

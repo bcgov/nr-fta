@@ -1,7 +1,8 @@
-import { Button, Column, Grid, TextInput } from '@carbon/react';
 import { Search as SearchIcon, Reset } from '@carbon/icons-react';
+import { Button, Column, Grid, TextInput } from '@carbon/react';
 import { useState, type FC, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
 import PageLayout from '@/pages/PageLayout';
@@ -62,36 +63,66 @@ const RangeUnitSearch: FC = () => {
       <form className="range-unit-search__form" onSubmit={onSearch}>
         <Grid narrow>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="ru-name" labelText="Name" placeholder="e.g. Big Creek"
-              value={criteria.rangeUnitName ?? ''} onChange={(e) => onField('rangeUnitName')(e.target.value)} />
+            <TextInput
+              id="ru-name"
+              labelText="Name"
+              placeholder="e.g. Big Creek"
+              value={criteria.rangeUnitName ?? ''}
+              onChange={(e) => onField('rangeUnitName')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="ru-pasture" labelText="Pasture" placeholder="e.g. North"
-              value={criteria.pastureName ?? ''} onChange={(e) => onField('pastureName')(e.target.value)} />
+            <TextInput
+              id="ru-pasture"
+              labelText="Pasture"
+              placeholder="e.g. North"
+              value={criteria.pastureName ?? ''}
+              onChange={(e) => onField('pastureName')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="ru-org-unit" labelText="Org Unit" placeholder="Org unit no"
-              value={criteria.orgUnitNo ?? ''} onChange={(e) => onField('orgUnitNo')(e.target.value)} />
+            <TextInput
+              id="ru-org-unit"
+              labelText="Org Unit"
+              placeholder="Org unit no"
+              value={criteria.orgUnitNo ?? ''}
+              onChange={(e) => onField('orgUnitNo')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="ru-status" labelText="Status" placeholder="e.g. A"
-              value={criteria.rangeStatus ?? ''} onChange={(e) => onField('rangeStatus')(e.target.value)} />
+            <TextInput
+              id="ru-status"
+              labelText="Status"
+              placeholder="e.g. A"
+              value={criteria.rangeStatus ?? ''}
+              onChange={(e) => onField('rangeStatus')(e.target.value)}
+            />
           </Column>
         </Grid>
         <div className="range-unit-search__actions">
-          <Button type="submit" renderIcon={SearchIcon}>Search</Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>Reset</Button>
+          <Button type="submit" renderIcon={SearchIcon}>
+            Search
+          </Button>
+          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
+            Reset
+          </Button>
         </div>
       </form>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={() => void runSearch(criteria)} loadingText="Searching…">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        onRetry={() => void runSearch(criteria)}
+        loadingText="Searching…"
+      >
         {rows !== null && (
           <SearchResultsTable
             rows={rows.map((r, i) => ({ ...r, id: `${r.rangeUnitId}-${r.pastureId ?? i}` }))}
             headers={HEADERS}
             emptyTitle="No range units found"
             renderCell={(row, key) => {
-              if (key === 'rangeUnitId') return <Link to={`/range-unit/${row.rangeUnitId}`}>{row.rangeUnitId}</Link>;
+              if (key === 'rangeUnitId')
+                return <Link to={`/range-unit/${row.rangeUnitId}`}>{row.rangeUnitId}</Link>;
               if (key === 'rangeUnitName') return row.rangeUnitName ?? '—';
               if (key === 'pastureName') return row.pastureName ?? '—';
               if (key === 'rangeUnitStatusDesc') return row.rangeUnitStatusDesc ?? '—';

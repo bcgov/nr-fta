@@ -1,4 +1,5 @@
 import { InlineLoading, InlineNotification, Button } from '@carbon/react';
+
 import type { FC, ReactNode } from 'react';
 
 interface AsyncBoundaryProps {
@@ -16,7 +17,13 @@ interface AsyncBoundaryProps {
  * optional Retry) when `error` is set, otherwise the children. Keeps the
  * loading/error treatment identical across every FTA screen.
  */
-const AsyncBoundary: FC<AsyncBoundaryProps> = ({ loading, error, onRetry, loadingText = 'Loading…', children }) => {
+const AsyncBoundary: FC<AsyncBoundaryProps> = ({
+  loading,
+  error,
+  onRetry,
+  loadingText = 'Loading…',
+  children,
+}) => {
   if (loading) {
     return <InlineLoading description={loadingText} status="active" />;
   }

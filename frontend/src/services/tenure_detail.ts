@@ -42,7 +42,5 @@ export interface TenureDetail {
 
 /** GET /api/fta/tenures/{forestFileId} — tenure detail (FTA_100_TENURE). */
 export function getTenureDetail(forestFileId: string): Promise<TenureDetail> {
-  return apiGet<TenureDetail>(
-    `/api/fta/tenures/${encodeURIComponent(forestFileId)}${toQuery({})}`,
-  );
+  return apiGet<TenureDetail>(`/api/fta/tenures/${encodeURIComponent(forestFileId)}${toQuery({})}`);
 }

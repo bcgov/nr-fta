@@ -1,7 +1,8 @@
-import { Button, Column, Grid, Tag, TextInput } from '@carbon/react';
 import { Search as SearchIcon, Reset } from '@carbon/icons-react';
+import { Button, Column, Grid, Tag, TextInput } from '@carbon/react';
 import { useState, type FC, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
 import PageLayout from '@/pages/PageLayout';
@@ -74,23 +75,39 @@ const TimberMarkSearch: FC = () => {
           </Column>
         </Grid>
         <div className="tm-search__actions">
-          <Button type="submit" renderIcon={SearchIcon}>Search</Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>Reset</Button>
+          <Button type="submit" renderIcon={SearchIcon}>
+            Search
+          </Button>
+          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
+            Reset
+          </Button>
         </div>
       </form>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={() => void runSearch(criteria)} loadingText="Searching…">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        onRetry={() => void runSearch(criteria)}
+        loadingText="Searching…"
+      >
         {rows !== null && (
           <SearchResultsTable
-            rows={rows.map((r, i) => ({ ...r, id: r.cuttingPermitId ?? r.timberMark ?? String(i) }))}
+            rows={rows.map((r, i) => ({
+              ...r,
+              id: r.cuttingPermitId ?? r.timberMark ?? String(i),
+            }))}
             headers={HEADERS}
             emptyTitle="No timber marks found"
             renderCell={(row, key) => {
               if (key === 'timberMark')
-                return <Link to={`/harvesting-authority/${row.cuttingPermitId}`}>{row.timberMark}</Link>;
+                return (
+                  <Link to={`/harvesting-authority/${row.cuttingPermitId}`}>{row.timberMark}</Link>
+                );
               if (key === 'cuttingPermitId')
                 return row.cuttingPermitId ? (
-                  <Link to={`/harvesting-authority/${row.cuttingPermitId}`}>{row.cuttingPermitId}</Link>
+                  <Link to={`/harvesting-authority/${row.cuttingPermitId}`}>
+                    {row.cuttingPermitId}
+                  </Link>
                 ) : (
                   '—'
                 );

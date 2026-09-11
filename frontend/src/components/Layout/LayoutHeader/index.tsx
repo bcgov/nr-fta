@@ -1,12 +1,15 @@
 import { Header, HeaderMenuButton, HeaderName, SkipToContent } from '@carbon/react';
-import type { FC } from 'react';
 import { Link } from 'react-router-dom';
+
 import { LayoutHeaderPanel } from '@/components/Layout/LayoutHeaderPanel';
 import { LayoutSideNav } from '@/components/Layout/LayoutSideNav';
 import { useAuth } from '@/context/auth/useAuth';
 import { useLayout } from '@/context/layout/useLayout';
 import { defaultRouteForUser } from '@/routes/access';
+
 import LayoutHeaderGlobalBar from './LayoutHeaderGlobalBar';
+
+import type { FC } from 'react';
 import './LayoutHeader.css';
 
 const APP_NAME = (import.meta.env.VITE_APP_NAME as string) || 'Forest Tenure Administration';

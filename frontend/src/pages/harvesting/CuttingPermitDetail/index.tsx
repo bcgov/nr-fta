@@ -1,3 +1,4 @@
+import { ArrowLeft, Edit, Pause, Tag as TagIcon } from '@carbon/icons-react';
 import {
   Button,
   Tab,
@@ -16,16 +17,16 @@ import {
   UnorderedList,
   ListItem,
 } from '@carbon/react';
-import { ArrowLeft, Edit, Pause, Tag as TagIcon } from '@carbon/icons-react';
 import { useCallback, type FC } from 'react';
 import { Link, useParams } from 'react-router-dom';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
-import { canEdit } from '@/routes/access';
-import PageLayout from '@/pages/PageLayout';
 import { useApiResource } from '@/hooks/useApiResource';
+import PageLayout from '@/pages/PageLayout';
+import { canEdit } from '@/routes/access';
 import { getCuttingPermitDetail } from '@/services/cutting_permit_detail';
 import './CuttingPermitDetail.scss';
 
@@ -62,7 +63,12 @@ const CuttingPermitDetail: FC = () => {
         <ArrowLeft size={16} /> Back to Harvesting Authority Search
       </Link>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={reload} loadingText="Loading cutting permit…">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        onRetry={reload}
+        loadingText="Loading cutting permit…"
+      >
         {cp && (
           <>
             <Tombstone
@@ -89,17 +95,31 @@ const CuttingPermitDetail: FC = () => {
               ]}
               action={
                 canEdit(user) ? (
-                  <Button size="sm" kind="tertiary" renderIcon={Edit}>Edit permit</Button>
+                  <Button size="sm" kind="tertiary" renderIcon={Edit}>
+                    Edit permit
+                  </Button>
                 ) : undefined
               }
             />
 
             {canEdit(user) && (
               <div className="cp-detail__actions">
-                <Button size="sm" kind="tertiary" renderIcon={TagIcon} as={Link} to={`/harvesting-authority/${cp.cuttingPermitId ?? cpId}/assign-marks`}>
+                <Button
+                  size="sm"
+                  kind="tertiary"
+                  renderIcon={TagIcon}
+                  as={Link}
+                  to={`/harvesting-authority/${cp.cuttingPermitId ?? cpId}/assign-marks`}
+                >
                   Assign marks to blocks
                 </Button>
-                <Button size="sm" kind="danger--tertiary" renderIcon={Pause} as={Link} to={`/harvesting-authority/${cp.cuttingPermitId ?? cpId}/suspend-blocks`}>
+                <Button
+                  size="sm"
+                  kind="danger--tertiary"
+                  renderIcon={Pause}
+                  as={Link}
+                  to={`/harvesting-authority/${cp.cuttingPermitId ?? cpId}/suspend-blocks`}
+                >
                   Suspend blocks
                 </Button>
               </div>
@@ -117,7 +137,10 @@ const CuttingPermitDetail: FC = () => {
                     items={[
                       { label: 'Legal Description', value: cp.location ?? '—' },
                       { label: 'Timber Mark', value: cp.timberMark ?? '—' },
-                      { label: 'File Type', value: cp.fileTypeDescription ?? cp.fileTypeCode ?? '—' },
+                      {
+                        label: 'File Type',
+                        value: cp.fileTypeDescription ?? cp.fileTypeCode ?? '—',
+                      },
                       { label: 'Licensee', value: cp.licensee ?? '—' },
                       { label: 'Forest District', value: cp.forestDistrict ?? '—' },
                       { label: 'Authorized Area', value: area },
@@ -136,7 +159,10 @@ const CuttingPermitDetail: FC = () => {
                 </TabPanel>
 
                 <TabPanel>
-                  <TableContainer title="Cut Blocks" description="Cut blocks are managed on the Cut Block search screen">
+                  <TableContainer
+                    title="Cut Blocks"
+                    description="Cut blocks are managed on the Cut Block search screen"
+                  >
                     <Table>
                       <TableHead>
                         <TableRow>
@@ -149,7 +175,9 @@ const CuttingPermitDetail: FC = () => {
                       <TableBody>
                         <TableRow>
                           <TableCell colSpan={4}>
-                            <Link to={`/search/cut-block?cpId=${encodeURIComponent(cp.cuttingPermitId ?? cpId)}`}>
+                            <Link
+                              to={`/search/cut-block?cpId=${encodeURIComponent(cp.cuttingPermitId ?? cpId)}`}
+                            >
                               View cut blocks for this permit
                             </Link>
                           </TableCell>
@@ -172,7 +200,10 @@ const CuttingPermitDetail: FC = () => {
                             : '—',
                       },
                       { label: 'Extend Date', value: cp.extendDate ?? '—' },
-                      { label: 'Extend Count', value: cp.extendCount != null ? String(cp.extendCount) : '—' },
+                      {
+                        label: 'Extend Count',
+                        value: cp.extendCount != null ? String(cp.extendCount) : '—',
+                      },
                     ]}
                   />
                 </TabPanel>

@@ -1,6 +1,7 @@
 import { SideNav, SideNavItems, SideNavLink, SideNavMenu, SideNavMenuItem } from '@carbon/react';
 import { type FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+
 import { useAuth } from '@/context/auth/useAuth';
 import { useLayout } from '@/context/layout/useLayout';
 import { getMenuEntries, isMenuParent, type MenuItem, type MenuLeaf } from '@/routes/routePaths';
@@ -64,9 +65,7 @@ export const LayoutSideNav: FC = () => {
       className={`side-nav-drawer${isSideNavExpanded ? ' side-nav-drawer--open' : ''}`}
       aria-label="Main navigation"
     >
-      <SideNavItems>
-        {getMenuEntries(roles).map(renderParent)}
-      </SideNavItems>
+      <SideNavItems>{getMenuEntries(roles).map(renderParent)}</SideNavItems>
     </SideNav>
   );
 };

@@ -21,10 +21,7 @@ import { useEffect, type RefObject } from 'react';
  *              enabled. Toggling this false→true (open, or a load
  *              completing) re-arms the focus attempt.
  */
-export function useAutoFocusOnOpen(
-  ref: RefObject<HTMLElement | null>,
-  ready: boolean,
-): void {
+export function useAutoFocusOnOpen(ref: RefObject<HTMLElement | null>, ready: boolean): void {
   useEffect(() => {
     if (!ready) return;
     let frame = 0;

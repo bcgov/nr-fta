@@ -11,9 +11,7 @@ import type { FamLoginUser, ROLE_TYPE } from '@/context/auth/types';
  */
 
 /** The user's single effective role (or undefined when none). */
-export function effectiveRole(
-  user: FamLoginUser | null | undefined,
-): ROLE_TYPE | undefined {
+export function effectiveRole(user: FamLoginUser | null | undefined): ROLE_TYPE | undefined {
   return user?.roles?.[0];
 }
 

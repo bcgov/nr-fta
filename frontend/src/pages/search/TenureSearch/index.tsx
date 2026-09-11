@@ -1,15 +1,8 @@
-import {
-  Button,
-  Column,
-  Grid,
-  Select,
-  SelectItem,
-  Tag,
-  TextInput,
-} from '@carbon/react';
 import { Search as SearchIcon, Reset } from '@carbon/icons-react';
+import { Button, Column, Grid, Select, SelectItem, Tag, TextInput } from '@carbon/react';
 import { useState, type FC, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
 import PageLayout from '@/pages/PageLayout';
@@ -112,19 +105,29 @@ const TenureSearch: FC = () => {
           </Column>
         </Grid>
         <div className="tenure-search__actions">
-          <Button type="submit" renderIcon={SearchIcon}>Search</Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>Reset</Button>
+          <Button type="submit" renderIcon={SearchIcon}>
+            Search
+          </Button>
+          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
+            Reset
+          </Button>
         </div>
       </form>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={() => void runSearch(criteria)} loadingText="Searching…">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        onRetry={() => void runSearch(criteria)}
+        loadingText="Searching…"
+      >
         {rows !== null && (
           <SearchResultsTable
             rows={rows.map((r) => ({ ...r, id: r.forestFileId }))}
             headers={HEADERS}
             emptyTitle="No tenures found"
             renderCell={(row, key) => {
-              if (key === 'forestFileId') return <Link to={`/tenures/${row.forestFileId}`}>{row.forestFileId}</Link>;
+              if (key === 'forestFileId')
+                return <Link to={`/tenures/${row.forestFileId}`}>{row.forestFileId}</Link>;
               if (key === 'fileStatusDesc') {
                 const label = row.fileStatusDesc ?? row.fileStatusCode ?? '';
                 return label ? <Tag type="green">{label}</Tag> : '—';

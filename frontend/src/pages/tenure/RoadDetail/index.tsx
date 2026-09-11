@@ -1,3 +1,4 @@
+import { ArrowLeft, Edit } from '@carbon/icons-react';
 import {
   Button,
   Tab,
@@ -14,17 +15,18 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { ArrowLeft, Edit } from '@carbon/icons-react';
-import type { FC } from 'react';
 import { Link, useParams } from 'react-router-dom';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
-import { canEdit } from '@/routes/access';
 import { useApiResource } from '@/hooks/useApiResource';
 import PageLayout from '@/pages/PageLayout';
+import { canEdit } from '@/routes/access';
 import { getRoadDetail } from '@/services/road_detail';
+
+import type { FC } from 'react';
 
 // Mock road segments (FTA907) for the road's Segments tab.
 const MOCK_SEGMENTS = [
@@ -42,10 +44,12 @@ const MOCK_SEGMENTS = [
 const RoadDetail: FC = () => {
   const { roadId = '' } = useParams();
   const { user } = useAuth();
-  const { data: road, loading, error, reload } = useApiResource(
-    () => getRoadDetail(roadId),
-    [roadId],
-  );
+  const {
+    data: road,
+    loading,
+    error,
+    reload,
+  } = useApiResource(() => getRoadDetail(roadId), [roadId]);
 
   return (
     <PageLayout title={`Road Section ${roadId}`}>
@@ -78,7 +82,9 @@ const RoadDetail: FC = () => {
               ]}
               action={
                 canEdit(user) ? (
-                  <Button size="sm" kind="tertiary" renderIcon={Edit}>Edit road</Button>
+                  <Button size="sm" kind="tertiary" renderIcon={Edit}>
+                    Edit road
+                  </Button>
                 ) : undefined
               }
             />
@@ -102,7 +108,10 @@ const RoadDetail: FC = () => {
                 </TabPanel>
 
                 <TabPanel>
-                  <TableContainer title="Road Segments" description={`${MOCK_SEGMENTS.length} segment(s)`}>
+                  <TableContainer
+                    title="Road Segments"
+                    description={`${MOCK_SEGMENTS.length} segment(s)`}
+                  >
                     <Table>
                       <TableHead>
                         <TableRow>

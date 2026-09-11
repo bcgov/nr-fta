@@ -1,7 +1,8 @@
 import { Button } from '@carbon/react';
-import type { FC, ReactNode } from 'react';
 
 import { Modal } from '@/components/Modal';
+
+import type { FC, ReactNode } from 'react';
 
 import './destructive-modal.scss';
 

@@ -1,12 +1,13 @@
-import { Button } from '@carbon/react';
 import { ArrowLeft, Upload } from '@carbon/icons-react';
+import { Button } from '@carbon/react';
 import { useState, type FC } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+
 import DragDropFileInput from '@/components/DragDropFileInput';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
-import { canEdit } from '@/routes/access';
 import PageLayout from '@/pages/PageLayout';
+import { canEdit } from '@/routes/access';
 import { uploadExhibitA } from '@/services/exhibit_a_write';
 
 // Guard the base64-in-JSON upload: a large file becomes a ~33%-bigger base64

@@ -60,14 +60,10 @@ parameters:
   - name: VITE_API_BASE_URL
     description: Browser-facing API base path; usually '/api'
     value: /api
+  # The product name — identical in every environment, so CI doesn't pass it
+  # and this default is the one place it is set.
   - name: VITE_APP_NAME
     value: Forest Tenure Administration
-  # VITE_ZONE = the deploy zone, surfaced to the UI. It no longer selects an
-  # identity provider: Cognito needed a per-environment provider name
-  # (TEST-IDIR), whereas the Keycloak IdP hint is the constant `azureidir` in
-  # every environment (services/keycloak.ts). A numeric PR zone is now harmless.
-  - name: VITE_ZONE
-    value: dev
 
 objects:
   # ── Deployment ────────────────────────────────────────────
@@ -144,8 +140,6 @@ objects:
                   value: ${VITE_API_BASE_URL}
                 - name: VITE_APP_NAME
                   value: ${VITE_APP_NAME}
-                - name: VITE_ZONE
-                  value: ${VITE_ZONE}
               volumeMounts:
                 - name: srv
                   mountPath: /srv

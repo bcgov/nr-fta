@@ -1,9 +1,10 @@
-import { Button, Select, SelectItem } from '@carbon/react';
 import { Save } from '@carbon/icons-react';
+import { Button, Select, SelectItem } from '@carbon/react';
 import { useState, type FC } from 'react';
+
 import { useNotification } from '@/context/notification/useNotification';
-import PageLayout from '@/pages/PageLayout';
 import { ORG_UNITS } from '@/mocks/reference';
+import PageLayout from '@/pages/PageLayout';
 import { setDefaultOrgUnit } from '@/services/org_unit_maint';
 
 /**
@@ -42,8 +43,15 @@ const OrgUnitMaintenance: FC = () => {
         Set the default org unit applied to your searches and new records.
       </p>
       <div style={{ maxWidth: '28rem' }}>
-        <Select id="ou-default" labelText="Default org unit" value={orgUnit} onChange={(e) => setOrgUnit(e.target.value)}>
-          {ORG_UNITS.map((o) => <SelectItem key={o} value={o} text={o} />)}
+        <Select
+          id="ou-default"
+          labelText="Default org unit"
+          value={orgUnit}
+          onChange={(e) => setOrgUnit(e.target.value)}
+        >
+          {ORG_UNITS.map((o) => (
+            <SelectItem key={o} value={o} text={o} />
+          ))}
         </Select>
         <div style={{ marginTop: '1.5rem' }}>
           <Button renderIcon={Save} onClick={onSave} disabled={saving}>

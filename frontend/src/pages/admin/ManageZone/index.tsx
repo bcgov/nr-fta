@@ -1,3 +1,4 @@
+import { Add } from '@carbon/icons-react';
 import {
   Button,
   Table,
@@ -8,12 +9,16 @@ import {
   TableHeader,
   TableRow,
 } from '@carbon/react';
-import { Add } from '@carbon/icons-react';
 import { useEffect, useState, type FC } from 'react';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import { useNotification } from '@/context/notification/useNotification';
 import PageLayout from '@/pages/PageLayout';
-import { saveRangeZone, searchRangeZones, type ManageZone as RangeZone } from '@/services/manage_zone';
+import {
+  saveRangeZone,
+  searchRangeZones,
+  type ManageZone as RangeZone,
+} from '@/services/manage_zone';
 
 /**
  * FTA631R — Manage Range Zone. Lists range zones (with an add action) backed by
@@ -82,7 +87,12 @@ const ManageZone: FC = () => {
           {saving ? 'Saving…' : 'Add zone'}
         </Button>
       </div>
-      <AsyncBoundary loading={loading} error={error} onRetry={() => void load()} loadingText="Loading range zones…">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        onRetry={() => void load()}
+        loadingText="Loading range zones…"
+      >
         {rows !== null && (
           <TableContainer title="Range zones" description={`${rows.length} zone(s)`}>
             <Table>
@@ -102,7 +112,7 @@ const ManageZone: FC = () => {
                     <TableCell>
                       {z.orgUnitName
                         ? `${z.orgUnitCode ?? ''} — ${z.orgUnitName}`.replace(/^ — /, '')
-                        : z.orgUnitCode ?? z.adminForestDistrictNo ?? '—'}
+                        : (z.orgUnitCode ?? z.adminForestDistrictNo ?? '—')}
                     </TableCell>
                     <TableCell>{z.contact ?? '—'}</TableCell>
                   </TableRow>

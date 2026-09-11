@@ -110,11 +110,64 @@ export const MOCK_HARVESTING_AUTHORITIES: HarvestingAuthority[] = [
 ];
 
 export const MOCK_CUT_BLOCKS: CutBlockRecord[] = [
-  { blockId: 'BLK-001', cpId: 'CP-01', fileId: 'A19201', timberMark: '52/1234', status: 'Harvested', areaHa: 24.6, netAreaHa: 22.1, plannedVolume: 9800, orgUnit: 'DCC — Cariboo-Chilcotin', disturbanceStart: '2021-07-02' },
-  { blockId: 'BLK-002', cpId: 'CP-01', fileId: 'A19201', timberMark: '52/1234', status: 'Active', areaHa: 31.2, netAreaHa: 28.4, plannedVolume: 12600, orgUnit: 'DCC — Cariboo-Chilcotin', disturbanceStart: '2023-01-15' },
-  { blockId: 'BLK-003', cpId: 'CP-02', fileId: 'A19201', timberMark: '52/1235', status: 'Active', areaHa: 18.9, netAreaHa: 17.0, plannedVolume: 7200, orgUnit: 'DCC — Cariboo-Chilcotin' },
-  { blockId: 'BLK-114', cpId: 'CP-77', fileId: 'A20115', timberMark: '61/8890', status: 'Amended', areaHa: 40.1, netAreaHa: 36.8, plannedVolume: 15400, orgUnit: 'DPG — Prince George', disturbanceStart: '2021-02-20' },
-  { blockId: 'BLK-220', cpId: 'CP-90', fileId: 'A62009', timberMark: '48/2201', status: 'Suspended', areaHa: 12.3, netAreaHa: 11.1, plannedVolume: 4100, orgUnit: 'DMK — Mackenzie' },
+  {
+    blockId: 'BLK-001',
+    cpId: 'CP-01',
+    fileId: 'A19201',
+    timberMark: '52/1234',
+    status: 'Harvested',
+    areaHa: 24.6,
+    netAreaHa: 22.1,
+    plannedVolume: 9800,
+    orgUnit: 'DCC — Cariboo-Chilcotin',
+    disturbanceStart: '2021-07-02',
+  },
+  {
+    blockId: 'BLK-002',
+    cpId: 'CP-01',
+    fileId: 'A19201',
+    timberMark: '52/1234',
+    status: 'Active',
+    areaHa: 31.2,
+    netAreaHa: 28.4,
+    plannedVolume: 12600,
+    orgUnit: 'DCC — Cariboo-Chilcotin',
+    disturbanceStart: '2023-01-15',
+  },
+  {
+    blockId: 'BLK-003',
+    cpId: 'CP-02',
+    fileId: 'A19201',
+    timberMark: '52/1235',
+    status: 'Active',
+    areaHa: 18.9,
+    netAreaHa: 17.0,
+    plannedVolume: 7200,
+    orgUnit: 'DCC — Cariboo-Chilcotin',
+  },
+  {
+    blockId: 'BLK-114',
+    cpId: 'CP-77',
+    fileId: 'A20115',
+    timberMark: '61/8890',
+    status: 'Amended',
+    areaHa: 40.1,
+    netAreaHa: 36.8,
+    plannedVolume: 15400,
+    orgUnit: 'DPG — Prince George',
+    disturbanceStart: '2021-02-20',
+  },
+  {
+    blockId: 'BLK-220',
+    cpId: 'CP-90',
+    fileId: 'A62009',
+    timberMark: '48/2201',
+    status: 'Suspended',
+    areaHa: 12.3,
+    netAreaHa: 11.1,
+    plannedVolume: 4100,
+    orgUnit: 'DMK — Mackenzie',
+  },
 ];
 
 export interface HarvestingSearchCriteria {
@@ -128,7 +181,8 @@ export function searchHarvestingAuthorities(c: HarvestingSearchCriteria): Harves
   return MOCK_HARVESTING_AUTHORITIES.filter((h) => {
     if (c.cpId && !h.cpId.toLowerCase().includes(c.cpId.toLowerCase())) return false;
     if (c.fileId && !h.fileId.toLowerCase().includes(c.fileId.toLowerCase())) return false;
-    if (c.timberMark && !h.timberMark.toLowerCase().includes(c.timberMark.toLowerCase())) return false;
+    if (c.timberMark && !h.timberMark.toLowerCase().includes(c.timberMark.toLowerCase()))
+      return false;
     if (c.status && h.status !== c.status) return false;
     return true;
   });

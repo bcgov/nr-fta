@@ -1,6 +1,5 @@
-import { env } from '@/env';
-
 import { ensureSessionFresh } from '@/context/auth/refreshSession';
+import { env } from '@/env';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import { ensureFreshUser, getUserManager } from '@/services/keycloak';
 

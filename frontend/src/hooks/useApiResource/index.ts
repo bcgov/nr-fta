@@ -14,10 +14,7 @@ export interface ApiResource<T> {
  * screen uses when reading from the backend, so pages don't each re-implement
  * it. `fetcher` must be stable or memoized by the caller via `deps`.
  */
-export function useApiResource<T>(
-  fetcher: () => Promise<T>,
-  deps: unknown[] = [],
-): ApiResource<T> {
+export function useApiResource<T>(fetcher: () => Promise<T>, deps: unknown[] = []): ApiResource<T> {
   const [data, setData] = useState<T | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);

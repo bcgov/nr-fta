@@ -1,4 +1,14 @@
 import {
+  ArrowLeft,
+  Chat,
+  Pause,
+  Checkmark,
+  Close,
+  UserFollow,
+  Map,
+  Upload,
+} from '@carbon/icons-react';
+import {
   Button,
   Tab,
   TabList,
@@ -14,17 +24,17 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { ArrowLeft, Chat, Pause, Checkmark, Close, UserFollow, Map, Upload } from '@carbon/icons-react';
 import { useState, type FC } from 'react';
 import { Link, useParams } from 'react-router-dom';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
-import { canEdit } from '@/routes/access';
 import { useApiResource } from '@/hooks/useApiResource';
 import PageLayout from '@/pages/PageLayout';
+import { canEdit } from '@/routes/access';
 import { adjudicateApplication, getApplicationDetail } from '@/services/application_detail';
 import './ApplicationDetail.scss';
 
@@ -41,10 +51,12 @@ const ApplicationDetail: FC = () => {
   const { esfId = '' } = useParams();
   const { user } = useAuth();
   const notify = useNotification();
-  const { data: app, loading, error, reload } = useApiResource(
-    () => getApplicationDetail(esfId),
-    [esfId],
-  );
+  const {
+    data: app,
+    loading,
+    error,
+    reload,
+  } = useApiResource(() => getApplicationDetail(esfId), [esfId]);
   const [saving, setSaving] = useState(false);
 
   // Wire each adjudication button to POST /api/fta/applications/{esfId}/actions
@@ -84,7 +96,12 @@ const ApplicationDetail: FC = () => {
         <ArrowLeft size={16} /> Back to Inbox
       </Link>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={reload} loadingText="Loading application…">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        onRetry={reload}
+        loadingText="Loading application…"
+      >
         {app && (
           <>
             <Tombstone
@@ -113,11 +130,50 @@ const ApplicationDetail: FC = () => {
 
             {canEdit(user) && (
               <div className="app-detail__actions">
-                <Button size="sm" renderIcon={UserFollow} disabled={saving} onClick={() => act('Assignment', 'SAVE')}>Assign to me</Button>
-                <Button size="sm" kind="tertiary" renderIcon={Chat} disabled={saving} onClick={() => act('Clarification request', 'SAVE')}>Request clarification</Button>
-                <Button size="sm" kind="tertiary" renderIcon={Pause} disabled={saving} onClick={() => act('Hold', 'SAVE')}>Place on hold</Button>
-                <Button size="sm" kind="tertiary" renderIcon={Checkmark} disabled={saving} onClick={() => act('Clearance', 'ADJUDICATION')}>Clear</Button>
-                <Button size="sm" kind="danger--tertiary" renderIcon={Close} disabled={saving} onClick={() => act('Rejection', 'ADJUDICATION')}>Reject</Button>
+                <Button
+                  size="sm"
+                  renderIcon={UserFollow}
+                  disabled={saving}
+                  onClick={() => act('Assignment', 'SAVE')}
+                >
+                  Assign to me
+                </Button>
+                <Button
+                  size="sm"
+                  kind="tertiary"
+                  renderIcon={Chat}
+                  disabled={saving}
+                  onClick={() => act('Clarification request', 'SAVE')}
+                >
+                  Request clarification
+                </Button>
+                <Button
+                  size="sm"
+                  kind="tertiary"
+                  renderIcon={Pause}
+                  disabled={saving}
+                  onClick={() => act('Hold', 'SAVE')}
+                >
+                  Place on hold
+                </Button>
+                <Button
+                  size="sm"
+                  kind="tertiary"
+                  renderIcon={Checkmark}
+                  disabled={saving}
+                  onClick={() => act('Clearance', 'ADJUDICATION')}
+                >
+                  Clear
+                </Button>
+                <Button
+                  size="sm"
+                  kind="danger--tertiary"
+                  renderIcon={Close}
+                  disabled={saving}
+                  onClick={() => act('Rejection', 'ADJUDICATION')}
+                >
+                  Reject
+                </Button>
               </div>
             )}
 
@@ -164,11 +220,22 @@ const ApplicationDetail: FC = () => {
                     ]}
                   />
                   <div className="app-detail__actions">
-                    <Button size="sm" as={Link} to={`/exhibit-a/${app.tenureAppId}`} renderIcon={Map}>
+                    <Button
+                      size="sm"
+                      as={Link}
+                      to={`/exhibit-a/${app.tenureAppId}`}
+                      renderIcon={Map}
+                    >
                       View tenure map
                     </Button>
                     {canEdit(user) && (
-                      <Button size="sm" kind="tertiary" as={Link} to={`/exhibit-a/${app.tenureAppId}/upload`} renderIcon={Upload}>
+                      <Button
+                        size="sm"
+                        kind="tertiary"
+                        as={Link}
+                        to={`/exhibit-a/${app.tenureAppId}/upload`}
+                        renderIcon={Upload}
+                      >
                         Upload Exhibit A
                       </Button>
                     )}

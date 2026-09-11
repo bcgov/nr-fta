@@ -1,4 +1,5 @@
 import { Column, Grid } from '@carbon/react';
+
 import type { FC, ReactNode } from 'react';
 import './Tombstone.css';
 

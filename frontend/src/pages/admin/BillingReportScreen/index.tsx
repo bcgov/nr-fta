@@ -1,3 +1,4 @@
+import { DocumentTasks } from '@carbon/icons-react';
 import {
   Button,
   Table,
@@ -9,12 +10,12 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { DocumentTasks } from '@carbon/icons-react';
 import { useState, type FC } from 'react';
+
 import { useNotification } from '@/context/notification/useNotification';
+import { MOCK_BILLING, billingTotal, type BillingLine } from '@/mocks/billing';
 import PageLayout from '@/pages/PageLayout';
 import { submitBilling } from '@/services/billing_write';
-import { MOCK_BILLING, billingTotal, type BillingLine } from '@/mocks/billing';
 
 const cur = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
 
@@ -40,7 +41,12 @@ interface BillingReportScreenProps {
  * FTA685/686, Tenure Approval FTA690, Invoice Preview FTA695). Renders the
  * billing lines + total and a primary action that is mock-only.
  */
-const BillingReportScreen: FC<BillingReportScreenProps> = ({ title, legacyId, actionLabel, description }) => {
+const BillingReportScreen: FC<BillingReportScreenProps> = ({
+  title,
+  legacyId,
+  actionLabel,
+  description,
+}) => {
   const notify = useNotification();
   const lines = MOCK_BILLING;
   const [saving, setSaving] = useState(false);
@@ -75,7 +81,9 @@ const BillingReportScreen: FC<BillingReportScreenProps> = ({ title, legacyId, ac
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
         <Tag type="outline">{legacyId}</Tag>
       </div>
-      {description ? <p style={{ maxWidth: '44rem', marginBottom: '1.5rem' }}>{description}</p> : null}
+      {description ? (
+        <p style={{ maxWidth: '44rem', marginBottom: '1.5rem' }}>{description}</p>
+      ) : null}
 
       <TableContainer
         title="Billing lines"
@@ -102,7 +110,9 @@ const BillingReportScreen: FC<BillingReportScreenProps> = ({ title, legacyId, ac
                 <TableCell>{cur.format(l.rentDue)}</TableCell>
                 <TableCell>{cur.format(l.feeDue)}</TableCell>
                 <TableCell>{cur.format(l.total)}</TableCell>
-                <TableCell><Tag type={STATUS_TAG[l.status]}>{l.status}</Tag></TableCell>
+                <TableCell>
+                  <Tag type={STATUS_TAG[l.status]}>{l.status}</Tag>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

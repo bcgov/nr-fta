@@ -8,8 +8,10 @@ import {
   TableHeader,
   TableRow,
 } from '@carbon/react';
-import type { ReactNode } from 'react';
+
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+
+import type { ReactNode } from 'react';
 
 export interface ColumnDef {
   key: string;

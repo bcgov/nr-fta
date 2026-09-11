@@ -1,10 +1,5 @@
-import {
-  Search,
-  Document,
-  Tag,
-  Settings,
-  Task,
-} from '@carbon/icons-react';
+import { Search, Document, Tag, Settings, Task } from '@carbon/icons-react';
+
 import type { ComponentType } from 'react';
 
 // Each menu entry is either a leaf (renders as <SideNavLink>) or a parent
@@ -105,11 +100,27 @@ const NAV: MenuItem[] = [
       { id: 'admin-mark-transfer', label: 'Timber Mark Transfer', path: '/admin/mark-transfer' },
       { id: 'admin-range-zone', label: 'Manage Range Zone', path: '/admin/range-zone' },
       { id: 'admin-org-unit', label: 'Org Unit Maintenance', path: '/admin/org-unit' },
-      { id: 'admin-billing-tenure', label: 'Tenure Billing Instructions', path: '/admin/billing/tenure' },
-      { id: 'admin-billing-invoice', label: 'Invoice Preview', path: '/admin/billing/invoice-preview' },
+      {
+        id: 'admin-billing-tenure',
+        label: 'Tenure Billing Instructions',
+        path: '/admin/billing/tenure',
+      },
+      {
+        id: 'admin-billing-invoice',
+        label: 'Invoice Preview',
+        path: '/admin/billing/invoice-preview',
+      },
       { id: 'admin-billing-pre', label: 'Pre Billing Report', path: '/admin/billing/pre-billing' },
-      { id: 'admin-billing-post', label: 'Post Billing Report', path: '/admin/billing/post-billing' },
-      { id: 'admin-billing-approval', label: 'Tenure Approval Submission', path: '/admin/billing/approval' },
+      {
+        id: 'admin-billing-post',
+        label: 'Post Billing Report',
+        path: '/admin/billing/post-billing',
+      },
+      {
+        id: 'admin-billing-approval',
+        label: 'Tenure Approval Submission',
+        path: '/admin/billing/approval',
+      },
       { id: 'admin-rates-fees', label: 'Rates & Fees Maintenance', path: '/admin/rates-fees' },
       { id: 'admin-archive', label: 'Archive Tenures', path: '/admin/archive' },
     ],

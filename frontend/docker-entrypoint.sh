@@ -28,15 +28,14 @@ window.config = {
   // VITE_KEYCLOAK_URL is the realm issuer URI; oidc-client-ts discovers every
   // endpoint from it, so there is nothing else to configure.
   // VITE_KEYCLOAK_CLIENT_ID must match the client id the backend checks as the
-  // token's `azp`.
+  // token's azp claim.
   VITE_KEYCLOAK_URL: "$(escape "${VITE_KEYCLOAK_URL:-}")",
   VITE_KEYCLOAK_CLIENT_ID: "$(escape "${VITE_KEYCLOAK_CLIENT_ID:-}")",
   VITE_BASE_PATH: "$(escape "${VITE_BASE_PATH:-/}")",
   // Backend API base — read by src/services/apiFetch.ts
   VITE_API_BASE_URL: "$(escape "${VITE_API_BASE_URL:-/api}")",
-  // Display / theming
-  VITE_APP_NAME: "$(escape "${VITE_APP_NAME:-Forest Tenure Administration}")",
-  VITE_ZONE: "$(escape "${VITE_ZONE:-dev}")"
+  // Display
+  VITE_APP_NAME: "$(escape "${VITE_APP_NAME:-Forest Tenure Administration}")"
 };
 EOF
 

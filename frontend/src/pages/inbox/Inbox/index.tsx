@@ -1,7 +1,8 @@
-import { Button, Column, Grid, Select, SelectItem, Tag, TextInput } from '@carbon/react';
 import { Search as SearchIcon, Reset } from '@carbon/icons-react';
+import { Button, Column, Grid, Select, SelectItem, Tag, TextInput } from '@carbon/react';
 import { useEffect, useState, type FC, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
 import PageLayout from '@/pages/PageLayout';
@@ -66,16 +67,30 @@ const Inbox: FC = () => {
       <form className="inbox__form" onSubmit={onSearch}>
         <Grid narrow>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="in-file" labelText="Forest File ID" placeholder="e.g. A19201"
-              value={criteria.forestFileId ?? ''} onChange={(e) => onField('forestFileId')(e.target.value)} />
+            <TextInput
+              id="in-file"
+              labelText="Forest File ID"
+              placeholder="e.g. A19201"
+              value={criteria.forestFileId ?? ''}
+              onChange={(e) => onField('forestFileId')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="in-client" labelText="Client Number" placeholder="e.g. 00001012"
-              value={criteria.clientNumber ?? ''} onChange={(e) => onField('clientNumber')(e.target.value)} />
+            <TextInput
+              id="in-client"
+              labelText="Client Number"
+              placeholder="e.g. 00001012"
+              value={criteria.clientNumber ?? ''}
+              onChange={(e) => onField('clientNumber')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <Select id="in-type" labelText="Application Type" value={criteria.applTypeCode ?? ''}
-              onChange={(e) => onField('applTypeCode')(e.target.value)}>
+            <Select
+              id="in-type"
+              labelText="Application Type"
+              value={criteria.applTypeCode ?? ''}
+              onChange={(e) => onField('applTypeCode')(e.target.value)}
+            >
               <SelectItem value="" text="Any" />
               <SelectItem value="CP" text="Cutting Permit" />
               <SelectItem value="RP" text="Road Permit" />
@@ -84,8 +99,12 @@ const Inbox: FC = () => {
             </Select>
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <Select id="in-exa" labelText="Exhibit A" value={criteria.exACleared ?? ''}
-              onChange={(e) => onField('exACleared')(e.target.value)}>
+            <Select
+              id="in-exa"
+              labelText="Exhibit A"
+              value={criteria.exACleared ?? ''}
+              onChange={(e) => onField('exACleared')(e.target.value)}
+            >
               <SelectItem value="" text="Any" />
               <SelectItem value="Y" text="Cleared" />
               <SelectItem value="N" text="Not cleared" />
@@ -93,16 +112,28 @@ const Inbox: FC = () => {
           </Column>
         </Grid>
         <div className="inbox__actions">
-          <Button type="submit" renderIcon={SearchIcon}>Filter</Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>Reset</Button>
+          <Button type="submit" renderIcon={SearchIcon}>
+            Filter
+          </Button>
+          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
+            Reset
+          </Button>
         </div>
       </form>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={() => void runSearch(criteria)} loadingText="Loading inbox…">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        onRetry={() => void runSearch(criteria)}
+        loadingText="Loading inbox…"
+      >
         {rows !== null && (
           <SearchResultsTable
             title="Application worklist"
-            rows={rows.map((r) => ({ ...r, id: String(r.tenureAppId ?? r.submissionId ?? r.forestFileId) }))}
+            rows={rows.map((r) => ({
+              ...r,
+              id: String(r.tenureAppId ?? r.submissionId ?? r.forestFileId),
+            }))}
             headers={HEADERS}
             emptyTitle="No applications in the queue"
             emptyBody="No ESF submissions match the current filters."
@@ -113,12 +144,18 @@ const Inbox: FC = () => {
               }
               if (key === 'forestFileIdDisplay') {
                 const label = row.forestFileIdDisplay ?? row.forestFileId;
-                return row.forestFileId ? <Link to={`/tenures/${row.forestFileId}`}>{label}</Link> : (label ?? '—');
+                return row.forestFileId ? (
+                  <Link to={`/tenures/${row.forestFileId}`}>{label}</Link>
+                ) : (
+                  (label ?? '—')
+                );
               }
               if (key === 'adjudicationInd') {
-                return row.adjudicationInd === 'Y'
-                  ? <Tag type="teal">Cleared</Tag>
-                  : <Tag type="blue">Pending</Tag>;
+                return row.adjudicationInd === 'Y' ? (
+                  <Tag type="teal">Cleared</Tag>
+                ) : (
+                  <Tag type="blue">Pending</Tag>
+                );
               }
               if (key === 'currentAssignedTo') return row.currentAssignedTo ?? <em>Unassigned</em>;
               return undefined;

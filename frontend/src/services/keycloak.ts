@@ -37,7 +37,7 @@ import { env } from '@/env';
  * Note also that this is a constant across environments. Cognito needed a
  * per-environment provider name (`DEV-IDIR`, `TEST-IDIR`, `IDIR`) derived from
  * `VITE_ZONE`, which is why numeric PR-preview zones had to be special-cased
- * into `TEST`. That whole branch is gone; `VITE_ZONE` is now only a label.
+ * into `TEST`. That whole branch is gone, and `VITE_ZONE` with it.
  */
 export const KC_IDP_HINT = 'azureidir';
 

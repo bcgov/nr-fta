@@ -38,9 +38,7 @@ interface StatusTagProps {
  * colour palette are identical everywhere.
  */
 export const StatusTag: FC<StatusTagProps> = ({ status }) => (
-  <span className={`bc-status-tag bc-status-tag--${statusVariant(status)}`}>
-    {status}
-  </span>
+  <span className={`bc-status-tag bc-status-tag--${statusVariant(status)}`}>{status}</span>
 );
 
 export default StatusTag;

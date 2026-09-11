@@ -1,3 +1,4 @@
+import { Search as SearchIcon, Reset, Download } from '@carbon/icons-react';
 import {
   Button,
   Column,
@@ -12,12 +13,16 @@ import {
   Tag,
   TextInput,
 } from '@carbon/react';
-import { Search as SearchIcon, Reset, Download } from '@carbon/icons-react';
 import { useState, type FC, type FormEvent } from 'react';
-import { useNotification } from '@/context/notification/useNotification';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
+import { useNotification } from '@/context/notification/useNotification';
 import PageLayout from '@/pages/PageLayout';
-import { fetchAuditReport, type AuditReport, type AuditReportParams } from '@/services/audit_report';
+import {
+  fetchAuditReport,
+  type AuditReport,
+  type AuditReportParams,
+} from '@/services/audit_report';
 
 /**
  * FTA402 — Private Mark Certificate report. Filterable timber-mark certificate
@@ -69,26 +74,50 @@ const AuditReport: FC = () => {
       <form style={{ maxWidth: '64rem', marginBottom: '2rem' }} onSubmit={onSearch}>
         <Grid narrow>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="au-mark" labelText="Timber Mark" placeholder="e.g. AB1234"
-              value={criteria.timberMark ?? ''} onChange={(e) => onField('timberMark')(e.target.value)} />
+            <TextInput
+              id="au-mark"
+              labelText="Timber Mark"
+              placeholder="e.g. AB1234"
+              value={criteria.timberMark ?? ''}
+              onChange={(e) => onField('timberMark')(e.target.value)}
+            />
           </Column>
           <Column sm={4} md={4} lg={4}>
-            <TextInput id="au-licensee" labelText="Licensee" placeholder="e.g. West Fraser"
-              value={criteria.mainLicensee ?? ''} onChange={(e) => onField('mainLicensee')(e.target.value)} />
+            <TextInput
+              id="au-licensee"
+              labelText="Licensee"
+              placeholder="e.g. West Fraser"
+              value={criteria.mainLicensee ?? ''}
+              onChange={(e) => onField('mainLicensee')(e.target.value)}
+            />
           </Column>
         </Grid>
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
-          <Button type="submit" renderIcon={SearchIcon}>Run report</Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>Reset</Button>
+          <Button type="submit" renderIcon={SearchIcon}>
+            Run report
+          </Button>
+          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
+            Reset
+          </Button>
           {rows !== null && rows.length > 0 && (
-            <Button type="button" kind="tertiary" renderIcon={Download} onClick={onExport}>Export</Button>
+            <Button type="button" kind="tertiary" renderIcon={Download} onClick={onExport}>
+              Export
+            </Button>
           )}
         </div>
       </form>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={() => void runReport(criteria)} loadingText="Running report…">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        onRetry={() => void runReport(criteria)}
+        loadingText="Running report…"
+      >
         {rows !== null && (
-          <TableContainer title="Private mark certificates" description={`${rows.length} entr${rows.length === 1 ? 'y' : 'ies'}`}>
+          <TableContainer
+            title="Private mark certificates"
+            description={`${rows.length} entr${rows.length === 1 ? 'y' : 'ies'}`}
+          >
             <Table>
               <TableHead>
                 <TableRow>
@@ -104,7 +133,9 @@ const AuditReport: FC = () => {
               <TableBody>
                 {rows.map((a, i) => (
                   <TableRow key={i}>
-                    <TableCell><Tag type="blue">{a.timberMark}</Tag></TableCell>
+                    <TableCell>
+                      <Tag type="blue">{a.timberMark}</Tag>
+                    </TableCell>
                     <TableCell>{a.mainLicensee ?? '—'}</TableCell>
                     <TableCell>{a.district ?? '—'}</TableCell>
                     <TableCell>{a.fileTypeDesc ?? '—'}</TableCell>

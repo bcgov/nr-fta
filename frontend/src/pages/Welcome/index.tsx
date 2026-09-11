@@ -1,15 +1,27 @@
-import { ClickableTile } from '@carbon/react';
 import { Search, Document, Tag, Task } from '@carbon/icons-react';
-import type { FC } from 'react';
+import { ClickableTile } from '@carbon/react';
 import { useNavigate } from 'react-router-dom';
+
 import { useAuth } from '@/context/auth/useAuth';
 import PageLayout from '@/pages/PageLayout';
+
+import type { FC } from 'react';
 import './Welcome.scss';
 
 const QUICK_LINKS = [
-  { to: '/search/tenure', label: 'Tenure Search', desc: 'Find forest tenures and files', Icon: Search },
+  {
+    to: '/search/tenure',
+    label: 'Tenure Search',
+    desc: 'Find forest tenures and files',
+    Icon: Search,
+  },
   { to: '/tenures/add', label: 'Add Tenure', desc: 'Create a new forest tenure', Icon: Document },
-  { to: '/marks', label: 'Private Marks', desc: 'Timber mark applications & amendments', Icon: Tag },
+  {
+    to: '/marks',
+    label: 'Private Marks',
+    desc: 'Timber mark applications & amendments',
+    Icon: Tag,
+  },
   { to: '/inbox', label: 'Inbox', desc: 'Adjudicate tenure applications', Icon: Task },
 ];
 
@@ -27,8 +39,8 @@ const Welcome: FC = () => {
     <PageLayout title="Forest Tenure Administration">
       <p className="welcome__greeting">Welcome, {firstName}.</p>
       <p className="welcome__intro">
-        Administer harvest authorizations &amp; tenures, range agreements, and private timber
-        marks. Choose a task below or use the menu to search.
+        Administer harvest authorizations &amp; tenures, range agreements, and private timber marks.
+        Choose a task below or use the menu to search.
       </p>
       <div className="welcome__tiles">
         {QUICK_LINKS.map(({ to, label, desc, Icon }) => (

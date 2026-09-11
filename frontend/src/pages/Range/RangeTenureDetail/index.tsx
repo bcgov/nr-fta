@@ -1,3 +1,4 @@
+import { ArrowLeft, Edit } from '@carbon/icons-react';
 import {
   Button,
   Tab,
@@ -14,17 +15,18 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { ArrowLeft, Edit } from '@carbon/icons-react';
-import type { FC } from 'react';
 import { Link, useParams } from 'react-router-dom';
+
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
-import { canEdit } from '@/routes/access';
 import PageLayout from '@/pages/PageLayout';
+import { canEdit } from '@/routes/access';
 import { getRangeTenureDetail } from '@/services/range_tenure_detail';
+
+import type { FC } from 'react';
 
 const nf = new Intl.NumberFormat('en-CA');
 
@@ -47,7 +49,8 @@ function statusTagType(status: string | null): 'green' | 'blue' | 'gray' | 'red'
   }
 }
 
-const dash = (v: string | number | null | undefined) => (v === null || v === undefined || v === '' ? '—' : v);
+const dash = (v: string | number | null | undefined) =>
+  v === null || v === undefined || v === '' ? '—' : v;
 const num = (v: number | null | undefined) => (v === null || v === undefined ? '—' : nf.format(v));
 
 /**
@@ -71,7 +74,12 @@ const RangeTenureDetail: FC = () => {
         <ArrowLeft size={16} /> Back to Range Tenure Search
       </Link>
 
-      <AsyncBoundary loading={loading} error={error} onRetry={reload} loadingText="Loading range tenure…">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        onRetry={reload}
+        loadingText="Loading range tenure…"
+      >
         {data && (
           <>
             <Tombstone
@@ -81,7 +89,9 @@ const RangeTenureDetail: FC = () => {
                 { label: 'Type', value: dash(data.fileTypeCode) },
                 {
                   label: 'Status',
-                  value: <Tag type={statusTagType(data.fileStatusSt)}>{dash(data.fileStatusSt)}</Tag>,
+                  value: (
+                    <Tag type={statusTagType(data.fileStatusSt)}>{dash(data.fileStatusSt)}</Tag>
+                  ),
                 },
                 { label: 'Holder', value: dash(data.licensee) },
                 { label: 'Org Unit', value: dash(data.adminOrgUnitNo) },
@@ -91,7 +101,9 @@ const RangeTenureDetail: FC = () => {
               ]}
               action={
                 canEdit(user) ? (
-                  <Button size="sm" kind="tertiary" renderIcon={Edit}>Edit agreement</Button>
+                  <Button size="sm" kind="tertiary" renderIcon={Edit}>
+                    Edit agreement
+                  </Button>
                 ) : undefined
               }
             />
@@ -108,9 +120,15 @@ const RangeTenureDetail: FC = () => {
                   <DefinitionGrid
                     items={[
                       { label: 'Management Unit', value: dash(data.mgmtUnitId ?? data.fileName) },
-                      { label: 'Authorized AUMs', value: num(data.rangeUsage[0]?.authorizedUse ?? null) },
+                      {
+                        label: 'Authorized AUMs',
+                        value: num(data.rangeUsage[0]?.authorizedUse ?? null),
+                      },
                       { label: 'Agreement Type', value: dash(data.fileTypeCode) },
-                      { label: 'Term', value: `${dash(data.issueDate)} — ${dash(data.expiryDate)}` },
+                      {
+                        label: 'Term',
+                        value: `${dash(data.issueDate)} — ${dash(data.expiryDate)}`,
+                      },
                     ]}
                   />
                 </TabPanel>
@@ -148,7 +166,10 @@ const RangeTenureDetail: FC = () => {
                 </TabPanel>
 
                 <TabPanel>
-                  <TableContainer title="Associated Land Base" description={`${data.landBase.length} parcel(s)`}>
+                  <TableContainer
+                    title="Associated Land Base"
+                    description={`${data.landBase.length} parcel(s)`}
+                  >
                     <Table>
                       <TableHead>
                         <TableRow>
@@ -164,7 +185,9 @@ const RangeTenureDetail: FC = () => {
                             <TableCell>{dash(p.rangeLandBaseId ?? p.rangeLandBasePid)}</TableCell>
                             <TableCell>{dash(p.description)}</TableCell>
                             <TableCell>{num(p.forageProduction)}</TableCell>
-                            <TableCell>{dash(p.rangeLandOwnershipTypeDesc ?? p.rangeLandOwnershipTypeCode)}</TableCell>
+                            <TableCell>
+                              {dash(p.rangeLandOwnershipTypeDesc ?? p.rangeLandOwnershipTypeCode)}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

@@ -3,12 +3,7 @@
 // application detail — pending the real backend.
 
 export type ApplicationStatus =
-  | 'Submitted'
-  | 'In Review'
-  | 'On Hold'
-  | 'Cleared'
-  | 'Rejected'
-  | 'Issued';
+  'Submitted' | 'In Review' | 'On Hold' | 'Cleared' | 'Rejected' | 'Issued';
 
 export interface TenureApplication {
   esfId: string;
@@ -118,7 +113,12 @@ const DETAIL_EXTRAS: Pick<
   events: [
     { date: '2026-06-28', actor: 'ESF', action: 'Application received' },
     { date: '2026-06-29', actor: 'M. Clarke', action: 'Assigned to reviewer' },
-    { date: '2026-07-05', actor: 'M. Clarke', action: 'Requested clarification', note: 'Boundary overlaps WHA.' },
+    {
+      date: '2026-07-05',
+      actor: 'M. Clarke',
+      action: 'Requested clarification',
+      note: 'Boundary overlaps WHA.',
+    },
     { date: '2026-07-12', actor: 'Northwood Timber Ltd.', action: 'Clarification provided' },
   ],
 };
@@ -152,10 +152,10 @@ export const APPLICATION_STATUS_TAG: Record<
   ApplicationStatus,
   'blue' | 'purple' | 'red' | 'green' | 'gray' | 'teal'
 > = {
-  Submitted: 'blue',
+  'Submitted': 'blue',
   'In Review': 'purple',
   'On Hold': 'red',
-  Cleared: 'teal',
-  Rejected: 'gray',
-  Issued: 'green',
+  'Cleared': 'teal',
+  'Rejected': 'gray',
+  'Issued': 'green',
 };

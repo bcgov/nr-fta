@@ -1,9 +1,10 @@
 import { Logout } from '@carbon/icons-react';
 import { Button, Column, Grid } from '@carbon/react';
-import type { FC } from 'react';
 
 import { useAuth } from '@/context/auth/useAuth';
 import { useTheme } from '@/context/theme/useTheme';
+
+import type { FC } from 'react';
 
 import './LandingPage.scss';
 

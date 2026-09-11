@@ -1,3 +1,4 @@
+import { Archive } from '@carbon/icons-react';
 import {
   Button,
   Checkbox,
@@ -10,11 +11,11 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { Archive } from '@carbon/icons-react';
 import { useState, type FC } from 'react';
+
 import { useNotification } from '@/context/notification/useNotification';
-import PageLayout from '@/pages/PageLayout';
 import { MOCK_TENURES } from '@/mocks/tenures';
+import PageLayout from '@/pages/PageLayout';
 import { archiveTenures } from '@/services/archive_tenures';
 
 /**
@@ -29,7 +30,11 @@ const ArchiveTenures: FC = () => {
   const toggle = (id: string) =>
     setSelected((s) => {
       const next = new Set(s);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
 
@@ -62,7 +67,8 @@ const ArchiveTenures: FC = () => {
   return (
     <PageLayout title="Archive Tenures">
       <p style={{ maxWidth: '44rem', marginBottom: '1.5rem' }}>
-        Select expired tenures to archive. Only tenures in an <strong>Expired</strong> status are eligible.
+        Select expired tenures to archive. Only tenures in an <strong>Expired</strong> status are
+        eligible.
       </p>
       <TableContainer title="Tenures">
         <Table>

@@ -1,6 +1,8 @@
 import { AsleepFilled, LightFilled } from '@carbon/icons-react';
-import type { FC, KeyboardEvent } from 'react';
+
 import { useTheme } from '@/context/theme/useTheme';
+
+import type { FC, KeyboardEvent } from 'react';
 import './ThemeToggle.css';
 
 const ThemeToggle: FC = () => {

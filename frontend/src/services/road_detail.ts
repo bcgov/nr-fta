@@ -30,5 +30,7 @@ export interface RoadDetailParams {
 
 /** GET /api/fta/roads/{roadId} — road-section detail (FTA_131_ROADSECTION). */
 export function getRoadDetail(roadId: string, params: RoadDetailParams = {}): Promise<RoadDetail> {
-  return apiGet<RoadDetail>(`/api/fta/roads/${encodeURIComponent(roadId)}${toQuery({ ...params })}`);
+  return apiGet<RoadDetail>(
+    `/api/fta/roads/${encodeURIComponent(roadId)}${toQuery({ ...params })}`,
+  );
 }
