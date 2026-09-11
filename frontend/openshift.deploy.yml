@@ -17,7 +17,7 @@ parameters:
     required: true
   # SLOT decouples the public-facing Route hostname from the OpenShift object
   # names so per-PR previews can share a fixed pool of registered redirect URIs.
-  # We pre-register 50 (nr-fta-0…nr-fta-49.apps.silver.devops.gov.bc.ca) and
+  # We pre-register 50 (nr-fta-0…nr-fta-49.apps.gold.devops.gov.bc.ca) and
   # bucket PRs into them via PR % 50.
   #
   # This scheme was forced by Cognito, whose app clients reject wildcards in
@@ -40,7 +40,7 @@ parameters:
     value: ghcr.io/bcgov/nr-fta/frontend
   - name: DOMAIN
     description: Cluster apps domain (do not include leading dot)
-    value: apps.silver.devops.gov.bc.ca
+    value: apps.gold.devops.gov.bc.ca
   - name: FRONTEND_LOG_LEVEL
     value: INFO
   # Runtime VITE_* config (rendered into /srv/config.js by the entrypoint
