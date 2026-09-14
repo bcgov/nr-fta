@@ -1,4 +1,4 @@
-import { Add } from '@carbon/icons-react';
+import { Add, Location } from '@carbon/icons-react';
 import {
   Button,
   Table,
@@ -12,6 +12,7 @@ import {
 import { useEffect, useState, type FC } from 'react';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
+import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
 import PageLayout from '@/pages/PageLayout';
 import {
@@ -81,12 +82,10 @@ const ManageZone: FC = () => {
   };
 
   return (
-    <PageLayout title="Manage Range Zone">
-      <div style={{ marginBottom: '1.5rem' }}>
-        <Button kind="tertiary" renderIcon={Add} onClick={() => void onAdd()} disabled={saving}>
-          {saving ? 'Saving…' : 'Add zone'}
-        </Button>
-      </div>
+    <PageLayout
+      title="Manage Range Zone"
+      subtitle="View and add the range zones used to group tenures by administrative area."
+    >
       <AsyncBoundary
         loading={loading}
         error={error}
@@ -94,32 +93,45 @@ const ManageZone: FC = () => {
         loadingText="Loading range zones…"
       >
         {rows !== null && (
-          <TableContainer title="Range zones" description={`${rows.length} zone(s)`}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeader>Zone ID</TableHeader>
-                  <TableHeader>Name</TableHeader>
-                  <TableHeader>District</TableHeader>
-                  <TableHeader>Contact</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((z) => (
-                  <TableRow key={z.rangeZoneCode}>
-                    <TableCell>{z.rangeZoneCode}</TableCell>
-                    <TableCell>{z.zoneDescription ?? '—'}</TableCell>
-                    <TableCell>
-                      {z.orgUnitName
-                        ? `${z.orgUnitCode ?? ''} — ${z.orgUnitName}`.replace(/^ — /, '')
-                        : (z.orgUnitCode ?? z.adminForestDistrictNo ?? '—')}
-                    </TableCell>
-                    <TableCell>{z.contact ?? '—'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <SectionTile
+            title="Range zones"
+            icon={Location}
+            description={`${rows.length} zone(s)`}
+            actions={
+              <Button size="md" renderIcon={Add} onClick={() => void onAdd()} disabled={saving}>
+                {saving ? 'Saving…' : 'Add zone'}
+              </Button>
+            }
+          >
+            <div className="bordered-table">
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeader>Zone ID</TableHeader>
+                      <TableHeader>Name</TableHeader>
+                      <TableHeader>District</TableHeader>
+                      <TableHeader>Contact</TableHeader>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {rows.map((z) => (
+                      <TableRow key={z.rangeZoneCode}>
+                        <TableCell>{z.rangeZoneCode}</TableCell>
+                        <TableCell>{z.zoneDescription ?? '—'}</TableCell>
+                        <TableCell>
+                          {z.orgUnitName
+                            ? `${z.orgUnitCode ?? ''} — ${z.orgUnitName}`.replace(/^ — /, '')
+                            : (z.orgUnitCode ?? z.adminForestDistrictNo ?? '—')}
+                        </TableCell>
+                        <TableCell>{z.contact ?? '—'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </div>
+          </SectionTile>
         )}
       </AsyncBoundary>
     </PageLayout>

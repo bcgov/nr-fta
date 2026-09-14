@@ -1,4 +1,4 @@
-import { DocumentTasks } from '@carbon/icons-react';
+import { Money, DocumentTasks } from '@carbon/icons-react';
 import {
   Button,
   Table,
@@ -12,6 +12,7 @@ import {
 } from '@carbon/react';
 import { useState, type FC } from 'react';
 
+import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
 import { MOCK_BILLING, billingTotal, type BillingLine } from '@/mocks/billing';
 import PageLayout from '@/pages/PageLayout';
@@ -77,53 +78,58 @@ const BillingReportScreen: FC<BillingReportScreenProps> = ({
   };
 
   return (
-    <PageLayout title={title}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-        <Tag type="outline">{legacyId}</Tag>
-      </div>
-      {description ? (
-        <p style={{ maxWidth: '44rem', marginBottom: '1.5rem' }}>{description}</p>
-      ) : null}
-
-      <TableContainer
-        title="Billing lines"
-        description={`${lines.length} line(s) — ${cur.format(billingTotal(lines))} total`}
-      >
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeader>File / Agreement</TableHeader>
-              <TableHeader>Client</TableHeader>
-              <TableHeader>Org Unit</TableHeader>
-              <TableHeader>Rent Due</TableHeader>
-              <TableHeader>Fee Due</TableHeader>
-              <TableHeader>Total</TableHeader>
-              <TableHeader>Status</TableHeader>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {lines.map((l) => (
-              <TableRow key={l.fileId}>
-                <TableCell>{l.fileId}</TableCell>
-                <TableCell>{l.client}</TableCell>
-                <TableCell>{l.orgUnit}</TableCell>
-                <TableCell>{cur.format(l.rentDue)}</TableCell>
-                <TableCell>{cur.format(l.feeDue)}</TableCell>
-                <TableCell>{cur.format(l.total)}</TableCell>
-                <TableCell>
-                  <Tag type={STATUS_TAG[l.status]}>{l.status}</Tag>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <div style={{ marginTop: '1.5rem' }}>
-        <Button renderIcon={DocumentTasks} onClick={onAction} disabled={saving}>
+    <PageLayout
+      title={title}
+      subtitle={description}
+      actions={
+        <Button
+          size="md"
+          renderIcon={DocumentTasks}
+          onClick={() => void onAction()}
+          disabled={saving}
+        >
           {saving ? `${actionLabel}…` : actionLabel}
         </Button>
-      </div>
+      }
+    >
+      <SectionTile
+        title="Billing lines"
+        icon={Money}
+        description={`${legacyId} — ${lines.length} line(s), ${cur.format(billingTotal(lines))} total`}
+      >
+        <div className="bordered-table">
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeader>File / Agreement</TableHeader>
+                  <TableHeader>Client</TableHeader>
+                  <TableHeader>Org Unit</TableHeader>
+                  <TableHeader>Rent Due</TableHeader>
+                  <TableHeader>Fee Due</TableHeader>
+                  <TableHeader>Total</TableHeader>
+                  <TableHeader>Status</TableHeader>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {lines.map((l) => (
+                  <TableRow key={l.fileId}>
+                    <TableCell>{l.fileId}</TableCell>
+                    <TableCell>{l.client}</TableCell>
+                    <TableCell>{l.orgUnit}</TableCell>
+                    <TableCell>{cur.format(l.rentDue)}</TableCell>
+                    <TableCell>{cur.format(l.feeDue)}</TableCell>
+                    <TableCell>{cur.format(l.total)}</TableCell>
+                    <TableCell>
+                      <Tag type={STATUS_TAG[l.status]}>{l.status}</Tag>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </div>
+      </SectionTile>
     </PageLayout>
   );
 };

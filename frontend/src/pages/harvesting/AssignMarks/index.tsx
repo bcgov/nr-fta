@@ -1,4 +1,4 @@
-import { ArrowLeft, Save } from '@carbon/icons-react';
+import { ArrowLeft, List, Save } from '@carbon/icons-react';
 import {
   Button,
   Table,
@@ -13,6 +13,7 @@ import {
 import { useState, type FC } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import SectionTile from '@/components/SectionTile';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
@@ -39,7 +40,13 @@ const AssignMarks: FC = () => {
     return (
       <PageLayout title="Cutting permit not found">
         <p style={{ marginBottom: '1.5rem' }}>No cutting permit matches “{cpId}”.</p>
-        <Button as={Link} to="/search/harvesting-authority" renderIcon={ArrowLeft} kind="tertiary">
+        <Button
+          as={Link}
+          to="/search/harvesting-authority"
+          renderIcon={ArrowLeft}
+          kind="tertiary"
+          size="md"
+        >
           Back to Harvesting Authority Search
         </Button>
       </PageLayout>
@@ -85,8 +92,11 @@ const AssignMarks: FC = () => {
   };
 
   return (
-    <PageLayout title={`Assign Marks to Blocks — ${cp.cpId}`}>
-      <Link to={`/harvesting-authority/${cp.cpId}`} className="fta-back">
+    <PageLayout
+      title={`Assign Marks to Blocks — ${cp.cpId}`}
+      subtitle="Assign a hauling timber mark to each cut block on this permit"
+    >
+      <Link to={`/harvesting-authority/${cp.cpId}`} className="back-link">
         <ArrowLeft size={16} /> Back to Cutting Permit {cp.cpId}
       </Link>
 
@@ -100,42 +110,46 @@ const AssignMarks: FC = () => {
         ]}
       />
 
-      <TableContainer title="Assign hauling timber mark per block">
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeader>Block</TableHeader>
-              <TableHeader>Status</TableHeader>
-              <TableHeader>Hauling Timber Mark</TableHeader>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {blocks.map((b) => (
-              <TableRow key={b.blockId}>
-                <TableCell>{b.blockId}</TableCell>
-                <TableCell>{b.status}</TableCell>
-                <TableCell>
-                  <TextInput
-                    id={`mark-${b.blockId}`}
-                    labelText=""
-                    placeholder="e.g. 52/1234"
-                    size="sm"
-                    disabled={readOnly}
-                    value={marks[b.blockId] ?? ''}
-                    onChange={(e) => setMarks((m) => ({ ...m, [b.blockId]: e.target.value }))}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <SectionTile title="Blocks" icon={List} description="Assign a hauling timber mark per block">
+        <div className="bordered-table">
+          <TableContainer title="Assign hauling timber mark per block">
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeader>Block</TableHeader>
+                  <TableHeader>Status</TableHeader>
+                  <TableHeader>Hauling Timber Mark</TableHeader>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {blocks.map((b) => (
+                  <TableRow key={b.blockId}>
+                    <TableCell>{b.blockId}</TableCell>
+                    <TableCell>{b.status}</TableCell>
+                    <TableCell>
+                      <TextInput
+                        id={`mark-${b.blockId}`}
+                        labelText=""
+                        placeholder="e.g. 52/1234"
+                        size="sm"
+                        disabled={readOnly}
+                        value={marks[b.blockId] ?? ''}
+                        onChange={(e) => setMarks((m) => ({ ...m, [b.blockId]: e.target.value }))}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </div>
+      </SectionTile>
 
-      <div style={{ marginTop: '1.5rem' }}>
-        <Button renderIcon={Save} disabled={readOnly || saving} onClick={onSubmit}>
+      <SectionTile title="Save" icon={Save}>
+        <Button size="md" renderIcon={Save} disabled={readOnly || saving} onClick={onSubmit}>
           {saving ? 'Saving…' : 'Save assignments'}
         </Button>
-      </div>
+      </SectionTile>
     </PageLayout>
   );
 };

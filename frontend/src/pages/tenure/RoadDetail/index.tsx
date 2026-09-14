@@ -1,4 +1,4 @@
-import { ArrowLeft, Edit } from '@carbon/icons-react';
+import { ArrowLeft, Edit, Road as RoadIcon } from '@carbon/icons-react';
 import {
   Button,
   Tab,
@@ -19,6 +19,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
+import SectionTile from '@/components/SectionTile';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
@@ -52,42 +53,47 @@ const RoadDetail: FC = () => {
   } = useApiResource(() => getRoadDetail(roadId), [roadId]);
 
   return (
-    <PageLayout title={`Road Section ${roadId}`}>
+    <PageLayout
+      title={`Road Section ${roadId}`}
+      subtitle="Road section details, segments, and tenure history."
+      actions={
+        road && canEdit(user) ? (
+          <Button size="md" kind="tertiary" renderIcon={Edit}>
+            Edit road
+          </Button>
+        ) : undefined
+      }
+    >
       <AsyncBoundary loading={loading} error={error} onRetry={reload} loadingText="Loading road…">
         {road && (
           <>
-            <Link to={`/tenures/${road.forestFileId}`} className="fta-back">
+            <Link to={`/tenures/${road.forestFileId}`} className="back-link">
               <ArrowLeft size={16} /> Back to Tenure {road.forestFileId}
             </Link>
 
-            <Tombstone
-              ariaLabel="Road section summary"
-              items={[
-                { label: 'Road', value: road.roadSectionId },
-                { label: 'Name', value: road.roadSectName ?? '—' },
-                {
-                  label: 'Status',
-                  value: (
-                    <Tag type={road.retirementDate ? 'gray' : 'green'}>
-                      {road.roadSectionStatusCode ?? '—'}
-                    </Tag>
-                  ),
-                },
-                { label: 'Length', value: `${road.roadSectLength ?? '—'} km` },
-                { label: 'Amendment', value: road.sectionCurrentAmendId ?? '—' },
-                {
-                  label: 'Forest File',
-                  value: <Link to={`/tenures/${road.forestFileId}`}>{road.forestFileId}</Link>,
-                },
-              ]}
-              action={
-                canEdit(user) ? (
-                  <Button size="sm" kind="tertiary" renderIcon={Edit}>
-                    Edit road
-                  </Button>
-                ) : undefined
-              }
-            />
+            <SectionTile title="Road summary" icon={RoadIcon}>
+              <Tombstone
+                ariaLabel="Road section summary"
+                items={[
+                  { label: 'Road', value: road.roadSectionId },
+                  { label: 'Name', value: road.roadSectName ?? '—' },
+                  {
+                    label: 'Status',
+                    value: (
+                      <Tag type={road.retirementDate ? 'gray' : 'green'}>
+                        {road.roadSectionStatusCode ?? '—'}
+                      </Tag>
+                    ),
+                  },
+                  { label: 'Length', value: `${road.roadSectLength ?? '—'} km` },
+                  { label: 'Amendment', value: road.sectionCurrentAmendId ?? '—' },
+                  {
+                    label: 'Forest File',
+                    value: <Link to={`/tenures/${road.forestFileId}`}>{road.forestFileId}</Link>,
+                  },
+                ]}
+              />
+            </SectionTile>
 
             <Tabs>
               <TabList aria-label="Road sections" contained>
@@ -108,33 +114,35 @@ const RoadDetail: FC = () => {
                 </TabPanel>
 
                 <TabPanel>
-                  <TableContainer
-                    title="Road Segments"
-                    description={`${MOCK_SEGMENTS.length} segment(s)`}
-                  >
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>Segment</TableHeader>
-                          <TableHeader>From (km)</TableHeader>
-                          <TableHeader>To (km)</TableHeader>
-                          <TableHeader>Surface</TableHeader>
-                          <TableHeader>Status</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {MOCK_SEGMENTS.map((s) => (
-                          <TableRow key={s.segId}>
-                            <TableCell>{s.segId}</TableCell>
-                            <TableCell>{s.fromKm.toFixed(1)}</TableCell>
-                            <TableCell>{s.toKm.toFixed(1)}</TableCell>
-                            <TableCell>{s.surface}</TableCell>
-                            <TableCell>{s.status}</TableCell>
+                  <div className="bordered-table">
+                    <TableContainer
+                      title="Road Segments"
+                      description={`${MOCK_SEGMENTS.length} segment(s)`}
+                    >
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>Segment</TableHeader>
+                            <TableHeader>From (km)</TableHeader>
+                            <TableHeader>To (km)</TableHeader>
+                            <TableHeader>Surface</TableHeader>
+                            <TableHeader>Status</TableHeader>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                          {MOCK_SEGMENTS.map((s) => (
+                            <TableRow key={s.segId}>
+                              <TableCell>{s.segId}</TableCell>
+                              <TableCell>{s.fromKm.toFixed(1)}</TableCell>
+                              <TableCell>{s.toKm.toFixed(1)}</TableCell>
+                              <TableCell>{s.surface}</TableCell>
+                              <TableCell>{s.status}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </div>
                 </TabPanel>
 
                 <TabPanel>

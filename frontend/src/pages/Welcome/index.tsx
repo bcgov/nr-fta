@@ -1,7 +1,8 @@
-import { Search, Document, Tag, Task } from '@carbon/icons-react';
+import { Apps, Search, Document, Tag, Task } from '@carbon/icons-react';
 import { ClickableTile } from '@carbon/react';
 import { useNavigate } from 'react-router-dom';
 
+import SectionTile from '@/components/SectionTile';
 import { useAuth } from '@/context/auth/useAuth';
 import PageLayout from '@/pages/PageLayout';
 
@@ -36,21 +37,22 @@ const Welcome: FC = () => {
   const firstName = user?.firstName || user?.displayName || 'there';
 
   return (
-    <PageLayout title="Forest Tenure Administration">
-      <p className="welcome__greeting">Welcome, {firstName}.</p>
+    <PageLayout title="Forest Tenure Administration" subtitle={`Welcome, ${firstName}.`}>
       <p className="welcome__intro">
         Administer harvest authorizations &amp; tenures, range agreements, and private timber marks.
         Choose a task below or use the menu to search.
       </p>
-      <div className="welcome__tiles">
-        {QUICK_LINKS.map(({ to, label, desc, Icon }) => (
-          <ClickableTile key={to} onClick={() => navigate(to)} className="welcome__tile">
-            <Icon size={24} />
-            <span className="welcome__tile-label">{label}</span>
-            <span className="welcome__tile-desc">{desc}</span>
-          </ClickableTile>
-        ))}
-      </div>
+      <SectionTile title="Quick links" icon={Apps}>
+        <div className="welcome__tiles">
+          {QUICK_LINKS.map(({ to, label, desc, Icon }) => (
+            <ClickableTile key={to} onClick={() => navigate(to)} className="welcome__tile">
+              <Icon size={24} />
+              <span className="welcome__tile-label">{label}</span>
+              <span className="welcome__tile-desc">{desc}</span>
+            </ClickableTile>
+          ))}
+        </div>
+      </SectionTile>
     </PageLayout>
   );
 };

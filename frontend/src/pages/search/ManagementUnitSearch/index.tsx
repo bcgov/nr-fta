@@ -4,12 +4,15 @@ import { useState, type FC, type FormEvent } from 'react';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
+import SectionTile from '@/components/SectionTile';
 import PageLayout from '@/pages/PageLayout';
 import {
   searchManagementUnits,
   type MgmtUnitSearch,
   type MgmtUnitSearchParams,
 } from '@/services/mgmt_unit_search';
+
+import './ManagementUnitSearch.scss';
 
 const HEADERS: ColumnDef[] = [
   { key: 'mgmtUnitTypeCode', header: 'MU Type' },
@@ -58,37 +61,42 @@ const ManagementUnitSearch: FC = () => {
   };
 
   return (
-    <PageLayout title="Management Unit Search">
-      <form style={{ maxWidth: '64rem', marginBottom: '2rem' }} onSubmit={onSearch}>
-        <Grid narrow>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="mu-type"
-              labelText="MU Type Code"
-              placeholder="e.g. TS"
-              value={criteria.mgmtUnitTypeCode ?? ''}
-              onChange={(e) => onField('mgmtUnitTypeCode')(e.target.value)}
-            />
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="mu-description"
-              labelText="Description"
-              placeholder="e.g. Timber Supply Area"
-              value={criteria.description ?? ''}
-              onChange={(e) => onField('description')(e.target.value)}
-            />
-          </Column>
-        </Grid>
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
-          <Button type="submit" renderIcon={SearchIcon}>
-            Search
-          </Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
-            Reset
-          </Button>
-        </div>
-      </form>
+    <PageLayout
+      title="Management Unit Search"
+      subtitle="Find a management-unit type by code or description"
+    >
+      <SectionTile title="Search criteria" icon={SearchIcon}>
+        <form className="mu-search__form" onSubmit={onSearch}>
+          <Grid narrow>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="mu-type"
+                labelText="MU Type Code"
+                placeholder="e.g. TS"
+                value={criteria.mgmtUnitTypeCode ?? ''}
+                onChange={(e) => onField('mgmtUnitTypeCode')(e.target.value)}
+              />
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="mu-description"
+                labelText="Description"
+                placeholder="e.g. Timber Supply Area"
+                value={criteria.description ?? ''}
+                onChange={(e) => onField('description')(e.target.value)}
+              />
+            </Column>
+          </Grid>
+          <div className="mu-search__actions">
+            <Button type="submit" size="md" renderIcon={SearchIcon}>
+              Search
+            </Button>
+            <Button type="button" size="md" kind="tertiary" renderIcon={Reset} onClick={onReset}>
+              Reset
+            </Button>
+          </div>
+        </form>
+      </SectionTile>
 
       <AsyncBoundary
         loading={loading}
@@ -97,17 +105,19 @@ const ManagementUnitSearch: FC = () => {
         loadingText="Searching…"
       >
         {rows !== null && (
-          <SearchResultsTable
-            rows={rows.map((r) => ({ ...r, id: r.mgmtUnitTypeCode }))}
-            headers={HEADERS}
-            emptyTitle="No management units found"
-            renderCell={(row, key) => {
-              if (key === 'description') return row.description ?? '—';
-              if (key === 'effectiveDate') return row.effectiveDate ?? '—';
-              if (key === 'expiryDate') return row.expiryDate ?? '—';
-              return undefined;
-            }}
-          />
+          <div className="bordered-table">
+            <SearchResultsTable
+              rows={rows.map((r) => ({ ...r, id: r.mgmtUnitTypeCode }))}
+              headers={HEADERS}
+              emptyTitle="No management units found"
+              renderCell={(row, key) => {
+                if (key === 'description') return row.description ?? '—';
+                if (key === 'effectiveDate') return row.effectiveDate ?? '—';
+                if (key === 'expiryDate') return row.expiryDate ?? '—';
+                return undefined;
+              }}
+            />
+          </div>
         )}
       </AsyncBoundary>
     </PageLayout>

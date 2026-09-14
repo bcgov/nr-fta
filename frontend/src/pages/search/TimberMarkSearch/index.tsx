@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
+import SectionTile from '@/components/SectionTile';
 import PageLayout from '@/pages/PageLayout';
 import {
   searchTimbermarks,
@@ -61,28 +62,30 @@ const TimberMarkSearch: FC = () => {
   };
 
   return (
-    <PageLayout title="Timber Mark Search">
-      <form className="tm-search__form" onSubmit={onSearch}>
-        <Grid narrow>
-          <Column sm={4} md={4} lg={5}>
-            <TextInput
-              id="tm-mark"
-              labelText="Timber Mark"
-              placeholder="e.g. 52/1234"
-              value={criteria.timberMark ?? ''}
-              onChange={(e) => onField('timberMark')(e.target.value)}
-            />
-          </Column>
-        </Grid>
-        <div className="tm-search__actions">
-          <Button type="submit" renderIcon={SearchIcon}>
-            Search
-          </Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
-            Reset
-          </Button>
-        </div>
-      </form>
+    <PageLayout title="Timber Mark Search" subtitle="Find a timber mark by its mark number">
+      <SectionTile title="Search criteria" icon={SearchIcon}>
+        <form className="tm-search__form" onSubmit={onSearch}>
+          <Grid narrow>
+            <Column sm={4} md={4} lg={5}>
+              <TextInput
+                id="tm-mark"
+                labelText="Timber Mark"
+                placeholder="e.g. 52/1234"
+                value={criteria.timberMark ?? ''}
+                onChange={(e) => onField('timberMark')(e.target.value)}
+              />
+            </Column>
+          </Grid>
+          <div className="tm-search__actions">
+            <Button type="submit" size="md" renderIcon={SearchIcon}>
+              Search
+            </Button>
+            <Button type="button" size="md" kind="tertiary" renderIcon={Reset} onClick={onReset}>
+              Reset
+            </Button>
+          </div>
+        </form>
+      </SectionTile>
 
       <AsyncBoundary
         loading={loading}
@@ -91,38 +94,42 @@ const TimberMarkSearch: FC = () => {
         loadingText="Searching…"
       >
         {rows !== null && (
-          <SearchResultsTable
-            rows={rows.map((r, i) => ({
-              ...r,
-              id: r.cuttingPermitId ?? r.timberMark ?? String(i),
-            }))}
-            headers={HEADERS}
-            emptyTitle="No timber marks found"
-            renderCell={(row, key) => {
-              if (key === 'timberMark')
-                return (
-                  <Link to={`/harvesting-authority/${row.cuttingPermitId}`}>{row.timberMark}</Link>
-                );
-              if (key === 'cuttingPermitId')
-                return row.cuttingPermitId ? (
-                  <Link to={`/harvesting-authority/${row.cuttingPermitId}`}>
-                    {row.cuttingPermitId}
-                  </Link>
-                ) : (
-                  '—'
-                );
-              if (key === 'forestFileId')
-                return row.forestFileId ? (
-                  <Link to={`/tenures/${row.forestFileId}`}>{row.forestFileId}</Link>
-                ) : (
-                  '—'
-                );
-              if (key === 'markStatusSt')
-                return row.markStatusSt ? <Tag type="green">{row.markStatusSt}</Tag> : '—';
-              if (key === 'orgUnitCode') return row.orgUnitCode ?? '—';
-              return undefined;
-            }}
-          />
+          <div className="bordered-table">
+            <SearchResultsTable
+              rows={rows.map((r, i) => ({
+                ...r,
+                id: r.cuttingPermitId ?? r.timberMark ?? String(i),
+              }))}
+              headers={HEADERS}
+              emptyTitle="No timber marks found"
+              renderCell={(row, key) => {
+                if (key === 'timberMark')
+                  return (
+                    <Link to={`/harvesting-authority/${row.cuttingPermitId}`}>
+                      {row.timberMark}
+                    </Link>
+                  );
+                if (key === 'cuttingPermitId')
+                  return row.cuttingPermitId ? (
+                    <Link to={`/harvesting-authority/${row.cuttingPermitId}`}>
+                      {row.cuttingPermitId}
+                    </Link>
+                  ) : (
+                    '—'
+                  );
+                if (key === 'forestFileId')
+                  return row.forestFileId ? (
+                    <Link to={`/tenures/${row.forestFileId}`}>{row.forestFileId}</Link>
+                  ) : (
+                    '—'
+                  );
+                if (key === 'markStatusSt')
+                  return row.markStatusSt ? <Tag type="green">{row.markStatusSt}</Tag> : '—';
+                if (key === 'orgUnitCode') return row.orgUnitCode ?? '—';
+                return undefined;
+              }}
+            />
+          </div>
         )}
       </AsyncBoundary>
     </PageLayout>

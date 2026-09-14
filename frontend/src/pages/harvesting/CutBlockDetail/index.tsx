@@ -1,4 +1,4 @@
-import { ArrowLeft, Edit, Pause, Tag as TagIcon } from '@carbon/icons-react';
+import { ArrowLeft, Document, Edit, Pause, Tag as TagIcon } from '@carbon/icons-react';
 import {
   Button,
   Tab,
@@ -19,6 +19,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
+import SectionTile from '@/components/SectionTile';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
@@ -27,7 +28,6 @@ import { canEdit } from '@/routes/access';
 import { getCutblockDetail } from '@/services/cutblock_detail';
 
 import type { FC } from 'react';
-import './CutBlockDetail.scss';
 
 // Local amendment history for the cut block sub-tab (FTA905 is a separate port).
 const MOCK_AMENDMENTS = [
@@ -55,9 +55,43 @@ const CutBlockDetail: FC = () => {
   const id = data?.cutBlockId ?? blockId;
   const isSuspended = (data?.blockStatus ?? '').toUpperCase().startsWith('S');
 
+  const actions =
+    data && canEdit(user) ? (
+      <>
+        <Button size="md" kind="tertiary" renderIcon={Edit}>
+          Edit block
+        </Button>
+        <Button size="md" kind="tertiary" renderIcon={Edit} as={Link} to={`/cut-block/${id}/amend`}>
+          Amend
+        </Button>
+        <Button
+          size="md"
+          kind="tertiary"
+          renderIcon={TagIcon}
+          as={Link}
+          to={`/cut-block/${id}/relabel`}
+        >
+          Re-label
+        </Button>
+        <Button
+          size="md"
+          kind="danger"
+          renderIcon={Pause}
+          as={Link}
+          to={`/cut-block/${id}/suspend`}
+        >
+          Suspend
+        </Button>
+      </>
+    ) : undefined;
+
   return (
-    <PageLayout title={`Cut Block ${id}`}>
-      <Link to="/search/cut-block" className="fta-back">
+    <PageLayout
+      title={`Cut Block ${id}`}
+      subtitle="Block details, amendments, and suspensions"
+      actions={actions}
+    >
+      <Link to="/search/cut-block" className="back-link">
         <ArrowLeft size={16} /> Back to Cut Block Search
       </Link>
 
@@ -100,112 +134,77 @@ const CutBlockDetail: FC = () => {
                 { label: 'Gross Area', value: fmtArea(data.plannedGrossBlockArea) },
                 { label: 'Net Area', value: fmtArea(data.plannedNetBlockArea) },
               ]}
-              action={
-                canEdit(user) ? (
-                  <Button size="sm" kind="tertiary" renderIcon={Edit}>
-                    Edit block
-                  </Button>
-                ) : undefined
-              }
             />
 
-            {canEdit(user) && (
-              <div className="cb-detail__actions">
-                <Button
-                  size="sm"
-                  kind="tertiary"
-                  renderIcon={Edit}
-                  as={Link}
-                  to={`/cut-block/${id}/amend`}
-                >
-                  Amend
-                </Button>
-                <Button
-                  size="sm"
-                  kind="tertiary"
-                  renderIcon={TagIcon}
-                  as={Link}
-                  to={`/cut-block/${id}/relabel`}
-                >
-                  Re-label
-                </Button>
-                <Button
-                  size="sm"
-                  kind="danger--tertiary"
-                  renderIcon={Pause}
-                  as={Link}
-                  to={`/cut-block/${id}/suspend`}
-                >
-                  Suspend
-                </Button>
-              </div>
-            )}
-
-            <Tabs>
-              <TabList aria-label="Cut block sections" contained>
-                <Tab>Details</Tab>
-                <Tab>Amendments</Tab>
-                <Tab>Suspensions</Tab>
-              </TabList>
-              <TabPanels>
-                <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      { label: 'Gross Area', value: fmtArea(data.plannedGrossBlockArea) },
-                      { label: 'Net Area', value: fmtArea(data.plannedNetBlockArea) },
-                      {
-                        label: 'Disturbance Gross Area',
-                        value: fmtArea(data.disturbanceGrossArea),
-                      },
-                      {
-                        label: 'Disturbance Start',
-                        value: data.disturbanceStartDate ?? 'Not started',
-                      },
-                    ]}
-                  />
-                </TabPanel>
-
-                <TabPanel>
-                  <TableContainer
-                    title="Amendments"
-                    description={`${MOCK_AMENDMENTS.length} amendment(s)`}
-                  >
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>Date</TableHeader>
-                          <TableHeader>Type</TableHeader>
-                          <TableHeader>Description</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {MOCK_AMENDMENTS.map((a, i) => (
-                          <TableRow key={i}>
-                            <TableCell>{a.date}</TableCell>
-                            <TableCell>{a.type}</TableCell>
-                            <TableCell>{a.description}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </TabPanel>
-
-                <TabPanel>
-                  {isSuspended ? (
+            <SectionTile title="Cut block details" icon={Document}>
+              <Tabs>
+                <TabList aria-label="Cut block sections" contained>
+                  <Tab>Details</Tab>
+                  <Tab>Amendments</Tab>
+                  <Tab>Suspensions</Tab>
+                </TabList>
+                <TabPanels>
+                  <TabPanel>
                     <DefinitionGrid
                       items={[
-                        { label: 'Suspension Status', value: <Tag type="red">Suspended</Tag> },
-                        { label: 'Reason', value: 'Pending cutblock re-survey' },
-                        { label: 'Effective', value: data.blockStatusDate ?? '—' },
+                        { label: 'Gross Area', value: fmtArea(data.plannedGrossBlockArea) },
+                        { label: 'Net Area', value: fmtArea(data.plannedNetBlockArea) },
+                        {
+                          label: 'Disturbance Gross Area',
+                          value: fmtArea(data.disturbanceGrossArea),
+                        },
+                        {
+                          label: 'Disturbance Start',
+                          value: data.disturbanceStartDate ?? 'Not started',
+                        },
                       ]}
                     />
-                  ) : (
-                    <p style={{ padding: '1rem 0' }}>This cut block has no active suspensions.</p>
-                  )}
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
+                  </TabPanel>
+
+                  <TabPanel>
+                    <div className="bordered-table">
+                      <TableContainer
+                        title="Amendments"
+                        description={`${MOCK_AMENDMENTS.length} amendment(s)`}
+                      >
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableHeader>Date</TableHeader>
+                              <TableHeader>Type</TableHeader>
+                              <TableHeader>Description</TableHeader>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {MOCK_AMENDMENTS.map((a, i) => (
+                              <TableRow key={i}>
+                                <TableCell>{a.date}</TableCell>
+                                <TableCell>{a.type}</TableCell>
+                                <TableCell>{a.description}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </div>
+                  </TabPanel>
+
+                  <TabPanel>
+                    {isSuspended ? (
+                      <DefinitionGrid
+                        items={[
+                          { label: 'Suspension Status', value: <Tag type="red">Suspended</Tag> },
+                          { label: 'Reason', value: 'Pending cutblock re-survey' },
+                          { label: 'Effective', value: data.blockStatusDate ?? '—' },
+                        ]}
+                      />
+                    ) : (
+                      <p style={{ padding: '1rem 0' }}>This cut block has no active suspensions.</p>
+                    )}
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            </SectionTile>
           </>
         )}
       </AsyncBoundary>

@@ -1,4 +1,4 @@
-import { Save } from '@carbon/icons-react';
+import { Save, Currency } from '@carbon/icons-react';
 import {
   Button,
   Table,
@@ -12,10 +12,13 @@ import {
 import { useCallback, useEffect, useState, type FC } from 'react';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
+import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
 import PageLayout from '@/pages/PageLayout';
 import { getRates, saveRates, type RatesMaintenanceRate } from '@/services/rates_maintenance';
+
+import './RatesMaintenance.scss';
 
 /**
  * FTA699 — Rates & Fees Maintenance. Editable rate table backed by the backend
@@ -72,48 +75,59 @@ const RatesMaintenance: FC = () => {
   };
 
   return (
-    <PageLayout title="Rates & Fees Maintenance">
+    <PageLayout
+      title="Rates & Fees Maintenance"
+      subtitle="Review and update the rates and fees applied to range tenure billing."
+    >
       <AsyncBoundary loading={loading} error={error} onRetry={reload} loadingText="Loading rates…">
-        <TableContainer title="Rates & fees" description={`${rates.length} rate(s)`}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeader>Rate Type</TableHeader>
-                <TableHeader>File Type</TableHeader>
-                <TableHeader>Revenue Class</TableHeader>
-                <TableHeader>Rate</TableHeader>
-                <TableHeader>Calendar Year</TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rates.map((r) => (
-                <TableRow
-                  key={r.rangeBillRateId ?? `${r.rangeRateTypeCode}-${r.rangeFileTypeCode}`}
-                >
-                  <TableCell>{r.rangeRateTypeCode ?? '—'}</TableCell>
-                  <TableCell>{r.rangeFileTypeCode ?? '—'}</TableCell>
-                  <TableCell>{r.revenueClassnCode ?? '—'}</TableCell>
-                  <TableCell>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={r.rangeRate ?? 0}
-                      onChange={(e) => setRate(r.rangeBillRateId, e.target.value)}
-                      style={{ width: '7rem' }}
-                      aria-label={`Rate for ${r.rangeRateTypeCode ?? ''}`}
-                    />
-                  </TableCell>
-                  <TableCell>{r.calendarYear ?? '—'}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <div style={{ marginTop: '1.5rem' }}>
-          <Button renderIcon={Save} onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save rates'}
-          </Button>
-        </div>
+        <SectionTile
+          title="Rates & fees"
+          icon={Currency}
+          description={`${rates.length} rate(s)`}
+          actions={
+            <Button size="md" renderIcon={Save} onClick={() => void onSave()} disabled={saving}>
+              {saving ? 'Saving…' : 'Save rates'}
+            </Button>
+          }
+        >
+          <div className="bordered-table">
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>Rate Type</TableHeader>
+                    <TableHeader>File Type</TableHeader>
+                    <TableHeader>Revenue Class</TableHeader>
+                    <TableHeader>Rate</TableHeader>
+                    <TableHeader>Calendar Year</TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rates.map((r) => (
+                    <TableRow
+                      key={r.rangeBillRateId ?? `${r.rangeRateTypeCode}-${r.rangeFileTypeCode}`}
+                    >
+                      <TableCell>{r.rangeRateTypeCode ?? '—'}</TableCell>
+                      <TableCell>{r.rangeFileTypeCode ?? '—'}</TableCell>
+                      <TableCell>{r.revenueClassnCode ?? '—'}</TableCell>
+                      <TableCell>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={r.rangeRate ?? 0}
+                          onChange={(e) => setRate(r.rangeBillRateId, e.target.value)}
+                          className="rates-maintenance__rate-input"
+                          aria-label={`Rate for ${r.rangeRateTypeCode ?? ''}`}
+                        />
+                      </TableCell>
+                      <TableCell>{r.calendarYear ?? '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </div>
+        </SectionTile>
       </AsyncBoundary>
     </PageLayout>
   );

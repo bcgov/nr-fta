@@ -1,12 +1,13 @@
-import { Logout } from '@carbon/icons-react';
-import { Button, Column, Grid } from '@carbon/react';
+import { Locked, Logout } from '@carbon/icons-react';
+import { Button } from '@carbon/react';
 
+import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { useAuth } from '@/context/auth/useAuth';
-import { useTheme } from '@/context/theme/useTheme';
+import PageLayout from '@/pages/PageLayout';
 
 import type { FC } from 'react';
 
-import './LandingPage.scss';
+import './UnauthorizedPage.css';
 
 /**
  * Shown after a successful sign-in when the user's token carries no
@@ -15,11 +16,13 @@ import './LandingPage.scss';
  * user back through the IdP. The only action is "sign out" — getting a role
  * means an out-of-band role assignment in the CSS console (no self-service
  * from inside the app).
+ *
+ * <p>Rendered outside the app shell (no SideNav/Header — the user has no
+ * role to navigate with), so this wraps PageLayout in its own padded frame
+ * rather than relying on Carbon's `<Content>` for that spacing.
  */
 const UnauthorizedPage: FC = () => {
-  const { theme } = useTheme();
   const { user, logout } = useAuth();
-  const logoSrc = theme === 'g100' ? '/bc-gov-logo-rev.png' : '/bc-gov-logo.png';
 
   const displayName =
     user?.displayName ||
@@ -28,44 +31,32 @@ const UnauthorizedPage: FC = () => {
     user?.providerUsername;
 
   return (
-    <div className="landing-grid-container">
-      <Grid fullWidth className="landing-grid">
-        <Column className="landing-content-col" sm={4} md={8} lg={8}>
-          <div className="landing-content-wrapper">
-            <div>
-              <img src={logoSrc} alt="BC Government" width={160} className="logo" />
-            </div>
-
-            <h1 data-testid="unauthorized-title" className="landing-title">
-              Access not granted
-            </h1>
-
-            <h2 data-testid="unauthorized-subtitle" className="landing-subtitle">
-              {displayName
-                ? `You're signed in as ${displayName}, but your account isn't authorized to use FTA.`
-                : 'Your account is signed in, but it isn’t authorized to use FTA.'}
-            </h2>
-
-            <div className="buttons-container single-row">
-              <Button
-                type="button"
-                kind="secondary"
-                onClick={() => void logout()}
-                renderIcon={Logout}
-                size="md"
-                data-testid="unauthorized-button__logout"
-                className="login-btn"
-              >
-                Sign out
-              </Button>
-            </div>
-          </div>
-        </Column>
-
-        <Column className="landing-img-col" sm={4} md={8} lg={8}>
-          <img src="/landing.jpg" alt="BC forest landscape" className="landing-img" />
-        </Column>
-      </Grid>
+    <div className="unauthorized-page">
+      <PageLayout
+        title="Access not granted"
+        subtitle={
+          displayName
+            ? `You're signed in as ${displayName}, but your account isn't authorized to use FTA.`
+            : 'Your account is signed in, but it isn’t authorized to use FTA.'
+        }
+      >
+        <EmptyState
+          icon={<Locked size={80} />}
+          title="No FTA role assigned"
+          body="Access to FTA requires a role assignment made outside the application. Sign out, or contact your administrator to request access."
+          action={
+            <Button
+              type="button"
+              onClick={() => void logout()}
+              renderIcon={Logout}
+              size="md"
+              data-testid="unauthorized-button__logout"
+            >
+              Sign out
+            </Button>
+          }
+        />
+      </PageLayout>
     </div>
   );
 };

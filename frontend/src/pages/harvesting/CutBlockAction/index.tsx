@@ -1,8 +1,9 @@
-import { ArrowLeft, Save } from '@carbon/icons-react';
+import { ArrowLeft, Edit, Pause, Save, Tag as TagIcon } from '@carbon/icons-react';
 import { Button, TextArea, TextInput } from '@carbon/react';
 import { useState, type FC } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
+import SectionTile from '@/components/SectionTile';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
@@ -13,10 +14,23 @@ import { performCutblockAction } from '@/services/cutblock_action';
 
 type ActionKind = 'amend' | 'suspend' | 'relabel';
 
-const ACTION_META: Record<ActionKind, { legacy: string; title: string; verb: string }> = {
-  amend: { legacy: 'FTA905', title: 'Cut Block Amendment', verb: 'Save amendment' },
-  suspend: { legacy: 'FTA914', title: 'Suspend Cut Block', verb: 'Suspend block' },
-  relabel: { legacy: 'FTA231', title: 'Cut Block Re-label', verb: 'Re-label block' },
+const ACTION_META: Record<
+  ActionKind,
+  { legacy: string; title: string; verb: string; icon: typeof Edit }
+> = {
+  amend: { legacy: 'FTA905', title: 'Cut Block Amendment', verb: 'Save amendment', icon: Edit },
+  suspend: {
+    legacy: 'FTA914',
+    title: 'Suspend Cut Block',
+    verb: 'Suspend block',
+    icon: Pause,
+  },
+  relabel: {
+    legacy: 'FTA231',
+    title: 'Cut Block Re-label',
+    verb: 'Re-label block',
+    icon: TagIcon,
+  },
 };
 
 /**
@@ -45,7 +59,7 @@ const CutBlockAction: FC = () => {
     return (
       <PageLayout title="Cut block not found">
         <p style={{ marginBottom: '1.5rem' }}>No cut block matches “{blockId}”.</p>
-        <Button as={Link} to="/search/cut-block" renderIcon={ArrowLeft} kind="tertiary">
+        <Button as={Link} to="/search/cut-block" renderIcon={ArrowLeft} kind="tertiary" size="md">
           Back to Cut Block Search
         </Button>
       </PageLayout>
@@ -83,8 +97,11 @@ const CutBlockAction: FC = () => {
   };
 
   return (
-    <PageLayout title={`${meta.title} — ${block.blockId}`}>
-      <Link to={`/cut-block/${block.blockId}`} className="fta-back">
+    <PageLayout
+      title={`${meta.title} — ${block.blockId}`}
+      subtitle={`${meta.title} for this cut block`}
+    >
+      <Link to={`/cut-block/${block.blockId}`} className="back-link">
         <ArrowLeft size={16} /> Back to Cut Block {block.blockId}
       </Link>
 
@@ -101,34 +118,42 @@ const CutBlockAction: FC = () => {
         ]}
       />
 
-      <div style={{ maxWidth: '40rem' }}>
-        {kind === 'relabel' ? (
-          <TextInput
-            id="cba-label"
-            labelText="New block label"
-            placeholder="e.g. BLK-001A"
-            disabled={readOnly}
-            value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-          />
-        ) : (
-          <TextArea
-            id="cba-reason"
-            labelText={kind === 'suspend' ? 'Suspension reason' : 'Amendment description'}
-            placeholder={
-              kind === 'suspend' ? 'Why is this block being suspended?' : 'Describe the amendment'
-            }
-            disabled={readOnly}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
-        )}
-        <div style={{ marginTop: '1.5rem' }}>
-          <Button renderIcon={Save} disabled={!canSubmit || saving} onClick={onSubmit}>
-            {saving ? 'Saving…' : meta.verb}
-          </Button>
+      <SectionTile title={meta.title} icon={meta.icon}>
+        <div style={{ maxWidth: '40rem' }}>
+          {kind === 'relabel' ? (
+            <TextInput
+              id="cba-label"
+              labelText="New block label"
+              placeholder="e.g. BLK-001A"
+              disabled={readOnly}
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+            />
+          ) : (
+            <TextArea
+              id="cba-reason"
+              labelText={kind === 'suspend' ? 'Suspension reason' : 'Amendment description'}
+              placeholder={
+                kind === 'suspend' ? 'Why is this block being suspended?' : 'Describe the amendment'
+              }
+              disabled={readOnly}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          )}
+          <div style={{ marginTop: '1.5rem' }}>
+            <Button
+              size="md"
+              kind={kind === 'suspend' ? 'danger' : 'primary'}
+              renderIcon={Save}
+              disabled={!canSubmit || saving}
+              onClick={onSubmit}
+            >
+              {saving ? 'Saving…' : meta.verb}
+            </Button>
+          </div>
         </div>
-      </div>
+      </SectionTile>
     </PageLayout>
   );
 };

@@ -7,6 +7,7 @@ import {
   UserFollow,
   Map,
   Upload,
+  Document,
 } from '@carbon/icons-react';
 import {
   Button,
@@ -29,6 +30,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
+import SectionTile from '@/components/SectionTile';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
@@ -90,9 +92,63 @@ const ApplicationDetail: FC = () => {
     }
   };
 
+  const actions =
+    canEdit(user) && app ? (
+      <>
+        <Button
+          size="md"
+          renderIcon={UserFollow}
+          disabled={saving}
+          onClick={() => act('Assignment', 'SAVE')}
+        >
+          Assign to me
+        </Button>
+        <Button
+          size="md"
+          kind="tertiary"
+          renderIcon={Chat}
+          disabled={saving}
+          onClick={() => act('Clarification request', 'SAVE')}
+        >
+          Request clarification
+        </Button>
+        <Button
+          size="md"
+          kind="tertiary"
+          renderIcon={Pause}
+          disabled={saving}
+          onClick={() => act('Hold', 'SAVE')}
+        >
+          Place on hold
+        </Button>
+        <Button
+          size="md"
+          kind="tertiary"
+          renderIcon={Checkmark}
+          disabled={saving}
+          onClick={() => act('Clearance', 'ADJUDICATION')}
+        >
+          Clear
+        </Button>
+        <Button
+          size="md"
+          kind="danger"
+          renderIcon={Close}
+          disabled={saving}
+          onClick={() => act('Rejection', 'ADJUDICATION')}
+        >
+          Reject
+        </Button>
+      </>
+    ) : undefined;
+
   return (
-    <PageLayout title={`Application ${esfId}`}>
-      <Link to="/inbox" className="fta-back">
+    <PageLayout
+      title={`Application ${esfId}`}
+      subtitle="ESF tenure application review and adjudication"
+      actions={actions}
+    >
+      <Link to="/inbox" className="back-link">
         <ArrowLeft size={16} /> Back to Inbox
       </Link>
 
@@ -128,141 +184,96 @@ const ApplicationDetail: FC = () => {
               ]}
             />
 
-            {canEdit(user) && (
-              <div className="app-detail__actions">
-                <Button
-                  size="sm"
-                  renderIcon={UserFollow}
-                  disabled={saving}
-                  onClick={() => act('Assignment', 'SAVE')}
-                >
-                  Assign to me
-                </Button>
-                <Button
-                  size="sm"
-                  kind="tertiary"
-                  renderIcon={Chat}
-                  disabled={saving}
-                  onClick={() => act('Clarification request', 'SAVE')}
-                >
-                  Request clarification
-                </Button>
-                <Button
-                  size="sm"
-                  kind="tertiary"
-                  renderIcon={Pause}
-                  disabled={saving}
-                  onClick={() => act('Hold', 'SAVE')}
-                >
-                  Place on hold
-                </Button>
-                <Button
-                  size="sm"
-                  kind="tertiary"
-                  renderIcon={Checkmark}
-                  disabled={saving}
-                  onClick={() => act('Clearance', 'ADJUDICATION')}
-                >
-                  Clear
-                </Button>
-                <Button
-                  size="sm"
-                  kind="danger--tertiary"
-                  renderIcon={Close}
-                  disabled={saving}
-                  onClick={() => act('Rejection', 'ADJUDICATION')}
-                >
-                  Reject
-                </Button>
-              </div>
-            )}
+            <SectionTile title="Application details" icon={Document}>
+              <Tabs>
+                <TabList aria-label="Application sections" contained>
+                  <Tab>Submission</Tab>
+                  <Tab>Processing</Tab>
+                  <Tab>Exhibit A</Tab>
+                  <Tab>History</Tab>
+                </TabList>
+                <TabPanels>
+                  <TabPanel>
+                    <DefinitionGrid
+                      items={[
+                        { label: 'Application Type', value: app.tenureAppType ?? '—' },
+                        { label: 'Harvest Type', value: app.harvestTypeCode ?? '—' },
+                        {
+                          label: 'Client',
+                          value: app.licencee
+                            ? `${app.licencee}${app.clientNumber ? ` (${app.clientNumber})` : ''}`
+                            : '—',
+                        },
+                        { label: 'Purpose', value: app.purposeDesc ?? '—' },
+                        { label: 'Description', value: app.description ?? '—' },
+                      ]}
+                    />
+                  </TabPanel>
 
-            <Tabs>
-              <TabList aria-label="Application sections" contained>
-                <Tab>Submission</Tab>
-                <Tab>Processing</Tab>
-                <Tab>Exhibit A</Tab>
-                <Tab>History</Tab>
-              </TabList>
-              <TabPanels>
-                <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      { label: 'Application Type', value: app.tenureAppType ?? '—' },
-                      { label: 'Harvest Type', value: app.harvestTypeCode ?? '—' },
-                      {
-                        label: 'Client',
-                        value: app.licencee
-                          ? `${app.licencee}${app.clientNumber ? ` (${app.clientNumber})` : ''}`
-                          : '—',
-                      },
-                      { label: 'Purpose', value: app.purposeDesc ?? '—' },
-                      { label: 'Description', value: app.description ?? '—' },
-                    ]}
-                  />
-                </TabPanel>
+                  <TabPanel>
+                    <DefinitionGrid
+                      items={[
+                        { label: 'Status Date', value: app.statusDate ?? '—' },
+                        { label: 'Award Date', value: app.awardDate ?? '—' },
+                        { label: 'Expiry Date', value: app.expiryDate ?? '—' },
+                      ]}
+                    />
+                  </TabPanel>
 
-                <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      { label: 'Status Date', value: app.statusDate ?? '—' },
-                      { label: 'Award Date', value: app.awardDate ?? '—' },
-                      { label: 'Expiry Date', value: app.expiryDate ?? '—' },
-                    ]}
-                  />
-                </TabPanel>
-
-                <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      { label: 'File Type', value: app.fileTypeDesc ?? app.fileTypeCode ?? '—' },
-                      { label: 'Harvest Type', value: app.harvestTypeCode ?? '—' },
-                    ]}
-                  />
-                  <div className="app-detail__actions">
-                    <Button
-                      size="sm"
-                      as={Link}
-                      to={`/exhibit-a/${app.tenureAppId}`}
-                      renderIcon={Map}
-                    >
-                      View tenure map
-                    </Button>
-                    {canEdit(user) && (
+                  <TabPanel>
+                    <DefinitionGrid
+                      items={[
+                        { label: 'File Type', value: app.fileTypeDesc ?? app.fileTypeCode ?? '—' },
+                        { label: 'Harvest Type', value: app.harvestTypeCode ?? '—' },
+                      ]}
+                    />
+                    <div className="app-detail__actions">
                       <Button
-                        size="sm"
-                        kind="tertiary"
+                        size="md"
                         as={Link}
-                        to={`/exhibit-a/${app.tenureAppId}/upload`}
-                        renderIcon={Upload}
+                        to={`/exhibit-a/${app.tenureAppId}`}
+                        renderIcon={Map}
                       >
-                        Upload Exhibit A
+                        View tenure map
                       </Button>
-                    )}
-                  </div>
-                </TabPanel>
+                      {canEdit(user) && (
+                        <Button
+                          size="md"
+                          kind="tertiary"
+                          as={Link}
+                          to={`/exhibit-a/${app.tenureAppId}/upload`}
+                          renderIcon={Upload}
+                        >
+                          Upload Exhibit A
+                        </Button>
+                      )}
+                    </div>
+                  </TabPanel>
 
-                <TabPanel>
-                  <TableContainer title="Application history">
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>Date</TableHeader>
-                          <TableHeader>Actor</TableHeader>
-                          <TableHeader>Action</TableHeader>
-                          <TableHeader>Note</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell colSpan={4}>No history available.</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
+                  <TabPanel>
+                    <div className="bordered-table">
+                      <TableContainer title="Application history">
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableHeader>Date</TableHeader>
+                              <TableHeader>Actor</TableHeader>
+                              <TableHeader>Action</TableHeader>
+                              <TableHeader>Note</TableHeader>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            <TableRow>
+                              <TableCell colSpan={4}>No history available.</TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </div>
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            </SectionTile>
           </>
         )}
       </AsyncBoundary>

@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
+import SectionTile from '@/components/SectionTile';
 import PageLayout from '@/pages/PageLayout';
 import { listMarks, type MarkListParams, type MarkListRow } from '@/services/mark_list';
 import './MarkList.scss';
@@ -58,70 +59,75 @@ const MarkList: FC = () => {
   };
 
   return (
-    <PageLayout title="Private Marks">
-      <div className="mark-list__topbar">
+    <PageLayout
+      title="Private Marks"
+      subtitle="Search private timber mark applications and amendments, or start a new one"
+      actions={
         <Button
+          size="md"
           kind="tertiary"
           renderIcon={DocumentAdd}
           onClick={() => navigate('/marks/application')}
         >
           New Mark Application
         </Button>
-      </div>
-
-      <form className="mark-list__form" onSubmit={onSearch}>
-        <Grid narrow>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="mk-num"
-              labelText="Mark Number"
-              placeholder="e.g. 12 3456"
-              value={criteria.timberMark ?? ''}
-              onChange={(e) => onField('timberMark')(e.target.value)}
-            />
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="mk-holder"
-              labelText="Holder"
-              placeholder="e.g. Meadow Ranch"
-              value={criteria.clientName ?? ''}
-              onChange={(e) => onField('clientName')(e.target.value)}
-            />
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="mk-org"
-              labelText="Org Unit"
-              placeholder="District code or name"
-              value={criteria.orgUnitCode ?? ''}
-              onChange={(e) => onField('orgUnitCode')(e.target.value)}
-            />
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <Select
-              id="mk-status"
-              labelText="Status"
-              value={criteria.markStatusSt ?? ''}
-              onChange={(e) => onField('markStatusSt')(e.target.value)}
-            >
-              <SelectItem value="" text="Any" />
-              <SelectItem value="Active" text="Active" />
-              <SelectItem value="Pending" text="Pending" />
-              <SelectItem value="Amended" text="Amended" />
-              <SelectItem value="Cancelled" text="Cancelled" />
-            </Select>
-          </Column>
-        </Grid>
-        <div className="mark-list__actions">
-          <Button type="submit" renderIcon={SearchIcon}>
-            Search
-          </Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
-            Reset
-          </Button>
-        </div>
-      </form>
+      }
+    >
+      <SectionTile title="Search criteria" icon={SearchIcon}>
+        <form className="mark-list__form" onSubmit={onSearch}>
+          <Grid narrow>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="mk-num"
+                labelText="Mark Number"
+                placeholder="e.g. 12 3456"
+                value={criteria.timberMark ?? ''}
+                onChange={(e) => onField('timberMark')(e.target.value)}
+              />
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="mk-holder"
+                labelText="Holder"
+                placeholder="e.g. Meadow Ranch"
+                value={criteria.clientName ?? ''}
+                onChange={(e) => onField('clientName')(e.target.value)}
+              />
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="mk-org"
+                labelText="Org Unit"
+                placeholder="District code or name"
+                value={criteria.orgUnitCode ?? ''}
+                onChange={(e) => onField('orgUnitCode')(e.target.value)}
+              />
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <Select
+                id="mk-status"
+                labelText="Status"
+                value={criteria.markStatusSt ?? ''}
+                onChange={(e) => onField('markStatusSt')(e.target.value)}
+              >
+                <SelectItem value="" text="Any" />
+                <SelectItem value="Active" text="Active" />
+                <SelectItem value="Pending" text="Pending" />
+                <SelectItem value="Amended" text="Amended" />
+                <SelectItem value="Cancelled" text="Cancelled" />
+              </Select>
+            </Column>
+          </Grid>
+          <div className="mark-list__actions">
+            <Button type="submit" size="md" renderIcon={SearchIcon}>
+              Search
+            </Button>
+            <Button type="button" size="md" kind="tertiary" renderIcon={Reset} onClick={onReset}>
+              Reset
+            </Button>
+          </div>
+        </form>
+      </SectionTile>
 
       <AsyncBoundary
         loading={loading}
@@ -130,29 +136,31 @@ const MarkList: FC = () => {
         loadingText="Searching…"
       >
         {rows !== null && (
-          <SearchResultsTable
-            rows={rows.map((r, i) => ({
-              ...r,
-              id: `${r.processType ?? ''}-${r.certificate ?? ''}-${r.timberMark ?? ''}-${i}`,
-            }))}
-            headers={HEADERS}
-            emptyTitle="No marks found"
-            renderCell={(row, key) => {
-              if (key === 'timberMark') {
-                const markId = row.timberMark ?? row.certificate;
-                return markId ? (
-                  <Link to={`/marks/${encodeURIComponent(markId)}`}>{markId}</Link>
-                ) : (
-                  '—'
-                );
-              }
-              if (key === 'markStatusSt') {
-                return row.markStatusSt ? <Tag type="blue">{row.markStatusSt}</Tag> : '—';
-              }
-              if (key === 'clientName') return row.clientName ?? '—';
-              return undefined;
-            }}
-          />
+          <div className="bordered-table">
+            <SearchResultsTable
+              rows={rows.map((r, i) => ({
+                ...r,
+                id: `${r.processType ?? ''}-${r.certificate ?? ''}-${r.timberMark ?? ''}-${i}`,
+              }))}
+              headers={HEADERS}
+              emptyTitle="No marks found"
+              renderCell={(row, key) => {
+                if (key === 'timberMark') {
+                  const markId = row.timberMark ?? row.certificate;
+                  return markId ? (
+                    <Link to={`/marks/${encodeURIComponent(markId)}`}>{markId}</Link>
+                  ) : (
+                    '—'
+                  );
+                }
+                if (key === 'markStatusSt') {
+                  return row.markStatusSt ? <Tag type="blue">{row.markStatusSt}</Tag> : '—';
+                }
+                if (key === 'clientName') return row.clientName ?? '—';
+                return undefined;
+              }}
+            />
+          </div>
         )}
       </AsyncBoundary>
     </PageLayout>

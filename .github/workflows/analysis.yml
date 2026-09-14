@@ -23,10 +23,6 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
-    # Job-level so the Sonar step's `if` can test it: secrets can't be used in
-    # `if:` directly, and GitHub's documented pattern is a job-level env var.
-    env:
-      SONAR_TOKEN: ${{ secrets.sonar_token }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -50,17 +46,22 @@ jobs:
         run: mvn -B -DskipITs verify
 
       # Sonar is gated on the secret being present so PRs from forks (which
-      # don't get secrets) don't fail. projectKey is currently the BC Gov
-      # starter-kit's — update it when a real FTA SonarCloud project exists.
-      - name: SonarCloud scan
-        if: env.SONAR_TOKEN != ''
-        working-directory: backend
-        run: |
-          mvn -B sonar:sonar \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.organization=bcgov-sonarcloud \
-            -Dsonar.projectKey=quickstart-openshift_backend \
-            -Dsonar.token="$SONAR_TOKEN"
+      # don't get secrets) don't fail.
+      #
+      # No SonarCloud step here, matching nr-rept.
+      #
+      # SonarCloud scans this repo with AUTOMATIC ANALYSIS, which runs on
+      # SonarCloud's side when commits land — nothing in CI uploads to it, and
+      # it refuses CI uploads while it is enabled. bcgov_nr-rept works the same
+      # way (its `SonarCloud scan` step is skipped on every run).
+      #
+      # The trade-off, should anyone want to revisit it: Automatic Analysis
+      # cannot analyse Java and cannot import coverage, so it covers the
+      # frontend only. Swapping to a CI scan means disabling Automatic Analysis
+      # in SonarCloud (Administration → Analysis Method) and adding the
+      # standalone scanner at the repo root — the Maven scanner can't do it,
+      # since it resolves sources against backend/ and honours the
+      # sonar.language=java pin in pom.xml.
 
   frontend-tests:
     name: Frontend Tests
@@ -68,9 +69,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      # No sonar_token/sonar_args here on purpose: the backend job runs the
+      # single repo-wide analysis against bcgov_nr-fta and already includes
+      # frontend/src. Passing a token here would publish a second analysis to
+      # the same project key, which replaces the first rather than adding to
+      # it. This job runs the checks; it does not report to Sonar.
       - uses: bcgov/action-test-and-analyse@8f699e3fd3fadd9a6adf6f4b1f2638ef7ecfefb9 # v2.0.0
-        env:
-          sonar_token: ${{ secrets.sonar_token }}
         with:
           # `lint` is ESLint only — Prettier is deliberately not run through it
           # (see frontend/eslint.config.js), so formatting gets its own step.
@@ -85,14 +89,6 @@ jobs:
             npm run test:coverage
           dir: frontend
           node_version: "22"
-          sonar_args: >
-            -Dsonar.exclusions=**/coverage/**,**/node_modules/**,**/*spec.ts,**/*.test.ts,**/*.test.tsx,**/e2e/**
-            -Dsonar.organization=bcgov-sonarcloud
-            -Dsonar.projectKey=quickstart-openshift_frontend
-            -Dsonar.sources=src
-            -Dsonar.test.inclusions=**/*spec.ts,**/*.test.ts,**/*.test.tsx
-            -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info
-          sonar_token: ${{ env.sonar_token }}
           dep_scan: warn
           supply_scan: true
           triggers: ('frontend/')

@@ -3,10 +3,13 @@ import { Button, Column, Grid, Select, SelectItem, TextInput } from '@carbon/rea
 import { useState, type FC, type FormEvent } from 'react';
 
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
+import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
 import { MOCK_APPLICATIONS, findApplication } from '@/mocks/applications';
 import { ORG_UNITS } from '@/mocks/reference';
 import PageLayout from '@/pages/PageLayout';
+
+import './ApplicationMetrics.scss';
 
 interface MetricRow {
   id: string;
@@ -74,52 +77,65 @@ const ApplicationMetrics: FC = () => {
     });
 
   return (
-    <PageLayout title="Application Metrics Export">
-      <form style={{ maxWidth: '64rem', marginBottom: '2rem' }} onSubmit={onSearch}>
-        <Grid narrow>
-          <Column sm={4} md={4} lg={5}>
-            <Select
-              id="am-org"
-              labelText="Org Unit"
-              value={orgUnit}
-              onChange={(e) => setOrgUnit(e.target.value)}
-            >
-              <SelectItem value="" text="All org units" />
-              {ORG_UNITS.map((o) => (
-                <SelectItem key={o} value={o} text={o} />
-              ))}
-            </Select>
-          </Column>
-          <Column sm={4} md={2} lg={3}>
-            <TextInput id="am-from" labelText="Submitted from" placeholder="yyyy-mm-dd" />
-          </Column>
-          <Column sm={4} md={2} lg={3}>
-            <TextInput id="am-to" labelText="Submitted to" placeholder="yyyy-mm-dd" />
-          </Column>
-        </Grid>
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
-          <Button type="submit" renderIcon={SearchIcon}>
-            Search
-          </Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
-            Reset
-          </Button>
-          {rows !== null && rows.length > 0 && (
-            <Button type="button" kind="tertiary" renderIcon={Download} onClick={onExport}>
-              Export CSV
+    <PageLayout
+      title="Application Metrics Export"
+      subtitle="Find application processing metrics by org unit and date range, and export to CSV"
+    >
+      <SectionTile title="Search criteria" icon={SearchIcon}>
+        <form className="am-search__form" onSubmit={onSearch}>
+          <Grid narrow>
+            <Column sm={4} md={4} lg={5}>
+              <Select
+                id="am-org"
+                labelText="Org Unit"
+                value={orgUnit}
+                onChange={(e) => setOrgUnit(e.target.value)}
+              >
+                <SelectItem value="" text="All org units" />
+                {ORG_UNITS.map((o) => (
+                  <SelectItem key={o} value={o} text={o} />
+                ))}
+              </Select>
+            </Column>
+            <Column sm={4} md={2} lg={3}>
+              <TextInput id="am-from" labelText="Submitted from" placeholder="yyyy-mm-dd" />
+            </Column>
+            <Column sm={4} md={2} lg={3}>
+              <TextInput id="am-to" labelText="Submitted to" placeholder="yyyy-mm-dd" />
+            </Column>
+          </Grid>
+          <div className="am-search__actions">
+            <Button type="submit" size="md" renderIcon={SearchIcon}>
+              Search
             </Button>
-          )}
-        </div>
-      </form>
+            <Button type="button" size="md" kind="tertiary" renderIcon={Reset} onClick={onReset}>
+              Reset
+            </Button>
+            {rows !== null && rows.length > 0 && (
+              <Button
+                type="button"
+                size="md"
+                kind="tertiary"
+                renderIcon={Download}
+                onClick={onExport}
+              >
+                Export CSV
+              </Button>
+            )}
+          </div>
+        </form>
+      </SectionTile>
 
       {rows !== null && (
-        <SearchResultsTable
-          title="Processing metrics"
-          rows={rows}
-          headers={HEADERS}
-          emptyTitle="No metrics found"
-          emptyBody="No applications match the selected org unit."
-        />
+        <div className="bordered-table">
+          <SearchResultsTable
+            title="Processing metrics"
+            rows={rows}
+            headers={HEADERS}
+            emptyTitle="No metrics found"
+            emptyBody="No applications match the selected org unit."
+          />
+        </div>
       )}
     </PageLayout>
   );

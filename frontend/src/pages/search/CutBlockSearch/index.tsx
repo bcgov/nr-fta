@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
+import SectionTile from '@/components/SectionTile';
 import PageLayout from '@/pages/PageLayout';
 import {
   searchCutBlocks,
@@ -61,60 +62,65 @@ const CutBlockSearch: FC = () => {
   };
 
   return (
-    <PageLayout title="Cut Block Search">
-      <form className="cb-search__form" onSubmit={onSearch}>
-        <Grid narrow>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="cb-block"
-              labelText="Block"
-              placeholder="e.g. BLK-001"
-              value={criteria.cutBlockId ?? ''}
-              onChange={(e) => onField('cutBlockId')(e.target.value)}
-            />
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="cb-cp"
-              labelText="Cutting Permit"
-              placeholder="e.g. CP-01"
-              value={criteria.cuttingPermitId ?? ''}
-              onChange={(e) => onField('cuttingPermitId')(e.target.value)}
-            />
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="cb-file"
-              labelText="Forest File ID"
-              placeholder="e.g. A19201"
-              value={criteria.forestFileId ?? ''}
-              onChange={(e) => onField('forestFileId')(e.target.value)}
-            />
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <Select
-              id="cb-status"
-              labelText="Status"
-              value={criteria.blockStatusSt ?? ''}
-              onChange={(e) => onField('blockStatusSt')(e.target.value)}
-            >
-              <SelectItem value="" text="Any" />
-              <SelectItem value="Active" text="Active" />
-              <SelectItem value="Harvested" text="Harvested" />
-              <SelectItem value="Suspended" text="Suspended" />
-              <SelectItem value="Amended" text="Amended" />
-            </Select>
-          </Column>
-        </Grid>
-        <div className="cb-search__actions">
-          <Button type="submit" renderIcon={SearchIcon}>
-            Search
-          </Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
-            Reset
-          </Button>
-        </div>
-      </form>
+    <PageLayout
+      title="Cut Block Search"
+      subtitle="Find a cut block by block, cutting permit, file or status"
+    >
+      <SectionTile title="Search criteria" icon={SearchIcon}>
+        <form className="cb-search__form" onSubmit={onSearch}>
+          <Grid narrow>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="cb-block"
+                labelText="Block"
+                placeholder="e.g. BLK-001"
+                value={criteria.cutBlockId ?? ''}
+                onChange={(e) => onField('cutBlockId')(e.target.value)}
+              />
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="cb-cp"
+                labelText="Cutting Permit"
+                placeholder="e.g. CP-01"
+                value={criteria.cuttingPermitId ?? ''}
+                onChange={(e) => onField('cuttingPermitId')(e.target.value)}
+              />
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="cb-file"
+                labelText="Forest File ID"
+                placeholder="e.g. A19201"
+                value={criteria.forestFileId ?? ''}
+                onChange={(e) => onField('forestFileId')(e.target.value)}
+              />
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <Select
+                id="cb-status"
+                labelText="Status"
+                value={criteria.blockStatusSt ?? ''}
+                onChange={(e) => onField('blockStatusSt')(e.target.value)}
+              >
+                <SelectItem value="" text="Any" />
+                <SelectItem value="Active" text="Active" />
+                <SelectItem value="Harvested" text="Harvested" />
+                <SelectItem value="Suspended" text="Suspended" />
+                <SelectItem value="Amended" text="Amended" />
+              </Select>
+            </Column>
+          </Grid>
+          <div className="cb-search__actions">
+            <Button type="submit" size="md" renderIcon={SearchIcon}>
+              Search
+            </Button>
+            <Button type="button" size="md" kind="tertiary" renderIcon={Reset} onClick={onReset}>
+              Reset
+            </Button>
+          </div>
+        </form>
+      </SectionTile>
 
       <AsyncBoundary
         loading={loading}
@@ -123,38 +129,40 @@ const CutBlockSearch: FC = () => {
         loadingText="Searching…"
       >
         {rows !== null && (
-          <SearchResultsTable
-            rows={rows.map((r, i) => ({ ...r, id: r.cutBlockId ?? String(r.cbSkey ?? i) }))}
-            headers={HEADERS}
-            emptyTitle="No cut blocks found"
-            renderCell={(row, key) => {
-              if (key === 'cutBlockId') {
-                return row.cutBlockId ? (
-                  <Link to={`/cut-block/${row.cutBlockId}`}>{row.cutBlockId}</Link>
-                ) : (
-                  '—'
-                );
-              }
-              if (key === 'cuttingPermitId') {
-                return row.cuttingPermitId ? (
-                  <Link to={`/harvesting-authority/${row.cuttingPermitId}`}>
-                    {row.cuttingPermitId}
-                  </Link>
-                ) : (
-                  '—'
-                );
-              }
-              if (key === 'forestFileId')
-                return <Link to={`/tenures/${row.forestFileId}`}>{row.forestFileId}</Link>;
-              if (key === 'blockStatusSt') {
-                return row.blockStatusSt ? <Tag type="green">{row.blockStatusSt}</Tag> : '—';
-              }
-              if (key === 'clientName') return row.clientName ?? '—';
-              if (key === 'timberMark') return row.timberMark ?? '—';
-              if (key === 'orgUnitCode') return row.orgUnitCode ?? '—';
-              return undefined;
-            }}
-          />
+          <div className="bordered-table">
+            <SearchResultsTable
+              rows={rows.map((r, i) => ({ ...r, id: r.cutBlockId ?? String(r.cbSkey ?? i) }))}
+              headers={HEADERS}
+              emptyTitle="No cut blocks found"
+              renderCell={(row, key) => {
+                if (key === 'cutBlockId') {
+                  return row.cutBlockId ? (
+                    <Link to={`/cut-block/${row.cutBlockId}`}>{row.cutBlockId}</Link>
+                  ) : (
+                    '—'
+                  );
+                }
+                if (key === 'cuttingPermitId') {
+                  return row.cuttingPermitId ? (
+                    <Link to={`/harvesting-authority/${row.cuttingPermitId}`}>
+                      {row.cuttingPermitId}
+                    </Link>
+                  ) : (
+                    '—'
+                  );
+                }
+                if (key === 'forestFileId')
+                  return <Link to={`/tenures/${row.forestFileId}`}>{row.forestFileId}</Link>;
+                if (key === 'blockStatusSt') {
+                  return row.blockStatusSt ? <Tag type="green">{row.blockStatusSt}</Tag> : '—';
+                }
+                if (key === 'clientName') return row.clientName ?? '—';
+                if (key === 'timberMark') return row.timberMark ?? '—';
+                if (key === 'orgUnitCode') return row.orgUnitCode ?? '—';
+                return undefined;
+              }}
+            />
+          </div>
         )}
       </AsyncBoundary>
     </PageLayout>
