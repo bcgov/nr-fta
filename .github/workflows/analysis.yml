@@ -52,33 +52,42 @@ jobs:
       # Sonar is gated on the secret being present so PRs from forks (which
       # don't get secrets) don't fail.
       #
-      # Publishes to bcgov_nr-fta — SonarCloud has ONE project per repo here,
-      # matching the siblings (bcgov_nr-rept, bcgov_nr-fsp). Two analyses
-      # against one key replace each other rather than combining, which is why
-      # the frontend job does not run its own.
+      # ONE analysis for the whole repository, published to bcgov_nr-fta.
+      # SonarCloud has a single project per repo here, matching the siblings
+      # (bcgov_nr-rept, bcgov_nr-fsp), and two analyses against one key replace
+      # each other rather than combining — which is why the frontend job below
+      # runs no scan of its own.
       #
-      # BACKEND ONLY, deliberately. Paths below are relative to the Maven
-      # module (this runs in backend/), because that is how the scanner
-      # resolves sonar.sources — pointing it at repo-root paths produced
-      # `backend/backend/src/main/java` and failed the build. Java analysis
-      # also wants the compiled classes and the jacoco report that `verify`
-      # above just produced, both of which live in this module.
+      # Deliberately the standalone scanner from the REPOSITORY ROOT, not
+      # `mvn sonar:sonar` in backend/. The Maven scanner resolves sonar.sources
+      # against its own module directory, so repo-root paths turned into
+      # `backend/backend/src/main/java` and failed the build; it also picks up
+      # `sonar.language=java` from pom.xml, which drops frontend/src from the
+      # analysis. The root scanner has neither problem and covers both
+      # languages in one pass.
       #
-      # Analysing frontend/src from here is not possible: pom.xml sets
-      # sonar.language=java, and sources outside the module base dir are not
-      # resolved. Covering the frontend needs SonarCloud's monorepo feature
-      # (a second sub-project, configured in the SonarCloud UI); until then
-      # the frontend is covered by ESLint in the job below.
+      # It runs after `Maven verify` on purpose: Java analysis reads the
+      # compiled classes in backend/target/classes, and coverage comes from the
+      # jacoco report that step writes.
+      #
+      # Requires Automatic Analysis to be OFF for this project in SonarCloud
+      # (Administration → Analysis Method). SonarCloud refuses CI uploads while
+      # it is on, and Automatic Analysis cannot analyse Java at all.
       - name: SonarCloud scan
         if: env.SONAR_TOKEN != ''
-        working-directory: backend
-        run: |
-          mvn -B sonar:sonar \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.organization=bcgov-sonarcloud \
-            -Dsonar.projectKey=bcgov_nr-fta \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-            -Dsonar.token="$SONAR_TOKEN"
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        env:
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >
+            -Dsonar.projectKey=bcgov_nr-fta
+            -Dsonar.organization=bcgov-sonarcloud
+            -Dsonar.sources=backend/src/main/java,frontend/src
+            -Dsonar.tests=backend/src/test
+            -Dsonar.java.binaries=backend/target/classes
+            -Dsonar.coverage.jacoco.xmlReportPaths=backend/target/site/jacoco/jacoco.xml
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**,**/target/**,**/*.test.ts,**/*.test.tsx,**/e2e/**
+            -Dsonar.sourceEncoding=UTF-8
 
   frontend-tests:
     name: Frontend Tests
