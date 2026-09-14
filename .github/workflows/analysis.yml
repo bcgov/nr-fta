@@ -52,16 +52,23 @@ jobs:
       # Sonar is gated on the secret being present so PRs from forks (which
       # don't get secrets) don't fail.
       #
-      # ONE analysis for the whole repository, because SonarCloud has one
-      # project for it: bcgov_nr-fta, matching the sibling repos (bcgov_nr-rept,
-      # bcgov_nr-fsp). A second analysis publishing to the same key would
-      # replace this one rather than add to it, so the frontend job deliberately
-      # does not run its own — this scan covers frontend/src too.
+      # Publishes to bcgov_nr-fta — SonarCloud has ONE project per repo here,
+      # matching the siblings (bcgov_nr-rept, bcgov_nr-fsp). Two analyses
+      # against one key replace each other rather than combining, which is why
+      # the frontend job does not run its own.
       #
-      # It runs from the backend module because Java analysis needs the
-      # compiled classes and jacoco report the `verify` above just produced;
-      # projectBaseDir lifts the scope back up to the repository root so the
-      # frontend sources resolve.
+      # BACKEND ONLY, deliberately. Paths below are relative to the Maven
+      # module (this runs in backend/), because that is how the scanner
+      # resolves sonar.sources — pointing it at repo-root paths produced
+      # `backend/backend/src/main/java` and failed the build. Java analysis
+      # also wants the compiled classes and the jacoco report that `verify`
+      # above just produced, both of which live in this module.
+      #
+      # Analysing frontend/src from here is not possible: pom.xml sets
+      # sonar.language=java, and sources outside the module base dir are not
+      # resolved. Covering the frontend needs SonarCloud's monorepo feature
+      # (a second sub-project, configured in the SonarCloud UI); until then
+      # the frontend is covered by ESLint in the job below.
       - name: SonarCloud scan
         if: env.SONAR_TOKEN != ''
         working-directory: backend
@@ -70,11 +77,7 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.organization=bcgov-sonarcloud \
             -Dsonar.projectKey=bcgov_nr-fta \
-            -Dsonar.projectBaseDir="$GITHUB_WORKSPACE" \
-            -Dsonar.sources=backend/src/main/java,frontend/src \
-            -Dsonar.tests=backend/src/test \
-            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**,**/target/**,**/*.test.ts,**/*.test.tsx,**/e2e/** \
-            -Dsonar.coverage.jacoco.xmlReportPaths=backend/target/site/jacoco/jacoco.xml \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
             -Dsonar.token="$SONAR_TOKEN"
 
   frontend-tests:

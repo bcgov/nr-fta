@@ -73,11 +73,17 @@ Note for Option B: the absolute `TRUSTSTORE_PATH` you set here is overridden ins
 
 #### `backend/src/main/resources/cert/jssecacerts`
 
-Java keystore containing the trusted CA chain for the Oracle TLS connection. Copy from a running pod (one-liner is in the `application-local.yml` comment block):
+Java keystore containing the trusted CA chain for the Oracle TLS connection. Copy it from a running pod (the same one-liner is in the `application-local.yml` comment block).
+
+FTA runs on the **gold** cluster, so `oc login` there first. Pods are labelled `app=nr-fta-backend-<zone>`, where the zone is the PR number for a preview deploy, or `test` / `prod` — and each zone lives in its own namespace:
 
 ```bash
 mkdir -p backend/src/main/resources/cert
-oc cp $(oc get pod -l app=fta-backend -o jsonpath='{.items[0].metadata.name}'):/cert/jssecacerts backend/src/main/resources/cert/jssecacerts
+NS=ccec72-dev      # ccec72-test / ccec72-prod for those environments
+ZONE=<pr-number>   # 'test' or 'prod' in those namespaces
+oc -n $NS cp \
+  $(oc -n $NS get pod -l app=nr-fta-backend-$ZONE -o jsonpath='{.items[0].metadata.name}'):/cert/jssecacerts \
+  backend/src/main/resources/cert/jssecacerts
 ```
 
 #### `frontend/.env`

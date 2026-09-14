@@ -195,7 +195,12 @@
         <plugin>
           <groupId>org.sonarsource.scanner.maven</groupId>
           <artifactId>sonar-maven-plugin</artifactId>
-          <version>3.6.0.1398</version>
+          <!--
+            Was pinned at 3.6.0.1398 (2019), which silently ignored
+            sonar.projectBaseDir and predates current SonarCloud behaviour.
+            Requires Java 17+; CI and this pom are on 21.
+          -->
+          <version>5.8.0.7211</version>
         </plugin>
         <plugin>
           <groupId>org.jacoco</groupId>

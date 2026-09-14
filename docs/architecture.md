@@ -20,10 +20,10 @@ against the BC Gov shared Oracle (FDS) database, with authentication through
 
 ## 1. Runtime topology
 
-Everything the user touches is inside one OpenShift Silver namespace. The
+Everything the user touches is inside one OpenShift Gold namespace. The
 frontend pod is the only thing the router can reach; the backend is reachable
 only from the frontend pods and from cluster monitoring. Both NetworkPolicies
-are required — Silver namespaces are default-deny on ingress.
+are required — Gold namespaces are default-deny on ingress.
 
 ```mermaid
 flowchart TB
@@ -36,25 +36,25 @@ flowchart TB
         oracle[("BC Gov shared Oracle — FDS<br/>schema THE")]
     end
 
-    subgraph ocp [" OpenShift Silver — namespace OC_NAMESPACE "]
+    subgraph ocp [" OpenShift Gold — namespace ccec72-dev / -test / -prod "]
         direction TB
-        route["Route fta-frontend<br/>edge TLS, HTTP→HTTPS redirect"]
+        route["Route nr-fta-frontend-&lt;zone&gt;<br/>host nr-fta-&lt;slot&gt;.apps.gold…<br/>edge TLS, HTTP→HTTPS redirect"]
 
-        subgraph fe [" fta-frontend pod — 1 / 2 / 3 replicas "]
+        subgraph fe [" nr-fta-frontend-&lt;zone&gt; pod — 1 / 2 / 3 replicas "]
             direction TB
             caddy["Caddy :3000<br/>Coraza WAF → static /srv → SPA rewrite"]
             health["health :3001 → /health"]
         end
 
-        subgraph be [" fta-backend pod — 1 / 2 / 3 replicas, HPA @ 200% CPU "]
+        subgraph be [" nr-fta-backend-&lt;zone&gt; pod — 1 / 2 / 3 replicas, HPA @ 200% CPU "]
             direction TB
             boot["Spring Boot 3.5 / Java 21<br/>Undertow :8080<br/>OAuth2 resource server"]
             jasper["JasperReports<br/>(embedded, PDF)"]
         end
 
-        svcfe["Service fta-frontend :3000"]
-        svcbe["Service fta-backend :8080"]
-        pvc[("PVC fta-backend-api-cert<br/>/cert/jssecacerts — RWX, 50Mi")]
+        svcfe["Service nr-fta-frontend-&lt;zone&gt; :3000"]
+        svcbe["Service nr-fta-backend-&lt;zone&gt; :8080"]
+        pvc[("PVC nr-fta-backend-api-cert-&lt;zone&gt;<br/>/cert/jssecacerts — RWX, 50Mi")]
         init["initContainer<br/>nr-forest-client/common<br/>builds Oracle TLS truststore"]
         prom["Prometheus scrape"]
     end
@@ -63,7 +63,7 @@ flowchart TB
     route -- "NetworkPolicy: from ingress group" --> svcfe
     svcfe --> caddy
     caddy -- "static assets + index.html fallback" --> user
-    caddy -- "reverse_proxy /api* → BACKEND_URL<br/>NetworkPolicy: from app=fta-frontend" --> svcbe
+    caddy -- "reverse_proxy /api* → BACKEND_URL<br/>NetworkPolicy: from app=nr-fta-frontend-&lt;zone&gt;" --> svcbe
     svcbe --> boot
     boot -- "JDBC TCPS 1543<br/>Oracle Net descriptor, Hikari pool ≤10" --> oracle
     boot -- "JWKS (cached, refresh-ahead)" --> kc
@@ -378,5 +378,5 @@ unchanged by the move off Cognito — only the registry it points at changed.
 | Database | BC Gov shared Oracle (FDS), schema `THE` | TCPS 1543, JKS truststore, connect descriptor |
 | Auth | BC Gov SSO (Keycloak), administered through CSS | shared realm — `azp` must be checked; roles on FTA's CSS integration |
 | Reports | JasperReports 6.21, embedded | JRXML compiled at runtime into `/tmp` |
-| Platform | OpenShift Silver | default-deny ingress; restricted-v2 SCC |
+| Platform | OpenShift Gold | default-deny ingress; restricted-v2 SCC |
 | Observability | Actuator + Prometheus scrape, Sysdig alerts | `/actuator/prometheus` on :8080 |
