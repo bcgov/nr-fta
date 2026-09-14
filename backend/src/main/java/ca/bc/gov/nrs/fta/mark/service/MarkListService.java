@@ -1,6 +1,7 @@
 package ca.bc.gov.nrs.fta.mark.service;
 
 import ca.bc.gov.nrs.fta.mark.dto.MarkListDto;
+import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import java.util.List;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -35,7 +36,7 @@ public class MarkListService {
     this.jdbc = jdbc;
   }
 
-  private static final String LIST_SQL =
+  private static final String SELECT_COLUMNS =
       """
       SELECT m.process_type          AS process_type,
              m.certificate           AS certificate,
@@ -49,6 +50,15 @@ public class MarkListService {
              m.tm_revision_count     AS tm_revision_count,
              m.amend_revision_count  AS amend_revision_count,
              m.idir                  AS idir
+      """;
+
+  /**
+   * The union of applications and amendments, plus the filters — shared verbatim
+   * by the page query and the count. The filters sit outside the inline view, so
+   * wrapping this in {@code COUNT(*)} counts exactly the rows the page returns.
+   */
+  private static final String FROM_WHERE =
+      """
         FROM (
               SELECT 'APPL'                                                AS process_type,
                      pmc.certificate                                      AS certificate,
@@ -71,7 +81,7 @@ public class MarkListService {
                 LEFT JOIN the.forest_file_client ffc
                        ON ffc.forest_file_id = pmc.forest_file_id
                       AND ffc.forest_file_client_type_code = 'A'
-                LEFT JOIN the.client cli
+                LEFT JOIN the.forest_client cli
                        ON cli.client_number = COALESCE(fcl.client_number, ffc.client_number)
                WHERE pmc.private_mark_status_code IN ('HN','PA','PI','DV')
                  AND ( (pmc.timber_mark IS NOT NULL
@@ -100,7 +110,7 @@ public class MarkListService {
                 LEFT JOIN the.forest_file_client fcl
                        ON fcl.forest_file_id = pmc.forest_file_id
                       AND fcl.forest_file_client_type_code = 'A'
-                LEFT JOIN the.client cli          ON cli.client_number = fcl.client_number
+                LEFT JOIN the.forest_client cli          ON cli.client_number = fcl.client_number
                WHERE pfu.file_type_code IN (SELECT pmt.private_mark_type_code
                                               FROM the.private_mark_type_code pmt)
                  AND pmc.private_mark_status_code IN ('HI','HX')
@@ -111,8 +121,11 @@ public class MarkListService {
          AND (:markStatusSt IS NULL OR m.mark_status_st = :markStatusSt)
          AND (:orgUnitCode  IS NULL OR m.org_unit_code = :orgUnitCode)
          AND (:clientName   IS NULL OR UPPER(m.client_name) LIKE UPPER(:clientName) || '%')
-       ORDER BY m.certificate
       """;
+
+  // The legacy list's order. Deterministic, so a row cannot appear on two
+  // different pages once OFFSET is applied.
+  private static final String ORDER_BY = " ORDER BY m.certificate\n";
 
   /**
    * Private mark application/amendment list — mirrors
@@ -123,13 +136,17 @@ public class MarkListService {
    * @param markStatusSt exact mark/amendment status code, or null
    * @param orgUnitCode  exact org-unit code, or null
    * @param clientName   client/holder name (prefix match), or null
+   * @param page         0-indexed page number
+   * @param size         rows per page
    */
-  public List<MarkListDto> list(
+  public PagedResponse<MarkListDto> list(
       String hdrDistrict,
       String timberMark,
       String markStatusSt,
       String orgUnitCode,
-      String clientName) {
+      String clientName,
+      int page,
+      int size) {
     MapSqlParameterSource params = new MapSqlParameterSource()
         .addValue("hdrDistrict", blankToNull(hdrDistrict))
         .addValue("timberMark", blankToNull(timberMark))
@@ -137,7 +154,19 @@ public class MarkListService {
         .addValue("orgUnitCode", blankToNull(orgUnitCode))
         .addValue("clientName", blankToNull(clientName));
 
-    return jdbc.query(LIST_SQL, params, (rs, rowNum) -> new MarkListDto(
+    Long total = jdbc.queryForObject("SELECT COUNT(*)\n" + FROM_WHERE, params, Long.class);
+    long totalElements = total == null ? 0L : total;
+
+    MapSqlParameterSource pageParams = new MapSqlParameterSource()
+        .addValues(params.getValues())
+        .addValue("offset", (long) page * size)
+        .addValue("size", size);
+
+    List<MarkListDto> rows = jdbc.query(
+        SELECT_COLUMNS + FROM_WHERE + ORDER_BY
+            + " OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
+        pageParams,
+        (rs, rowNum) -> new MarkListDto(
         rs.getString("process_type"),
         rs.getString("certificate"),
         rs.getString("timber_mark"),
@@ -148,8 +177,10 @@ public class MarkListService {
         rs.getString("disable_print_ind"),
         rs.getString("disable_ack_ind"),
         rs.getObject("tm_revision_count", Long.class),
-        rs.getObject("amend_revision_count", Long.class),
-        rs.getString("idir")));
+            rs.getObject("amend_revision_count", Long.class),
+            rs.getString("idir")));
+
+    return PagedResponse.ofPage(rows, page, size, totalElements);
   }
 
   private static String blankToNull(String s) {

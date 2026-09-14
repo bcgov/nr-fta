@@ -2,7 +2,7 @@ package ca.bc.gov.nrs.fta.mark.controller;
 
 import ca.bc.gov.nrs.fta.mark.dto.MarkListDto;
 import ca.bc.gov.nrs.fta.mark.service.MarkListService;
-import java.util.List;
+import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +18,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/fta/marks")
 public class MarkListController {
 
+  /** Rows per page when the caller does not say; matches the frontend default. */
+  private static final int DEFAULT_PAGE_SIZE = 10;
+
+  /** Upper bound on page size so a hand-built request cannot ask for the world. */
+  private static final int MAX_PAGE_SIZE = 100;
+
   private final MarkListService markListService;
 
   public MarkListController(MarkListService markListService) {
@@ -25,13 +31,17 @@ public class MarkListController {
   }
 
   @GetMapping
-  public ResponseEntity<List<MarkListDto>> list(
+  public ResponseEntity<PagedResponse<MarkListDto>> list(
       @RequestParam(required = false) String hdrDistrict,
       @RequestParam(required = false) String timberMark,
       @RequestParam(required = false) String markStatusSt,
       @RequestParam(required = false) String orgUnitCode,
-      @RequestParam(required = false) String clientName) {
-    return ResponseEntity.ok(
-        markListService.list(hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName));
+      @RequestParam(required = false) String clientName,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
+    int safePage = Math.max(page, 0);
+    int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
+    return ResponseEntity.ok(markListService.list(
+        hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName, safePage, safeSize));
   }
 }

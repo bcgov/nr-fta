@@ -59,12 +59,17 @@ public class HarvestingSearchService {
              oga.geographic_identifier AS geographic_identifier
         FROM the.harvesting_authority ha
         JOIN the.prov_forest_use pfu      ON pfu.forest_file_id = ha.forest_file_id
-        LEFT JOIN the.org_unit ou         ON ou.org_unit_no = pfu.admin_district_no
+        LEFT JOIN the.org_unit ou         ON ou.org_unit_no = pfu.forest_region
         LEFT JOIN the.forest_file_client ffc
                ON ffc.forest_file_id = pfu.forest_file_id
               AND ffc.forest_file_client_type_code = 'A'
         LEFT JOIN the.forest_client cli   ON cli.client_number = ffc.client_number
-        LEFT JOIN the.hauling_authority hla       ON hla.hva_skey = ha.hva_skey
+        -- HAULING_AUTHORITY has no hva_skey: it reaches the harvesting
+        -- authority through HARVESTING_HAULING_XREF, as THE.V_FTA_TIMBER_MARK_VJ
+        -- joins them (haa.timber_mark = xref.timber_mark AND hva.hva_skey =
+        -- xref.hva_skey).
+        LEFT JOIN the.harvesting_hauling_xref xref ON xref.hva_skey = ha.hva_skey
+        LEFT JOIN the.hauling_authority hla        ON hla.timber_mark = xref.timber_mark
         LEFT JOIN the.oil_and_gas_authority oga   ON oga.hva_skey = ha.hva_skey
        WHERE (:cuttingPermitId IS NULL OR ha.cutting_permit_id LIKE :cuttingPermitId || '%')
          AND (:timberMark      IS NULL OR hla.timber_mark = :timberMark)

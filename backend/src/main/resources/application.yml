@@ -17,6 +17,23 @@ server:
   # triggering a CORS allow-list check on every POST/PUT/DELETE.
   forward-headers-strategy: framework
 
+# Where the services read their data from.
+#
+#   package — call the legacy THE.FTA_* PL/SQL packages. They carry no
+#             AUTHID CURRENT_USER, so they run with definer's rights (as THE)
+#             and need only EXECUTE granted to the application account.
+#   table   — native SQL straight at the THE tables. Needs SELECT on the ~64
+#             objects the services reference, plus INSERT/UPDATE on the write
+#             targets and SELECT on the sequences they draw keys from.
+#
+# `table` is the default: those grants are in place (FSA_FTA_READ_WRITE_ROLE).
+# The package path is kept only as a fallback while the table path beds in —
+# set FTA_DATA_ACCESS_MODE=package to switch back without a rebuild. Once the
+# table path is trusted, delete the *PackageSource class and this property.
+fta:
+  data-access:
+    mode: ${FTA_DATA_ACCESS_MODE:table}
+
 spring:
   application:
     name: fta-backend

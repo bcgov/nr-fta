@@ -47,7 +47,7 @@ public class TenureDetailService {
              pfu.file_status_date          AS file_status_date,
              org.org_unit_code             AS org_unit_code,
              ffc.client_number             AS client_number,
-             ffc.forest_file_client_locn   AS client_locn_code,
+             ffc.client_locn_code          AS client_locn_code,
              cli.client_name               AS licensee,
              pfu.mgmt_unit_type            AS mgmt_unit_type,
              pfu.mgmt_unit_id              AS mgmt_unit_id,
@@ -91,11 +91,12 @@ public class TenureDetailService {
         JOIN the.org_unit org              ON org.org_unit_no = pfu.forest_region
         LEFT JOIN the.tenure_term tt        ON tt.forest_file_id = pfu.forest_file_id
         LEFT JOIN the.timber_tenure ttn     ON ttn.forest_file_id = pfu.forest_file_id
-        LEFT JOIN the.file_status_code fsc  ON fsc.file_status_st = pfu.file_status_st
+        LEFT JOIN the.tenure_file_status_code fsc
+               ON fsc.tenure_file_status_code = pfu.file_status_st
         LEFT JOIN the.forest_file_client ffc
                ON ffc.forest_file_id = pfu.forest_file_id
               AND ffc.forest_file_client_type_code = 'A'
-        LEFT JOIN the.client cli            ON cli.client_number = ffc.client_number
+        LEFT JOIN the.forest_client cli            ON cli.client_number = ffc.client_number
         LEFT JOIN the.harvest_sale hs       ON hs.forest_file_id = pfu.forest_file_id
         LEFT JOIN the.tenure_deposit td     ON td.forest_file_id = pfu.forest_file_id
        WHERE pfu.forest_file_id = :forestFileId

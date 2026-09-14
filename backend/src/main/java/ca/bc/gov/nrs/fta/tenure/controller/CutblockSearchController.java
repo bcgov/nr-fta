@@ -1,8 +1,8 @@
 package ca.bc.gov.nrs.fta.tenure.controller;
 
+import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.tenure.dto.CutblockSearchDto;
 import ca.bc.gov.nrs.fta.tenure.service.CutblockSearchService;
-import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/fta/cut-blocks")
 public class CutblockSearchController {
 
+  /** Rows per page when the caller does not say; matches the frontend default. */
+  private static final int DEFAULT_PAGE_SIZE = 10;
+
+  /** Upper bound on page size so a hand-built request cannot ask for the world. */
+  private static final int MAX_PAGE_SIZE = 100;
+
   private final CutblockSearchService cutblockSearchService;
 
   public CutblockSearchController(CutblockSearchService cutblockSearchService) {
@@ -24,7 +30,7 @@ public class CutblockSearchController {
   }
 
   @GetMapping
-  public ResponseEntity<List<CutblockSearchDto>> search(
+  public ResponseEntity<PagedResponse<CutblockSearchDto>> search(
       @RequestParam(required = false) String forestFileId,
       @RequestParam(required = false) String cuttingPermitId,
       @RequestParam(required = false) String timberMark,
@@ -38,22 +44,16 @@ public class CutblockSearchController {
       @RequestParam(required = false) String managedByCp,
       @RequestParam(required = false) String harvestStartDateFrom,
       @RequestParam(required = false) String harvestStartDateTo,
-      @RequestParam(required = false) String districtAdminZone) {
-    return ResponseEntity.ok(
-        cutblockSearchService.search(
-            forestFileId,
-            cuttingPermitId,
-            timberMark,
-            cutBlockId,
-            blockStatusSt,
-            orgUnitNo,
-            clientNumber,
-            clientLocnCode,
-            clientName,
-            managedByFile,
-            managedByCp,
-            harvestStartDateFrom,
-            harvestStartDateTo,
-            districtAdminZone));
+      @RequestParam(required = false) String districtAdminZone,
+      @RequestParam(required = false) String sortBy,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
+    int safePage = Math.max(page, 0);
+    int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
+    return ResponseEntity.ok(cutblockSearchService.search(
+        forestFileId, cuttingPermitId, timberMark, cutBlockId, blockStatusSt, orgUnitNo,
+        clientNumber, clientLocnCode, clientName, managedByFile, managedByCp,
+        harvestStartDateFrom, harvestStartDateTo, districtAdminZone,
+        sortBy, safePage, safeSize));
   }
 }

@@ -73,7 +73,7 @@ public class MarkDetailService {
         LEFT JOIN the.forest_file_client ffc
                ON ffc.forest_file_id = pmc.forest_file_id
               AND ffc.forest_file_client_type_code = 'A'
-        LEFT JOIN the.client cli            ON cli.client_number = ffc.client_number
+        LEFT JOIN the.forest_client cli            ON cli.client_number = ffc.client_number
        WHERE pmc.timber_mark = :markNumber
       """;
 
@@ -105,7 +105,7 @@ public class MarkDetailService {
       SELECT ffc.client_number                  AS client_number,
              ffc.client_locn_code               AS client_locn_code,
              cli.client_name                    AS client_name,
-             loc.city_name                      AS client_city,
+             loc.city                           AS client_city,
              ffc.forest_file_client_skey        AS for_client_link_skey,
              ffc.forest_file_client_type_code   AS file_client_type,
              fct.description                    AS file_client_type_desc,
@@ -116,7 +116,7 @@ public class MarkDetailService {
         JOIN the.forest_file_client ffc     ON ffc.forest_file_id = pmc.forest_file_id
         JOIN the.file_client_type_code fct
              ON fct.file_client_type_code = ffc.forest_file_client_type_code
-        LEFT JOIN the.client cli            ON cli.client_number = ffc.client_number
+        LEFT JOIN the.forest_client cli            ON cli.client_number = ffc.client_number
         LEFT JOIN the.client_location loc
              ON loc.client_number = ffc.client_number
             AND loc.client_locn_code = ffc.client_locn_code
