@@ -80,7 +80,7 @@ setup('authenticate via IDIR', async ({ page, context }) => {
   // Inbox is the first universally-visible top-level entry for any
   // authenticated FSP user, so it's the simplest "auth landed cleanly"
   // signal.
-  await expect(page.getByTestId('side-nav-link-Inbox')).toBeVisible({
+  await expect(page.getByTestId('side-nav-link-inbox')).toBeVisible({
     timeout: 30_000,
   });
 

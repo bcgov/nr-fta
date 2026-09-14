@@ -1,4 +1,4 @@
-import { Search as SearchIcon, Reset, Download } from '@carbon/icons-react';
+import { Search as SearchIcon, Reset, Download, Report } from '@carbon/icons-react';
 import {
   Button,
   Column,
@@ -16,6 +16,7 @@ import {
 import { useState, type FC, type FormEvent } from 'react';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
+import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
 import PageLayout from '@/pages/PageLayout';
 import {
@@ -23,6 +24,8 @@ import {
   type AuditReport,
   type AuditReportParams,
 } from '@/services/audit_report';
+
+import './AuditReport.scss';
 
 /**
  * FTA402 — Private Mark Certificate report. Filterable timber-mark certificate
@@ -70,42 +73,42 @@ const AuditReport: FC = () => {
     });
 
   return (
-    <PageLayout title="Audit Report">
-      <form style={{ maxWidth: '64rem', marginBottom: '2rem' }} onSubmit={onSearch}>
-        <Grid narrow>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="au-mark"
-              labelText="Timber Mark"
-              placeholder="e.g. AB1234"
-              value={criteria.timberMark ?? ''}
-              onChange={(e) => onField('timberMark')(e.target.value)}
-            />
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="au-licensee"
-              labelText="Licensee"
-              placeholder="e.g. West Fraser"
-              value={criteria.mainLicensee ?? ''}
-              onChange={(e) => onField('mainLicensee')(e.target.value)}
-            />
-          </Column>
-        </Grid>
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
-          <Button type="submit" renderIcon={SearchIcon}>
-            Run report
-          </Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
-            Reset
-          </Button>
-          {rows !== null && rows.length > 0 && (
-            <Button type="button" kind="tertiary" renderIcon={Download} onClick={onExport}>
-              Export
+    <PageLayout
+      title="Audit Report"
+      subtitle="Search private mark certificates by timber mark or licensee, and export the results."
+    >
+      <SectionTile title="Search criteria" icon={SearchIcon}>
+        <form className="audit-report__form" onSubmit={onSearch}>
+          <Grid narrow>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="au-mark"
+                labelText="Timber Mark"
+                placeholder="e.g. AB1234"
+                value={criteria.timberMark ?? ''}
+                onChange={(e) => onField('timberMark')(e.target.value)}
+              />
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="au-licensee"
+                labelText="Licensee"
+                placeholder="e.g. West Fraser"
+                value={criteria.mainLicensee ?? ''}
+                onChange={(e) => onField('mainLicensee')(e.target.value)}
+              />
+            </Column>
+          </Grid>
+          <div className="audit-report__actions">
+            <Button type="submit" size="md" renderIcon={SearchIcon}>
+              Run report
             </Button>
-          )}
-        </div>
-      </form>
+            <Button type="button" size="md" kind="tertiary" renderIcon={Reset} onClick={onReset}>
+              Reset
+            </Button>
+          </div>
+        </form>
+      </SectionTile>
 
       <AsyncBoundary
         loading={loading}
@@ -114,39 +117,56 @@ const AuditReport: FC = () => {
         loadingText="Running report…"
       >
         {rows !== null && (
-          <TableContainer
-            title="Private mark certificates"
-            description={`${rows.length} entr${rows.length === 1 ? 'y' : 'ies'}`}
+          <SectionTile
+            title="Certificates"
+            icon={Report}
+            actions={
+              rows.length > 0 ? (
+                <Button
+                  type="button"
+                  size="md"
+                  kind="tertiary"
+                  renderIcon={Download}
+                  onClick={onExport}
+                >
+                  Export
+                </Button>
+              ) : undefined
+            }
           >
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeader>Timber Mark</TableHeader>
-                  <TableHeader>Licensee</TableHeader>
-                  <TableHeader>District</TableHeader>
-                  <TableHeader>File Type</TableHeader>
-                  <TableHeader>Issue Date</TableHeader>
-                  <TableHeader>Expiry Date</TableHeader>
-                  <TableHeader>Secondary Clients</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((a, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <Tag type="blue">{a.timberMark}</Tag>
-                    </TableCell>
-                    <TableCell>{a.mainLicensee ?? '—'}</TableCell>
-                    <TableCell>{a.district ?? '—'}</TableCell>
-                    <TableCell>{a.fileTypeDesc ?? '—'}</TableCell>
-                    <TableCell>{a.markIssueDate ?? '—'}</TableCell>
-                    <TableCell>{a.markExpiryDate ?? '—'}</TableCell>
-                    <TableCell>{a.secondaryClientCount ?? 0}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+            <div className="bordered-table">
+              <TableContainer description={`${rows.length} entr${rows.length === 1 ? 'y' : 'ies'}`}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeader>Timber Mark</TableHeader>
+                      <TableHeader>Licensee</TableHeader>
+                      <TableHeader>District</TableHeader>
+                      <TableHeader>File Type</TableHeader>
+                      <TableHeader>Issue Date</TableHeader>
+                      <TableHeader>Expiry Date</TableHeader>
+                      <TableHeader>Secondary Clients</TableHeader>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {rows.map((a, i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          <Tag type="blue">{a.timberMark}</Tag>
+                        </TableCell>
+                        <TableCell>{a.mainLicensee ?? '—'}</TableCell>
+                        <TableCell>{a.district ?? '—'}</TableCell>
+                        <TableCell>{a.fileTypeDesc ?? '—'}</TableCell>
+                        <TableCell>{a.markIssueDate ?? '—'}</TableCell>
+                        <TableCell>{a.markExpiryDate ?? '—'}</TableCell>
+                        <TableCell>{a.secondaryClientCount ?? 0}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </div>
+          </SectionTile>
         )}
       </AsyncBoundary>
     </PageLayout>

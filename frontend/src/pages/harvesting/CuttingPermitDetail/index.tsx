@@ -1,4 +1,4 @@
-import { ArrowLeft, Edit, Pause, Tag as TagIcon } from '@carbon/icons-react';
+import { ArrowLeft, Document, Edit, Pause, Tag as TagIcon } from '@carbon/icons-react';
 import {
   Button,
   Tab,
@@ -22,13 +22,13 @@ import { Link, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
+import SectionTile from '@/components/SectionTile';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import PageLayout from '@/pages/PageLayout';
 import { canEdit } from '@/routes/access';
 import { getCuttingPermitDetail } from '@/services/cutting_permit_detail';
-import './CuttingPermitDetail.scss';
 
 const nf = new Intl.NumberFormat('en-CA');
 
@@ -57,9 +57,40 @@ const CuttingPermitDetail: FC = () => {
 
   const area = cp?.harvestArea != null ? `${nf.format(cp.harvestArea)} ha` : '—';
 
+  const actions =
+    cp && canEdit(user) ? (
+      <>
+        <Button size="md" kind="tertiary" renderIcon={Edit}>
+          Edit permit
+        </Button>
+        <Button
+          size="md"
+          kind="tertiary"
+          renderIcon={TagIcon}
+          as={Link}
+          to={`/harvesting-authority/${cp.cuttingPermitId ?? cpId}/assign-marks`}
+        >
+          Assign marks to blocks
+        </Button>
+        <Button
+          size="md"
+          kind="danger"
+          renderIcon={Pause}
+          as={Link}
+          to={`/harvesting-authority/${cp.cuttingPermitId ?? cpId}/suspend-blocks`}
+        >
+          Suspend blocks
+        </Button>
+      </>
+    ) : undefined;
+
   return (
-    <PageLayout title={cp ? `Cutting Permit ${cp.cuttingPermitId ?? cpId}` : 'Cutting Permit'}>
-      <Link to="/search/harvesting-authority" className="fta-back">
+    <PageLayout
+      title={cp ? `Cutting Permit ${cp.cuttingPermitId ?? cpId}` : 'Cutting Permit'}
+      subtitle="Permit details, cut blocks, and harvest history"
+      actions={actions}
+    >
+      <Link to="/search/harvesting-authority" className="back-link">
         <ArrowLeft size={16} /> Back to Harvesting Authority Search
       </Link>
 
@@ -93,122 +124,98 @@ const CuttingPermitDetail: FC = () => {
                 { label: 'Issued', value: cp.issueDate ?? '—' },
                 { label: 'Expires', value: cp.expiryDate ?? '—' },
               ]}
-              action={
-                canEdit(user) ? (
-                  <Button size="sm" kind="tertiary" renderIcon={Edit}>
-                    Edit permit
-                  </Button>
-                ) : undefined
-              }
             />
 
-            {canEdit(user) && (
-              <div className="cp-detail__actions">
-                <Button
-                  size="sm"
-                  kind="tertiary"
-                  renderIcon={TagIcon}
-                  as={Link}
-                  to={`/harvesting-authority/${cp.cuttingPermitId ?? cpId}/assign-marks`}
-                >
-                  Assign marks to blocks
-                </Button>
-                <Button
-                  size="sm"
-                  kind="danger--tertiary"
-                  renderIcon={Pause}
-                  as={Link}
-                  to={`/harvesting-authority/${cp.cuttingPermitId ?? cpId}/suspend-blocks`}
-                >
-                  Suspend blocks
-                </Button>
-              </div>
-            )}
+            <SectionTile title="Permit details" icon={Document}>
+              <Tabs>
+                <TabList aria-label="Cutting permit sections" contained>
+                  <Tab>Details</Tab>
+                  <Tab>Cut Blocks</Tab>
+                  <Tab>Harvest History</Tab>
+                </TabList>
+                <TabPanels>
+                  <TabPanel>
+                    <DefinitionGrid
+                      items={[
+                        { label: 'Legal Description', value: cp.location ?? '—' },
+                        { label: 'Timber Mark', value: cp.timberMark ?? '—' },
+                        {
+                          label: 'File Type',
+                          value: cp.fileTypeDescription ?? cp.fileTypeCode ?? '—',
+                        },
+                        { label: 'Licensee', value: cp.licensee ?? '—' },
+                        { label: 'Forest District', value: cp.forestDistrict ?? '—' },
+                        { label: 'Authorized Area', value: area },
+                      ]}
+                    />
+                    <h3 style={{ margin: '1rem 0 0.5rem', fontSize: '1rem' }}>
+                      Issuance Conditions
+                    </h3>
+                    {issuanceConditions.length ? (
+                      <UnorderedList>
+                        {issuanceConditions.map((c, i) => (
+                          <ListItem key={i}>{c}</ListItem>
+                        ))}
+                      </UnorderedList>
+                    ) : (
+                      <p>No issuance conditions recorded.</p>
+                    )}
+                  </TabPanel>
 
-            <Tabs>
-              <TabList aria-label="Cutting permit sections" contained>
-                <Tab>Details</Tab>
-                <Tab>Cut Blocks</Tab>
-                <Tab>Harvest History</Tab>
-              </TabList>
-              <TabPanels>
-                <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      { label: 'Legal Description', value: cp.location ?? '—' },
-                      { label: 'Timber Mark', value: cp.timberMark ?? '—' },
-                      {
-                        label: 'File Type',
-                        value: cp.fileTypeDescription ?? cp.fileTypeCode ?? '—',
-                      },
-                      { label: 'Licensee', value: cp.licensee ?? '—' },
-                      { label: 'Forest District', value: cp.forestDistrict ?? '—' },
-                      { label: 'Authorized Area', value: area },
-                    ]}
-                  />
-                  <h3 style={{ margin: '1rem 0 0.5rem', fontSize: '1rem' }}>Issuance Conditions</h3>
-                  {issuanceConditions.length ? (
-                    <UnorderedList>
-                      {issuanceConditions.map((c, i) => (
-                        <ListItem key={i}>{c}</ListItem>
-                      ))}
-                    </UnorderedList>
-                  ) : (
-                    <p>No issuance conditions recorded.</p>
-                  )}
-                </TabPanel>
+                  <TabPanel>
+                    <div className="bordered-table">
+                      <TableContainer
+                        title="Cut Blocks"
+                        description="Cut blocks are managed on the Cut Block search screen"
+                      >
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableHeader>Block</TableHeader>
+                              <TableHeader>Status</TableHeader>
+                              <TableHeader>Area (ha)</TableHeader>
+                              <TableHeader>Planned Volume (m³)</TableHeader>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            <TableRow>
+                              <TableCell colSpan={4}>
+                                <Link
+                                  to={`/search/cut-block?cpId=${encodeURIComponent(cp.cuttingPermitId ?? cpId)}`}
+                                >
+                                  View cut blocks for this permit
+                                </Link>
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </div>
+                  </TabPanel>
 
-                <TabPanel>
-                  <TableContainer
-                    title="Cut Blocks"
-                    description="Cut blocks are managed on the Cut Block search screen"
-                  >
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>Block</TableHeader>
-                          <TableHeader>Status</TableHeader>
-                          <TableHeader>Area (ha)</TableHeader>
-                          <TableHeader>Planned Volume (m³)</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell colSpan={4}>
-                            <Link
-                              to={`/search/cut-block?cpId=${encodeURIComponent(cp.cuttingPermitId ?? cpId)}`}
-                            >
-                              View cut blocks for this permit
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </TabPanel>
-
-                <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      { label: 'Status', value: cp.statusDesc ?? cp.statusCode ?? '—' },
-                      { label: 'Status Date', value: cp.statusDate ?? '—' },
-                      {
-                        label: 'Tenure Term',
-                        value:
-                          cp.tenureTermYears != null || cp.tenureTermMonths != null
-                            ? `${cp.tenureTermYears ?? 0} yr ${cp.tenureTermMonths ?? 0} mo`
-                            : '—',
-                      },
-                      { label: 'Extend Date', value: cp.extendDate ?? '—' },
-                      {
-                        label: 'Extend Count',
-                        value: cp.extendCount != null ? String(cp.extendCount) : '—',
-                      },
-                    ]}
-                  />
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
+                  <TabPanel>
+                    <DefinitionGrid
+                      items={[
+                        { label: 'Status', value: cp.statusDesc ?? cp.statusCode ?? '—' },
+                        { label: 'Status Date', value: cp.statusDate ?? '—' },
+                        {
+                          label: 'Tenure Term',
+                          value:
+                            cp.tenureTermYears != null || cp.tenureTermMonths != null
+                              ? `${cp.tenureTermYears ?? 0} yr ${cp.tenureTermMonths ?? 0} mo`
+                              : '—',
+                        },
+                        { label: 'Extend Date', value: cp.extendDate ?? '—' },
+                        {
+                          label: 'Extend Count',
+                          value: cp.extendCount != null ? String(cp.extendCount) : '—',
+                        },
+                      ]}
+                    />
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            </SectionTile>
           </>
         )}
       </AsyncBoundary>

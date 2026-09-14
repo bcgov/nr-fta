@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
+import SectionTile from '@/components/SectionTile';
 import PageLayout from '@/pages/PageLayout';
 import { searchInbox, type InboxSearchParams, type InboxRow } from '@/services/inbox';
 import './Inbox.scss';
@@ -63,63 +64,68 @@ const Inbox: FC = () => {
   };
 
   return (
-    <PageLayout title="Inbox">
-      <form className="inbox__form" onSubmit={onSearch}>
-        <Grid narrow>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="in-file"
-              labelText="Forest File ID"
-              placeholder="e.g. A19201"
-              value={criteria.forestFileId ?? ''}
-              onChange={(e) => onField('forestFileId')(e.target.value)}
-            />
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="in-client"
-              labelText="Client Number"
-              placeholder="e.g. 00001012"
-              value={criteria.clientNumber ?? ''}
-              onChange={(e) => onField('clientNumber')(e.target.value)}
-            />
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <Select
-              id="in-type"
-              labelText="Application Type"
-              value={criteria.applTypeCode ?? ''}
-              onChange={(e) => onField('applTypeCode')(e.target.value)}
-            >
-              <SelectItem value="" text="Any" />
-              <SelectItem value="CP" text="Cutting Permit" />
-              <SelectItem value="RP" text="Road Permit" />
-              <SelectItem value="TL" text="Timber Licence" />
-              <SelectItem value="RNG" text="Range" />
-            </Select>
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <Select
-              id="in-exa"
-              labelText="Exhibit A"
-              value={criteria.exACleared ?? ''}
-              onChange={(e) => onField('exACleared')(e.target.value)}
-            >
-              <SelectItem value="" text="Any" />
-              <SelectItem value="Y" text="Cleared" />
-              <SelectItem value="N" text="Not cleared" />
-            </Select>
-          </Column>
-        </Grid>
-        <div className="inbox__actions">
-          <Button type="submit" renderIcon={SearchIcon}>
-            Filter
-          </Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
-            Reset
-          </Button>
-        </div>
-      </form>
+    <PageLayout
+      title="Inbox"
+      subtitle="ESF tenure application worklist, filterable by file, client and type"
+    >
+      <SectionTile title="Filter criteria" icon={SearchIcon}>
+        <form className="inbox__form" onSubmit={onSearch}>
+          <Grid narrow>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="in-file"
+                labelText="Forest File ID"
+                placeholder="e.g. A19201"
+                value={criteria.forestFileId ?? ''}
+                onChange={(e) => onField('forestFileId')(e.target.value)}
+              />
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="in-client"
+                labelText="Client Number"
+                placeholder="e.g. 00001012"
+                value={criteria.clientNumber ?? ''}
+                onChange={(e) => onField('clientNumber')(e.target.value)}
+              />
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <Select
+                id="in-type"
+                labelText="Application Type"
+                value={criteria.applTypeCode ?? ''}
+                onChange={(e) => onField('applTypeCode')(e.target.value)}
+              >
+                <SelectItem value="" text="Any" />
+                <SelectItem value="CP" text="Cutting Permit" />
+                <SelectItem value="RP" text="Road Permit" />
+                <SelectItem value="TL" text="Timber Licence" />
+                <SelectItem value="RNG" text="Range" />
+              </Select>
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <Select
+                id="in-exa"
+                labelText="Exhibit A"
+                value={criteria.exACleared ?? ''}
+                onChange={(e) => onField('exACleared')(e.target.value)}
+              >
+                <SelectItem value="" text="Any" />
+                <SelectItem value="Y" text="Cleared" />
+                <SelectItem value="N" text="Not cleared" />
+              </Select>
+            </Column>
+          </Grid>
+          <div className="inbox__actions">
+            <Button type="submit" size="md" renderIcon={SearchIcon}>
+              Filter
+            </Button>
+            <Button type="button" size="md" kind="tertiary" renderIcon={Reset} onClick={onReset}>
+              Reset
+            </Button>
+          </div>
+        </form>
+      </SectionTile>
 
       <AsyncBoundary
         loading={loading}
@@ -128,39 +134,42 @@ const Inbox: FC = () => {
         loadingText="Loading inbox…"
       >
         {rows !== null && (
-          <SearchResultsTable
-            title="Application worklist"
-            rows={rows.map((r) => ({
-              ...r,
-              id: String(r.tenureAppId ?? r.submissionId ?? r.forestFileId),
-            }))}
-            headers={HEADERS}
-            emptyTitle="No applications in the queue"
-            emptyBody="No ESF submissions match the current filters."
-            renderCell={(row, key) => {
-              if (key === 'submissionId') {
-                const id = row.submissionId ?? row.tenureAppId;
-                return id != null ? <Link to={`/inbox/${id}`}>{id}</Link> : '—';
-              }
-              if (key === 'forestFileIdDisplay') {
-                const label = row.forestFileIdDisplay ?? row.forestFileId;
-                return row.forestFileId ? (
-                  <Link to={`/tenures/${row.forestFileId}`}>{label}</Link>
-                ) : (
-                  (label ?? '—')
-                );
-              }
-              if (key === 'adjudicationInd') {
-                return row.adjudicationInd === 'Y' ? (
-                  <Tag type="teal">Cleared</Tag>
-                ) : (
-                  <Tag type="blue">Pending</Tag>
-                );
-              }
-              if (key === 'currentAssignedTo') return row.currentAssignedTo ?? <em>Unassigned</em>;
-              return undefined;
-            }}
-          />
+          <div className="bordered-table">
+            <SearchResultsTable
+              title="Application worklist"
+              rows={rows.map((r) => ({
+                ...r,
+                id: String(r.tenureAppId ?? r.submissionId ?? r.forestFileId),
+              }))}
+              headers={HEADERS}
+              emptyTitle="No applications in the queue"
+              emptyBody="No ESF submissions match the current filters."
+              renderCell={(row, key) => {
+                if (key === 'submissionId') {
+                  const id = row.submissionId ?? row.tenureAppId;
+                  return id != null ? <Link to={`/inbox/${id}`}>{id}</Link> : '—';
+                }
+                if (key === 'forestFileIdDisplay') {
+                  const label = row.forestFileIdDisplay ?? row.forestFileId;
+                  return row.forestFileId ? (
+                    <Link to={`/tenures/${row.forestFileId}`}>{label}</Link>
+                  ) : (
+                    (label ?? '—')
+                  );
+                }
+                if (key === 'adjudicationInd') {
+                  return row.adjudicationInd === 'Y' ? (
+                    <Tag type="teal">Cleared</Tag>
+                  ) : (
+                    <Tag type="blue">Pending</Tag>
+                  );
+                }
+                if (key === 'currentAssignedTo')
+                  return row.currentAssignedTo ?? <em>Unassigned</em>;
+                return undefined;
+              }}
+            />
+          </div>
         )}
       </AsyncBoundary>
     </PageLayout>

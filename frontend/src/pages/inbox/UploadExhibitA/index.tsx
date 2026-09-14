@@ -4,6 +4,7 @@ import { useState, type FC } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import DragDropFileInput from '@/components/DragDropFileInput';
+import SectionTile from '@/components/SectionTile';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import PageLayout from '@/pages/PageLayout';
@@ -82,8 +83,11 @@ const UploadExhibitA: FC = () => {
   };
 
   return (
-    <PageLayout title={`Upload Exhibit A — ${esfId}`}>
-      <Link to={`/exhibit-a/${esfId}`} className="fta-back">
+    <PageLayout
+      title={`Upload Exhibit A — ${esfId}`}
+      subtitle="Attach the spatial submission for this application"
+    >
+      <Link to={`/exhibit-a/${esfId}`} className="back-link">
         <ArrowLeft size={16} /> Back to Exhibit A map
       </Link>
 
@@ -93,22 +97,29 @@ const UploadExhibitA: FC = () => {
         </p>
       )}
 
-      <div style={{ maxWidth: '40rem' }}>
-        <DragDropFileInput
-          label="Exhibit A submission"
-          helperText="PDF map or GeoJSON, up to 20 MB"
-          accept={['.pdf', '.geojson', '.zip']}
-          file={file}
-          disabled={readOnly}
-          onSelect={setFile}
-          onRemove={() => setFile(null)}
-        />
-        <div style={{ marginTop: '1.5rem' }}>
-          <Button renderIcon={Upload} disabled={readOnly || !file || saving} onClick={onUpload}>
-            {saving ? 'Uploading…' : 'Upload Exhibit A'}
-          </Button>
+      <SectionTile title="Exhibit A submission" icon={Upload}>
+        <div style={{ maxWidth: '40rem' }}>
+          <DragDropFileInput
+            label="Exhibit A submission"
+            helperText="PDF map or GeoJSON, up to 20 MB"
+            accept={['.pdf', '.geojson', '.zip']}
+            file={file}
+            disabled={readOnly}
+            onSelect={setFile}
+            onRemove={() => setFile(null)}
+          />
+          <div style={{ marginTop: '1.5rem' }}>
+            <Button
+              size="md"
+              renderIcon={Upload}
+              disabled={readOnly || !file || saving}
+              onClick={onUpload}
+            >
+              {saving ? 'Uploading…' : 'Upload Exhibit A'}
+            </Button>
+          </div>
         </div>
-      </div>
+      </SectionTile>
     </PageLayout>
   );
 };

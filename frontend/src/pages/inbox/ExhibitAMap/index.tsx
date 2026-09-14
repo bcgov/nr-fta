@@ -1,4 +1,4 @@
-import { ArrowLeft } from '@carbon/icons-react';
+import { ArrowLeft, Map as MapIcon, List } from '@carbon/icons-react';
 import {
   Button,
   Tab,
@@ -18,6 +18,7 @@ import {
 import { MapContainer, TileLayer, Polygon, CircleMarker, Popup } from 'react-leaflet';
 import { Link, useParams } from 'react-router-dom';
 
+import SectionTile from '@/components/SectionTile';
 import Tombstone from '@/components/Tombstone';
 import { findExhibitA, type MapFeature } from '@/mocks/spatial';
 import PageLayout from '@/pages/PageLayout';
@@ -53,7 +54,7 @@ const ExhibitAMap: FC = () => {
     return (
       <PageLayout title="Exhibit A not found">
         <p style={{ marginBottom: '1.5rem' }}>No spatial submission matches “{esfId}”.</p>
-        <Button as={Link} to="/inbox" renderIcon={ArrowLeft} kind="tertiary">
+        <Button as={Link} to="/inbox" renderIcon={ArrowLeft} kind="tertiary" size="md">
           Back to Inbox
         </Button>
       </PageLayout>
@@ -61,8 +62,11 @@ const ExhibitAMap: FC = () => {
   }
 
   return (
-    <PageLayout title={`Exhibit A — ${ex.esfId}`}>
-      <Link to={`/inbox/${ex.esfId}`} className="fta-back">
+    <PageLayout
+      title={`Exhibit A — ${ex.esfId}`}
+      subtitle="Tenure boundary, map features and spatial conflicts for this submission"
+    >
+      <Link to={`/inbox/${ex.esfId}`} className="back-link">
         <ArrowLeft size={16} /> Back to Application {ex.esfId}
       </Link>
 
@@ -76,103 +80,114 @@ const ExhibitAMap: FC = () => {
         ]}
       />
 
-      <div className="exhibit-a__map">
-        <MapContainer
-          center={ex.centre}
-          zoom={11}
-          scrollWheelZoom={false}
-          style={{ height: '100%', width: '100%' }}
-        >
-          <TileLayer
-            attribution="&copy; OpenStreetMap contributors"
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <Polygon positions={ex.boundary} pathOptions={{ color: '#0f62fe', fillOpacity: 0.12 }}>
-            <Popup>Tenure area — file {ex.fileId}</Popup>
-          </Polygon>
-          {ex.markers.map((m) => (
-            <CircleMarker
-              key={m.id}
-              center={m.position}
-              radius={9}
-              pathOptions={{
-                color: m.kind === 'conflict' ? '#da1e28' : '#0e6027',
-                fillColor: m.kind === 'conflict' ? '#da1e28' : '#0e6027',
-                fillOpacity: 0.7,
-              }}
-            >
-              <Popup>{m.label}</Popup>
-            </CircleMarker>
-          ))}
-        </MapContainer>
-      </div>
+      <SectionTile title="Tenure map" icon={MapIcon}>
+        <div className="exhibit-a__map">
+          <MapContainer
+            center={ex.centre}
+            zoom={11}
+            scrollWheelZoom={false}
+            style={{ height: '100%', width: '100%' }}
+          >
+            <TileLayer
+              attribution="&copy; OpenStreetMap contributors"
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <Polygon positions={ex.boundary} pathOptions={{ color: '#0f62fe', fillOpacity: 0.12 }}>
+              <Popup>Tenure area — file {ex.fileId}</Popup>
+            </Polygon>
+            {ex.markers.map((m) => (
+              <CircleMarker
+                key={m.id}
+                center={m.position}
+                radius={9}
+                pathOptions={{
+                  color: m.kind === 'conflict' ? '#da1e28' : '#0e6027',
+                  fillColor: m.kind === 'conflict' ? '#da1e28' : '#0e6027',
+                  fillOpacity: 0.7,
+                }}
+              >
+                <Popup>{m.label}</Popup>
+              </CircleMarker>
+            ))}
+          </MapContainer>
+        </div>
+      </SectionTile>
 
-      <Tabs>
-        <TabList aria-label="Exhibit A sections" contained>
-          <Tab>Feature List</Tab>
-          <Tab>Conflicts</Tab>
-        </TabList>
-        <TabPanels>
-          <TabPanel>
-            <TableContainer title="Map features" description={`${ex.features.length} feature(s)`}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableHeader>Feature</TableHeader>
-                    <TableHeader>Type</TableHeader>
-                    <TableHeader>Label</TableHeader>
-                    <TableHeader>Area (ha)</TableHeader>
-                    <TableHeader>Status</TableHeader>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {ex.features.map((f) => (
-                    <TableRow key={f.featureId}>
-                      <TableCell>{f.featureId}</TableCell>
-                      <TableCell>
-                        <Tag type={FEATURE_TAG[f.type]}>{f.type}</Tag>
-                      </TableCell>
-                      <TableCell>{f.label}</TableCell>
-                      <TableCell>{f.areaHa != null ? f.areaHa.toFixed(1) : '—'}</TableCell>
-                      <TableCell>{f.status}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </TabPanel>
+      <SectionTile title="Features and conflicts" icon={List}>
+        <Tabs>
+          <TabList aria-label="Exhibit A sections" contained>
+            <Tab>Feature List</Tab>
+            <Tab>Conflicts</Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel>
+              <div className="bordered-table">
+                <TableContainer
+                  title="Map features"
+                  description={`${ex.features.length} feature(s)`}
+                >
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableHeader>Feature</TableHeader>
+                        <TableHeader>Type</TableHeader>
+                        <TableHeader>Label</TableHeader>
+                        <TableHeader>Area (ha)</TableHeader>
+                        <TableHeader>Status</TableHeader>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {ex.features.map((f) => (
+                        <TableRow key={f.featureId}>
+                          <TableCell>{f.featureId}</TableCell>
+                          <TableCell>
+                            <Tag type={FEATURE_TAG[f.type]}>{f.type}</Tag>
+                          </TableCell>
+                          <TableCell>{f.label}</TableCell>
+                          <TableCell>{f.areaHa != null ? f.areaHa.toFixed(1) : '—'}</TableCell>
+                          <TableCell>{f.status}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </div>
+            </TabPanel>
 
-          <TabPanel>
-            <TableContainer
-              title="Spatial conflicts"
-              description={`${ex.conflicts.length} conflict(s)`}
-            >
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableHeader>Conflict</TableHeader>
-                    <TableHeader>Against</TableHeader>
-                    <TableHeader>Overlap (ha)</TableHeader>
-                    <TableHeader>Severity</TableHeader>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {ex.conflicts.map((c) => (
-                    <TableRow key={c.conflictId}>
-                      <TableCell>{c.conflictId}</TableCell>
-                      <TableCell>{c.against}</TableCell>
-                      <TableCell>{c.overlapHa.toFixed(1)}</TableCell>
-                      <TableCell>
-                        <Tag type={SEVERITY_TAG[c.severity]}>{c.severity}</Tag>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
+            <TabPanel>
+              <div className="bordered-table">
+                <TableContainer
+                  title="Spatial conflicts"
+                  description={`${ex.conflicts.length} conflict(s)`}
+                >
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableHeader>Conflict</TableHeader>
+                        <TableHeader>Against</TableHeader>
+                        <TableHeader>Overlap (ha)</TableHeader>
+                        <TableHeader>Severity</TableHeader>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {ex.conflicts.map((c) => (
+                        <TableRow key={c.conflictId}>
+                          <TableCell>{c.conflictId}</TableCell>
+                          <TableCell>{c.against}</TableCell>
+                          <TableCell>{c.overlapHa.toFixed(1)}</TableCell>
+                          <TableCell>
+                            <Tag type={SEVERITY_TAG[c.severity]}>{c.severity}</Tag>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </div>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+      </SectionTile>
     </PageLayout>
   );
 };

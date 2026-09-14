@@ -50,8 +50,6 @@ import { defaultRouteForUser, isPathAllowedForUser } from './routes/access';
 
 import type { FC, ReactNode } from 'react';
 
-import './App.css';
-
 // Wraps a page in the Carbon UI Shell.
 const withLayout = (node: ReactNode) => <Layout>{node}</Layout>;
 

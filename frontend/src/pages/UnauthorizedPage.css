@@ -1,0 +1,12 @@
+/*
+    UnauthorizedPage renders outside the app shell (no SideNav/Header, since
+    the user has no role to navigate with), so it doesn't get Carbon
+    <Content>'s inline padding (`.cds--content { padding: 0 1.5rem }` in
+    src/styles/_overrides.scss). This replicates just that side padding, plus
+    a comfortable reading width, without touching the shared PageLayout.
+*/
+.unauthorized-page {
+  padding-inline: 1.5rem;
+  max-width: 40rem;
+  margin-inline: auto;
+}

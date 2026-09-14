@@ -1,8 +1,6 @@
-import { ArrowLeft, Edit } from '@carbon/icons-react';
+import { ArrowLeft, Document, Edit } from '@carbon/icons-react';
 import {
   Button,
-  Column,
-  Grid,
   Tab,
   TabList,
   TabPanel,
@@ -21,6 +19,8 @@ import { Link, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
+import SectionTile from '@/components/SectionTile';
+import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import PageLayout from '@/pages/PageLayout';
@@ -28,7 +28,6 @@ import { canEdit } from '@/routes/access';
 import { getTenureDetail } from '@/services/tenure_detail';
 
 import type { FC } from 'react';
-import './TenureDetail.scss';
 
 const nf = new Intl.NumberFormat('en-CA');
 
@@ -78,62 +77,47 @@ const TenureDetail: FC = () => {
   const notes: Note[] = [];
 
   return (
-    <PageLayout title={`Tenure ${fileId}`}>
-      <Link to="/search/tenure" className="tenure-detail__back">
+    <PageLayout
+      title={`Tenure ${fileId}`}
+      subtitle="Tenure record: cutting permits, cut blocks, roads, associated files and clients, AAC and sale details."
+      actions={
+        tenure && canEdit(user) ? (
+          <Button size="md" kind="tertiary" renderIcon={Edit}>
+            Edit tenure
+          </Button>
+        ) : undefined
+      }
+    >
+      <Link to="/search/tenure" className="back-link">
         <ArrowLeft size={16} /> Back to Tenure Search
       </Link>
 
       <AsyncBoundary loading={loading} error={error} onRetry={reload} loadingText="Loading tenure…">
         {tenure && (
           <>
-            {/* Tombstone — persistent key identifiers */}
-            <section className="tenure-detail__tombstone" aria-label="Tenure summary">
-              <Grid narrow>
-                <Column sm={2} md={2} lg={3}>
-                  <dt>File ID</dt>
-                  <dd>{tenure.forestFileId}</dd>
-                </Column>
-                <Column sm={2} md={2} lg={3}>
-                  <dt>File Type</dt>
-                  <dd>{tenure.fileTypeCode ?? '—'}</dd>
-                </Column>
-                <Column sm={2} md={2} lg={3}>
-                  <dt>Status</dt>
-                  <dd>
-                    {(tenure.fileStatusDesc ?? tenure.fileStatusCode) ? (
-                      <Tag type="green">{tenure.fileStatusDesc ?? tenure.fileStatusCode}</Tag>
-                    ) : (
-                      '—'
-                    )}
-                  </dd>
-                </Column>
-                <Column sm={2} md={2} lg={3}>
-                  <dt>Org Unit</dt>
-                  <dd>{tenure.orgUnitCode ?? '—'}</dd>
-                </Column>
-                <Column sm={2} md={2} lg={3}>
-                  <dt>Licensee</dt>
-                  <dd>{tenure.licensee ?? '—'}</dd>
-                </Column>
-                <Column sm={2} md={2} lg={3}>
-                  <dt>Client #</dt>
-                  <dd>{tenure.clientNumber ?? '—'}</dd>
-                </Column>
-                <Column sm={2} md={2} lg={3}>
-                  <dt>Issued</dt>
-                  <dd>{tenure.awardDate ?? '—'}</dd>
-                </Column>
-                <Column sm={2} md={2} lg={3}>
-                  <dt>Expires</dt>
-                  <dd>{tenure.expiryDate ?? '—'}</dd>
-                </Column>
-              </Grid>
-              {canEdit(user) && (
-                <Button size="sm" kind="tertiary" renderIcon={Edit} className="tenure-detail__edit">
-                  Edit tenure
-                </Button>
-              )}
-            </section>
+            <SectionTile title="Tenure summary" icon={Document}>
+              <Tombstone
+                ariaLabel="Tenure summary"
+                items={[
+                  { label: 'File ID', value: tenure.forestFileId },
+                  { label: 'File Type', value: tenure.fileTypeCode ?? '—' },
+                  {
+                    label: 'Status',
+                    value:
+                      (tenure.fileStatusDesc ?? tenure.fileStatusCode) ? (
+                        <Tag type="green">{tenure.fileStatusDesc ?? tenure.fileStatusCode}</Tag>
+                      ) : (
+                        '—'
+                      ),
+                  },
+                  { label: 'Org Unit', value: tenure.orgUnitCode ?? '—' },
+                  { label: 'Licensee', value: tenure.licensee ?? '—' },
+                  { label: 'Client #', value: tenure.clientNumber ?? '—' },
+                  { label: 'Issued', value: tenure.awardDate ?? '—' },
+                  { label: 'Expires', value: tenure.expiryDate ?? '—' },
+                ]}
+              />
+            </SectionTile>
 
             <Tabs>
               <TabList aria-label="Tenure sections" contained>
@@ -149,200 +133,198 @@ const TenureDetail: FC = () => {
               </TabList>
               <TabPanels>
                 <TabPanel>
-                  <dl className="tenure-detail__facts">
-                    <div>
-                      <dt>Management Unit</dt>
-                      <dd>{tenure.managementUnit ?? '—'}</dd>
-                    </div>
-                    <div>
-                      <dt>Allowable Annual Cut</dt>
-                      <dd>
-                        {tenure.allowableAnnualCut != null
-                          ? `${nf.format(tenure.allowableAnnualCut)} m³/yr`
-                          : '—'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Issue Date</dt>
-                      <dd>{tenure.awardDate ?? '—'}</dd>
-                    </div>
-                    <div>
-                      <dt>Expiry Date</dt>
-                      <dd>{tenure.expiryDate ?? '—'}</dd>
-                    </div>
-                  </dl>
+                  <DefinitionGrid
+                    items={[
+                      { label: 'Management Unit', value: tenure.managementUnit ?? '—' },
+                      {
+                        label: 'Allowable Annual Cut',
+                        value:
+                          tenure.allowableAnnualCut != null
+                            ? `${nf.format(tenure.allowableAnnualCut)} m³/yr`
+                            : '—',
+                      },
+                      { label: 'Issue Date', value: tenure.awardDate ?? '—' },
+                      { label: 'Expiry Date', value: tenure.expiryDate ?? '—' },
+                    ]}
+                  />
                 </TabPanel>
 
                 <TabPanel>
-                  <TableContainer title="Cutting Permits & Timber Marks">
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>CP</TableHeader>
-                          <TableHeader>Timber Mark</TableHeader>
-                          <TableHeader>Status</TableHeader>
-                          <TableHeader>Issue Date</TableHeader>
-                          <TableHeader>Volume (m³)</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {cuttingPermits.map((cp) => (
-                          <TableRow key={cp.cpId}>
-                            <TableCell>
-                              <Link to={`/harvesting-authority/${cp.cpId}`}>{cp.cpId}</Link>
-                            </TableCell>
-                            <TableCell>{cp.timberMark}</TableCell>
-                            <TableCell>{cp.status}</TableCell>
-                            <TableCell>{cp.issueDate}</TableCell>
-                            <TableCell>{nf.format(cp.volume)}</TableCell>
+                  <div className="bordered-table">
+                    <TableContainer title="Cutting Permits & Timber Marks">
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>CP</TableHeader>
+                            <TableHeader>Timber Mark</TableHeader>
+                            <TableHeader>Status</TableHeader>
+                            <TableHeader>Issue Date</TableHeader>
+                            <TableHeader>Volume (m³)</TableHeader>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                          {cuttingPermits.map((cp) => (
+                            <TableRow key={cp.cpId}>
+                              <TableCell>
+                                <Link to={`/harvesting-authority/${cp.cpId}`}>{cp.cpId}</Link>
+                              </TableCell>
+                              <TableCell>{cp.timberMark}</TableCell>
+                              <TableCell>{cp.status}</TableCell>
+                              <TableCell>{cp.issueDate}</TableCell>
+                              <TableCell>{nf.format(cp.volume)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </div>
                 </TabPanel>
 
                 <TabPanel>
-                  <TableContainer title="Cut Blocks">
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>Block</TableHeader>
-                          <TableHeader>CP</TableHeader>
-                          <TableHeader>Status</TableHeader>
-                          <TableHeader>Area (ha)</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {cutBlocks.map((b) => (
-                          <TableRow key={b.blockId}>
-                            <TableCell>
-                              <Link to={`/cut-block/${b.blockId}`}>{b.blockId}</Link>
-                            </TableCell>
-                            <TableCell>
-                              <Link to={`/harvesting-authority/${b.cpId}`}>{b.cpId}</Link>
-                            </TableCell>
-                            <TableCell>{b.status}</TableCell>
-                            <TableCell>{b.areaHa.toFixed(1)}</TableCell>
+                  <div className="bordered-table">
+                    <TableContainer title="Cut Blocks">
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>Block</TableHeader>
+                            <TableHeader>CP</TableHeader>
+                            <TableHeader>Status</TableHeader>
+                            <TableHeader>Area (ha)</TableHeader>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                          {cutBlocks.map((b) => (
+                            <TableRow key={b.blockId}>
+                              <TableCell>
+                                <Link to={`/cut-block/${b.blockId}`}>{b.blockId}</Link>
+                              </TableCell>
+                              <TableCell>
+                                <Link to={`/harvesting-authority/${b.cpId}`}>{b.cpId}</Link>
+                              </TableCell>
+                              <TableCell>{b.status}</TableCell>
+                              <TableCell>{b.areaHa.toFixed(1)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </div>
                 </TabPanel>
 
                 <TabPanel>
-                  <TableContainer title="Road Sections">
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>Road</TableHeader>
-                          <TableHeader>Name</TableHeader>
-                          <TableHeader>Status</TableHeader>
-                          <TableHeader>Length (km)</TableHeader>
-                          <TableHeader>Tenure Type</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {roads.map((r) => (
-                          <TableRow key={r.roadId}>
-                            <TableCell>
-                              <Link to={`/road/${r.roadId}`}>{r.roadId}</Link>
-                            </TableCell>
-                            <TableCell>{r.name}</TableCell>
-                            <TableCell>{r.status}</TableCell>
-                            <TableCell>{r.lengthKm.toFixed(1)}</TableCell>
-                            <TableCell>{r.tenureType}</TableCell>
+                  <div className="bordered-table">
+                    <TableContainer title="Road Sections">
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>Road</TableHeader>
+                            <TableHeader>Name</TableHeader>
+                            <TableHeader>Status</TableHeader>
+                            <TableHeader>Length (km)</TableHeader>
+                            <TableHeader>Tenure Type</TableHeader>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                          {roads.map((r) => (
+                            <TableRow key={r.roadId}>
+                              <TableCell>
+                                <Link to={`/road/${r.roadId}`}>{r.roadId}</Link>
+                              </TableCell>
+                              <TableCell>{r.name}</TableCell>
+                              <TableCell>{r.status}</TableCell>
+                              <TableCell>{r.lengthKm.toFixed(1)}</TableCell>
+                              <TableCell>{r.tenureType}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </div>
                 </TabPanel>
 
                 <TabPanel>
-                  <TableContainer title="Associated Files">
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>File ID</TableHeader>
-                          <TableHeader>Relationship</TableHeader>
-                          <TableHeader>File Type</TableHeader>
-                          <TableHeader>Status</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {associatedFiles.map((f) => (
-                          <TableRow key={f.fileId}>
-                            <TableCell>
-                              <Link to={`/tenures/${f.fileId}`}>{f.fileId}</Link>
-                            </TableCell>
-                            <TableCell>{f.relationship}</TableCell>
-                            <TableCell>{f.fileType}</TableCell>
-                            <TableCell>{f.status}</TableCell>
+                  <div className="bordered-table">
+                    <TableContainer title="Associated Files">
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>File ID</TableHeader>
+                            <TableHeader>Relationship</TableHeader>
+                            <TableHeader>File Type</TableHeader>
+                            <TableHeader>Status</TableHeader>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                          {associatedFiles.map((f) => (
+                            <TableRow key={f.fileId}>
+                              <TableCell>
+                                <Link to={`/tenures/${f.fileId}`}>{f.fileId}</Link>
+                              </TableCell>
+                              <TableCell>{f.relationship}</TableCell>
+                              <TableCell>{f.fileType}</TableCell>
+                              <TableCell>{f.status}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </div>
                 </TabPanel>
 
                 <TabPanel>
-                  <TableContainer title="Associated Clients">
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>Client #</TableHeader>
-                          <TableHeader>Name</TableHeader>
-                          <TableHeader>Relationship</TableHeader>
-                          <TableHeader>Location</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {associatedClients.map((c) => (
-                          <TableRow key={c.clientNumber + c.location}>
-                            <TableCell>{c.clientNumber}</TableCell>
-                            <TableCell>{c.name}</TableCell>
-                            <TableCell>{c.relationship}</TableCell>
-                            <TableCell>{c.location}</TableCell>
+                  <div className="bordered-table">
+                    <TableContainer title="Associated Clients">
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>Client #</TableHeader>
+                            <TableHeader>Name</TableHeader>
+                            <TableHeader>Relationship</TableHeader>
+                            <TableHeader>Location</TableHeader>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                          {associatedClients.map((c) => (
+                            <TableRow key={c.clientNumber + c.location}>
+                              <TableCell>{c.clientNumber}</TableCell>
+                              <TableCell>{c.name}</TableCell>
+                              <TableCell>{c.relationship}</TableCell>
+                              <TableCell>{c.location}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </div>
                 </TabPanel>
 
                 <TabPanel>
-                  <dl className="tenure-detail__facts">
-                    <div>
-                      <dt>Allowable Annual Cut</dt>
-                      <dd>
-                        {tenure.allowableAnnualCut != null
-                          ? `${nf.format(tenure.allowableAnnualCut)} m³/yr`
-                          : '—'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Schedule A Area</dt>
-                      <dd>
-                        {tenure.scheduleAArea != null
-                          ? `${nf.format(tenure.scheduleAArea)} ha`
-                          : '—'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Schedule B Area</dt>
-                      <dd>
-                        {tenure.scheduleBArea != null
-                          ? `${nf.format(tenure.scheduleBArea)} ha`
-                          : '—'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Management Unit</dt>
-                      <dd>{tenure.managementUnit ?? '—'}</dd>
-                    </div>
-                  </dl>
+                  <DefinitionGrid
+                    items={[
+                      {
+                        label: 'Allowable Annual Cut',
+                        value:
+                          tenure.allowableAnnualCut != null
+                            ? `${nf.format(tenure.allowableAnnualCut)} m³/yr`
+                            : '—',
+                      },
+                      {
+                        label: 'Schedule A Area',
+                        value:
+                          tenure.scheduleAArea != null
+                            ? `${nf.format(tenure.scheduleAArea)} ha`
+                            : '—',
+                      },
+                      {
+                        label: 'Schedule B Area',
+                        value:
+                          tenure.scheduleBArea != null
+                            ? `${nf.format(tenure.scheduleBArea)} ha`
+                            : '—',
+                      },
+                      { label: 'Management Unit', value: tenure.managementUnit ?? '—' },
+                    ]}
+                  />
                 </TabPanel>
 
                 <TabPanel>
@@ -368,26 +350,28 @@ const TenureDetail: FC = () => {
                 </TabPanel>
 
                 <TabPanel>
-                  <TableContainer title="Forest / Range Notes">
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>Date</TableHeader>
-                          <TableHeader>Author</TableHeader>
-                          <TableHeader>Note</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {notes.map((n, i) => (
-                          <TableRow key={i}>
-                            <TableCell>{n.date}</TableCell>
-                            <TableCell>{n.author}</TableCell>
-                            <TableCell>{n.text}</TableCell>
+                  <div className="bordered-table">
+                    <TableContainer title="Forest / Range Notes">
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>Date</TableHeader>
+                            <TableHeader>Author</TableHeader>
+                            <TableHeader>Note</TableHeader>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                          {notes.map((n, i) => (
+                            <TableRow key={i}>
+                              <TableCell>{n.date}</TableCell>
+                              <TableCell>{n.author}</TableCell>
+                              <TableCell>{n.text}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </div>
                 </TabPanel>
               </TabPanels>
             </Tabs>

@@ -1,10 +1,10 @@
-import { SideNav, SideNavItems, SideNavLink, SideNavMenu, SideNavMenuItem } from '@carbon/react';
+import { SideNav, SideNavItems, SideNavLink } from '@carbon/react';
 import { type FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { useAuth } from '@/context/auth/useAuth';
 import { useLayout } from '@/context/layout/useLayout';
-import { getMenuEntries, isMenuParent, type MenuItem, type MenuLeaf } from '@/routes/routePaths';
+import { getMenuEntries, type MenuLeaf } from '@/routes/routePaths';
 import './LayoutSideNav.css';
 
 export const LayoutSideNav: FC = () => {
@@ -30,33 +30,6 @@ export const LayoutSideNav: FC = () => {
     </SideNavLink>
   );
 
-  const renderParent = (item: MenuItem) => {
-    if (!isMenuParent(item)) return renderLeaf(item);
-    const anyChildActive = item.children.some((c) => c.path === location.pathname);
-    return (
-      <SideNavMenu
-        data-testid={`side-nav-menu-${item.id}`}
-        key={item.id}
-        title={item.label}
-        isActive={anyChildActive}
-        defaultExpanded={anyChildActive}
-        renderIcon={item.icon}
-      >
-        {item.children.map((child) => (
-          <SideNavMenuItem
-            data-testid={`side-nav-menu-item-${child.id}`}
-            key={child.id}
-            as={Link}
-            to={child.path}
-            isActive={child.path === location.pathname}
-          >
-            {child.label}
-          </SideNavMenuItem>
-        ))}
-      </SideNavMenu>
-    );
-  };
-
   return (
     <SideNav
       expanded
@@ -65,7 +38,7 @@ export const LayoutSideNav: FC = () => {
       className={`side-nav-drawer${isSideNavExpanded ? ' side-nav-drawer--open' : ''}`}
       aria-label="Main navigation"
     >
-      <SideNavItems>{getMenuEntries(roles).map(renderParent)}</SideNavItems>
+      <SideNavItems>{getMenuEntries(roles).map(renderLeaf)}</SideNavItems>
     </SideNav>
   );
 };

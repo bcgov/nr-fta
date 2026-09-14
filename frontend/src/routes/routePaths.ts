@@ -1,14 +1,29 @@
-import { Search, Document, Tag, Settings, Task } from '@carbon/icons-react';
+import {
+  Add,
+  Archive,
+  Document,
+  DocumentAdd,
+  DocumentTasks,
+  Download,
+  Edit,
+  Map,
+  Save,
+  Search,
+  Settings,
+  Tag,
+  Task,
+  UserFollow,
+} from '@carbon/icons-react';
 
 import type { ComponentType } from 'react';
 
-// Each menu entry is either a leaf (renders as <SideNavLink>) or a parent
-// with children (renders as <SideNavMenu> + <SideNavMenuItem>s). Top-level
-// `roles` gate the whole branch; if absent, the entry is shown to every
-// authenticated user.
+// Every menu entry is a leaf that renders as a <SideNavLink>. The nav is a
+// single flat list — no <SideNavMenu> nesting — so each destination is one
+// click from anywhere.
 //
 // Roles use the canonical FTA names from context/auth/types.ts (mirrors the
-// backend ca.bc.gov.nrs.fta.dto.Role enum: FTA_ADMIN, FTA_VIEWER).
+// backend ca.bc.gov.nrs.fta.dto.Role enum: FTA_ADMIN, FTA_VIEWER). An entry
+// with no `roles` is shown to every authenticated user.
 export type MenuLeaf = {
   id: string;
   label: string;
@@ -17,113 +32,141 @@ export type MenuLeaf = {
   roles?: string[];
 };
 
-export type MenuParent = {
-  id: string;
-  label: string;
-  icon?: ComponentType;
-  roles?: string[];
-  children: MenuLeaf[];
-};
+export type MenuItem = MenuLeaf;
 
-export type MenuItem = MenuLeaf | MenuParent;
+/** Admin screens are FTA_ADMIN only; read-only viewers never see them. */
+const ADMIN_ONLY = ['FTA_ADMIN'];
 
-export function isMenuParent(item: MenuItem): item is MenuParent {
-  return 'children' in item;
-}
-
-// Source of truth for the SideNav. Mirrors the top-level menu of the legacy
-// FTA app (menuLinks.js: Search / Tenures / Private Marks / Recreation /
-// Admin). Carbon's SideNav supports a single level of nesting, so each
-// top-level menu is a parent with one level of leaf children.
+// Source of truth for the SideNav. Mirrors the destinations of the legacy FTA
+// app (menuLinks.js), previously grouped under Search / Tenures / Private
+// Marks / Admin parents and now promoted to primary items.
 //
 // Detail / tab screens (tenure detail, cutting-permit detail, etc.) are
 // reached contextually from a search-result list, not from the SideNav, so
 // they don't appear here.
-const NAV: MenuItem[] = [
+const NAV: MenuLeaf[] = [
+  { id: 'inbox', label: 'Inbox', path: '/inbox', icon: Task },
+  { id: 'search-tenure', label: 'Tenure Search', path: '/search/tenure', icon: Search },
   {
-    id: 'search',
-    label: 'Search',
-    icon: Search,
-    children: [
-      { id: 'search-tenure', label: 'Tenure Search', path: '/search/tenure' },
-      {
-        id: 'search-harvesting-authority',
-        label: 'Harvesting Authority Search',
-        path: '/search/harvesting-authority',
-      },
-      { id: 'search-timber-mark', label: 'Timber Mark Search', path: '/search/timber-mark' },
-      { id: 'search-cut-block', label: 'Cut Block Search', path: '/search/cut-block' },
-      { id: 'search-range-tenure', label: 'Range Tenure Search', path: '/search/range-tenure' },
-      { id: 'search-range-unit', label: 'Range Unit Search', path: '/search/range-unit' },
-      { id: 'search-metrics', label: 'Application Metrics Export', path: '/search/metrics' },
-      { id: 'search-client', label: 'Client Search', path: '/search/client' },
-      {
-        id: 'search-management-unit',
-        label: 'Management Unit Search',
-        path: '/search/management-unit',
-      },
-    ],
+    id: 'search-harvesting-authority',
+    label: 'Harvesting Authority Search',
+    path: '/search/harvesting-authority',
+    icon: DocumentTasks,
   },
   {
-    id: 'inbox',
-    label: 'Inbox',
-    path: '/inbox',
-    icon: Task,
-  },
-  {
-    id: 'tenures',
-    label: 'Tenures',
-    icon: Document,
-    children: [
-      { id: 'tenure-add', label: 'Add Tenure', path: '/tenures/add' },
-      { id: 'tenure-detail', label: 'Tenure', path: '/tenures' },
-    ],
-  },
-  {
-    id: 'marks',
-    label: 'Private Marks',
+    id: 'search-timber-mark',
+    label: 'Timber Mark Search',
+    path: '/search/timber-mark',
     icon: Tag,
-    children: [
-      { id: 'marks-list', label: 'Application/Amendment List', path: '/marks' },
-      { id: 'marks-application', label: 'Mark Application', path: '/marks/application' },
-    ],
+  },
+  { id: 'search-cut-block', label: 'Cut Block Search', path: '/search/cut-block', icon: Map },
+  {
+    id: 'search-range-tenure',
+    label: 'Range Tenure Search',
+    path: '/search/range-tenure',
+    icon: Document,
+  },
+  { id: 'search-range-unit', label: 'Range Unit Search', path: '/search/range-unit', icon: Map },
+  { id: 'search-client', label: 'Client Search', path: '/search/client', icon: UserFollow },
+  {
+    id: 'search-management-unit',
+    label: 'Management Unit Search',
+    path: '/search/management-unit',
+    icon: Document,
   },
   {
-    // Admin functions — FTA_ADMIN only (read-only viewers never see it).
-    id: 'admin',
-    label: 'Admin',
+    id: 'search-metrics',
+    label: 'Application Metrics Export',
+    path: '/search/metrics',
+    icon: Download,
+  },
+  { id: 'tenure-detail', label: 'Tenure', path: '/tenures', icon: Document },
+  { id: 'tenure-add', label: 'Add Tenure', path: '/tenures/add', icon: DocumentAdd },
+  { id: 'marks-list', label: 'Application/Amendment List', path: '/marks', icon: Tag },
+  { id: 'marks-application', label: 'Mark Application', path: '/marks/application', icon: Add },
+  {
+    id: 'admin-audit',
+    label: 'Audit Report',
+    path: '/admin/audit',
+    icon: DocumentTasks,
+    roles: ADMIN_ONLY,
+  },
+  {
+    id: 'admin-rents-fees',
+    label: 'Annual Rents & Fees',
+    path: '/admin/rents-fees',
+    icon: Document,
+    roles: ADMIN_ONLY,
+  },
+  {
+    id: 'admin-mark-transfer',
+    label: 'Timber Mark Transfer',
+    path: '/admin/mark-transfer',
+    icon: Tag,
+    roles: ADMIN_ONLY,
+  },
+  {
+    id: 'admin-range-zone',
+    label: 'Manage Range Zone',
+    path: '/admin/range-zone',
+    icon: Map,
+    roles: ADMIN_ONLY,
+  },
+  {
+    id: 'admin-org-unit',
+    label: 'Org Unit Maintenance',
+    path: '/admin/org-unit',
     icon: Settings,
-    roles: ['FTA_ADMIN'],
-    children: [
-      { id: 'admin-audit', label: 'Audit Report', path: '/admin/audit' },
-      { id: 'admin-rents-fees', label: 'Annual Rents & Fees', path: '/admin/rents-fees' },
-      { id: 'admin-mark-transfer', label: 'Timber Mark Transfer', path: '/admin/mark-transfer' },
-      { id: 'admin-range-zone', label: 'Manage Range Zone', path: '/admin/range-zone' },
-      { id: 'admin-org-unit', label: 'Org Unit Maintenance', path: '/admin/org-unit' },
-      {
-        id: 'admin-billing-tenure',
-        label: 'Tenure Billing Instructions',
-        path: '/admin/billing/tenure',
-      },
-      {
-        id: 'admin-billing-invoice',
-        label: 'Invoice Preview',
-        path: '/admin/billing/invoice-preview',
-      },
-      { id: 'admin-billing-pre', label: 'Pre Billing Report', path: '/admin/billing/pre-billing' },
-      {
-        id: 'admin-billing-post',
-        label: 'Post Billing Report',
-        path: '/admin/billing/post-billing',
-      },
-      {
-        id: 'admin-billing-approval',
-        label: 'Tenure Approval Submission',
-        path: '/admin/billing/approval',
-      },
-      { id: 'admin-rates-fees', label: 'Rates & Fees Maintenance', path: '/admin/rates-fees' },
-      { id: 'admin-archive', label: 'Archive Tenures', path: '/admin/archive' },
-    ],
+    roles: ADMIN_ONLY,
+  },
+  {
+    id: 'admin-billing-tenure',
+    label: 'Tenure Billing Instructions',
+    path: '/admin/billing/tenure',
+    icon: Document,
+    roles: ADMIN_ONLY,
+  },
+  {
+    id: 'admin-billing-invoice',
+    label: 'Invoice Preview',
+    path: '/admin/billing/invoice-preview',
+    icon: Document,
+    roles: ADMIN_ONLY,
+  },
+  {
+    id: 'admin-billing-pre',
+    label: 'Pre Billing Report',
+    path: '/admin/billing/pre-billing',
+    icon: Document,
+    roles: ADMIN_ONLY,
+  },
+  {
+    id: 'admin-billing-post',
+    label: 'Post Billing Report',
+    path: '/admin/billing/post-billing',
+    icon: Document,
+    roles: ADMIN_ONLY,
+  },
+  {
+    id: 'admin-billing-approval',
+    label: 'Tenure Approval Submission',
+    path: '/admin/billing/approval',
+    icon: Edit,
+    roles: ADMIN_ONLY,
+  },
+  {
+    id: 'admin-rates-fees',
+    label: 'Rates & Fees Maintenance',
+    path: '/admin/rates-fees',
+    icon: Save,
+    roles: ADMIN_ONLY,
+  },
+  {
+    id: 'admin-archive',
+    label: 'Archive Tenures',
+    path: '/admin/archive',
+    icon: Archive,
+    roles: ADMIN_ONLY,
   },
 ];
 
@@ -136,7 +179,7 @@ const NAV: MenuItem[] = [
  *
  * @param userRoles  the user's canonical FTA role(s).
  */
-export function getMenuEntries(userRoles: string[]): MenuItem[] {
+export function getMenuEntries(userRoles: string[]): MenuLeaf[] {
   const has = (required?: string[]) =>
     !required || required.length === 0 || required.some((r) => userRoles.includes(r));
   return NAV.filter((item) => has(item.roles));

@@ -2,6 +2,7 @@ import { ArrowRight } from '@carbon/icons-react';
 import { Button } from '@carbon/react';
 import { useNavigate } from 'react-router-dom';
 
+import { EmptyState } from '@/components/EmptyState/EmptyState';
 import PageLayout from '@/pages/PageLayout';
 
 import type { FC } from 'react';
@@ -14,13 +15,16 @@ import type { FC } from 'react';
 const NotFound: FC = () => {
   const navigate = useNavigate();
   return (
-    <PageLayout title="Page not found">
-      <p style={{ maxWidth: '40rem', marginBottom: '1.5rem' }}>
-        The page you’re looking for doesn’t exist or may have moved.
-      </p>
-      <Button renderIcon={ArrowRight} onClick={() => navigate('/welcome')}>
-        Go to home
-      </Button>
+    <PageLayout title="Page not found" subtitle="The requested page couldn't be located">
+      <EmptyState
+        title="We couldn't find that page"
+        body="The page you’re looking for doesn’t exist or may have moved."
+        action={
+          <Button size="md" renderIcon={ArrowRight} onClick={() => navigate('/welcome')}>
+            Go to home
+          </Button>
+        }
+      />
     </PageLayout>
   );
 };

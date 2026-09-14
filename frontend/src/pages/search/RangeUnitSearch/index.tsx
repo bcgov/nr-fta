@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
+import SectionTile from '@/components/SectionTile';
 import PageLayout from '@/pages/PageLayout';
 import {
   searchRangeUnits,
@@ -59,55 +60,60 @@ const RangeUnitSearch: FC = () => {
   };
 
   return (
-    <PageLayout title="Range Unit / Pasture Search">
-      <form className="range-unit-search__form" onSubmit={onSearch}>
-        <Grid narrow>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="ru-name"
-              labelText="Name"
-              placeholder="e.g. Big Creek"
-              value={criteria.rangeUnitName ?? ''}
-              onChange={(e) => onField('rangeUnitName')(e.target.value)}
-            />
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="ru-pasture"
-              labelText="Pasture"
-              placeholder="e.g. North"
-              value={criteria.pastureName ?? ''}
-              onChange={(e) => onField('pastureName')(e.target.value)}
-            />
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="ru-org-unit"
-              labelText="Org Unit"
-              placeholder="Org unit no"
-              value={criteria.orgUnitNo ?? ''}
-              onChange={(e) => onField('orgUnitNo')(e.target.value)}
-            />
-          </Column>
-          <Column sm={4} md={4} lg={4}>
-            <TextInput
-              id="ru-status"
-              labelText="Status"
-              placeholder="e.g. A"
-              value={criteria.rangeStatus ?? ''}
-              onChange={(e) => onField('rangeStatus')(e.target.value)}
-            />
-          </Column>
-        </Grid>
-        <div className="range-unit-search__actions">
-          <Button type="submit" renderIcon={SearchIcon}>
-            Search
-          </Button>
-          <Button type="button" kind="ghost" renderIcon={Reset} onClick={onReset}>
-            Reset
-          </Button>
-        </div>
-      </form>
+    <PageLayout
+      title="Range Unit / Pasture Search"
+      subtitle="Find a range unit or pasture by name, org unit or status"
+    >
+      <SectionTile title="Search criteria" icon={SearchIcon}>
+        <form className="range-unit-search__form" onSubmit={onSearch}>
+          <Grid narrow>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="ru-name"
+                labelText="Name"
+                placeholder="e.g. Big Creek"
+                value={criteria.rangeUnitName ?? ''}
+                onChange={(e) => onField('rangeUnitName')(e.target.value)}
+              />
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="ru-pasture"
+                labelText="Pasture"
+                placeholder="e.g. North"
+                value={criteria.pastureName ?? ''}
+                onChange={(e) => onField('pastureName')(e.target.value)}
+              />
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="ru-org-unit"
+                labelText="Org Unit"
+                placeholder="Org unit no"
+                value={criteria.orgUnitNo ?? ''}
+                onChange={(e) => onField('orgUnitNo')(e.target.value)}
+              />
+            </Column>
+            <Column sm={4} md={4} lg={4}>
+              <TextInput
+                id="ru-status"
+                labelText="Status"
+                placeholder="e.g. A"
+                value={criteria.rangeStatus ?? ''}
+                onChange={(e) => onField('rangeStatus')(e.target.value)}
+              />
+            </Column>
+          </Grid>
+          <div className="range-unit-search__actions">
+            <Button type="submit" size="md" renderIcon={SearchIcon}>
+              Search
+            </Button>
+            <Button type="button" size="md" kind="tertiary" renderIcon={Reset} onClick={onReset}>
+              Reset
+            </Button>
+          </div>
+        </form>
+      </SectionTile>
 
       <AsyncBoundary
         loading={loading}
@@ -116,19 +122,21 @@ const RangeUnitSearch: FC = () => {
         loadingText="Searching…"
       >
         {rows !== null && (
-          <SearchResultsTable
-            rows={rows.map((r, i) => ({ ...r, id: `${r.rangeUnitId}-${r.pastureId ?? i}` }))}
-            headers={HEADERS}
-            emptyTitle="No range units found"
-            renderCell={(row, key) => {
-              if (key === 'rangeUnitId')
-                return <Link to={`/range-unit/${row.rangeUnitId}`}>{row.rangeUnitId}</Link>;
-              if (key === 'rangeUnitName') return row.rangeUnitName ?? '—';
-              if (key === 'pastureName') return row.pastureName ?? '—';
-              if (key === 'rangeUnitStatusDesc') return row.rangeUnitStatusDesc ?? '—';
-              return undefined;
-            }}
-          />
+          <div className="bordered-table">
+            <SearchResultsTable
+              rows={rows.map((r, i) => ({ ...r, id: `${r.rangeUnitId}-${r.pastureId ?? i}` }))}
+              headers={HEADERS}
+              emptyTitle="No range units found"
+              renderCell={(row, key) => {
+                if (key === 'rangeUnitId')
+                  return <Link to={`/range-unit/${row.rangeUnitId}`}>{row.rangeUnitId}</Link>;
+                if (key === 'rangeUnitName') return row.rangeUnitName ?? '—';
+                if (key === 'pastureName') return row.pastureName ?? '—';
+                if (key === 'rangeUnitStatusDesc') return row.rangeUnitStatusDesc ?? '—';
+                return undefined;
+              }}
+            />
+          </div>
         )}
       </AsyncBoundary>
     </PageLayout>

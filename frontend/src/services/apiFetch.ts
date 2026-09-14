@@ -6,6 +6,22 @@ import { ensureFreshUser, getUserManager } from '@/services/keycloak';
 const API_BASE_URL = env.VITE_API_BASE_URL ?? '';
 
 /**
+ * Joins a service path to the configured API base without doubling it.
+ *
+ * Service modules spell their paths in full (`/api/fta/marks`) because that is
+ * where the backend actually mounts them — neither Caddy (`reverse_proxy /api*`)
+ * nor the Vite dev proxy rewrites the prefix away. `VITE_API_BASE_URL` is `/api`
+ * in every deployed environment, so prefixing unconditionally produced
+ * `/api/api/fta/marks` and a 404. Absolute URLs pass through untouched.
+ */
+function resolveUrl(path: string): string {
+  if (/^https?:/.test(path)) return path;
+  if (!API_BASE_URL) return path;
+  if (path === API_BASE_URL || path.startsWith(`${API_BASE_URL}/`)) return path;
+  return `${API_BASE_URL}${path}`;
+}
+
+/**
  * Reads the current access token from the oidc-client-ts user store.
  *
  * `ensureFreshUser` returns the stored user, renewing only if the token is at
@@ -40,8 +56,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (!headers.has('Accept')) headers.set('Accept', 'application/json');
 
-  const url = /^https?:/.test(path) ? path : `${API_BASE_URL}${path}`;
-  return fetch(url, { ...init, headers });
+  return fetch(resolveUrl(path), { ...init, headers });
 }
 
 /**

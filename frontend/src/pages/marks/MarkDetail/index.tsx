@@ -1,4 +1,4 @@
-import { ArrowLeft, Edit } from '@carbon/icons-react';
+import { ArrowLeft, Document, Edit } from '@carbon/icons-react';
 import {
   Button,
   Tab,
@@ -20,6 +20,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
+import SectionTile from '@/components/SectionTile';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
@@ -66,8 +67,11 @@ const MarkDetail: FC = () => {
     });
 
   return (
-    <PageLayout title={`Private Mark ${markNumber}`}>
-      <Link to="/marks" className="fta-back">
+    <PageLayout
+      title={`Private Mark ${markNumber}`}
+      subtitle="Application record, land index, associated clients and amendment history"
+    >
+      <Link to="/marks" className="back-link">
         <ArrowLeft size={16} /> Back to Private Marks
       </Link>
 
@@ -104,121 +108,131 @@ const MarkDetail: FC = () => {
               }
             />
 
-            <Tabs>
-              <TabList aria-label="Mark sections" contained>
-                <Tab>Mark Application</Tab>
-                <Tab>Land Index</Tab>
-                <Tab>Associated Clients</Tab>
-                <Tab>Amendments</Tab>
-              </TabList>
-              <TabPanels>
-                <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      { label: 'Mark Number', value: dash(mark.timberMark) },
-                      { label: 'Certificate', value: dash(mark.certificate) },
-                      { label: 'File Type', value: dash(mark.fileTypeCode) },
-                      { label: 'Timber Origin', value: dash(mark.crownGrantedAcqDesc) },
-                      {
-                        label: 'Holder',
-                        value: `${dash(mark.clientName)} (${dash(mark.clientNumber)})`,
-                      },
-                      { label: 'Issue Date', value: dash(mark.markIssueDate) },
-                      { label: 'Expiry Date', value: dash(mark.markExpiryDate) },
-                      { label: 'Tenure Term', value: dash(mark.tenureTerm) },
-                      { label: 'Status', value: dash(mark.markStatusCode) },
-                    ]}
-                  />
-                </TabPanel>
+            <SectionTile title="Mark record" icon={Document}>
+              <Tabs>
+                <TabList aria-label="Mark sections" contained>
+                  <Tab>Mark Application</Tab>
+                  <Tab>Land Index</Tab>
+                  <Tab>Associated Clients</Tab>
+                  <Tab>Amendments</Tab>
+                </TabList>
+                <TabPanels>
+                  <TabPanel>
+                    <DefinitionGrid
+                      items={[
+                        { label: 'Mark Number', value: dash(mark.timberMark) },
+                        { label: 'Certificate', value: dash(mark.certificate) },
+                        { label: 'File Type', value: dash(mark.fileTypeCode) },
+                        { label: 'Timber Origin', value: dash(mark.crownGrantedAcqDesc) },
+                        {
+                          label: 'Holder',
+                          value: `${dash(mark.clientName)} (${dash(mark.clientNumber)})`,
+                        },
+                        { label: 'Issue Date', value: dash(mark.markIssueDate) },
+                        { label: 'Expiry Date', value: dash(mark.markExpiryDate) },
+                        { label: 'Tenure Term', value: dash(mark.tenureTerm) },
+                        { label: 'Status', value: dash(mark.markStatusCode) },
+                      ]}
+                    />
+                  </TabPanel>
 
-                <TabPanel>
-                  <TableContainer
-                    title="Mark Land Index"
-                    description={`${mark.landIndex.length} parcel(s)`}
-                  >
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>Primary Index</TableHeader>
-                          <TableHeader>Secondary Index</TableHeader>
-                          <TableHeader>Description</TableHeader>
-                          <TableHeader>Deactivate Date</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {mark.landIndex.map((p) => (
-                          <TableRow
-                            key={
-                              p.markLandIndexSkey ??
-                              `${p.primaryLandIndexCode}-${p.secondaryLandIndexCode}`
-                            }
-                          >
-                            <TableCell>
-                              {dash(p.primaryLandIndexCodeDesc ?? p.primaryLandIndexCode)}
-                            </TableCell>
-                            <TableCell>
-                              {dash(p.secondaryLandIndexCodeDesc ?? p.secondaryLandIndexCode)}
-                            </TableCell>
-                            <TableCell>{dash(p.markLandIndexDesc)}</TableCell>
-                            <TableCell>{dash(p.indexDeactivateDate)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </TabPanel>
+                  <TabPanel>
+                    <div className="bordered-table">
+                      <TableContainer
+                        title="Mark Land Index"
+                        description={`${mark.landIndex.length} parcel(s)`}
+                      >
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableHeader>Primary Index</TableHeader>
+                              <TableHeader>Secondary Index</TableHeader>
+                              <TableHeader>Description</TableHeader>
+                              <TableHeader>Deactivate Date</TableHeader>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {mark.landIndex.map((p) => (
+                              <TableRow
+                                key={
+                                  p.markLandIndexSkey ??
+                                  `${p.primaryLandIndexCode}-${p.secondaryLandIndexCode}`
+                                }
+                              >
+                                <TableCell>
+                                  {dash(p.primaryLandIndexCodeDesc ?? p.primaryLandIndexCode)}
+                                </TableCell>
+                                <TableCell>
+                                  {dash(p.secondaryLandIndexCodeDesc ?? p.secondaryLandIndexCode)}
+                                </TableCell>
+                                <TableCell>{dash(p.markLandIndexDesc)}</TableCell>
+                                <TableCell>{dash(p.indexDeactivateDate)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </div>
+                  </TabPanel>
 
-                <TabPanel>
-                  <TableContainer title="Associated Clients">
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>Client #</TableHeader>
-                          <TableHeader>Name</TableHeader>
-                          <TableHeader>City</TableHeader>
-                          <TableHeader>Role</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {mark.clients.map((c) => (
-                          <TableRow
-                            key={c.forClientLinkSkey ?? `${c.clientNumber}-${c.fileClientType}`}
-                          >
-                            <TableCell>{dash(c.clientNumber)}</TableCell>
-                            <TableCell>{dash(c.clientName)}</TableCell>
-                            <TableCell>{dash(c.clientCity)}</TableCell>
-                            <TableCell>{dash(c.fileClientTypeDesc ?? c.fileClientType)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </TabPanel>
+                  <TabPanel>
+                    <div className="bordered-table">
+                      <TableContainer title="Associated Clients">
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableHeader>Client #</TableHeader>
+                              <TableHeader>Name</TableHeader>
+                              <TableHeader>City</TableHeader>
+                              <TableHeader>Role</TableHeader>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {mark.clients.map((c) => (
+                              <TableRow
+                                key={c.forClientLinkSkey ?? `${c.clientNumber}-${c.fileClientType}`}
+                              >
+                                <TableCell>{dash(c.clientNumber)}</TableCell>
+                                <TableCell>{dash(c.clientName)}</TableCell>
+                                <TableCell>{dash(c.clientCity)}</TableCell>
+                                <TableCell>
+                                  {dash(c.fileClientTypeDesc ?? c.fileClientType)}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </div>
+                  </TabPanel>
 
-                <TabPanel>
-                  <TableContainer title="Amendment history">
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>Date</TableHeader>
-                          <TableHeader>Status</TableHeader>
-                          <TableHeader>Revision</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {mark.amendments.map((a, i) => (
-                          <TableRow key={`${a.amendRequestDate ?? 'amd'}-${i}`}>
-                            <TableCell>{dash(a.amendRequestDate)}</TableCell>
-                            <TableCell>{dash(a.prvMrkAmdStsSt)}</TableCell>
-                            <TableCell>{dash(a.revisionCount)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
+                  <TabPanel>
+                    <div className="bordered-table">
+                      <TableContainer title="Amendment history">
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableHeader>Date</TableHeader>
+                              <TableHeader>Status</TableHeader>
+                              <TableHeader>Revision</TableHeader>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {mark.amendments.map((a, i) => (
+                              <TableRow key={`${a.amendRequestDate ?? 'amd'}-${i}`}>
+                                <TableCell>{dash(a.amendRequestDate)}</TableCell>
+                                <TableCell>{dash(a.prvMrkAmdStsSt)}</TableCell>
+                                <TableCell>{dash(a.revisionCount)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </div>
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            </SectionTile>
           </>
         )}
       </AsyncBoundary>
