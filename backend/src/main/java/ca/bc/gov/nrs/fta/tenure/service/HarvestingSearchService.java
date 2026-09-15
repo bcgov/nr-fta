@@ -146,7 +146,14 @@ public class HarvestingSearchService {
              the.pipeline_segment ps,
              the.seismic_line sl,
              the.v_client_public vcp,
-             %s
+      """
+          // Concatenated rather than interpolated with String.formatted: this SQL
+          // is full of LIKE patterns ending in '%', and formatted() reads every
+          // '%' as a format specifier — "|| '%'" parses as the conversion "'"
+          // and throws UnknownFormatConversionException from the static
+          // initializer, so the class never loads.
+          + CLIENT_SUBQUERY
+          + """
        WHERE pfu.forest_file_id = hva.forest_file_id
          AND hva.forest_district = org.org_unit_no
          AND hva.hva_skey = og.hva_skey (+)
@@ -199,7 +206,7 @@ public class HarvestingSearchService {
               OR sl.invoice_number = :invoiceNumber
               OR :invoiceNumber IS NULL)
          AND (vcp.client_name LIKE :clientName || '%' OR :clientName IS NULL)
-      """.formatted(CLIENT_SUBQUERY);
+      """;
 
   /**
    * The legacy sort. {@code '3'} is the {@code DECODE} default rather than an
