@@ -40,31 +40,32 @@ public class ApplicationDetailService {
       """
       SELECT ta.tenure_app_id                 AS tenure_app_id,
              ta.forest_file_id                AS forest_file_id,
-             ff.file_type_code                AS file_type_code,
+             pfu.file_type_code               AS file_type_code,
              ftc.description                  AS file_type_desc,
              ou.org_unit_code                 AS admin_org,
              cli.client_name                  AS licencee,
              cli.client_number                AS client_number,
              ta.tenure_application_state_code AS status,
              ta.entry_timestamp               AS status_date,
-             ff.file_issue_date               AS award_date,
-             ff.file_expiry_date              AS expiry_date,
+             tt.legal_effective_dt            AS award_date,
+             NVL(tt.current_expiry_dt, tt.initial_expiry_dt) AS expiry_date,
              ta.tenure_application_type_code  AS tenure_app_type,
              ta.description                   AS description,
              tapc.description                 AS purpose_desc,
              hva.harvest_type_code            AS harvest_type_code
         FROM the.tenure_application ta
-        JOIN the.forest_file ff            ON ff.forest_file_id = ta.forest_file_id
-        LEFT JOIN the.file_type_code ftc   ON ftc.file_type_code = ff.file_type_code
-        LEFT JOIN the.org_unit ou          ON ou.org_unit_no = ff.admin_district_no
+        JOIN the.prov_forest_use pfu       ON pfu.forest_file_id = ta.forest_file_id
+        LEFT JOIN the.tenure_term tt       ON tt.forest_file_id = pfu.forest_file_id
+        LEFT JOIN the.file_type_code ftc   ON ftc.file_type_code = pfu.file_type_code
+        LEFT JOIN the.org_unit ou          ON ou.org_unit_no = pfu.forest_region
         LEFT JOIN the.forest_file_client ffc
-               ON ffc.forest_file_id = ff.forest_file_id
+               ON ffc.forest_file_id = pfu.forest_file_id
               AND ffc.forest_file_client_type_code = 'A'
-        LEFT JOIN the.client cli           ON cli.client_number = ffc.client_number
+        LEFT JOIN the.forest_client cli           ON cli.client_number = ffc.client_number
         LEFT JOIN the.tenure_application_purp_code tapc
                ON tapc.tenure_application_purp_code = ta.tenure_app_purp_code
         LEFT JOIN the.harvesting_authority hva
-               ON hva.forest_file_id = ff.forest_file_id
+               ON hva.forest_file_id = pfu.forest_file_id
        WHERE ta.tenure_app_id = :tenureAppId
          AND (:forestFileId IS NULL OR ta.forest_file_id = :forestFileId)
          AND ta.tenure_application_state_code != 'FAI'

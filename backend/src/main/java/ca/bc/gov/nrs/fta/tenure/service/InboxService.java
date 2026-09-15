@@ -19,13 +19,30 @@ import org.springframework.stereotype.Service;
  * ({@code msrmInd}, {@code recStaffInd}, etc.) default to 'N' as the legacy Java
  * layer always supplies them.
  *
- * <p>NOTE: the derived, per-row indicator columns (approve/reject enablement,
- * ESF hyperlinks, Exhibit A actions, file action link, HVA keys, licensee name,
- * CP-qualified file id) are produced by the same legacy {@code THE} standalone
- * and {@code THE.FTA_300N_INBOX} package functions the original cursor calls, so
- * the ported result matches column-for-column. The query runs against the BC Gov
- * shared Oracle ({@code THE}); there is no local database, so it is exercised
- * only in a deployed environment.
+ * <p><b>Which legacy functions this can actually call.</b> The original cursor
+ * derived a dozen columns from {@code THE} standalone functions and from the
+ * {@code THE.FTA_300N_INBOX} package. Against the shared Oracle, the application
+ * user ({@code PROXY_FSA_FTA_READ_WRITE_USER}) can execute only four of them —
+ * {@code sil_get_org_level}, {@code sil_get_client_name},
+ * {@code sil_get_org_unit_code} and {@code fta_get_clear_unclear_allowed}, the
+ * ones that appear in {@code ALL_OBJECTS} owned by {@code THE}. The rest
+ * ({@code FTA_300N_INBOX} and the {@code fta_300_cp_id} / {@code fta_job_memo} /
+ * {@code fta_adj_report_ind} standalones) resolve only to PUBLIC synonyms with no
+ * grant behind them, and Oracle reports an un-executable package as
+ * {@code ORA-00904: invalid identifier} rather than as a privilege error — which
+ * is how this surfaced: every inbox request failed on the first such call.
+ *
+ * <p>Those columns are therefore selected as NULL, keeping their aliases so the
+ * row mapper and {@link InboxDto} are unchanged, and so is the frontend contract
+ * (every one of them is already nullable in {@code services/inbox.ts}). None of
+ * them is rendered by the Inbox screen: {@code forest_file_id_display} falls back
+ * to {@code forest_file_id} in the cell renderer, and the approve/reject/ESF
+ * indicator flags and HVA keys are unused. Restoring them is a grant, not a code
+ * change — {@code GRANT EXECUTE} on those objects to the application user, after
+ * which the calls can simply be put back.
+ *
+ * <p>The query runs against the BC Gov shared Oracle ({@code THE}); there is no
+ * local database, so it is exercised only in a deployed environment.
  */
 @Service
 public class InboxService {
@@ -48,8 +65,9 @@ public class InboxService {
            , ta.revision_count     AS revision_count
            , tai.revision_count    AS tai_revision_count
            , ta.forest_file_id     AS forest_file_id
-           , the.fta_300_cp_id(ta.tenure_application_type_code, ta.tenure_app_id, ta.forest_file_id)
-                                    AS forest_file_id_display
+           -- the.fta_300_cp_id: no EXECUTE grant. The screen falls back to
+           -- forest_file_id, which is selected just above.
+           , CAST(NULL AS VARCHAR2(50)) AS forest_file_id_display
            , ta.current_assigned_to AS current_assigned_to
            , tatc.file_type_code || ' - ' || tatc.description AS tenure_application_type
            , ou.org_unit_name      AS org_unit_name
@@ -59,47 +77,40 @@ public class InboxService {
            , the.sil_get_client_name(fc.client_number)   AS licensee
            , ta.submission_date    AS submission_date
            , DECODE(ta.tenure_application_type_code, 'OIL', 'Y', ta.adjudication_ind) AS adjudication_ind
-           , DECODE(the.fta_job_memo(ta.tenure_app_id), 'Y', 'YES', 'NO') AS job_memo
-           , the.fta_adj_report_ind(ta.tenure_app_id) AS adj_report_ind
+           -- the.fta_job_memo / the.fta_adj_report_ind: no EXECUTE grant.
+           , CAST(NULL AS VARCHAR2(3))  AS job_memo
+           , CAST(NULL AS VARCHAR2(1))  AS adj_report_ind
            , hs.sb_fund_ind        AS bcts_file_ind
            , ta.tenure_application_type_code AS application_type_code
            , SUBSTR(purp.description, 1, 5)  AS tenure_app_purp_code
            , ta.image_created_ind  AS exh_a_image_ind
-           , DECODE(the.fta_300n_inbox.get_hva_id(ta.tenure_app_id), NULL,
-                    DECODE(ta.tenure_application_type_code, 'CP', 'FTA902CPDETAILACTION/Go'
-                                                          , 'TL', 'FTA980TLBLOCKACTION/Go'
-                                                          , 'TLE', 'FTA980TLBLOCKACTION/Go'
-                                                          , 'FTA100TENUREACTION/Go'),
-                    'FTA902CPDETAILACTION/Go') AS file_action_link
-           , the.fta_300n_inbox.approve_allowed(ta.tenure_application_type_code, ta.adjudication_ind,
-                    hs.sb_fund_ind, pfu.file_type_code, the.sil_get_org_level(:userOrgUnitNo),
-                    hs.bcts_org_unit, :msrmInd, :mapTechInd, :recStaffInd, :seniorAdminInd,
-                    ta.current_assigned_to) AS approve_enabled_ind
-           , the.fta_300n_inbox.reject_allowed(ta.tenure_application_type_code, hs.sb_fund_ind,
-                    pfu.file_type_code, the.sil_get_org_level(:userOrgUnitNo), hs.bcts_org_unit,
-                    :msrmInd, :recStaffInd, :seniorAdminInd, ta.current_assigned_to) AS reject_enabled_ind
-           , the.fta_300n_inbox.esf_hyperlink(:msrmInd, ta.current_assigned_to,
-                    the.sil_get_org_level(:userOrgUnitNo), ta.tenure_application_type_code)
-                                    AS esf_hyperlink_ind
+           -- THE.FTA_300N_INBOX is not granted to this user, so the columns it
+           -- derived are NULL. file_action_link and file_bubble_help keep the
+           -- branch the legacy DECODE takes when get_hva_id returns NULL, which
+           -- is the ordinary case for a tenure application with no harvesting
+           -- authority attached.
+           , DECODE(ta.tenure_application_type_code, 'CP', 'FTA902CPDETAILACTION/Go'
+                                                   , 'TL', 'FTA980TLBLOCKACTION/Go'
+                                                   , 'TLE', 'FTA980TLBLOCKACTION/Go'
+                                                   , 'FTA100TENUREACTION/Go') AS file_action_link
+           , CAST(NULL AS VARCHAR2(1)) AS approve_enabled_ind
+           , CAST(NULL AS VARCHAR2(1)) AS reject_enabled_ind
+           , CAST(NULL AS VARCHAR2(1)) AS esf_hyperlink_ind
+           -- Granted, so this one stays.
            , the.fta_get_clear_unclear_allowed(the.sil_get_org_level(:userOrgUnitNo), :msrmInd,
                     :recStaffInd, :seniorAdminInd, ta.tenure_application_type_code,
                     ta.current_assigned_to) AS exh_a_action_ind
-           , the.fta_300n_inbox.bcts_esf_hyperlink(:msrmInd, ta.current_assigned_to,
-                    the.sil_get_org_level(:userOrgUnitNo), ta.tenure_application_type_code)
-                                    AS bcts_esf_hyperlink_ind
-           , the.fta_300n_inbox.bcts_clear_unclear_allowed(the.sil_get_org_level(:userOrgUnitNo),
-                    :msrmInd, :recStaffInd, :seniorAdminInd, ta.tenure_application_type_code,
-                    ta.current_assigned_to) AS bcts_exh_a_action_ind
-           , DECODE(the.fta_300n_inbox.get_hva_id(ta.tenure_app_id), NULL,
-                    DECODE(ta.tenure_application_type_code, 'CP', 'Navigates to FTA902 CP Detail screen'
-                                                          , 'TL', 'Navigates to FTA980 TL Block screen'
-                                                          , 'TLE', 'Navigates to FTA980 TL Block screen'
-                                                          , 'Navigates to FTA100 Tenure screen'),
-                    'Navigates to FTA902 CP Detail screen') AS file_bubble_help
+           , CAST(NULL AS VARCHAR2(1)) AS bcts_esf_hyperlink_ind
+           , CAST(NULL AS VARCHAR2(1)) AS bcts_exh_a_action_ind
+           , DECODE(ta.tenure_application_type_code, 'CP', 'Navigates to FTA902 CP Detail screen'
+                                                   , 'TL', 'Navigates to FTA980 TL Block screen'
+                                                   , 'TLE', 'Navigates to FTA980 TL Block screen'
+                                                   , 'Navigates to FTA100 Tenure screen')
+                                    AS file_bubble_help
            , ta.image_create_in_progress_ind AS regen_in_progress_ind
            , ta.image_mime_type_code AS image_mime_type_code
-           , the.fta_300n_inbox.get_hva_skey(ta.tenure_app_id) AS hva_skey
-           , the.fta_300n_inbox.get_hva_id(ta.tenure_app_id)   AS hva_id
+           , CAST(NULL AS NUMBER)       AS hva_skey
+           , CAST(NULL AS VARCHAR2(30)) AS hva_id
         FROM the.tenure_application ta
            , the.tenure_application_image tai
            , the.org_unit ou

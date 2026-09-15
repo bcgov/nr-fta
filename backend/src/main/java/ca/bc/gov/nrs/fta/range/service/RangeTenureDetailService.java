@@ -70,7 +70,7 @@ public class RangeTenureDetailService {
         LEFT JOIN the.forest_file_client ffc
                ON ffc.forest_file_id = pfu.forest_file_id
               AND ffc.forest_file_client_type_code = 'A'
-        LEFT JOIN the.client cli          ON cli.client_number = ffc.client_number
+        LEFT JOIN the.forest_client cli          ON cli.client_number = ffc.client_number
        WHERE pfu.forest_file_id = :agreementId
       """;
 

@@ -1,5 +1,7 @@
 import { apiGet, toQuery } from './http';
 
+import type { PageableResponse } from './paging';
+
 // Mirrors the backend RangeTenureSearchDto (ca.bc.gov.nrs.fta.range.dto),
 // which mirrors the legacy THE.FTA_001R_TENR_SRCH rec_tenure_results record.
 export interface RangeTenureSummary {
@@ -45,9 +47,16 @@ export interface RangeTenureSearchParams {
   nonBillableNonUseTo?: string;
   totalAnnualUseFrom?: string;
   totalAnnualUseTo?: string;
+  /** 0-indexed, following the backend. Carbon's Pagination is 1-indexed. */
+  page?: number;
+  size?: number;
 }
 
 /** GET /api/fta/range-tenures — range tenure search (FTA_001R_TENR_SRCH). */
-export function searchRangeTenures(params: RangeTenureSearchParams): Promise<RangeTenureSummary[]> {
-  return apiGet<RangeTenureSummary[]>(`/api/fta/range-tenures${toQuery({ ...params })}`);
+export function searchRangeTenures(
+  params: RangeTenureSearchParams,
+): Promise<PageableResponse<RangeTenureSummary>> {
+  return apiGet<PageableResponse<RangeTenureSummary>>(
+    `/api/fta/range-tenures${toQuery({ ...params })}`,
+  );
 }

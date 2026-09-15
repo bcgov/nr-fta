@@ -1,8 +1,8 @@
 package ca.bc.gov.nrs.fta.shared.controller;
 
 import ca.bc.gov.nrs.fta.shared.dto.MgmtUnitSearchDto;
+import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.service.MgmtUnitSearchService;
-import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +19,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/fta/management-units")
 public class MgmtUnitSearchController {
 
+  /** Rows per page when the caller does not say; matches the frontend default. */
+  private static final int DEFAULT_PAGE_SIZE = 10;
+
+  /** Upper bound on page size so a hand-built request cannot ask for the world. */
+  private static final int MAX_PAGE_SIZE = 100;
+
   private final MgmtUnitSearchService mgmtUnitSearchService;
 
   public MgmtUnitSearchController(MgmtUnitSearchService mgmtUnitSearchService) {
@@ -26,9 +32,14 @@ public class MgmtUnitSearchController {
   }
 
   @GetMapping
-  public ResponseEntity<List<MgmtUnitSearchDto>> search(
+  public ResponseEntity<PagedResponse<MgmtUnitSearchDto>> search(
       @RequestParam(required = false) String mgmtUnitTypeCode,
-      @RequestParam(required = false) String description) {
-    return ResponseEntity.ok(mgmtUnitSearchService.search(mgmtUnitTypeCode, description));
+      @RequestParam(required = false) String description,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
+    int safePage = Math.max(page, 0);
+    int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
+    return ResponseEntity.ok(
+        mgmtUnitSearchService.search(mgmtUnitTypeCode, description, safePage, safeSize));
   }
 }

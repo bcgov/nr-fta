@@ -83,10 +83,8 @@ public class CuttingPermitDetailService {
                ON pfu.forest_file_id = hva.forest_file_id
         LEFT JOIN the.harvest_authority_geom geom
                ON geom.hva_skey = hva.hva_skey
-        LEFT JOIN the.forest_file ff
-               ON ff.forest_file_id = hva.forest_file_id
         LEFT JOIN the.org_unit ou
-               ON ou.org_unit_no = ff.admin_district_no
+               ON ou.org_unit_no = pfu.forest_region
         LEFT JOIN the.file_type_code ftc
                ON ftc.file_type_code = pfu.file_type_code
         LEFT JOIN the.harvest_auth_status_code hsc
@@ -94,7 +92,7 @@ public class CuttingPermitDetailService {
         LEFT JOIN the.forest_file_client ffc
                ON ffc.forest_file_id = hva.forest_file_id
               AND ffc.forest_file_client_type_code = 'A'
-        LEFT JOIN the.client cli
+        LEFT JOIN the.forest_client cli
                ON cli.client_number = ffc.client_number
        WHERE hva.cutting_permit_id = :cpId
          AND (:forestFileId IS NULL OR hva.forest_file_id = :forestFileId)

@@ -6,11 +6,16 @@
 //   _overrides.scss  — BCGov palette + Carbon component overrides (radius,
 //                       header background-brand, side-nav icon color, etc.)
 //   default-grid.scss — shared grid utility class
+//   _search.scss     — the shared search-screen layout (criteria tile, field
+//                       grid, full-bleed results panel, pagination footer).
+//                       Loaded after ./tables so it sits alongside the global
+//                       table chrome it depends on.
 @use './mixins';
 @use './overrides';
 @use './variables' as variables;
 @use './default-grid';
 @use './tables';
+@use './search';
 
 .back-link {
   display: inline-flex;

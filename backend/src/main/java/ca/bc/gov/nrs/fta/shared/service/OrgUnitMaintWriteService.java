@@ -27,27 +27,51 @@ public class OrgUnitMaintWriteService {
     this.jdbc = jdbc;
   }
 
-  // NOTE: Derived from the PKG_SIL_CODE_LISTS spec only — the package exposes no
-  // write proc. org_unit_no is resolved from THE.ORG_UNIT (the spec's base
-  // table); the default is upserted per user with audit columns.
+  /**
+   * WebADE application acronym this app files its per-user default under.
+   * {@code MOF_USER_ORG_DEFAULT} is shared across ministry applications, so the
+   * acronym is half the primary key — without it we would read and overwrite
+   * other applications' defaults for the same user.
+   */
+  private static final String APPLICATION_ACRONYM = "FTA";
+
+  // The per-user default org unit lives in THE.MOF_USER_ORG_DEFAULT, keyed by
+  // (APPLICATION_ACRONYM, USER_ID). Both the table and that key come from
+  // THE.SIL_99_USER_ORG_DEFAULT, the legacy package that reads and writes it;
+  // this mirrors its GET and CHANGE procedures:
+  //
+  //   * USER_ID is matched and stored upper-cased (GET does
+  //     "USER_ID = UPPER(P_USERID)"), so a mixed-case IDIR login still finds
+  //     the row it wrote last time.
+  //   * REVISION_COUNT is NOT NULL — 0 on insert, incremented on update, as
+  //     CHANGE does. It is the optimistic-locking counter the ministry
+  //     packages check, so it must keep moving even when we write directly.
+  //
+  // The account holds SELECT, INSERT and UPDATE here but not DELETE, which is
+  // why this is a MERGE with no delete branch.
   private static final String UPSERT_SQL =
       """
-      MERGE INTO the.user_default_org_unit tgt
+      MERGE INTO the.mof_user_org_default tgt
       USING (
         SELECT
-          :userId AS user_id,
+          :applicationAcronym AS application_acronym,
+          UPPER(:userId) AS user_id,
           (SELECT org_unit_no FROM the.org_unit WHERE org_unit_code = :orgUnitCode) AS org_unit_no
         FROM dual
       ) src
-      ON (tgt.user_id = src.user_id)
+      ON (tgt.application_acronym = src.application_acronym
+          AND tgt.user_id = src.user_id)
       WHEN MATCHED THEN UPDATE SET
         tgt.org_unit_no = src.org_unit_no,
-        tgt.update_userid = :userId,
-        tgt.update_timestamp = SYSDATE
+        tgt.update_userid = UPPER(:userId),
+        tgt.update_timestamp = SYSDATE,
+        tgt.revision_count = tgt.revision_count + 1
       WHEN NOT MATCHED THEN INSERT (
-        user_id, org_unit_no, entry_userid, entry_timestamp, update_userid, update_timestamp
+        application_acronym, user_id, org_unit_no,
+        entry_userid, entry_timestamp, update_userid, update_timestamp, revision_count
       ) VALUES (
-        src.user_id, src.org_unit_no, :userId, SYSDATE, :userId, SYSDATE
+        src.application_acronym, src.user_id, src.org_unit_no,
+        UPPER(:userId), SYSDATE, UPPER(:userId), SYSDATE, 0
       )
       """;
 
@@ -61,6 +85,7 @@ public class OrgUnitMaintWriteService {
   @Transactional
   public int setDefaultOrgUnit(OrgUnitMaintRequest request, String userId) {
     MapSqlParameterSource params = new MapSqlParameterSource()
+        .addValue("applicationAcronym", APPLICATION_ACRONYM)
         .addValue("orgUnitCode", request.orgUnitCode())
         .addValue("userId", userId);
     return jdbc.update(UPSERT_SQL, params);

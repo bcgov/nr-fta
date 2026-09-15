@@ -19,7 +19,11 @@ public record TenureSummaryDto(
     String forestFileId,
     String fileTypeCode,
     String fileClientTypeDesc,
+    /** Both come from the package's record; null on the table path until its SQL joins them. */
+    String mgmtUnitType,
+    String mgmtUnitId,
     String fileStatusCode,
     String fileStatusDesc,
+    /** {@code VARCHAR2(10)} in the legacy record; parsed on the way out. */
     LocalDate issueDate,
     LocalDate expiryDate) {}

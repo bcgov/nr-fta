@@ -23,6 +23,10 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+    # Job-level so the Sonar step's `if` can test it: secrets can't be used in
+    # `if:` directly, and GitHub's documented pattern is a job-level env var.
+    env:
+      SONAR_TOKEN: ${{ secrets.sonar_token }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -48,20 +52,42 @@ jobs:
       # Sonar is gated on the secret being present so PRs from forks (which
       # don't get secrets) don't fail.
       #
-      # No SonarCloud step here, matching nr-rept.
+      # ONE analysis for the whole repository, published to bcgov_nr-fta.
+      # SonarCloud has a single project per repo here, matching the siblings
+      # (bcgov_nr-rept, bcgov_nr-fsp), and two analyses against one key replace
+      # each other rather than combining — which is why the frontend job below
+      # runs no scan of its own.
       #
-      # SonarCloud scans this repo with AUTOMATIC ANALYSIS, which runs on
-      # SonarCloud's side when commits land — nothing in CI uploads to it, and
-      # it refuses CI uploads while it is enabled. bcgov_nr-rept works the same
-      # way (its `SonarCloud scan` step is skipped on every run).
+      # Deliberately the standalone scanner from the REPOSITORY ROOT, not
+      # `mvn sonar:sonar` in backend/. The Maven scanner resolves sonar.sources
+      # against its own module directory, so repo-root paths turned into
+      # `backend/backend/src/main/java` and failed the build; it also picks up
+      # `sonar.language=java` from pom.xml, which drops frontend/src from the
+      # analysis. The root scanner has neither problem and covers both
+      # languages in one pass.
       #
-      # The trade-off, should anyone want to revisit it: Automatic Analysis
-      # cannot analyse Java and cannot import coverage, so it covers the
-      # frontend only. Swapping to a CI scan means disabling Automatic Analysis
-      # in SonarCloud (Administration → Analysis Method) and adding the
-      # standalone scanner at the repo root — the Maven scanner can't do it,
-      # since it resolves sources against backend/ and honours the
-      # sonar.language=java pin in pom.xml.
+      # It runs after `Maven verify` on purpose: Java analysis reads the
+      # compiled classes in backend/target/classes, and coverage comes from the
+      # jacoco report that step writes.
+      #
+      # Requires Automatic Analysis to be OFF for this project in SonarCloud
+      # (Administration → Analysis Method). SonarCloud refuses CI uploads while
+      # it is on, and Automatic Analysis cannot analyse Java at all.
+      - name: SonarCloud scan
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        env:
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >
+            -Dsonar.projectKey=bcgov_nr-fta
+            -Dsonar.organization=bcgov-sonarcloud
+            -Dsonar.sources=backend/src/main/java,frontend/src
+            -Dsonar.tests=backend/src/test
+            -Dsonar.java.binaries=backend/target/classes
+            -Dsonar.coverage.jacoco.xmlReportPaths=backend/target/site/jacoco/jacoco.xml
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**,**/target/**,**/*.test.ts,**/*.test.tsx,**/e2e/**
+            -Dsonar.sourceEncoding=UTF-8
 
   frontend-tests:
     name: Frontend Tests

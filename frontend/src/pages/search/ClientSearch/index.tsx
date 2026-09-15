@@ -1,140 +1,321 @@
-import { Search as SearchIcon, Reset } from '@carbon/icons-react';
-import { Button, Column, Grid, Tag, TextInput } from '@carbon/react';
-import { useState, type FC, type FormEvent } from 'react';
+import { Search as SearchIcon } from '@carbon/icons-react';
+import {
+  Button,
+  DataTable,
+  DataTableSkeleton,
+  Loading,
+  Pagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TextInput,
+  Tile,
+} from '@carbon/react';
+import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
 
-import AsyncBoundary from '@/components/AsyncBoundary';
-import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
-import SectionTile from '@/components/SectionTile';
+import { EmptyState } from '@/components/EmptyState/EmptyState';
+import { StatusTag } from '@/components/StatusTag/StatusTag';
+import { useNotification } from '@/context/notification/useNotification';
+import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
   searchClients,
   type ClientSearchParams,
   type ClientSearchResult,
 } from '@/services/client_search';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 
-import './ClientSearch.scss';
-
-const HEADERS: ColumnDef[] = [
-  { key: 'displayClientNumber', header: 'Client #' },
-  { key: 'clientName', header: 'Name' },
+// Column order follows the legacy SIL21 results grid.
+const HEADERS = [
+  { key: 'clientAcronym', header: 'Client acronym' },
+  { key: 'clientNumber', header: 'Client number' },
+  { key: 'clientLocnCode', header: 'Location code' },
+  { key: 'clientName', header: 'Client name' },
   { key: 'clientLocnName', header: 'Location' },
   { key: 'city', header: 'City' },
   { key: 'clientStatusCode', header: 'Status' },
 ];
 
+/** A result row carrying the id Carbon's DataTable requires. */
+type Row = ClientSearchResult & { id: string };
+
+const SearchingIcon = () => <Loading small withOverlay={false} description="" />;
+
+const formatCellText = (value: string | null | undefined) =>
+  value && value.trim().length > 0 ? value.trim() : '—';
+
+const EMPTY_FORM: ClientSearchParams = {};
+
 /**
- * SIL21 — Client Search. Code-table lookup of forest clients backed by the
- * backend {@code GET /api/fta/clients} endpoint (which ports
- * THE.FTA_SIL_21_CLIENT_SEARCH_V002). Reference data, so results are a flat
- * table (no detail screen).
+ * SIL21 — Client Search.
+ *
+ * <p>Criteria match the legacy screen: acronym, client number, and the three
+ * name parts. The client number is an exact match; everything else is a prefix
+ * match, as the legacy package does it.
+ *
+ * <p>Reference data, so rows are not clickable — there is no client detail
+ * screen. Legacy uses this same page as the "..." picker other screens launch;
+ * that mode is not implemented here.
+ *
+ * <p>Layout and class names are the shared search-screen treatment in
+ * `styles/_search.scss`; see TenureSearch for the pattern.
  */
 const ClientSearch: FC = () => {
-  const [criteria, setCriteria] = useState<ClientSearchParams>({});
-  const [rows, setRows] = useState<ClientSearchResult[] | null>(null);
+  const { display } = useNotification();
+
+  const [form, setForm] = useState<ClientSearchParams>(EMPTY_FORM);
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [totalElements, setTotalElements] = useState(0);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
 
-  const onField = (field: keyof ClientSearchParams) => (value: string) =>
-    setCriteria((c) => ({ ...c, [field]: value }));
-
-  const runSearch = async (params: ClientSearchParams) => {
-    setLoading(true);
-    setError(undefined);
-    try {
-      setRows(await searchClients(params));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Search failed');
-      setRows(null);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (error) {
+      display({ kind: 'error', title: 'Search failed', subtitle: error, timeout: 6000 });
     }
-  };
+  }, [error, display]);
 
-  const onSearch = (e: FormEvent) => {
-    e.preventDefault();
-    void runSearch(criteria);
-  };
+  const set = <K extends keyof ClientSearchParams>(key: K, value: ClientSearchParams[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
 
-  const onReset = () => {
-    setCriteria({});
+  const runSearch = useCallback(
+    async (nextPage: number, nextSize: number) => {
+      // Legacy requires at least one criterion; an unfiltered search would scan
+      // every forest client in the province.
+      const hasCriterion = Boolean(
+        form.clientNumber ||
+        form.clientAcronym ||
+        form.clientName ||
+        form.legalFirstName ||
+        form.legalMiddleName,
+      );
+      if (!hasCriterion) {
+        setError('Enter at least one search criterion.');
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await searchClients({ ...form, page: nextPage, size: nextSize });
+        // A client appears once per location, so the client number alone is not
+        // unique across rows — the location code and index disambiguate.
+        setRows(
+          data.content.map((r, i) => ({
+            ...r,
+            id: `${r.clientNumber ?? 'client'}-${r.clientLocnCode ?? i}-${i}`,
+          })),
+        );
+        setTotalElements(data.page.totalElements);
+        setPage(data.page.number);
+        setPageSize(data.page.size);
+      } catch (e) {
+        setError(safeErrorMessage(e));
+        setRows([]);
+        setTotalElements(0);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [form],
+  );
+
+  const onSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      void runSearch(0, pageSize);
+    },
+    [runSearch, pageSize],
+  );
+
+  const onPaginate = useCallback(
+    ({ page: newPage, pageSize: newSize }: { page: number; pageSize: number }) => {
+      void runSearch(newPage - 1, newSize);
+    },
+    [runSearch],
+  );
+
+  const onClear = useCallback(() => {
+    setForm(EMPTY_FORM);
     setRows(null);
-    setError(undefined);
-  };
+    setTotalElements(0);
+    setPage(0);
+    setError(null);
+  }, []);
+
+  const hasResults = rows !== null && rows.length > 0;
 
   return (
-    <PageLayout
-      title="Client Search"
-      subtitle="Find a forest client by client number, name or acronym"
-    >
-      <SectionTile title="Search criteria" icon={SearchIcon}>
-        <form className="client-search__form" onSubmit={onSearch}>
-          <Grid narrow>
-            <Column sm={4} md={4} lg={4}>
-              <TextInput
-                id="cl-num"
-                labelText="Client Number"
-                placeholder="e.g. 00001012"
-                value={criteria.clientNumber ?? ''}
-                onChange={(e) => onField('clientNumber')(e.target.value)}
-              />
-            </Column>
-            <Column sm={4} md={4} lg={4}>
-              <TextInput
-                id="cl-name"
-                labelText="Name"
-                placeholder="e.g. Canfor"
-                value={criteria.clientName ?? ''}
-                onChange={(e) => onField('clientName')(e.target.value)}
-              />
-            </Column>
-            <Column sm={4} md={4} lg={4}>
-              <TextInput
-                id="cl-acronym"
-                labelText="Acronym"
-                placeholder="e.g. CANFOR"
-                value={criteria.clientAcronym ?? ''}
-                onChange={(e) => onField('clientAcronym')(e.target.value)}
-              />
-            </Column>
-          </Grid>
-          <div className="client-search__actions">
-            <Button type="submit" size="md" renderIcon={SearchIcon}>
-              Search
+    <PageLayout title="Client Search" subtitle="Find a forest client by number, acronym or name">
+      <Tile className="fsp-search__tile">
+        <form className="fsp-search__form" onSubmit={onSubmit}>
+          <div className="fsp-search__field-grid">
+            <TextInput
+              id="cl-acronym"
+              labelText="Client acronym"
+              placeholder="e.g. CANFOR"
+              value={form.clientAcronym ?? ''}
+              onChange={(e) => set('clientAcronym', e.target.value)}
+              maxLength={8}
+              autoComplete="off"
+            />
+
+            <TextInput
+              id="cl-num"
+              labelText="Client number"
+              placeholder="e.g. 00001012"
+              value={form.clientNumber ?? ''}
+              onChange={(e) => set('clientNumber', e.target.value)}
+              maxLength={8}
+              autoComplete="off"
+            />
+
+            <TextInput
+              id="cl-last-name"
+              labelText="Last name"
+              placeholder="e.g. Canfor"
+              value={form.clientName ?? ''}
+              onChange={(e) => set('clientName', e.target.value)}
+              maxLength={30}
+              autoComplete="off"
+            />
+
+            <TextInput
+              id="cl-first-name"
+              labelText="First name"
+              value={form.legalFirstName ?? ''}
+              onChange={(e) => set('legalFirstName', e.target.value)}
+              maxLength={30}
+              autoComplete="off"
+            />
+
+            <TextInput
+              id="cl-middle-name"
+              labelText="Middle name"
+              value={form.legalMiddleName ?? ''}
+              onChange={(e) => set('legalMiddleName', e.target.value)}
+              maxLength={30}
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="fsp-search__actions">
+            <Button kind="tertiary" size="md" type="button" onClick={onClear} disabled={loading}>
+              Clear all
             </Button>
-            <Button type="button" size="md" kind="tertiary" renderIcon={Reset} onClick={onReset}>
-              Reset
+            <Button
+              type="submit"
+              size="md"
+              disabled={loading}
+              renderIcon={loading ? SearchingIcon : SearchIcon}
+            >
+              {loading ? 'Searching...' : 'Search'}
             </Button>
           </div>
         </form>
-      </SectionTile>
+      </Tile>
 
-      <AsyncBoundary
-        loading={loading}
-        error={error}
-        onRetry={() => void runSearch(criteria)}
-        loadingText="Searching…"
-      >
-        {rows !== null && (
-          <div className="bordered-table">
-            <SearchResultsTable
-              rows={rows.map((r, i) => ({ ...r, id: r.clientNumber ?? String(i) }))}
-              headers={HEADERS}
-              emptyTitle="No clients found"
-              renderCell={(row, key) =>
-                key === 'clientStatusCode' ? (
-                  row.clientStatusCode ? (
-                    <Tag type={row.clientStatusCode === 'ACT' ? 'green' : 'gray'}>
-                      {row.clientStatusCode}
-                    </Tag>
-                  ) : (
-                    '—'
-                  )
-                ) : undefined
-              }
-            />
+      {(loading || rows !== null) && (
+        <div className="fsp-search__results-fullbleed">
+          <div className="fsp-search__results">
+            {loading ? (
+              <>
+                <div className="fsp-search__results-header">
+                  <span className="fsp-search__results-count fsp-search__results-count--searching">
+                    Searching
+                    <span className="fsp-search__searching-spinner" aria-hidden="true" />
+                  </span>
+                </div>
+                <div className="fsp-search__table">
+                  <DataTableSkeleton
+                    headers={HEADERS}
+                    rowCount={Math.min(pageSize, 10)}
+                    showHeader={false}
+                    showToolbar={false}
+                    aria-label="Loading search results"
+                  />
+                </div>
+              </>
+            ) : hasResults ? (
+              <>
+                <div className="fsp-search__results-header">
+                  <span className="fsp-search__results-count">
+                    {totalElements.toLocaleString()} {totalElements === 1 ? 'client' : 'clients'}{' '}
+                    found
+                  </span>
+                </div>
+
+                <div className="fsp-search__table">
+                  <DataTable rows={rows!} headers={HEADERS}>
+                    {({ rows: dtRows, headers, getTableProps, getHeaderProps, getRowProps }) => (
+                      <TableContainer>
+                        <Table {...getTableProps()} size="md">
+                          <TableHead>
+                            <TableRow>
+                              {headers.map((h) => (
+                                <TableHeader {...getHeaderProps({ header: h })} key={h.key}>
+                                  {h.header}
+                                </TableHeader>
+                              ))}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {dtRows.map((row) => (
+                              <TableRow {...getRowProps({ row })} key={row.id}>
+                                {row.cells.map((cell) => {
+                                  const value = cell.value as string | null | undefined;
+                                  if (cell.info.header === 'clientStatusCode') {
+                                    return (
+                                      <TableCell key={cell.id}>
+                                        {value ? <StatusTag status={value} /> : '—'}
+                                      </TableCell>
+                                    );
+                                  }
+                                  return (
+                                    <TableCell key={cell.id}>{formatCellText(value)}</TableCell>
+                                  );
+                                })}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    )}
+                  </DataTable>
+                </div>
+
+                <Pagination
+                  page={page + 1}
+                  pageSize={pageSize}
+                  pageSizes={PAGE_SIZES}
+                  totalItems={totalElements}
+                  onChange={onPaginate}
+                  size="md"
+                />
+              </>
+            ) : (
+              rows !== null &&
+              !error && (
+                <EmptyState
+                  title="No clients found"
+                  body={
+                    <>
+                      No records match your search criteria.
+                      <br />
+                      Try adjusting your filters and searching again.
+                    </>
+                  }
+                />
+              )
+            )}
           </div>
-        )}
-      </AsyncBoundary>
+        </div>
+      )}
     </PageLayout>
   );
 };

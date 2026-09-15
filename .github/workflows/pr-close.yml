@@ -20,6 +20,11 @@ jobs:
     secrets:
       oc_namespace: ${{ secrets.oc_namespace }}
       oc_token: ${{ secrets.oc_token }}
+      # Without this the helper falls back to its own default cluster (silver)
+      # and the login 401s. FTA is on gold — same value the deploy workflows
+      # use. It is declared as a secret by the helper, not an input, so it is
+      # passed here rather than under `with:`.
+      oc_server: ${{ vars.oc_server }}
     with:
       cleanup: label
       packages: backend frontend

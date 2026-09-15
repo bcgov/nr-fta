@@ -32,19 +32,33 @@ public class AuditReportService {
     this.jdbc = jdbc;
   }
 
-  // NOTE: SQL derived from the FTA_402_PKG.PKS spec (rec_FTA402) only — no .PKB
-  // body exists — reconstructed against the THE.* timber-mark base tables.
+  // SQL derived from the FTA_402_PKG.PKS spec (rec_FTA402) — no .PKB body
+  // exists, so the joins are reconstructed from the base tables.
+  //
+  // The driving table is PRIVATE_MARK_CERTIFICATE, not TIMBER_MARK: FTA402 is
+  // the Private Mark Certificate report, and every column the record declares
+  // that TIMBER_MARK lacks — P_OF_C_OR_LEGAL, MAP_REFERENCE_ID — is on the
+  // certificate, along with CROWN_GRANTED_ACQ_DESC and GRANTED_ACQRD_DATE.
+  // Clients hang off the certificate too (PRIVATE_MARK_CLIENT keyed by
+  // CERTIFICATE), not off the timber mark.
+  //
+  // CROWN_GRANTED_ACQ_DESC is a description held directly on the certificate,
+  // so there is no code table to join — the record's matching field is filled
+  // from that column.
+  //
+  // The district/region rollup uses ORG_UNIT.ROLLUP_REGION_NO, which is how
+  // FTA_001_TENR_SRCH resolves a region; ORG_UNIT has no parent-org column.
   private static final String REPORT_SQL =
       """
-      SELECT tm.timber_mark                       AS timber_mark,
-             tm.mark_issue_date                   AS mark_issue_date,
-             tm.mark_expiry_date                  AS mark_expiry_date,
+      SELECT pmc.timber_mark                      AS timber_mark,
+             pmc.private_mark_issue_date          AS mark_issue_date,
+             pmc.private_mark_expiry_date         AS mark_expiry_date,
              ftc.description                      AS file_type_desc,
-             TO_CHAR(tm.granted_acquired_date, 'YYYY-MM-DD') AS granted_acqrd_date,
-             cga.description                      AS crown_granted_acq_desc,
-             tm.mark_amend_date                   AS mark_amend_date,
-             tm.amended_userid                    AS amended_userid,
-             tm.activated_userid                  AS activated_userid,
+             TO_CHAR(pmc.granted_acqrd_date, 'YYYY-MM-DD') AS granted_acqrd_date,
+             pmc.crown_granted_acq_desc           AS crown_granted_acq_desc,
+             pmc.private_mark_amend_date          AS mark_amend_date,
+             pmc.private_mark_amended_userid      AS amended_userid,
+             pmc.private_mark_activated_userid    AS activated_userid,
              dou.org_unit_name                    AS district,
              rou.org_unit_name                    AS region,
              cli.client_name                      AS main_licensee,
@@ -52,30 +66,30 @@ public class AuditReportService {
              addr.address_2                       AS address_2,
              addr.address_3                       AS address_3,
              addr.city                            AS city,
-             addr.province_state_code             AS province,
-             addr.country_code                    AS country,
+             addr.province                        AS province,
+             addr.country                         AS country,
              addr.postal_code                     AS postal_code,
-             tm.place_of_carriage_or_legal        AS p_of_c_or_legal,
-             tm.map_reference_id                  AS map_reference_id,
+             pmc.p_of_c_or_legal                  AS p_of_c_or_legal,
+             pmc.map_reference_id                 AS map_reference_id,
              (SELECT COUNT(*)
-                FROM the.timber_mark_client tmc2
-               WHERE tmc2.timber_mark = tm.timber_mark
-                 AND tmc2.timber_mark_client_type_code <> 'A') AS secondary_client_count
-        FROM the.timber_mark tm
-        LEFT JOIN the.timber_mark_client tmc
-               ON tmc.timber_mark = tm.timber_mark
-              AND tmc.timber_mark_client_type_code = 'A'
-        LEFT JOIN the.client cli          ON cli.client_number = tmc.client_number
-        LEFT JOIN the.client_location addr ON addr.client_number = tmc.client_number
-              AND addr.client_locn_code = tmc.client_locn_code
-        LEFT JOIN the.file_type_code ftc  ON ftc.file_type_code = tm.file_type_code
-        LEFT JOIN the.crown_granted_acquired_code cga
-               ON cga.crown_granted_acquired_code = tm.crown_granted_acquired_code
-        LEFT JOIN the.org_unit dou        ON dou.org_unit_no = tm.district_admin_zone
-        LEFT JOIN the.org_unit rou        ON rou.org_unit_no = dou.parent_org_unit_no
-       WHERE (:timberMark   IS NULL OR tm.timber_mark LIKE :timberMark || '%')
+                FROM the.private_mark_client pmc2
+               WHERE pmc2.certificate = pmc.certificate
+                 AND pmc2.private_mark_client_type_code <> 'A') AS secondary_client_count
+        FROM the.private_mark_certificate pmc
+        LEFT JOIN the.private_mark_client pmcl
+               ON pmcl.certificate = pmc.certificate
+              AND pmcl.private_mark_client_type_code = 'A'
+        LEFT JOIN the.forest_client cli   ON cli.client_number = pmcl.client_number
+        LEFT JOIN the.client_location addr
+               ON addr.client_number = pmcl.client_number
+              AND addr.client_locn_code = pmcl.client_locn_code
+        LEFT JOIN the.prov_forest_use pfu ON pfu.forest_file_id = pmc.forest_file_id
+        LEFT JOIN the.file_type_code ftc  ON ftc.file_type_code = pfu.file_type_code
+        LEFT JOIN the.org_unit dou        ON dou.org_unit_no = pmc.forest_district
+        LEFT JOIN the.org_unit rou        ON rou.org_unit_no = dou.rollup_region_no
+       WHERE (:timberMark   IS NULL OR pmc.timber_mark LIKE :timberMark || '%')
          AND (:mainLicensee IS NULL OR UPPER(cli.client_name) LIKE UPPER(:mainLicensee) || '%')
-       ORDER BY tm.timber_mark
+       ORDER BY pmc.timber_mark
        FETCH FIRST 200 ROWS ONLY
       """;
 
