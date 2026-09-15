@@ -152,6 +152,32 @@
    the layout is done here.
    ─────────────────────────────────────────────────────────────────────────── */
 
+/* The open/closed submenu list.
+
+   Carbon collapses a submenu with `max-block-size: 0` alone, which hides
+   nothing unless something clips the overflow — and the list computes
+   `overflow: visible`. The result is a one-row-high <ul> whose ten 48px items
+   spill straight out of it and keep painting, while the next heading is laid
+   out as though the list were 48px tall and paints over items two onward. Every
+   section shows exactly its first entry, open or closed.
+
+   So both states are stated explicitly: open sizes to its content, closed is
+   zero-height AND clipped. Keyed off the button's `aria-expanded`, which is
+   what Carbon toggles, so this tracks the real state rather than a guess. */
+.side-nav-drawer .cds--side-nav__submenu[aria-expanded='true'] + .cds--side-nav__menu {
+  block-size: auto;
+  max-block-size: none;
+  overflow: visible;
+  visibility: visible;
+}
+
+.side-nav-drawer .cds--side-nav__submenu[aria-expanded='false'] + .cds--side-nav__menu {
+  block-size: 0;
+  max-block-size: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
 /* Section heading: bold and dark, like the design's "Provincial" / "Admin". */
 .side-nav-drawer .cds--side-nav__submenu-title {
   font-weight: 600;

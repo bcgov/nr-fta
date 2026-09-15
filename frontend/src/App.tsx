@@ -24,6 +24,7 @@ import TenureDetail from './pages/tenure/TenureDetail';
 import HarvestingAuthoritySearch from './pages/search/HarvestingAuthoritySearch';
 import CutBlockSearch from './pages/search/CutBlockSearch';
 import RecreationSearch from './pages/search/RecreationSearch';
+import RecreationProject from './pages/recreation/RecreationProject';
 import CuttingPermitDetail from './pages/harvesting/CuttingPermitDetail';
 import CutBlockDetail from './pages/harvesting/CutBlockDetail';
 import SuspendBlocks from './pages/harvesting/SuspendBlocks';
@@ -156,6 +157,7 @@ export default function App() {
           {/* ── Range ──────────────────────────────────────────────── */}
           <Route path="/range/:agreementId" element={guarded(withLayout(<RangeTenureDetail />))} />
           <Route path="/range-unit/:unitId" element={guarded(withLayout(<RangeUnitDetail />))} />
+          <Route path="/recreation/:fileId" element={guarded(withLayout(<RecreationProject />))} />
 
           {/* ── Admin (FTA_ADMIN only) ─────────────────────────────── */}
           <Route path="/admin/audit" element={guarded(withLayout(<AuditReport />))} />

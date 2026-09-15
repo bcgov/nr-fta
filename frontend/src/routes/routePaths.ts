@@ -157,11 +157,20 @@ const NAV: MenuSection[] = [
     // Legacy's fourth menu. Its one screen, FTA701 Recreation Project, has not
     // been built here, and neither has FTA007 Recreation Search — so the
     // heading is kept for parity but has nothing to offer yet.
+    // Legacy's fourth menu. Its single item opens FTA701 for whichever project
+    // the session was last on; there is no such session state here and the
+    // screen needs a file id, so it lands on the search that finds one.
     id: 'recreation',
     label: 'Recreation',
     icon: Tree,
-    placeholder: true,
-    items: [],
+    items: [
+      {
+        id: 'recreation-project',
+        label: 'Recreation Project',
+        path: '/search/recreation',
+        icon: Tree,
+      },
+    ],
   },
   {
     id: 'admin',

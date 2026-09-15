@@ -23,6 +23,7 @@ import {
   Tile,
 } from '@carbon/react';
 import { useCallback, useEffect, useMemo, useState, type FC, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { useNotification } from '@/context/notification/useNotification';
@@ -88,6 +89,7 @@ const EMPTY_FORM: RecreationSearchParams = { sortBy: SORT_FILE_ID };
  * Camping Spaces finds projects with *more* than the number given.
  */
 const RecreationSearch: FC = () => {
+  const navigate = useNavigate();
   const { display } = useNotification();
 
   const [form, setForm] = useState<RecreationSearchParams>(EMPTY_FORM);
@@ -523,15 +525,39 @@ const RecreationSearch: FC = () => {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {dtRows.map((row) => (
-                              <TableRow {...getRowProps({ row })} key={row.id}>
-                                {row.cells.map((cell) => (
-                                  <TableCell key={cell.id}>
-                                    {formatCellText(cell.value as string | null | undefined)}
-                                  </TableCell>
-                                ))}
-                              </TableRow>
-                            ))}
+                            {dtRows.map((row) => {
+                              // Legacy offers a per-row "Details" button; the
+                              // whole row is the target here, as on the other
+                              // search screens.
+                              const fileId =
+                                (row.cells.find((c) => c.info.header === 'forestFileId')?.value as
+                                  string | undefined) ?? '';
+                              const open = () => {
+                                if (fileId) navigate(`/recreation/${encodeURIComponent(fileId)}`);
+                              };
+                              return (
+                                <TableRow
+                                  {...getRowProps({ row })}
+                                  key={row.id}
+                                  className="fsp-search__row--selectable"
+                                  onClick={open}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      open();
+                                    }
+                                  }}
+                                  tabIndex={0}
+                                  role="link"
+                                >
+                                  {row.cells.map((cell) => (
+                                    <TableCell key={cell.id}>
+                                      {formatCellText(cell.value as string | null | undefined)}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              );
+                            })}
                           </TableBody>
                         </Table>
                       </TableContainer>

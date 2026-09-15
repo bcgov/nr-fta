@@ -61,9 +61,50 @@ public class LoggedUserHelper {
 
   /**
    * Returns {@code true} if the user holds the {@code FTA_ADMIN} authority.
+   *
+   * <p>Matches the bare authority only. A <em>district-scoped</em> grant reaches
+   * the token as {@code FTA_ADMIN_DISTRICT-DCC} and will not satisfy this — use
+   * {@link #isAdminAnywhere()} where a scoped grant should also count, and
+   * {@link #adminDistricts()} where it matters which districts.
    */
   public boolean isAdmin() {
     return getAuthorities().contains(RoleConstants.ADMIN_AUTHORITY);
+  }
+
+  /**
+   * Whether the user administers at least one district, or holds the role
+   * unscoped.
+   *
+   * <p>FAM puts the scope in the role name and nowhere else, so a scoped holder
+   * never carries the bare code. Anything that asks "may this user edit
+   * <em>something</em>" has to accept both spellings.
+   */
+  public boolean isAdminAnywhere() {
+    return isAdmin() || !adminDistricts().isEmpty();
+  }
+
+  /**
+   * The district org-unit codes the user administers.
+   *
+   * <p>One role per scope value, so three districts arrive as three role names.
+   * Empty for an unscoped administrator — that is not "no districts" but "not
+   * narrowed", which {@link #isAdmin()} distinguishes.
+   */
+  public java.util.List<String> adminDistricts() {
+    return RoleScope.districtsFor(getAuthorities(), RoleConstants.ADMIN_AUTHORITY);
+  }
+
+  /**
+   * Whether the user may act on a file administered by the given district.
+   *
+   * <p>An unscoped administrator may act anywhere; a scoped one only within the
+   * districts granted.
+   */
+  public boolean administersDistrict(String orgUnitCode) {
+    if (isAdmin()) {
+      return true;
+    }
+    return orgUnitCode != null && adminDistricts().contains(orgUnitCode);
   }
 
   // ─── Internal helpers ─────────────────────────────────────────────

@@ -408,8 +408,12 @@ legend.#{variables.$bcgov-prefix}--label {
 - Left icons use "link-primary" color
 - Add a right border for the panel
 ------------------------------------------------------ */
-.#{variables.$bcgov-prefix}--side-nav__menu,
-.#{variables.$bcgov-prefix}--side-nav__menu-item,
+/* Rows only — the clickable elements. `--side-nav__menu` (the submenu <ul>)
+   and `--side-nav__menu-item` (its <li>) were in this list too, and a fixed
+   height on a container caps it at one row: a section holding ten 48px entries
+   still measured 48px, so nine of them overflowed and the next heading painted
+   straight over the top. Every section appeared to have exactly one item.
+   Containers size to their contents; only the rows get a height. */
 a.#{variables.$bcgov-prefix}--side-nav__link,
 button.#{variables.$bcgov-prefix}--side-nav__submenu,
 .#{variables.$bcgov-prefix}--side-nav__link {
