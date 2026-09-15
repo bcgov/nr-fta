@@ -89,11 +89,11 @@ const ClientSearch: FC = () => {
       // Legacy requires at least one criterion; an unfiltered search would scan
       // every forest client in the province.
       const hasCriterion = Boolean(
-        form.clientNumber
-          || form.clientAcronym
-          || form.clientName
-          || form.legalFirstName
-          || form.legalMiddleName,
+        form.clientNumber ||
+        form.clientAcronym ||
+        form.clientName ||
+        form.legalFirstName ||
+        form.legalMiddleName,
       );
       if (!hasCriterion) {
         setError('Enter at least one search criterion.');
@@ -151,10 +151,7 @@ const ClientSearch: FC = () => {
   const hasResults = rows !== null && rows.length > 0;
 
   return (
-    <PageLayout
-      title="Client Search"
-      subtitle="Find a forest client by number, acronym or name"
-    >
+    <PageLayout title="Client Search" subtitle="Find a forest client by number, acronym or name">
       <Tile className="fsp-search__tile">
         <form className="fsp-search__form" onSubmit={onSubmit}>
           <div className="fsp-search__field-grid">
@@ -248,8 +245,8 @@ const ClientSearch: FC = () => {
               <>
                 <div className="fsp-search__results-header">
                   <span className="fsp-search__results-count">
-                    {totalElements.toLocaleString()}{' '}
-                    {totalElements === 1 ? 'client' : 'clients'} found
+                    {totalElements.toLocaleString()} {totalElements === 1 ? 'client' : 'clients'}{' '}
+                    found
                   </span>
                 </div>
 

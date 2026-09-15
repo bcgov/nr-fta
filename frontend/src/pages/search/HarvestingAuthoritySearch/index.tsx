@@ -82,7 +82,10 @@ const formatCellText = (value: string | null | undefined) =>
 
 /** Joins the NTS parts into one cell, skipping the blanks. */
 const joinParts = (...parts: (string | null | undefined)[]) =>
-  parts.map((p) => p?.trim()).filter((p) => p && p.length > 0).join(' ');
+  parts
+    .map((p) => p?.trim())
+    .filter((p) => p && p.length > 0)
+    .join(' ');
 
 const EMPTY_FORM: HarvestingSearchParams = { sortBy: SORT_DISTRICT };
 
@@ -174,10 +177,8 @@ const HarvestingAuthoritySearch: FC = () => {
     }
   }, [error, display]);
 
-  const set = <K extends keyof HarvestingSearchParams>(
-    key: K,
-    value: HarvestingSearchParams[K],
-  ) => setForm((prev) => ({ ...prev, [key]: value }));
+  const set = <K extends keyof HarvestingSearchParams>(key: K, value: HarvestingSearchParams[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
 
   const hasValue = (v: string | undefined) => v !== undefined && v.trim().length > 0;
 
@@ -296,9 +297,7 @@ const HarvestingAuthoritySearch: FC = () => {
   const hasResults = rows !== null && rows.length > 0;
 
   const codeItems = (options: CodeOption[]) =>
-    options.map((o) => (
-      <SelectItem key={o.code} value={o.code} text={o.description || o.code} />
-    ));
+    options.map((o) => <SelectItem key={o.code} value={o.code} text={o.description || o.code} />);
 
   if (codeListsLoading) {
     return (
@@ -694,7 +693,13 @@ const HarvestingAuthoritySearch: FC = () => {
 
                 <div className="fsp-search__table">
                   <DataTable rows={rows!} headers={headers}>
-                    {({ rows: dtRows, headers: hdrs, getTableProps, getHeaderProps, getRowProps }) => (
+                    {({
+                      rows: dtRows,
+                      headers: hdrs,
+                      getTableProps,
+                      getHeaderProps,
+                      getRowProps,
+                    }) => (
                       <TableContainer>
                         <Table {...getTableProps()} size="md">
                           <TableHead>

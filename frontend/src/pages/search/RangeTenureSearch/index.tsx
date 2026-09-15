@@ -222,9 +222,7 @@ const RangeTenureSearch: FC = () => {
   const hasResults = rows !== null && rows.length > 0;
 
   const codeItems = (options: CodeOption[]) =>
-    options.map((o) => (
-      <SelectItem key={o.code} value={o.code} text={o.description || o.code} />
-    ));
+    options.map((o) => <SelectItem key={o.code} value={o.code} text={o.description || o.code} />);
 
   /** The six range-provision figures, each a From/To pair over the same column. */
   const usageRanges: {
@@ -538,8 +536,7 @@ const RangeTenureSearch: FC = () => {
                             {dtRows.map((row) => {
                               const fileId =
                                 (row.cells.find((c) => c.info.header === 'forestFileId')?.value as
-                                  | string
-                                  | undefined) ?? '';
+                                  string | undefined) ?? '';
                               const open = () => {
                                 if (fileId) navigate(`/range/${encodeURIComponent(fileId)}`);
                               };
@@ -568,8 +565,8 @@ const RangeTenureSearch: FC = () => {
                                       );
                                     }
                                     if (
-                                      cell.info.header === 'issueDate'
-                                      || cell.info.header === 'expiryDate'
+                                      cell.info.header === 'issueDate' ||
+                                      cell.info.header === 'expiryDate'
                                     ) {
                                       return (
                                         <TableCell

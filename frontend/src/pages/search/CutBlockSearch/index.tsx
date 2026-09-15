@@ -123,9 +123,9 @@ const CutBlockSearch: FC = () => {
   const runSearch = useCallback(
     async (nextPage: number, nextSize: number) => {
       if (
-        form.harvestStartDateFrom
-        && form.harvestStartDateTo
-        && form.harvestStartDateFrom > form.harvestStartDateTo
+        form.harvestStartDateFrom &&
+        form.harvestStartDateTo &&
+        form.harvestStartDateFrom > form.harvestStartDateTo
       ) {
         setError('Harvest date from must be on or before harvest date to.');
         return;
@@ -322,10 +322,7 @@ const CutBlockSearch: FC = () => {
               className="fsp-search__row-start"
               value={form.harvestStartDateFrom ? [form.harvestStartDateFrom] : []}
               onChange={(dates) =>
-                set(
-                  'harvestStartDateFrom',
-                  dates[0] ? dates[0].toISOString().slice(0, 10) : '',
-                )
+                set('harvestStartDateFrom', dates[0] ? dates[0].toISOString().slice(0, 10) : '')
               }
             >
               <DatePickerInput
@@ -430,8 +427,7 @@ const CutBlockSearch: FC = () => {
                             {dtRows.map((row) => {
                               const blockId =
                                 (row.cells.find((c) => c.info.header === 'cutBlockId')?.value as
-                                  | string
-                                  | undefined) ?? '';
+                                  string | undefined) ?? '';
                               const open = () => {
                                 if (blockId) navigate(`/cut-block/${encodeURIComponent(blockId)}`);
                               };
@@ -460,8 +456,8 @@ const CutBlockSearch: FC = () => {
                                       );
                                     }
                                     if (
-                                      cell.info.header === 'disturbanceStartDate'
-                                      || cell.info.header === 'disturbanceEndDate'
+                                      cell.info.header === 'disturbanceStartDate' ||
+                                      cell.info.header === 'disturbanceEndDate'
                                     ) {
                                       return (
                                         <TableCell

@@ -232,9 +232,7 @@ const TenureSearch: FC = () => {
   const showMapNotation = form.fileTypeCode === 'M01';
 
   const codeItems = (options: CodeOption[]) =>
-    options.map((o) => (
-      <SelectItem key={o.code} value={o.code} text={o.description || o.code} />
-    ));
+    options.map((o) => <SelectItem key={o.code} value={o.code} text={o.description || o.code} />);
 
   if (codeListsLoading) {
     return (
@@ -546,8 +544,8 @@ const TenureSearch: FC = () => {
               <>
                 <div className="fsp-search__results-header">
                   <span className="fsp-search__results-count">
-                    {totalElements.toLocaleString()}{' '}
-                    {totalElements === 1 ? 'tenure' : 'tenures'} found
+                    {totalElements.toLocaleString()} {totalElements === 1 ? 'tenure' : 'tenures'}{' '}
+                    found
                   </span>
                 </div>
 
@@ -571,8 +569,7 @@ const TenureSearch: FC = () => {
                               // that carries the disambiguating index suffix.
                               const forestFileId =
                                 (row.cells.find((c) => c.info.header === 'forestFileId')?.value as
-                                  | string
-                                  | undefined) ?? '';
+                                  string | undefined) ?? '';
                               const open = () => navigate(`/tenures/${forestFileId}`);
                               return (
                                 <TableRow

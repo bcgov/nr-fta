@@ -104,10 +104,8 @@ const RangeUnitSearch: FC = () => {
     }
   }, [error, display]);
 
-  const set = <K extends keyof RangeUnitSearchParams>(
-    key: K,
-    value: RangeUnitSearchParams[K],
-  ) => setForm((prev) => ({ ...prev, [key]: value }));
+  const set = <K extends keyof RangeUnitSearchParams>(key: K, value: RangeUnitSearchParams[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
 
   const runSearch = useCallback(
     async (nextPage: number, nextSize: number) => {
@@ -121,9 +119,7 @@ const RangeUnitSearch: FC = () => {
       setError(null);
       try {
         const data = await searchRangeUnits({ ...form, page: nextPage, size: nextSize });
-        setRows(
-          data.content.map((r, i) => ({ ...r, id: `${r.rangeUnitId}-${r.pastureId ?? i}` })),
-        );
+        setRows(data.content.map((r, i) => ({ ...r, id: `${r.rangeUnitId}-${r.pastureId ?? i}` })));
         setTotalElements(data.page.totalElements);
         setPage(data.page.number);
         setPageSize(data.page.size);
@@ -288,8 +284,7 @@ const RangeUnitSearch: FC = () => {
                             {dtRows.map((row) => {
                               const rangeUnitId =
                                 (row.cells.find((c) => c.info.header === 'rangeUnitId')?.value as
-                                  | string
-                                  | undefined) ?? '';
+                                  string | undefined) ?? '';
                               const open = () => navigate(`/range-unit/${rangeUnitId}`);
                               return (
                                 <TableRow

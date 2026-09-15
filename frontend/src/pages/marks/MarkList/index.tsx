@@ -291,11 +291,10 @@ const MarkList: FC = () => {
                             {dtRows.map((row) => {
                               const mark =
                                 (row.cells.find((c) => c.info.header === 'timberMark')?.value as
-                                  | string
-                                  | undefined)
-                                || (row.cells.find((c) => c.info.header === 'certificate')
-                                  ?.value as string | undefined)
-                                || '';
+                                  string | undefined) ||
+                                (row.cells.find((c) => c.info.header === 'certificate')?.value as
+                                  string | undefined) ||
+                                '';
                               const open = () => {
                                 if (mark) navigate(`/marks/${encodeURIComponent(mark)}`);
                               };

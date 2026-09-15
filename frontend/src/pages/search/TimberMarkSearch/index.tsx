@@ -159,10 +159,8 @@ const TimberMarkSearch: FC = () => {
     }
   }, [error, display]);
 
-  const set = <K extends keyof TimbermarkSearchParams>(
-    key: K,
-    value: TimbermarkSearchParams[K],
-  ) => setForm((prev) => ({ ...prev, [key]: value }));
+  const set = <K extends keyof TimbermarkSearchParams>(key: K, value: TimbermarkSearchParams[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
 
   const runSearch = useCallback(
     async (nextPage: number, nextSize: number) => {
@@ -224,9 +222,7 @@ const TimberMarkSearch: FC = () => {
   const hasResults = rows !== null && rows.length > 0;
 
   const codeItems = (options: CodeOption[]) =>
-    options.map((o) => (
-      <SelectItem key={o.code} value={o.code} text={o.description || o.code} />
-    ));
+    options.map((o) => <SelectItem key={o.code} value={o.code} text={o.description || o.code} />);
 
   if (codeListsLoading) {
     return (
@@ -492,9 +488,7 @@ const TimberMarkSearch: FC = () => {
                 id="tm-private-only"
                 labelText="Only private marks"
                 checked={form.privateMarkOnlyInd === 'Y'}
-                onChange={(_e, { checked }) =>
-                  set('privateMarkOnlyInd', checked ? 'Y' : '')
-                }
+                onChange={(_e, { checked }) => set('privateMarkOnlyInd', checked ? 'Y' : '')}
               />
             </div>
 
@@ -605,8 +599,8 @@ const TimberMarkSearch: FC = () => {
                                       );
                                     }
                                     if (
-                                      cell.info.header === 'markIssueDate'
-                                      || cell.info.header === 'markExpiryDate'
+                                      cell.info.header === 'markIssueDate' ||
+                                      cell.info.header === 'markExpiryDate'
                                     ) {
                                       return (
                                         <TableCell

@@ -35,7 +35,5 @@ export interface ClientSearchParams {
 export function searchClients(
   params: ClientSearchParams,
 ): Promise<PageableResponse<ClientSearchResult>> {
-  return apiGet<PageableResponse<ClientSearchResult>>(
-    `/api/fta/clients${toQuery({ ...params })}`,
-  );
+  return apiGet<PageableResponse<ClientSearchResult>>(`/api/fta/clients${toQuery({ ...params })}`);
 }

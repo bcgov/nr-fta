@@ -217,14 +217,11 @@ const ManagementUnitSearch: FC = () => {
                                 {row.cells.map((cell) => {
                                   const value = cell.value as string | null | undefined;
                                   if (
-                                    cell.info.header === 'effectiveDate'
-                                    || cell.info.header === 'expiryDate'
+                                    cell.info.header === 'effectiveDate' ||
+                                    cell.info.header === 'expiryDate'
                                   ) {
                                     return (
-                                      <TableCell
-                                        key={cell.id}
-                                        className="fsp-search__cell--nowrap"
-                                      >
+                                      <TableCell key={cell.id} className="fsp-search__cell--nowrap">
                                         {formatCellText(formatDate(value))}
                                       </TableCell>
                                     );
