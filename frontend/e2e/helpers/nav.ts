@@ -5,7 +5,10 @@ import { gotoProtected } from '../utils';
 /**
  * Every top-level page reachable from the SideNav, keyed by a short id.
  *
- * `navId` is the SideNav link's `data-testid` suffix (`side-nav-link-<navId>`),
+ * `navId` is the SideNav link's `data-testid` suffix (`side-nav-link-<navId>`).
+ * Note this id only renders while the nav is EXPANDED; collapsed to the icon
+ * rail the nav shows one button per section instead (`side-nav-rail-<sectionId>`).
+ * The nav defaults to expanded, so these remain the right handles for tests,
  * which is the entry's `id` — not its label — in `src/routes/routePaths.ts`.
  * `heading` is the page's `<h1>` text, used as the "page rendered" signal, and
  * is the title passed to `PageLayout`. Several of these differ from the nav
@@ -74,7 +77,6 @@ export const PAGES = {
   },
 
   // Inbox
-  inbox: { path: '/inbox', heading: 'Inbox', navId: 'inbox' },
 
   // Tenures
   addTenure: { path: '/tenures/add', heading: /Add New Tenure/i, navId: 'tenure-add' },

@@ -1,3 +1,4 @@
+import { parseRoleName, SCOPE_DISTRICT } from './roleScope';
 import {
   AVAILABLE_ROLES,
   validIdpProviders,
@@ -94,12 +95,21 @@ export const extractRoles = (profile: KeycloakProfile | undefined): string[] => 
 /**
  * Parses role strings into a user privilege object.
  *
- * Recognizes roles that **exactly** match {@link AVAILABLE_ROLES}. The Cognito
- * version also accepted an org-code suffix (`FTA_ADMIN_DPG` → `FTA_ADMIN`),
- * which was always broader than the backend, whose `hasAuthority()` checks have
- * only ever matched the bare code — so a suffixed group would have unlocked the
- * UI and then been refused by the API. Nothing on a CSS token carries a suffix
- * either, so exact matching is both correct and now agrees with the server.
+ * Recognises both spellings a role can arrive in, because FAM puts the scope in
+ * the role name and nowhere else:
+ *
+ * - **Unscoped** — `FTA_ADMIN`, recorded as `null`, meaning "not narrowed".
+ * - **District-scoped** — `FTA_ADMIN_DISTRICT-DCC`, recorded as `['DCC']`.
+ *
+ * A scoped holder **never carries the bare code**, so exact matching alone would
+ * read a district-scoped administrator as holding no role at all and send them
+ * to the Unauthorized page. (An earlier version matched exactly, on the
+ * reasoning that nothing on a CSS token carries a suffix. That was true only
+ * while FTA's roles were registered unscoped in FAM.)
+ *
+ * Several grants of one role merge: three districts arrive as three role names
+ * and collapse to one entry with three values. An unscoped grant wins over
+ * scoped ones — it is strictly broader, so narrowing it would be wrong.
  *
  * FAM's `FAM:`-prefixed bookkeeping roles are dropped explicitly rather than
  * left to fall through, so they cannot be read as privileges.
@@ -108,9 +118,19 @@ export function parsePrivileges(input: string[]): USER_PRIVILEGE_TYPE {
   const result: USER_PRIVILEGE_TYPE = {};
   for (const item of input) {
     if (item.startsWith(FAM_SIDECAR_PREFIX)) continue;
-    if (AVAILABLE_ROLES.includes(item as ROLE_TYPE)) {
-      result[item as ROLE_TYPE] = null; // null = global (non-scoped) role
+
+    const { baseRole, scopes } = parseRoleName(item);
+    if (!AVAILABLE_ROLES.includes(baseRole as ROLE_TYPE)) continue;
+
+    const role = baseRole as ROLE_TYPE;
+    const districts = scopes[SCOPE_DISTRICT] ?? [];
+
+    if (districts.length === 0) {
+      result[role] = null; // unscoped: broader than any scoped grant
+      continue;
     }
+    if (result[role] === null) continue; // already unscoped; do not narrow
+    result[role] = [...(result[role] ?? []), ...districts];
   }
   return result;
 }

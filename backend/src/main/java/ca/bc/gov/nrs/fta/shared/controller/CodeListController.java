@@ -111,4 +111,34 @@ public class CodeListController {
   public ResponseEntity<List<CodeOptionDto>> harvestAuthClientTypes() {
     return ResponseEntity.ok(codeListService.harvestAuthClientTypes());
   }
+
+  @GetMapping("/recreation-file-statuses")
+  public ResponseEntity<List<CodeOptionDto>> recreationFileStatuses() {
+    return ResponseEntity.ok(codeListService.recreationFileStatuses());
+  }
+
+  @GetMapping("/recreation-project-types")
+  public ResponseEntity<List<CodeOptionDto>> recreationProjectTypes() {
+    return ResponseEntity.ok(codeListService.recreationProjectTypes());
+  }
+
+  @GetMapping("/recreation-risk-ratings")
+  public ResponseEntity<List<CodeOptionDto>> recreationRiskRatings() {
+    return ResponseEntity.ok(codeListService.recreationRiskRatings());
+  }
+
+  @GetMapping("/recreation-control-access-types")
+  public ResponseEntity<List<CodeOptionDto>> recreationControlAccessTypes() {
+    return ResponseEntity.ok(codeListService.recreationControlAccessTypes());
+  }
+
+  @GetMapping("/recreation-maintain-standards")
+  public ResponseEntity<List<CodeOptionDto>> recreationMaintainStandards() {
+    return ResponseEntity.ok(codeListService.recreationMaintainStandards());
+  }
+
+  @GetMapping("/recreation-districts")
+  public ResponseEntity<List<CodeOptionDto>> recreationDistricts() {
+    return ResponseEntity.ok(codeListService.recreationDistricts());
+  }
 }

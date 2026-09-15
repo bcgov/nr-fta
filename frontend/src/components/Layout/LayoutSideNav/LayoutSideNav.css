@@ -64,6 +64,23 @@
   overflow: visible;
 }
 
+/* The rail's five section icons are <button>s, not links: they open the nav
+   rather than navigate. Carbon resets the native button styling for its own
+   submenu button but not for SideNavLink, so the reset is done here — without
+   it each icon renders as a grey boxed button. */
+.side-nav-drawer button.cds--side-nav__link {
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  border: 0;
+  margin: 0;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  inline-size: 100%;
+  box-sizing: border-box;
+}
+
 /* In the rail, the link is the positioning anchor and centres its icon. */
 .side-nav-drawer:not(.side-nav-drawer--open) .cds--side-nav__link {
   position: relative;
@@ -123,4 +140,137 @@
 
 .side-nav-drawer:not(.side-nav-drawer--open) .cds--side-nav__link:hover .cds--side-nav__link-text {
   opacity: 1;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Expanded nav: collapsible sections.
+
+   Carbon's SideNavMenu gives us a <button class="side-nav__submenu"> holding
+   a title span and a chevron, followed by a <ul> of menu items. The design
+   asks for bold headings with no icon, and destinations that each carry an
+   icon — which SideNavMenuItem has no prop for, so the icon is a child and
+   the layout is done here.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* The open/closed submenu list.
+
+   Carbon collapses a submenu with `max-block-size: 0` alone, which hides
+   nothing unless something clips the overflow — and the list computes
+   `overflow: visible`. The result is a one-row-high <ul> whose ten 48px items
+   spill straight out of it and keep painting, while the next heading is laid
+   out as though the list were 48px tall and paints over items two onward. Every
+   section shows exactly its first entry, open or closed.
+
+   So both states are stated explicitly: open sizes to its content, closed is
+   zero-height AND clipped. Keyed off the button's `aria-expanded`, which is
+   what Carbon toggles, so this tracks the real state rather than a guess. */
+.side-nav-drawer .cds--side-nav__submenu[aria-expanded='true'] + .cds--side-nav__menu {
+  block-size: auto;
+  max-block-size: none;
+  overflow: visible;
+  visibility: visible;
+}
+
+.side-nav-drawer .cds--side-nav__submenu[aria-expanded='false'] + .cds--side-nav__menu {
+  block-size: 0;
+  max-block-size: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+/* Section heading: bold and dark, like the design's "Provincial" / "Admin". */
+.side-nav-drawer .cds--side-nav__submenu-title {
+  font-weight: 600;
+  color: var(--cds-text-primary);
+}
+
+.side-nav-drawer .cds--side-nav__submenu {
+  block-size: 3rem;
+}
+
+/* Carbon paints its focus ring on :focus, so clicking a heading leaves the
+   outline stuck on it until something else takes focus. :focus-visible keeps
+   the ring for keyboard users, where it is the only affordance, and drops it
+   for the mouse — which is what the design shows. */
+.side-nav-drawer .cds--side-nav__submenu:focus {
+  outline: none;
+}
+
+.side-nav-drawer .cds--side-nav__submenu:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+/* A destination inside a section: icon, then label, on one 48px row. */
+.side-nav-drawer .cds--side-nav__menu-item .cds--side-nav__link {
+  min-block-size: 3rem;
+  block-size: auto;
+  padding-inline-start: 1rem;
+}
+
+.side-nav-drawer .cds--side-nav__menu-item .cds--side-nav__link-text {
+  inline-size: 100%;
+}
+
+.side-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  inline-size: 100%;
+}
+
+/* Icons match the nav's existing interactive blue and 20px sizing. The fixed
+   box keeps every label on the same left edge whether or not an entry has an
+   icon. */
+.side-nav-item__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  inline-size: 20px;
+  block-size: 20px;
+  color: var(--cds-link-primary);
+}
+
+.side-nav-item__icon svg {
+  inline-size: 20px;
+  block-size: 20px;
+  fill: currentColor;
+}
+
+.side-nav-item__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The selected destination: grey fill, a blue bar down the leading edge, and
+   a heavier label. The bar is an inset shadow rather than a border so the row
+   keeps its height and the label does not shift by the bar's width. */
+.side-nav-drawer .cds--side-nav__menu-item .cds--side-nav__link--current,
+.side-nav-drawer .cds--side-nav__menu-item a.cds--side-nav__link[aria-current='page'] {
+  background-color: var(--cds-background-selected);
+  box-shadow: inset 4px 0 0 0 var(--cds-border-interactive);
+}
+
+.side-nav-drawer .cds--side-nav__menu-item .cds--side-nav__link--current .side-nav-item__label,
+.side-nav-drawer
+  .cds--side-nav__menu-item
+  a.cds--side-nav__link[aria-current='page']
+  .side-nav-item__label {
+  font-weight: 600;
+  color: var(--cds-text-primary);
+}
+
+/* The Recreation heading has no screens behind it yet. Its single "No screens
+   yet" row is a <span>, not a link: mute it and turn off the pointer so it
+   does not read as something that can be opened. */
+.side-nav-section__empty {
+  color: var(--cds-text-disabled);
+  cursor: default;
+  font-style: italic;
+}
+
+.side-nav-drawer .cds--side-nav__menu-item span.side-nav-section__empty:hover {
+  background-color: transparent;
 }
