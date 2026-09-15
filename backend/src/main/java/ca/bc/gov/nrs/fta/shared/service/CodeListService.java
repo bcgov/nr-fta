@@ -171,4 +171,32 @@ public class CodeListService {
     return jdbc.query(
         codeSql("private_mark_status_code", "the.private_mark_status_code"), MAPPER);
   }
+
+  /**
+   * Licence-to-cut codes — the FTA005 "Purpose" dropdown.
+   *
+   * <p>The control is drawn inside the screen's "Oil and Gas Criteria" box, but
+   * it filters {@code HARVESTING_AUTHORITY.licence_to_cut_code}, an ordinary
+   * harvesting authority column rather than an oil-and-gas one. Legacy resolves
+   * the list through {@code fta.lookup.og.masterLicenceToCutCode}.
+   *
+   * <p>It is a filter only: {@code licence_to_cut_code} is not selected by the
+   * search and never appears in the results grid.
+   */
+  public List<CodeOptionDto> licenceToCutCodes() {
+    return jdbc.query(codeSql("licence_to_cut_code", "the.licence_to_cut_code"), MAPPER);
+  }
+
+  /**
+   * Harvest authority client types — the FTA005 "Client Type" dropdown.
+   *
+   * <p>Legacy defaults this to {@code L} (the licensee of the cutting permit)
+   * inside its client sub-select. Leaving it unset changes the search shape
+   * rather than merely widening it: with no client type the sub-select falls
+   * back to the file's {@code A} client from {@code FOREST_FILE_CLIENT}.
+   */
+  public List<CodeOptionDto> harvestAuthClientTypes() {
+    return jdbc.query(
+        codeSql("harvest_auth_client_type_code", "the.harvest_auth_client_type_code"), MAPPER);
+  }
 }

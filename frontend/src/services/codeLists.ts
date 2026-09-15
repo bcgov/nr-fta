@@ -66,3 +66,16 @@ export const getHarvestAuthStatuses = () => list('harvest-auth-statuses');
  * application/amendment list. Distinct from timber-mark statuses.
  */
 export const getPrivateMarkStatuses = () => list('private-mark-statuses');
+
+/**
+ * Licence-to-cut codes — the FTA005 "Purpose" dropdown. It sits in the screen's
+ * oil and gas box but filters `HARVESTING_AUTHORITY.licence_to_cut_code`.
+ */
+export const getLicenceToCutCodes = () => list('licence-to-cut-codes');
+
+/**
+ * Harvest authority client types — the FTA005 "Client Type" dropdown. Legacy
+ * defaults to `L` (licensee of the cutting permit); leaving it unset makes the
+ * search fall back to the file's `A` client instead.
+ */
+export const getHarvestAuthClientTypes = () => list('harvest-auth-client-types');

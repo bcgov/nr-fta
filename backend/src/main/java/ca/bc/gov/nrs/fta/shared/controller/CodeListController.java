@@ -101,4 +101,14 @@ public class CodeListController {
   public ResponseEntity<List<CodeOptionDto>> privateMarkStatuses() {
     return ResponseEntity.ok(codeListService.privateMarkStatuses());
   }
+
+  @GetMapping("/licence-to-cut-codes")
+  public ResponseEntity<List<CodeOptionDto>> licenceToCutCodes() {
+    return ResponseEntity.ok(codeListService.licenceToCutCodes());
+  }
+
+  @GetMapping("/harvest-auth-client-types")
+  public ResponseEntity<List<CodeOptionDto>> harvestAuthClientTypes() {
+    return ResponseEntity.ok(codeListService.harvestAuthClientTypes());
+  }
 }
