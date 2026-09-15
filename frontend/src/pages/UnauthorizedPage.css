@@ -1,43 +1,12 @@
 /*
-    The page borrows LandingPage.scss wholesale — see index for why. What is
-    left here is the difference between the two screens, plus the two classes
-    the landing page has no use for.
-
-    Kept out of LandingPage.scss so the landing screen carries nothing it
-    doesn't render.
+    UnauthorizedPage renders outside the app shell (no SideNav/Header, since
+    the user has no role to navigate with), so it doesn't get Carbon
+    <Content>'s inline padding (`.cds--content { padding: 0 1.5rem }` in
+    src/styles/_overrides.scss). This replicates just that side padding, plus
+    a comfortable reading width, without touching the shared PageLayout.
 */
-
-/*
-    Groups the sign-out button with the note beneath it, so the content
-    wrapper's large inter-section gap sits above the whole group rather than
-    between the button and its explanation.
-*/
-.landing-actions {
-  display: flex;
-  flex-direction: column;
-}
-
-.landing-note {
-  margin: 1rem 0 0;
-  color: var(--cds-text-primary, #131315);
-  font-size: 0.875rem;
-}
-
-/*
-    The landing page's subtitle is a product name ("Forest Tenure
-    Administration") and is styled to carry weight. This one is a sentence
-    about the person reading it, and at that size it shouts. Toned down to read
-    as prose, and given a measure so a long display name does not run the full
-    column width.
-*/
-#unauthorized-subtitle {
-  max-width: 34rem;
-  font-size: 1.125rem;
-  font-weight: 400;
-  line-height: 1.5;
-  color: var(--cds-text-secondary, #525252);
-}
-
-#unauthorized-note {
-  max-width: 34rem;
+.unauthorized-page {
+  padding-inline: 1.5rem;
+  max-width: 40rem;
+  margin-inline: auto;
 }
