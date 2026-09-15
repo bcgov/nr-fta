@@ -77,10 +77,12 @@ setup('authenticate via IDIR', async ({ page, context }) => {
   });
 
   // Sanity check: the side menu should render once auth + roles resolve.
-  // Inbox is the first universally-visible top-level entry for any
-  // authenticated FSP user, so it's the simplest "auth landed cleanly"
-  // signal.
-  await expect(page.getByTestId('side-nav-link-inbox')).toBeVisible({
+  // Tenure Search is the first entry under the Search heading and carries no
+  // role allow-list, so it is visible to every authenticated user — the
+  // simplest "auth landed cleanly" signal. It renders whether the nav is
+  // expanded (as a menu item) or collapsed to the icon rail (as a link), so
+  // the assertion does not depend on the drawer's state.
+  await expect(page.getByTestId('side-nav-link-search-tenure')).toBeVisible({
     timeout: 30_000,
   });
 

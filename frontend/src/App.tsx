@@ -23,6 +23,7 @@ import TenureSearch from './pages/search/TenureSearch';
 import TenureDetail from './pages/tenure/TenureDetail';
 import HarvestingAuthoritySearch from './pages/search/HarvestingAuthoritySearch';
 import CutBlockSearch from './pages/search/CutBlockSearch';
+import RecreationSearch from './pages/search/RecreationSearch';
 import CuttingPermitDetail from './pages/harvesting/CuttingPermitDetail';
 import CutBlockDetail from './pages/harvesting/CutBlockDetail';
 import SuspendBlocks from './pages/harvesting/SuspendBlocks';
@@ -31,10 +32,6 @@ import CutBlockAction from './pages/harvesting/CutBlockAction';
 import TenureLanding from './pages/tenure/TenureLanding';
 import AddTenure from './pages/tenure/AddTenure';
 import RoadDetail from './pages/tenure/RoadDetail';
-import Inbox from './pages/inbox/Inbox';
-import ApplicationDetail from './pages/inbox/ApplicationDetail';
-import ExhibitAMap from './pages/inbox/ExhibitAMap';
-import UploadExhibitA from './pages/inbox/UploadExhibitA';
 import MarkList from './pages/marks/MarkList';
 import MarkDetail from './pages/marks/MarkDetail';
 import MarkApplication from './pages/marks/MarkApplication';
@@ -108,15 +105,6 @@ export default function App() {
           {/* Home */}
           <Route path="/welcome" element={guarded(withLayout(<Welcome />))} />
 
-          {/* ── Inbox / adjudication ───────────────────────────────── */}
-          <Route path="/inbox" element={guarded(withLayout(<Inbox />))} />
-          <Route path="/inbox/:esfId" element={guarded(withLayout(<ApplicationDetail />))} />
-          <Route path="/exhibit-a/:esfId" element={guarded(withLayout(<ExhibitAMap />))} />
-          <Route
-            path="/exhibit-a/:esfId/upload"
-            element={guarded(withLayout(<UploadExhibitA />))}
-          />
-
           {/* ── Search ─────────────────────────────────────────────── */}
           <Route path="/search/tenure" element={guarded(withLayout(<TenureSearch />))} />
           <Route
@@ -125,6 +113,7 @@ export default function App() {
           />
           <Route path="/search/timber-mark" element={guarded(withLayout(<TimberMarkSearch />))} />
           <Route path="/search/cut-block" element={guarded(withLayout(<CutBlockSearch />))} />
+          <Route path="/search/recreation" element={guarded(withLayout(<RecreationSearch />))} />
           <Route path="/search/range-tenure" element={guarded(withLayout(<RangeTenureSearch />))} />
           <Route path="/search/range-unit" element={guarded(withLayout(<RangeUnitSearch />))} />
           <Route path="/search/metrics" element={guarded(withLayout(<ApplicationMetrics />))} />

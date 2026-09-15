@@ -199,4 +199,55 @@ public class CodeListService {
     return jdbc.query(
         codeSql("harvest_auth_client_type_code", "the.harvest_auth_client_type_code"), MAPPER);
   }
+
+  /** Recreation file statuses, for the FTA007 search. */
+  public List<CodeOptionDto> recreationFileStatuses() {
+    return jdbc.query(
+        codeSql("recreation_file_status_code", "the.recreation_file_status_code"), MAPPER);
+  }
+
+  /**
+   * Recreation project types — the FTA007 "Project Type" list.
+   *
+   * <p>The only code list here that is filtered rather than taken whole:
+   * {@code FTA_MAP_FEATURE_CODE} covers every map feature, and the legacy
+   * lookup narrows it to the eight recreation ones. Ordered by description, as
+   * legacy does, rather than by code.
+   */
+  public List<CodeOptionDto> recreationProjectTypes() {
+    return jdbc.query(
+        """
+        SELECT fta_map_feature_code AS code,
+               description AS description
+          FROM the.fta_map_feature_code
+         WHERE fta_map_feature_code IN ('RTR', 'RR', 'SIT', 'IF', 'IFT', 'TRB', 'TBL', 'RTE')
+           AND SYSDATE BETWEEN effective_date AND expiry_date
+         ORDER BY description
+        """,
+        MAPPER);
+  }
+
+  /** Recreation risk ratings, for the FTA007 search and FTA701 detail. */
+  public List<CodeOptionDto> recreationRiskRatings() {
+    return jdbc.query(
+        codeSql("recreation_risk_rating_code", "the.recreation_risk_rating_code"), MAPPER);
+  }
+
+  /** Recreation controlled-access types. */
+  public List<CodeOptionDto> recreationControlAccessTypes() {
+    return jdbc.query(
+        codeSql("recreation_control_access_code", "the.recreation_control_access_code"), MAPPER);
+  }
+
+  /** Recreation maintenance standards. */
+  public List<CodeOptionDto> recreationMaintainStandards() {
+    return jdbc.query(
+        codeSql("recreation_maintain_std_code", "the.recreation_maintain_std_code"), MAPPER);
+  }
+
+  /** Recreation districts — distinct from the administrative org units. */
+  public List<CodeOptionDto> recreationDistricts() {
+    return jdbc.query(
+        codeSql("recreation_district_code", "the.recreation_district_code"), MAPPER);
+  }
 }

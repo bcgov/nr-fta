@@ -79,3 +79,24 @@ export const getLicenceToCutCodes = () => list('licence-to-cut-codes');
  * search fall back to the file's `A` client instead.
  */
 export const getHarvestAuthClientTypes = () => list('harvest-auth-client-types');
+
+/** Recreation file statuses, for the FTA007 search. */
+export const getRecreationFileStatuses = () => list('recreation-file-statuses');
+
+/**
+ * Recreation project types. Narrowed from `FTA_MAP_FEATURE_CODE` to the eight
+ * recreation codes the legacy lookup allows, and ordered by description.
+ */
+export const getRecreationProjectTypes = () => list('recreation-project-types');
+
+/** Recreation risk ratings. */
+export const getRecreationRiskRatings = () => list('recreation-risk-ratings');
+
+/** Recreation controlled-access types. */
+export const getRecreationControlAccessTypes = () => list('recreation-control-access-types');
+
+/** Recreation maintenance standards. */
+export const getRecreationMaintainStandards = () => list('recreation-maintain-standards');
+
+/** Recreation districts — distinct from the administrative org units. */
+export const getRecreationDistricts = () => list('recreation-districts');

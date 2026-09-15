@@ -1,4 +1,4 @@
-import { Apps, Search, Document, Tag, Task } from '@carbon/icons-react';
+import { Apps, Search, Document, Tag } from '@carbon/icons-react';
 import { ClickableTile } from '@carbon/react';
 import { useNavigate } from 'react-router-dom';
 
@@ -23,7 +23,6 @@ const QUICK_LINKS = [
     desc: 'Timber mark applications & amendments',
     Icon: Tag,
   },
-  { to: '/inbox', label: 'Inbox', desc: 'Adjudicate tenure applications', Icon: Task },
 ];
 
 /**
