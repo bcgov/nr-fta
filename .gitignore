@@ -131,6 +131,8 @@ web_modules/
 
 # dotenv environment variable files
 .env
+.env.*
+!.env.example
 .env.development.local
 .env.test.local
 .env.production.local
@@ -160,6 +162,12 @@ dist
 # vuepress v2.x temp and cache directory
 .temp
 
+# vitepress build output
+**/.vitepress/dist
+
+# vitepress cache directory
+**/.vitepress/cache
+
 # Docusaurus cache and generated files
 .docusaurus
 
@@ -172,6 +180,9 @@ dist
 # DynamoDB Local files
 .dynamodb/
 
+# Firebase cache directory
+.firebase/
+
 # TernJS port file
 .tern-port
 
@@ -183,12 +194,18 @@ dist
 !.vscode/settings.json
 !.vscode/extensions.json
 
-# yarn v2
+# yarn v2/v3
 .yarn/cache
 .yarn/unplugged
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
 
 ### Node Patch ###
 # Serverless Webpack directories
@@ -198,6 +215,11 @@ dist
 
 # SvelteKit build / generate output
 .svelte-kit
+.svelte-kit/
+
+# Vite logs files
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
@@ -371,9 +393,24 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/node,java,python,go
 .idea
+
+# Local route-tls dry-run output (contains the private key)
+route-tls/route.yml
+route.yml
+**/route.yml
+
+# Certificates, private keys, and CSRs
 *.key
 *.pem
 *.pub
+*.crt
+*.cer
+*.der
+*.csr
+*.p7b
+*.p7c
+*.crl
+*.ca-bundle
 
 # Security-sensitive configuration files (may contain passwords/credentials)
 # Tomcat/Java application server configuration
