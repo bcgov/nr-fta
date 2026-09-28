@@ -50,7 +50,6 @@ public class TenureController {
       @RequestParam(required = false) String mgmtUnitId,
       @RequestParam(required = false) String fileSource,
       @RequestParam(required = false) String assocFileId,
-      @RequestParam(required = false) String fileName,
       @RequestParam(required = false) String issueDateFrom,
       @RequestParam(required = false) String issueDateTo,
       @RequestParam(required = false) String expiryDateFrom,
@@ -64,7 +63,7 @@ public class TenureController {
     TenureSearchCriteria criteria = new TenureSearchCriteria(
         adminOrgUnitNo, forestFileId, fileTypeCode, tenureType, fileStatus,
         clientNumber, clientLocnCode, clientName, fileClientType,
-        mgmtUnitType, mgmtUnitId, fileSource, assocFileId, fileName,
+        mgmtUnitType, mgmtUnitId, fileSource, assocFileId,
         issueDateFrom, issueDateTo, expiryDateFrom, expiryDateTo,
         salvageInd, cashSaleInd, mapNotationTypeCode, sortBy);
 

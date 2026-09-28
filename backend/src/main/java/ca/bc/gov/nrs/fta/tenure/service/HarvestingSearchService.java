@@ -1,6 +1,7 @@
 package ca.bc.gov.nrs.fta.tenure.service;
 
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
+import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import ca.bc.gov.nrs.fta.tenure.dto.HarvestingSearchCriteria;
 import ca.bc.gov.nrs.fta.tenure.dto.HarvestingSearchDto;
 import java.util.List;
@@ -86,14 +87,28 @@ public class HarvestingSearchService {
                   AND :clientTypeCode IS NULL)) hac_ffc_client
       """;
 
+  /**
+   * The client column: {@code "name (ACRONYM)"}, name cut to 55 characters.
+   *
+   * <p>Legacy builds this from {@code SIL_GET_CLIENT_NAME} and
+   * {@code SIL_GET_CLIENT_ACRONYM}, called per row. Both only read
+   * {@code FOREST_CLIENT}, which is already joined here as {@code vcp}, so they
+   * are expressed against that row instead.
+   */
+  private static final String CLIENT_LABEL =
+      "SUBSTR(" + ClientNameSql.displayName("vcp") + ", 1, 55)"
+          + " || ' (' || "
+          + ClientNameSql.acronymOrNumber("vcp", "hac_ffc_client.client_number")
+          + " || ')'";
+
   /** The selected columns, matching the legacy cursor record's order. */
   private static final String SELECT_LIST =
       """
       SELECT hva.hva_skey AS hva_skey,
              org.org_unit_code AS org_unit_code,
-             SUBSTR(the.sil_get_client_name(hac_ffc_client.client_number), 1, 55)
-               || ' (' || the.sil_get_client_acronym(hac_ffc_client.client_number) || ')'
-               AS client_name,
+      """
+          + "       " + CLIENT_LABEL + " AS client_name,\n"
+          + """
              hac_ffc_client.client_number AS client_number,
              pfu.file_type_code AS file_type_code,
              pfu.forest_file_id AS forest_file_id,
@@ -111,15 +126,23 @@ public class HarvestingSearchService {
       """;
 
   /**
-   * The {@code GROUP BY}, which must repeat the client-name expression rather
-   * than its alias — Oracle does not accept a select alias here.
+   * The {@code GROUP BY}.
+   *
+   * <p>Groups on the {@code FOREST_CLIENT} columns the client label is built
+   * from, not on the label expression itself: the sort uses the name without the
+   * acronym, and Oracle only accepts an expression built from grouped columns or
+   * matching a grouped expression whole — a sub-expression of the label raises
+   * ORA-00979. Those columns are fixed per {@code client_number}, which is
+   * already grouped, so the groups are unchanged.
    */
   private static final String GROUP_BY =
       """
        GROUP BY hva.hva_skey,
                 org.org_unit_code,
-                SUBSTR(the.sil_get_client_name(hac_ffc_client.client_number), 1, 55)
-                  || ' (' || the.sil_get_client_acronym(hac_ffc_client.client_number) || ')',
+                vcp.client_name,
+                vcp.legal_first_name,
+                vcp.legal_middle_name,
+                vcp.client_acronym,
                 hac_ffc_client.client_number,
                 pfu.file_type_code,
                 pfu.forest_file_id,
@@ -145,7 +168,7 @@ public class HarvestingSearchService {
              the.harvesting_hauling_xref hxref,
              the.pipeline_segment ps,
              the.seismic_line sl,
-             the.v_client_public vcp,
+             the.forest_client vcp,
       """
           // Concatenated rather than interpolated with String.formatted: this SQL
           // is full of LIKE patterns ending in '%', and formatted() reads every
@@ -220,8 +243,9 @@ public class HarvestingSearchService {
   private static final String ORDER_BY =
       """
        ORDER BY DECODE(:sortBy, '1', org.org_unit_code,
-                                '2', SUBSTR(the.sil_get_client_name(
-                                       hac_ffc_client.client_number), 1, 55),
+      """
+          + "                                '2', SUBSTR(" + ClientNameSql.displayName("vcp") + ", 1, 55),\n"
+          + """
                                 pfu.file_type_code),
                 pfu.forest_file_id,
                 hva.cutting_permit_id,
@@ -231,41 +255,73 @@ public class HarvestingSearchService {
   /**
    * Validates the file id / cutting permit / HVA id combination.
    *
-   * <p>The procedure calls {@code FTA_EDIT_CP_HVA} before opening its cursor
-   * whenever a file id is supplied, and returns an error message instead of
-   * results when the combination is invalid.
+   * <p>The procedure checks this before opening its cursor whenever a file id is
+   * supplied, and returns an error message instead of results when the
+   * combination is invalid. The check is {@code THE.FTA_EDIT_CP_HVA}, ported
+   * rather than called: a cutting permit, if given, must exist on the file;
+   * failing that an HVA id, if given, must; with neither there is nothing to
+   * check. Matching is case-insensitive, and a blank permit id compares as
+   * {@code ' '}, which is how file-level authorities are keyed.
    *
    * @return the error message, or null when the combination is acceptable
    */
   public String validateFileKeys(String forestFileId, String cuttingPermitId, String hvaId) {
-    if (blankToNull(forestFileId) == null) {
+    String file = blankToNull(forestFileId);
+    if (file == null) {
       return null;
     }
-    return jdbc.queryForObject(
-        "SELECT the.fta_edit_cp_hva(:forestFileId, :cuttingPermitId, :hvaId) FROM dual",
-        new MapSqlParameterSource()
-            .addValue("forestFileId", blankToNull(forestFileId))
-            .addValue("cuttingPermitId", blankToNull(cuttingPermitId))
-            .addValue("hvaId", blankToNull(hvaId)),
-        String.class);
+    String permit = blankToNull(cuttingPermitId);
+    String hva = blankToNull(hvaId);
+
+    String sql;
+    String field;
+    MapSqlParameterSource params = new MapSqlParameterSource("forestFileId", file);
+    if (permit != null) {
+      field = "cuttingPermitId";
+      params.addValue("key", permit);
+      sql = """
+          SELECT COUNT(*) FROM the.harvesting_authority
+           WHERE forest_file_id = UPPER(:forestFileId)
+             AND UPPER(cutting_permit_id) = NVL(TRIM(UPPER(:key)), ' ')
+          """;
+    } else if (hva != null) {
+      field = "hvaId";
+      params.addValue("key", hva);
+      sql = """
+          SELECT COUNT(*) FROM the.harvesting_authority
+           WHERE forest_file_id = UPPER(:forestFileId)
+             AND UPPER(harvesting_authority_id) = TRIM(UPPER(:key))
+          """;
+    } else {
+      return null;
+    }
+    Integer count = jdbc.queryForObject(sql, params, Integer.class);
+    return count != null && count > 0
+        ? null
+        : "sil.error.usr.invalid.value:harvestingAuthoritySearch." + field + ".combination";
   }
 
   /**
-   * Whether a timber mark exists and is well-formed.
+   * Whether a timber mark exists.
    *
    * <p>Legacy's key search only short-circuits on a mark that validates against
    * the database ({@code HarvestingAuthoritySearchBOImpl.isValidTimberMark});
    * an invalid mark falls through to an ordinary search rather than erroring.
+   * The test is {@code THE.FTA_EDIT_TIMBER_MARK}, ported: the mark has a
+   * {@code HAULING_AUTHORITY} row.
    */
   public boolean isTimberMarkValid(String timberMark) {
     if (blankToNull(timberMark) == null) {
       return false;
     }
-    String result = jdbc.queryForObject(
-        "SELECT the.fta_edit_timber_mark(:timberMark) FROM dual",
-        new MapSqlParameterSource().addValue("timberMark", timberMark.trim()),
-        String.class);
-    return "Y".equals(result);
+    Integer found = jdbc.queryForObject(
+        """
+        SELECT COUNT(*) FROM dual
+         WHERE EXISTS (SELECT 1 FROM the.hauling_authority WHERE timber_mark = :timberMark)
+        """,
+        new MapSqlParameterSource("timberMark", timberMark.trim()),
+        Integer.class);
+    return found != null && found > 0;
   }
 
   /** Runs the search, returning one page of results. */

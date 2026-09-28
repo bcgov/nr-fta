@@ -23,7 +23,8 @@ export interface RangeTenureSummary {
 export interface RangeTenureSearchParams {
   forestFileId?: string;
   fileTypeCode?: string;
-  orgUnitCode?: string;
+  /** Admin org unit number — a region or a district; legacy filters by its level. */
+  orgUnitNo?: string;
   zone?: string;
   clientName?: string;
   clientNumber?: string;

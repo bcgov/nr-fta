@@ -17,9 +17,10 @@ package ca.bc.gov.nrs.fta.tenure.dto;
  *                            district depending on that unit's level
  * @param forestFileId        file id, prefix match
  * @param fileTypeCode        one code, or several comma-separated
- * @param tenureType          {@code T}imber, {@code R}ange or recreation
- *                            ({@code F}) — selects which file-type code table
- *                            the file type must appear in
+ * @param tenureType          {@code T}imber or {@code R}ange — selects which
+ *                            file-type code table the file type must appear in.
+ *                            Legacy also offers recreation ({@code F}); that work
+ *                            moved to a separate application
  * @param fileStatus          {@code TENURE_FILE_STATUS_CODE}
  * @param clientNumber        exact client number
  * @param clientLocnCode      client location, the small box beside the number
@@ -29,7 +30,6 @@ package ca.bc.gov.nrs.fta.tenure.dto;
  * @param mgmtUnitId          management unit id, the second
  * @param fileSource          pairs with {@code assocFileId}
  * @param assocFileId         associated file id, prefix match
- * @param fileName            recreation project name, prefix match
  * @param issueDateFrom       inclusive lower bound on the term's effective date
  * @param issueDateTo         inclusive upper bound
  * @param expiryDateFrom      inclusive lower bound on the term's expiry
@@ -53,7 +53,6 @@ public record TenureSearchCriteria(
     String mgmtUnitId,
     String fileSource,
     String assocFileId,
-    String fileName,
     String issueDateFrom,
     String issueDateTo,
     String expiryDateFrom,

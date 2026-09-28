@@ -64,7 +64,7 @@
   overflow: visible;
 }
 
-/* The rail's five section icons are <button>s, not links: they open the nav
+/* The rail's section icons are <button>s, not links: they open the nav
    rather than navigate. Carbon resets the native button styling for its own
    submenu button but not for SideNavLink, so the reset is done here — without
    it each icon renders as a grey boxed button. */
@@ -260,17 +260,4 @@
   .side-nav-item__label {
   font-weight: 600;
   color: var(--cds-text-primary);
-}
-
-/* The Recreation heading has no screens behind it yet. Its single "No screens
-   yet" row is a <span>, not a link: mute it and turn off the pointer so it
-   does not read as something that can be opened. */
-.side-nav-section__empty {
-  color: var(--cds-text-disabled);
-  cursor: default;
-  font-style: italic;
-}
-
-.side-nav-drawer .cds--side-nav__menu-item span.side-nav-section__empty:hover {
-  background-color: transparent;
 }

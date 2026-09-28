@@ -10,7 +10,39 @@ export interface CodeOption {
   description: string;
 }
 
-const list = (name: string) => apiGet<CodeOption[]>(`/api/fta/code-lists/${name}`);
+/**
+ * How long a fetched code list is reused before it is requested again.
+ *
+ * The backend caches these lists too and clears its cache hourly, so a code-table edit can take
+ * up to that long plus this to reach an open browser. Code tables change rarely enough that the
+ * saving — no requests at all when moving between search screens — is worth it.
+ */
+const CODE_LIST_TTL_MS = 15 * 60 * 1000;
+
+const cache = new Map<string, { expires: number; request: Promise<CodeOption[]> }>();
+
+/**
+ * Fetches a code list once and shares it until it expires.
+ *
+ * The promise itself is cached, not just the result, so screens that ask for the same list at
+ * the same moment — as several search screens do on mount — share one request. A failed request
+ * is dropped from the cache straight away, so the next caller retries rather than inheriting the
+ * failure for the rest of the interval.
+ */
+function cached(path: string): Promise<CodeOption[]> {
+  const hit = cache.get(path);
+  if (hit && hit.expires > Date.now()) {
+    return hit.request;
+  }
+  const request = apiGet<CodeOption[]>(path);
+  cache.set(path, { expires: Date.now() + CODE_LIST_TTL_MS, request });
+  request.catch(() => {
+    if (cache.get(path)?.request === request) cache.delete(path);
+  });
+  return request;
+}
+
+const list = (name: string) => cached(`/api/fta/code-lists/${name}`);
 
 /**
  * Administrative org units. The `code` is the numeric `ORG_UNIT_NO`, which is
@@ -45,7 +77,7 @@ export const getBlockStatuses = () => list('block-statuses');
  * screen does when Admin Org Unit changes.
  */
 export const getRangeZones = (adminDistrictNo?: string) =>
-  apiGet<CodeOption[]>(
+  cached(
     `/api/fta/code-lists/range-zones${adminDistrictNo ? `?adminDistrictNo=${encodeURIComponent(adminDistrictNo)}` : ''}`,
   );
 
@@ -79,24 +111,3 @@ export const getLicenceToCutCodes = () => list('licence-to-cut-codes');
  * search fall back to the file's `A` client instead.
  */
 export const getHarvestAuthClientTypes = () => list('harvest-auth-client-types');
-
-/** Recreation file statuses, for the FTA007 search. */
-export const getRecreationFileStatuses = () => list('recreation-file-statuses');
-
-/**
- * Recreation project types. Narrowed from `FTA_MAP_FEATURE_CODE` to the eight
- * recreation codes the legacy lookup allows, and ordered by description.
- */
-export const getRecreationProjectTypes = () => list('recreation-project-types');
-
-/** Recreation risk ratings. */
-export const getRecreationRiskRatings = () => list('recreation-risk-ratings');
-
-/** Recreation controlled-access types. */
-export const getRecreationControlAccessTypes = () => list('recreation-control-access-types');
-
-/** Recreation maintenance standards. */
-export const getRecreationMaintainStandards = () => list('recreation-maintain-standards');
-
-/** Recreation districts — distinct from the administrative org units. */
-export const getRecreationDistricts = () => list('recreation-districts');

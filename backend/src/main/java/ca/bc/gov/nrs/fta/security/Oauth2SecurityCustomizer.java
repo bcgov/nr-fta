@@ -13,9 +13,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.time.Duration;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,8 +21,6 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
@@ -69,25 +64,6 @@ public class Oauth2SecurityCustomizer implements
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Oauth2SecurityCustomizer.class);
 
-  /** Roles CSS attaches to a token for the client it was issued to. */
-  private static final String CLAIM_CLIENT_ROLES = "client_roles";
-
-  /** Where stock Keycloak puts the same information. */
-  private static final String CLAIM_RESOURCE_ACCESS = "resource_access";
-
-  private static final String CLAIM_AZP = "azp";
-
-  /**
-   * FAM's own bookkeeping roles, which reach the token like any other role.
-   *
-   * <p>Per-grant expiry dates are recorded in CSS as roles assigned to the person, shaped
-   * {@code FAM:EXPIRES:2026-09-30:FTA_ADMIN} — a role is a name and nothing else, so it is
-   * the only way CSS can record something about one grant. They are harmless to exact-match
-   * authorisation but would otherwise show up as granted authorities anywhere FTA enumerates
-   * them.
-   */
-  private static final String FAM_SIDECAR_PREFIX = "FAM:";
-
   private final String jwkSetUri;
   private final String expectedClientId;
   private final NimbusJwtDecoder jwtDecoder;
@@ -116,7 +92,7 @@ public class Oauth2SecurityCustomizer implements
    * The mismatch is logged instead, where an operator can see it.
    */
   private OAuth2TokenValidatorResult validateAuthorizedParty(Jwt token) {
-    String azp = token.getClaimAsString(CLAIM_AZP);
+    String azp = token.getClaimAsString(TokenRoles.CLAIM_AZP);
     if (expectedClientId.equals(azp)) {
       return OAuth2TokenValidatorResult.success();
     }
@@ -181,51 +157,8 @@ public class Oauth2SecurityCustomizer implements
 
   private Converter<Jwt, AbstractAuthenticationToken> converter() {
     JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-    converter.setJwtGrantedAuthoritiesConverter(Oauth2SecurityCustomizer::extractAuthorities);
+    // Roles, including the base role a FAM-scoped grant implies; see TokenRoles.
+    converter.setJwtGrantedAuthoritiesConverter(TokenRoles::authoritiesFrom);
     return converter;
   }
-
-  /**
-   * Reads the caller's roles for the client this token was issued to.
-   *
-   * <p>Under CSS these arrive as {@code client_roles}. Falls back to
-   * {@code resource_access.<azp>.roles}, which is where stock Keycloak puts them — which one
-   * appears depends on the realm's mappers, so both are read rather than assuming.
-   *
-   * <p>Authorities are used with no prefix: {@code FTA_ADMIN} and {@code FTA_VIEWER} are
-   * matched verbatim by {@link ApiAuthorizationCustomizer}, and the role codes in CSS are
-   * spelled exactly the same as the Cognito groups they replace.
-   */
-  private static Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
-    List<String> roles = jwt.getClaimAsStringList(CLAIM_CLIENT_ROLES);
-
-    if (roles == null || roles.isEmpty()) {
-      roles = rolesFromResourceAccess(jwt);
-    }
-
-    return roles.stream()
-        .filter(role -> !role.startsWith(FAM_SIDECAR_PREFIX))
-        .map(role -> (GrantedAuthority) new SimpleGrantedAuthority(role))
-        .toList();
-  }
-
-  /** {@code resource_access.<azp>.roles}, or an empty list when it is absent or malformed. */
-  private static List<String> rolesFromResourceAccess(Jwt jwt) {
-    Object resourceAccess = jwt.getClaim(CLAIM_RESOURCE_ACCESS);
-    String clientId = jwt.getClaimAsString(CLAIM_AZP);
-
-    if (!(resourceAccess instanceof Map<?, ?> byClient) || clientId == null) {
-      return List.of();
-    }
-
-    if (byClient.get(clientId) instanceof Map<?, ?> entry
-        && entry.get("roles") instanceof List<?> roles) {
-      return roles.stream()
-          .filter(String.class::isInstance)
-          .map(String.class::cast)
-          .toList();
-    }
-    return List.of();
-  }
-
 }

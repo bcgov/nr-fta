@@ -10,12 +10,15 @@
 //                       grid, full-bleed results panel, pagination footer).
 //                       Loaded after ./tables so it sits alongside the global
 //                       table chrome it depends on.
+//   _detail.scss     — the tabbed record-detail layout (grey full-bleed tab
+//                       pane, white section tiles, label/value field list).
 @use './mixins';
 @use './overrides';
 @use './variables' as variables;
 @use './default-grid';
 @use './tables';
 @use './search';
+@use './detail';
 
 .back-link {
   display: inline-flex;

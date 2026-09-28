@@ -10,7 +10,6 @@ import {
   Search,
   Settings,
   Tag,
-  Tree,
   UserFollow,
 } from '@carbon/icons-react';
 
@@ -22,11 +21,14 @@ import type { ComponentType } from 'react';
 // rendered by a DHTML menu engine — not a WebADE or Struts config, and the
 // only place the menu is defined.
 //
-// Legacy declares exactly five top-level menus (`NoOffFirstLineMenus=5`):
-// Search, Tenures, Private Marks, Recreation and Admin. Labels and order below
-// are legacy's verbatim, including where they read oddly.
+// Legacy declares five top-level menus (`NoOffFirstLineMenus=5`): Search,
+// Tenures, Private Marks, Recreation and Admin. Labels and order below are
+// legacy's verbatim, including where they read oddly.
 //
-// Three deliberate departures from legacy, each noted at the point it applies:
+// Four deliberate departures from legacy, each noted at the point it applies:
+//   - Recreation is not here at all: that work moved to a separate internal
+//     forestry application, so its menu and its Recreation Search entry are
+//     dropped rather than left pointing nowhere.
 //   - Legacy nests up to four levels under Admin; Carbon's SideNav supports
 //     two, so Admin is flattened to a single list.
 //   - Legacy's menu is not role-gated at all: every user sees all thirty items
@@ -54,16 +56,11 @@ export type MenuSection = {
   id: string;
   label: string;
   /**
-   * Shown in the collapsed rail, which lists the five sections rather than
+   * Shown in the collapsed rail, which lists the sections rather than
    * every destination — clicking one opens the nav on that section.
    */
   icon: ComponentType;
   items: MenuLeaf[];
-  /**
-   * A heading kept for parity with legacy that has nothing to point at yet.
-   * Rendered, but not interactive.
-   */
-  placeholder?: boolean;
   roles?: string[];
 };
 
@@ -92,12 +89,6 @@ const NAV: MenuSection[] = [
         icon: Tag,
       },
       { id: 'search-cut-block', label: 'Cut Block Search', path: '/search/cut-block', icon: Map },
-      {
-        id: 'search-recreation',
-        label: 'Recreation Search',
-        path: '/search/recreation',
-        icon: Tree,
-      },
       {
         id: 'search-range-tenure',
         label: 'Range Tenure Search',
@@ -150,25 +141,6 @@ const NAV: MenuSection[] = [
         label: 'Mark Application',
         path: '/marks/application',
         icon: DocumentAdd,
-      },
-    ],
-  },
-  {
-    // Legacy's fourth menu. Its one screen, FTA701 Recreation Project, has not
-    // been built here, and neither has FTA007 Recreation Search — so the
-    // heading is kept for parity but has nothing to offer yet.
-    // Legacy's fourth menu. Its single item opens FTA701 for whichever project
-    // the session was last on; there is no such session state here and the
-    // screen needs a file id, so it lands on the search that finds one.
-    id: 'recreation',
-    label: 'Recreation',
-    icon: Tree,
-    items: [
-      {
-        id: 'recreation-project',
-        label: 'Recreation Project',
-        path: '/search/recreation',
-        icon: Tree,
       },
     ],
   },
@@ -253,8 +225,7 @@ const isVisible = (userRoles: string[], required?: string[]) =>
  * The nav sections visible to the user's effective role.
  *
  * <p>A section may carry a `roles` allow-list, and so may an individual entry;
- * a section whose every entry is filtered out is dropped, except a placeholder,
- * which has no entries by definition and is kept.
+ * a section whose every entry is filtered out is dropped.
  *
  * @param userRoles  the user's canonical FTA role(s).
  */
@@ -264,7 +235,7 @@ export function getMenuSections(userRoles: string[]): MenuSection[] {
       ...section,
       items: section.items.filter((item) => isVisible(userRoles, item.roles)),
     }))
-    .filter((section) => section.placeholder || section.items.length > 0);
+    .filter((section) => section.items.length > 0);
 }
 
 /** The id of the section containing `path`, or undefined if none does. */
