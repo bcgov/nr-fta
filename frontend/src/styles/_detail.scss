@@ -1,0 +1,123 @@
+// Record detail pages (Tenure detail, …) — the tabbed layout from
+// nr-fsp-new's FSP information page (pages/FspInformation/fsp-info.scss).
+// Class names keep that page's fsp-info__ block so a grep lines the two apps
+// up, the same way the search screens share fsp-search__.
+
+// Page-level tabs, applied to a <div> wrapping Carbon's <Tabs> (a className on
+// <Tabs> itself is dropped — it renders only a context provider). The contained
+// tab bar reads --cds-layer, so the active tab is white and the others grey;
+// the panel beneath is a grey canvas that the white section tiles sit on.
+//
+// Carbon paints the panel with `.cds--tabs--contained ~ .cds--tab-content`
+// (0,2,0); the same sibling shape under this class (0,3,0) wins regardless of
+// bundle order. The child combinator keeps the grey off any tabs nested inside
+// a panel.
+.fsp-info__page-tabs {
+  > .cds--tabs--contained ~ .cds--tab-content {
+    background-color: var(--cds-layer-01);
+    // Full-bleed the grey pane from the side nav to the screen edge. FTA pages
+    // sit directly in `.cds--content`, whose only inline inset is 1.5rem
+    // (_overrides.scss) — there is no Carbon Grid margin on top, unlike the
+    // FSP page — so the breakout is 1.5rem each side. The matching padding
+    // keeps the tiles aligned with the tab bar and page title. Overshooting
+    // this is what produces a horizontal scrollbar.
+    margin-inline: -1.5rem;
+    width: calc(100% + 3rem);
+    padding: 1.5rem;
+    box-sizing: border-box;
+    // Run the grey to the bottom of the viewport when the active tab is short,
+    // so no page background shows beneath it. The offset approximates the
+    // chrome above the pane (header, title, back link, tab bar).
+    min-block-size: calc(100dvh - 18rem);
+  }
+}
+
+// The page's bottom padding would otherwise leave a band of page background
+// under the grey pane.
+.page-layout:has(.fsp-info__page-tabs) {
+  padding-block-end: 0;
+}
+
+// Tab-panel body — consistent spacing between the tiles/tables in a tab.
+.fsp-info__tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+// White section card on the grey tab canvas, with the flat outline the FSP
+// Information tab uses for its icon-titled sections.
+.fsp-info__tile {
+  background-color: var(--cds-layer-02);
+  border: 1px solid #ececec;
+  border-radius: 0.5rem;
+  padding: 1rem 1.5rem 1.5rem;
+
+  @media (min-width: 672px) {
+    padding: 1.25rem 2rem 1.75rem;
+  }
+}
+
+.fsp-info__tile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block-end: 1.5rem;
+}
+
+.fsp-info__section-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--cds-text-primary);
+
+  svg {
+    flex: 0 0 auto;
+    fill: var(--cds-icon-secondary);
+  }
+}
+
+// Label/value pairs — the Information tab's "Plan details" list: bold labels
+// over values, content-sized columns packed to the left.
+.fsp-info__field-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-content: start;
+  gap: 2rem 1.5rem;
+  margin: 0;
+
+  @media (min-width: 672px) {
+    grid-template-columns: repeat(3, minmax(0, max-content));
+    column-gap: 3rem;
+  }
+
+  @media (min-width: 1312px) {
+    grid-template-columns: repeat(4, minmax(0, max-content));
+  }
+}
+
+.fsp-info__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  dt {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--cds-text-primary);
+  }
+
+  dd {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--cds-text-primary);
+    word-break: break-word;
+  }
+}

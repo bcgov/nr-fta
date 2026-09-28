@@ -134,7 +134,7 @@ const RangeTenureSearch: FC = () => {
   // Zones belong to a district, so the list reloads whenever the org unit
   // changes — and any zone already chosen is cleared, since it may not exist
   // under the new district.
-  const orgUnitNo = form.orgUnitCode;
+  const orgUnitNo = form.orgUnitNo;
   useEffect(() => {
     let cancelled = false;
     getRangeZones(orgUnitNo)
@@ -260,9 +260,9 @@ const RangeTenureSearch: FC = () => {
             <Select
               id="rt-org-unit"
               labelText="Admin org unit"
-              value={form.orgUnitCode ?? ''}
+              value={form.orgUnitNo ?? ''}
               onChange={(e) => {
-                set('orgUnitCode', e.target.value);
+                set('orgUnitNo', e.target.value);
                 // The zone list is about to reload for a different district.
                 set('zone', '');
               }}

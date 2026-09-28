@@ -50,8 +50,8 @@ jobs:
       environment: test
       target: test
       tag: ${{ needs.init.outputs.pr }}
-      backend_replicas: "2"
-      frontend_replicas: "2"
+      backend_replicas: "1"
+      frontend_replicas: "1"
 
   tests:
     name: Tests

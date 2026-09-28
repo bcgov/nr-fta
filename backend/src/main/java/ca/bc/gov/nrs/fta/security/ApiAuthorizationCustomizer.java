@@ -27,6 +27,12 @@ import org.springframework.stereotype.Component;
  *
  * <p>Admin endpoints ({@code /api/fta/admin/**}) require {@code FTA_ADMIN} for
  * <em>all</em> HTTP methods, including {@code GET}.
+ *
+ * <p>A role granted with a FAM scope counts as the role itself here: a token carrying
+ * {@code FTA_ADMIN_DISTRICT-DCC} holds the {@code FTA_ADMIN} authority, derived by
+ * {@link TokenRoles#authoritiesFrom}. These rules decide <em>whether</em> a user may call an
+ * endpoint; which districts they may act on is a question for the endpoint, via
+ * {@link LoggedUserHelper#administersDistrict}.
  */
 @Component
 public class ApiAuthorizationCustomizer implements

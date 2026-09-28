@@ -3,6 +3,7 @@ package ca.bc.gov.nrs.fta.mark.service;
 import ca.bc.gov.nrs.fta.mark.dto.TimbermarkSearchCriteria;
 import ca.bc.gov.nrs.fta.mark.dto.TimbermarkSearchDto;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
+import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import java.util.List;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -20,8 +21,9 @@ import org.springframework.stereotype.Service;
  *   <li><b>Key search.</b> A valid timber mark makes every other criterion
  *       irrelevant — the legacy body calls {@code fta_Edit_Timber_Mark} and,
  *       when it answers {@code Y}, drops the whole rest of the where clause.
- *       That test is delegated to the same granted function here, so a mark
- *       that is valid today behaves the same way it does in the legacy screen.
+ *       That function only asks whether a {@code HAULING_AUTHORITY} row carries
+ *       the mark, so the same question is asked here once, up front, and the
+ *       query is built for whichever answer comes back.
  *   <li><b>Land index.</b> Land District, Primary ID and Primary Detail do not
  *       filter the mark at all; they add a derived set of certificates from
  *       {@code MARK_LAND_INDEX} which the mark is then joined against.
@@ -43,12 +45,51 @@ public class TimbermarkSearchService {
     this.jdbc = jdbc;
   }
 
+  /**
+   * The mark's licensee, as {@code THE.FTA_UTILS.GET_LICENSEE} picks it.
+   *
+   * <p>The permit's own licensee ({@code L} client on the harvesting authority)
+   * wins; a blanket mark has none, so the file's main ({@code A}) client is used
+   * instead. Legacy returns the first row of that union ordered by preference,
+   * called per row through two package functions. Here it is a lateral join,
+   * added to the page query only — the count never shows the client.
+   */
+  private static final String LICENSEE_JOINS =
+      """
+          OUTER APPLY (SELECT cand.client_number, cand.client_locn_code
+                         FROM (SELECT hac.client_number, hac.client_locn_code, 0 AS sort_order
+                                 FROM the.harvesting_authority_client hac
+                                 JOIN the.harvesting_authority ha ON ha.hva_skey = hac.hva_skey
+                                WHERE ha.forest_file_id = tm.forest_file_id
+                                  AND ha.cutting_permit_id = tm.cutting_permit_id
+                                  AND hac.harvest_auth_client_type_code = 'L'
+                               UNION
+                               SELECT ffc.client_number, ffc.client_locn_code, 2 AS sort_order
+                                 FROM the.forest_file_client ffc
+                                WHERE ffc.forest_file_id = tm.forest_file_id
+                                  AND ffc.forest_file_client_type_code = 'A') cand
+                        ORDER BY cand.sort_order
+                        FETCH FIRST 1 ROW ONLY) lic
+          LEFT JOIN the.forest_client lic_fc ON lic_fc.client_number = lic.client_number
+        """;
+
+  /**
+   * The licensee number reads {@code "ACRONYM LC"} — acronym (or number) and
+   * location, one space apart — and the name is the client's display name. Both
+   * as {@code FTA_UTILS.GET_CP_LICENSEE_NUMBER} and {@code _NAME} build them;
+   * with no licensee the number is a lone space, as legacy's concatenation of
+   * two nulls produces.
+   */
   private static final String SELECT_COLUMNS =
       """
       SELECT org.org_unit_code                                                        AS org_unit_code,
-             the.fta_utils.get_cp_licensee_number(tm.forest_file_id, tm.cutting_permit_id) AS client_number,
-             NULL                                                                      AS client_locn_code,
-             the.fta_utils.get_cp_licensee_name(tm.forest_file_id, tm.cutting_permit_id)   AS client_name,
+      """
+          + "       " + ClientNameSql.acronymOrNumber("lic_fc", "lic.client_number")
+          + " || ' ' || lic.client_locn_code AS client_number,\n"
+          + "       NULL AS client_locn_code,\n"
+          + "       CASE WHEN lic.client_number IS NOT NULL THEN "
+          + ClientNameSql.displayName("lic_fc") + " END AS client_name,\n"
+          + """
              pfu.file_type_code                                                        AS file_type_code,
              pfu.forest_file_id                                                        AS forest_file_id,
              tm.cutting_permit_id                                                      AS cutting_permit_id,
@@ -78,14 +119,15 @@ public class TimbermarkSearchService {
           rs.getString("salvage_ind"),
           rs.getObject("hva_skey", Long.class));
 
-  /** The generated {@code FROM}/{@code WHERE} and the parameters it binds. */
-  private record Query(String fromWhere, MapSqlParameterSource params) {}
+  /** The generated {@code FROM}, {@code WHERE} and the parameters they bind. */
+  private record Query(String from, String where, MapSqlParameterSource params) {}
 
   public PagedResponse<TimbermarkSearchDto> search(
       TimbermarkSearchCriteria criteria, int page, int size) {
     Query q = build(criteria);
 
-    Long total = jdbc.queryForObject("SELECT COUNT(*)\n" + q.fromWhere(), q.params(), Long.class);
+    Long total = jdbc.queryForObject(
+        "SELECT COUNT(*)\n" + q.from() + q.where(), q.params(), Long.class);
     long totalElements = total == null ? 0L : total;
 
     MapSqlParameterSource pageParams = new MapSqlParameterSource()
@@ -93,8 +135,12 @@ public class TimbermarkSearchService {
         .addValue("offset", (long) page * size)
         .addValue("size", size);
 
+    // Sorted outside the join: FOREST_CLIENT has a client_name column of its
+    // own, and Oracle's OFFSET/FETCH rewrite can resolve an ORDER BY name
+    // against the joined tables instead of the select list (ORA-00918).
     List<TimbermarkSearchDto> rows = jdbc.query(
-        SELECT_COLUMNS + q.fromWhere() + orderBy(criteria.sortBy())
+        "SELECT * FROM (\n" + SELECT_COLUMNS + q.from() + LICENSEE_JOINS + q.where() + ")"
+            + orderBy(criteria.sortBy())
             + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
         pageParams,
         ROW_MAPPER);
@@ -122,91 +168,86 @@ public class TimbermarkSearchService {
         """);
     StringBuilder where = new StringBuilder(" WHERE 1 = 1\n");
 
-    // A valid timber mark is a key search: the legacy body asks the database
-    // whether the mark exists and, if so, ignores every other criterion. The
-    // test runs in SQL so it uses the same answer the legacy screen would get.
-    boolean hasMark = notBlank(c.timberMark());
-    if (hasMark) {
-      p.addValue("timberMark", c.timberMark().trim().toUpperCase());
-      where.append("""
-             AND ( ( the.fta_edit_timber_mark(:timberMark) = 'Y'
-                     AND tm.timber_mark = :timberMark )
-                   OR ( the.fta_edit_timber_mark(:timberMark) = 'N'
-                        AND tm.timber_mark LIKE :timberMark || '%' ) )
-          """);
+    // A timber mark that exists is a key search: the legacy body asks
+    // fta_Edit_Timber_Mark and, on 'Y', matches the mark exactly and ignores
+    // every other criterion (its `IF l_ignore_criteria = 'N'` guard). A mark
+    // that does not exist is an ordinary prefix filter among the rest.
+    if (notBlank(c.timberMark())) {
+      String mark = c.timberMark().trim().toUpperCase();
+      p.addValue("timberMark", mark);
+      if (timberMarkExists(mark)) {
+        where.append("   AND tm.timber_mark = :timberMark\n");
+        return new Query(from.toString(), where.toString(), p);
+      }
+      where.append("   AND tm.timber_mark LIKE :timberMark || '%'\n");
     }
-
-    // Everything below is skipped on a key search, matching the legacy body's
-    // `IF l_ignore_criteria = 'N'` guard. Expressed as a SQL guard rather than
-    // a Java branch so one statement covers both cases.
-    String guard = hasMark ? "the.fta_edit_timber_mark(:timberMark) = 'Y' OR " : "";
 
     if (notBlank(c.adminOrgUnitNo())) {
       p.addValue("adminOrgUnitNo", c.adminOrgUnitNo().trim());
-      where.append("   AND (" + guard + "tm.forest_district = TO_NUMBER(:adminOrgUnitNo))\n");
+      where.append("   AND (tm.forest_district = TO_NUMBER(:adminOrgUnitNo))\n");
     }
     if (notBlank(c.districtAdminZone())) {
       p.addValue("districtAdminZone", c.districtAdminZone().trim());
-      where.append("   AND (" + guard + "tm.district_admn_zone = :districtAdminZone)\n");
+      where.append("   AND (tm.district_admn_zone = :districtAdminZone)\n");
     }
     if (notBlank(c.forestFileId())) {
       p.addValue("forestFileId", c.forestFileId().trim());
-      where.append("   AND (" + guard + "pfu.forest_file_id LIKE :forestFileId || '%')\n");
+      where.append("   AND (pfu.forest_file_id LIKE :forestFileId || '%')\n");
     }
     if (notBlank(c.cuttingPermitId())) {
       p.addValue("cuttingPermitId", c.cuttingPermitId().trim());
-      where.append("   AND (" + guard + "tm.cutting_permit_id = :cuttingPermitId)\n");
+      where.append("   AND (tm.cutting_permit_id = :cuttingPermitId)\n");
     }
     if (notBlank(c.fileTypeCode())) {
       p.addValue("fileTypeCode", c.fileTypeCode().trim());
-      where.append("   AND (" + guard + "pfu.file_type_code = :fileTypeCode)\n");
+      where.append("   AND (pfu.file_type_code = :fileTypeCode)\n");
     }
     if (notBlank(c.markStatusSt())) {
       p.addValue("markStatusSt", c.markStatusSt().trim());
-      where.append("   AND (" + guard + "tm.mark_status_st = :markStatusSt)\n");
+      where.append("   AND (tm.mark_status_st = :markStatusSt)\n");
     }
     if (notBlank(c.mgmtUnitType())) {
       p.addValue("mgmtUnitType", c.mgmtUnitType().trim());
-      where.append("   AND (" + guard + "pfu.mgmt_unit_type = :mgmtUnitType)\n");
+      where.append("   AND (pfu.mgmt_unit_type = :mgmtUnitType)\n");
     }
     if (notBlank(c.mgmtUnitId())) {
       p.addValue("mgmtUnitId", c.mgmtUnitId().trim());
-      where.append("   AND (" + guard + "pfu.mgmt_unit_id = :mgmtUnitId)\n");
+      where.append("   AND (pfu.mgmt_unit_id = :mgmtUnitId)\n");
     }
     if (notBlank(c.certificate())) {
       p.addValue("certificate", c.certificate().trim());
-      where.append("   AND (" + guard + "tm.certificate = :certificate)\n");
+      where.append("   AND (tm.certificate = :certificate)\n");
     }
 
     // Salvage: 'ALL' asks for any salvage type rather than one in particular.
     if (notBlank(c.salvageTypeCode())) {
       if (TimbermarkSearchCriteria.SALVAGE_ALL.equalsIgnoreCase(c.salvageTypeCode().trim())) {
-        where.append("   AND (" + guard + "tm.salvage_type_code IS NOT NULL)\n");
+        where.append("   AND (tm.salvage_type_code IS NOT NULL)\n");
       } else {
         p.addValue("salvageTypeCode", c.salvageTypeCode().trim());
-        where.append("   AND (" + guard + "tm.salvage_type_code = :salvageTypeCode)\n");
+        where.append("   AND (tm.salvage_type_code = :salvageTypeCode)\n");
       }
     }
 
     if (notBlank(c.issueDateFrom())) {
       p.addValue("issueDateFrom", c.issueDateFrom().trim());
-      where.append("   AND (" + guard
+      where.append("   AND ("
           + "tm.mark_issue_date >= TO_DATE(:issueDateFrom, 'YYYY-MM-DD'))\n");
     }
     if (notBlank(c.issueDateTo())) {
       p.addValue("issueDateTo", c.issueDateTo().trim());
-      where.append("   AND (" + guard
+      where.append("   AND ("
           + "tm.mark_issue_date <= TO_DATE(:issueDateTo, 'YYYY-MM-DD'))\n");
     }
     if (notBlank(c.expiryDateFrom())) {
       p.addValue("expiryDateFrom", c.expiryDateFrom().trim());
-      where.append("   AND (" + guard
+      where.append("   AND ("
           + "NVL(tm.mark_extend_date, tm.mark_expiry_date)"
           + " >= TO_DATE(:expiryDateFrom, 'YYYY-MM-DD'))\n");
     }
     if (notBlank(c.expiryDateTo())) {
       p.addValue("expiryDateTo", c.expiryDateTo().trim());
-      where.append("   AND (" + guard
+      where.append("   AND ("
           + "NVL(tm.mark_extend_date, tm.mark_expiry_date)"
           + " <= TO_DATE(:expiryDateTo, 'YYYY-MM-DD'))\n");
     }
@@ -215,16 +256,28 @@ public class TimbermarkSearchService {
     // A mark with no file header still qualifies, as the legacy clause allows.
     if ("Y".equalsIgnoreCase(nullToEmpty(c.privateMarkOnlyInd()).trim())) {
       where.append("""
-             AND ( %spfu.file_type_code IN (SELECT pmt.private_mark_type_code
-                                              FROM the.private_mark_type_code pmt)
+             AND ( pfu.file_type_code IN (SELECT pmt.private_mark_type_code
+                                            FROM the.private_mark_type_code pmt)
                    OR pfu.file_type_code IS NULL )
-          """.formatted(guard));
+          """);
     }
 
-    appendClientCriteria(c, guard, p, where);
-    appendLandIndexCriteria(c, guard, p, where);
+    appendClientCriteria(c, p, where);
+    appendLandIndexCriteria(c, p, where);
 
-    return new Query(from + where.toString(), p);
+    return new Query(from.toString(), where.toString(), p);
+  }
+
+  /** {@code THE.FTA_EDIT_TIMBER_MARK}: whether a hauling authority carries the mark. */
+  private boolean timberMarkExists(String mark) {
+    Integer found = jdbc.queryForObject(
+        """
+        SELECT COUNT(*) FROM dual
+         WHERE EXISTS (SELECT 1 FROM the.hauling_authority WHERE timber_mark = :timberMark)
+        """,
+        new MapSqlParameterSource("timberMark", mark),
+        Integer.class);
+    return found != null && found > 0;
   }
 
   /**
@@ -233,7 +286,7 @@ public class TimbermarkSearchService {
    * spans the main and secondary clients.
    */
   private static void appendClientCriteria(
-      TimbermarkSearchCriteria c, String guard, MapSqlParameterSource p, StringBuilder where) {
+      TimbermarkSearchCriteria c, MapSqlParameterSource p, StringBuilder where) {
     boolean any = notBlank(c.clientNumber()) || notBlank(c.clientLocnCode())
         || notBlank(c.clientName()) || notBlank(c.fileClientType());
     if (!any) {
@@ -264,7 +317,7 @@ public class TimbermarkSearchService {
                                                        LIKE UPPER(:clientName) || '%')
           """);
     }
-    where.append("   AND (" + guard + "tm.forest_file_id IN (\n")
+    where.append("   AND (tm.forest_file_id IN (\n")
         .append(sub)
         .append("   ))\n");
   }
@@ -276,7 +329,7 @@ public class TimbermarkSearchService {
    * index code and "Primary ID" the <em>secondary</em> one.
    */
   private static void appendLandIndexCriteria(
-      TimbermarkSearchCriteria c, String guard, MapSqlParameterSource p, StringBuilder where) {
+      TimbermarkSearchCriteria c, MapSqlParameterSource p, StringBuilder where) {
     boolean any = notBlank(c.landDistrict()) || notBlank(c.primaryId())
         || notBlank(c.primaryDetail());
     if (!any) {
@@ -296,7 +349,7 @@ public class TimbermarkSearchService {
       p.addValue("primaryDetail", c.primaryDetail().trim());
       sub.append("            AND NVL(mli.mark_land_index_desc, ' ') = :primaryDetail\n");
     }
-    where.append("   AND (" + guard + "tm.certificate IN (\n")
+    where.append("   AND (tm.certificate IN (\n")
         .append(sub)
         .append("   ))\n");
   }

@@ -30,10 +30,13 @@ public class RangeUnitDetailService {
     this.jdbc = jdbc;
   }
 
-  // NOTE: Region resolution mirrors the package body, which calls the legacy
-  // standalone function SIL_GET_USER_REGION(admin_forest_district_no) to obtain
-  // the region's rollup-district code, then get_region_name() to look up its
-  // org_unit_name via ORG_UNIT.ROLLUP_DIST_CODE. Those calls are preserved here.
+  // Region resolution follows the package body, which calls
+  // SIL_GET_USER_REGION(admin_forest_district_no) and then get_region_name().
+  // That function is expressed as joins instead: find the district's org unit,
+  // follow its rollup_dist_code to that org unit, and take its
+  // rollup_region_code. Null when any link is missing, as the function returns
+  // null on NO_DATA_FOUND. The region-name join then matches that code against
+  // ORG_UNIT.ROLLUP_DIST_CODE, as get_region_name() does.
   private static final String UNIT_SQL =
       """
       SELECT ru.range_unit_id                              AS range_unit_id,
@@ -41,7 +44,7 @@ public class RangeUnitDetailService {
              ru.range_unit_status_code                     AS status_code,
              rusc.description                              AS status_raw_desc,
              ru.status_date                                AS status_date,
-             sil_get_user_region(ru.admin_forest_district_no) AS region,
+             rollup_dist.rollup_region_code                AS region,
              rgn.org_unit_name                             AS region_name,
              TO_CHAR(ru.admin_forest_district_no)          AS district,
              dist.org_unit_code || ' - ' || dist.org_unit_name AS district_description,
@@ -49,10 +52,12 @@ public class RangeUnitDetailService {
              ru.revision_count                             AS revision_count
         FROM the.range_unit ru
         JOIN the.org_unit dist ON dist.org_unit_no = ru.admin_forest_district_no
+        LEFT JOIN the.org_unit rollup_dist
+               ON rollup_dist.org_unit_code = dist.rollup_dist_code
         LEFT JOIN the.range_unit_status_code rusc
                ON rusc.range_unit_status_code = ru.range_unit_status_code
         LEFT JOIN the.org_unit rgn
-               ON rgn.rollup_dist_code = sil_get_user_region(ru.admin_forest_district_no)
+               ON rgn.rollup_dist_code = rollup_dist.rollup_region_code
        WHERE ru.range_unit_id = :rangeUnitId
       """;
 

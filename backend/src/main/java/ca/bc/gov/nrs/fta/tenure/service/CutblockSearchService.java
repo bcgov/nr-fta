@@ -1,6 +1,7 @@
 package ca.bc.gov.nrs.fta.tenure.service;
 
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
+import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import ca.bc.gov.nrs.fta.tenure.dto.CutblockSearchDto;
 import java.util.List;
 import org.springframework.jdbc.core.RowMapper;
@@ -41,12 +42,40 @@ public class CutblockSearchService {
   /** Sort on file id. */
   public static final String SORT_FILE_ID = "fileId";
 
+  /**
+   * One column of the cut block's licensee, as {@code SIL_GET_CP_LICENSEE}
+   * chooses it: the permit's own licensee ({@code L}, not tied to a block) ahead
+   * of the file's main client ({@code A}, permit id {@code ' '}), first row
+   * wins. Legacy leaves the order among several {@code L} rows to chance; the
+   * link's key breaks the tie here so both columns always describe one client.
+   *
+   * @param column the {@code FOR_CLIENT_LINK} column to return
+   */
+  private static String licensee(String column) {
+    return "(SELECT MAX(fcl." + column + ") KEEP (DENSE_RANK FIRST"
+        + " ORDER BY fcl.file_client_type DESC, fcl.for_client_link_skey)"
+        + " FROM the.for_client_link fcl"
+        + " WHERE fcl.forest_file_id = cb.forest_file_id"
+        + " AND ((fcl.file_client_type = 'L' AND fcl.cutting_permit_id = cb.cutting_permit_id"
+        + " AND fcl.cut_block_id IS NULL)"
+        + " OR (fcl.cutting_permit_id = ' ' AND fcl.file_client_type = 'A')))";
+  }
+
+  /**
+   * The inner, distinct row. The licensee is carried as its raw number and
+   * location, and {@link #PAGE_COLUMNS} formats them from one join to
+   * {@code FOREST_CLIENT} — so the licensee is looked up once per row rather
+   * than once per column that shows it.
+   * Distinctness is unaffected: the formatted values follow from the raw ones.
+   */
   private static final String SELECT_COLUMNS =
       """
       SELECT DISTINCT cb.cb_skey                                                        AS cb_skey,
              ou.org_unit_code                                                           AS org_unit_code,
-             TO_CHAR(the.sil_get_cp_licensee_number(cb.forest_file_id, cb.cutting_permit_id)) AS client_number,
-             the.sil_get_cp_licensee(cb.forest_file_id, cb.cutting_permit_id)           AS client_name,
+      """
+          + "       " + licensee("client_number") + " AS lic_client_number,\n"
+          + "       " + licensee("client_locn_code") + " AS lic_client_locn_code,\n"
+          + """
              pfu.forest_file_id                                                         AS forest_file_id,
              cb.cutting_permit_id                                                       AS cutting_permit_id,
              cb.timber_mark                                                             AS timber_mark,
@@ -55,6 +84,21 @@ public class CutblockSearchService {
              cboa.disturbance_start_date                                                AS disturbance_start_date,
              cboa.disturbance_end_date                                                  AS disturbance_end_date
       """;
+
+  /**
+   * The page's columns, over the distinct rows. The licensee number reads
+   * {@code "ACRONYM  LC"} — acronym (or number), two spaces, location — and is
+   * just the two spaces when there is no licensee, as legacy's concatenation of
+   * nulls gives ({@code SIL_GET_CP_LICENSEE_NUMBER}). The name is the client's
+   * display name ({@code SIL_GET_CP_LICENSEE}).
+   */
+  private static final String PAGE_COLUMNS =
+      "SELECT b.cb_skey, b.org_unit_code,\n"
+          + "       " + ClientNameSql.acronymOrNumber("lic_fc", "b.lic_client_number")
+          + " || '  ' || b.lic_client_locn_code AS client_number,\n"
+          + "       " + ClientNameSql.displayName("lic_fc") + " AS client_name,\n"
+          + "       b.forest_file_id, b.cutting_permit_id, b.timber_mark, b.cut_block_id,\n"
+          + "       b.block_status_st, b.disturbance_start_date, b.disturbance_end_date\n";
 
   /**
    * The tables and predicates, shared verbatim by the page query and the count,
@@ -209,7 +253,10 @@ public class CutblockSearchService {
     // The ORDER BY references the select aliases, so it is applied outside the
     // DISTINCT rather than inside it.
     List<CutblockSearchDto> rows = jdbc.query(
-        "SELECT * FROM (" + SELECT_COLUMNS + FROM_WHERE + ")" + orderBy(sortBy)
+        "SELECT * FROM (" + PAGE_COLUMNS
+            + "  FROM (" + SELECT_COLUMNS + FROM_WHERE + ") b\n"
+            + "  LEFT JOIN the.forest_client lic_fc ON lic_fc.client_number = b.lic_client_number)"
+            + orderBy(sortBy)
             + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
         pageParams,
         ROW_MAPPER);

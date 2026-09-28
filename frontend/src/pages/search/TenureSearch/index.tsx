@@ -63,7 +63,6 @@ const TENURE_TYPES = [
   { value: '', label: 'Any' },
   { value: 'T', label: 'Timber' },
   { value: 'R', label: 'Range' },
-  { value: 'F', label: 'Recreation' },
 ];
 
 /** Salvage and Cash Sale are the same yes/no/any triple. */
@@ -85,10 +84,11 @@ const EMPTY_FORM: TenureSearchParams = { sortBy: 'org' };
 /**
  * FTA001 — Tenure Search.
  *
- * <p>Criteria match the legacy screen one for one, which is also the parameter
- * list of `THE.FTA_001_TENR_SRCH.MAINLINE`: org unit, file, client, management
- * unit, associated file, project name, both date ranges, salvage, cash sale,
- * map notation, and the sort choice.
+ * <p>Criteria match the legacy screen, which is also the parameter list of
+ * `THE.FTA_001_TENR_SRCH.MAINLINE`: org unit, file, client, management unit,
+ * associated file, both date ranges, salvage, cash sale, map notation, and the
+ * sort choice. Legacy's recreation criteria — the Recreation tenure type and the
+ * project-name field — are left out: that work moved to a separate application.
  *
  * <p>Layout follows nr-fsp-new's FSP Search — criteria in a white tile over a
  * responsive grid, then a full-bleed grey results panel. The `fsp-search__*`
@@ -385,15 +385,6 @@ const TenureSearch: FC = () => {
               value={form.assocFileId ?? ''}
               onChange={(e) => set('assocFileId', e.target.value)}
               maxLength={10}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ts-file-name"
-              labelText="File / project name"
-              value={form.fileName ?? ''}
-              onChange={(e) => set('fileName', e.target.value)}
-              maxLength={30}
               autoComplete="off"
             />
 
