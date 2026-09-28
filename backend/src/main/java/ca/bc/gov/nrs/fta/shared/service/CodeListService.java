@@ -1,7 +1,9 @@
 package ca.bc.gov.nrs.fta.shared.service;
 
+import ca.bc.gov.nrs.fta.configuration.CodeListCacheConfiguration;
 import ca.bc.gov.nrs.fta.shared.dto.CodeOptionDto;
 import java.util.List;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -14,6 +16,10 @@ import org.springframework.stereotype.Service;
  * so the queries are generated from that one shape. Expired codes are filtered
  * out: they still exist on historical records but must not be offered as new
  * criteria.
+ *
+ * <p>Every list is cached in memory and the cache is cleared on a schedule; see
+ * {@link CodeListCacheConfiguration}. Search screens open with several of these at once, and
+ * the tables behind them rarely change.
  *
  * <p>Org units are the exception. The legacy screen submits the numeric
  * {@code ORG_UNIT_NO} (the package's {@code p_admin_org_unit_no}, which it
@@ -54,10 +60,12 @@ public class CodeListService {
       """;
 
   /** Administrative org units, keyed by the numeric id the search package expects. */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> orgUnits() {
     return jdbc.query(ORG_UNITS_SQL, MAPPER);
   }
 
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> fileTypes() {
     return jdbc.query(codeSql("file_type_code", "the.file_type_code"), MAPPER);
   }
@@ -67,25 +75,30 @@ public class CodeListService {
    * — the latter is a different table with a different key, and the search
    * filters {@code pfu.file_status_st}, which is the tenure one.
    */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> fileStatuses() {
     return jdbc.query(
         codeSql("tenure_file_status_code", "the.tenure_file_status_code"), MAPPER);
   }
 
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> fileClientTypes() {
     return jdbc.query(codeSql("file_client_type_code", "the.file_client_type_code"), MAPPER);
   }
 
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> fileSources() {
     return jdbc.query(codeSql("file_source_code", "the.file_source_code"), MAPPER);
   }
 
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> mapNotationTypes() {
     return jdbc.query(
         codeSql("map_notation_type_code", "the.map_notation_type_code"), MAPPER);
   }
 
   /** Range unit statuses, for the FTA006 range unit / pasture search. */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> rangeUnitStatuses() {
     return jdbc.query(
         codeSql("range_unit_status_code", "the.range_unit_status_code"), MAPPER);
@@ -101,6 +114,9 @@ public class CodeListService {
    * <p>{@code RANGE_ZONE} carries no effective/expiry pair, so this cannot use
    * the uniform code-table query.
    */
+  // Keyed by position (#p0), not by parameter name: names are only visible when the code is
+  // compiled with -parameters, and without them every district would share one entry.
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "'rangeZones:' + (#p0 == null ? '' : #p0.trim())")
   public List<CodeOptionDto> rangeZones(String adminDistrictNo) {
     String sql =
         """
@@ -129,18 +145,21 @@ public class CodeListService {
    * from {@code SECONDARY_LAND_INDEX_CODE}. Matching the names to the
    * similarly-named tables would wire both dropdowns to the wrong list.
    */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> landDistricts() {
     return jdbc.query(
         codeSql("primary_land_index_code", "the.primary_land_index_code"), MAPPER);
   }
 
   /** Primary IDs, for the FTA002 timber mark search. Reads the secondary index — see above. */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> primaryIds() {
     return jdbc.query(
         codeSql("secondary_land_index_code", "the.secondary_land_index_code"), MAPPER);
   }
 
   /** Salvage types, for the FTA002 and FTA005 searches. */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> salvageTypes() {
     return jdbc.query(codeSql("salvage_type_code", "the.salvage_type_code"), MAPPER);
   }
@@ -149,12 +168,14 @@ public class CodeListService {
    * Harvest authority statuses — the FTA002 "Mark Status" list and the FTA005
    * "CP Status" list both resolve to {@code fta.lookup.harvestAuthStatusCode}.
    */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> harvestAuthStatuses() {
     return jdbc.query(
         codeSql("harvest_auth_status_code", "the.harvest_auth_status_code"), MAPPER);
   }
 
   /** Cut block statuses, for the FTA003 cut block search. */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> blockStatuses() {
     return jdbc.query(codeSql("block_status_code", "the.block_status_code"), MAPPER);
   }
@@ -167,6 +188,7 @@ public class CodeListService {
    * {@code PRIVATE_MARK_CERTIFICATE.private_mark_status_code} and the amendment
    * status beside it, whose values are HN, PA, PI, DV, HI and HX.
    */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> privateMarkStatuses() {
     return jdbc.query(
         codeSql("private_mark_status_code", "the.private_mark_status_code"), MAPPER);
@@ -183,6 +205,7 @@ public class CodeListService {
    * <p>It is a filter only: {@code licence_to_cut_code} is not selected by the
    * search and never appears in the results grid.
    */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> licenceToCutCodes() {
     return jdbc.query(codeSql("licence_to_cut_code", "the.licence_to_cut_code"), MAPPER);
   }
@@ -195,59 +218,11 @@ public class CodeListService {
    * rather than merely widening it: with no client type the sub-select falls
    * back to the file's {@code A} client from {@code FOREST_FILE_CLIENT}.
    */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> harvestAuthClientTypes() {
     return jdbc.query(
         codeSql("harvest_auth_client_type_code", "the.harvest_auth_client_type_code"), MAPPER);
   }
 
-  /** Recreation file statuses, for the FTA007 search. */
-  public List<CodeOptionDto> recreationFileStatuses() {
-    return jdbc.query(
-        codeSql("recreation_file_status_code", "the.recreation_file_status_code"), MAPPER);
-  }
 
-  /**
-   * Recreation project types — the FTA007 "Project Type" list.
-   *
-   * <p>The only code list here that is filtered rather than taken whole:
-   * {@code FTA_MAP_FEATURE_CODE} covers every map feature, and the legacy
-   * lookup narrows it to the eight recreation ones. Ordered by description, as
-   * legacy does, rather than by code.
-   */
-  public List<CodeOptionDto> recreationProjectTypes() {
-    return jdbc.query(
-        """
-        SELECT fta_map_feature_code AS code,
-               description AS description
-          FROM the.fta_map_feature_code
-         WHERE fta_map_feature_code IN ('RTR', 'RR', 'SIT', 'IF', 'IFT', 'TRB', 'TBL', 'RTE')
-           AND SYSDATE BETWEEN effective_date AND expiry_date
-         ORDER BY description
-        """,
-        MAPPER);
-  }
-
-  /** Recreation risk ratings, for the FTA007 search and FTA701 detail. */
-  public List<CodeOptionDto> recreationRiskRatings() {
-    return jdbc.query(
-        codeSql("recreation_risk_rating_code", "the.recreation_risk_rating_code"), MAPPER);
-  }
-
-  /** Recreation controlled-access types. */
-  public List<CodeOptionDto> recreationControlAccessTypes() {
-    return jdbc.query(
-        codeSql("recreation_control_access_code", "the.recreation_control_access_code"), MAPPER);
-  }
-
-  /** Recreation maintenance standards. */
-  public List<CodeOptionDto> recreationMaintainStandards() {
-    return jdbc.query(
-        codeSql("recreation_maintain_std_code", "the.recreation_maintain_std_code"), MAPPER);
-  }
-
-  /** Recreation districts — distinct from the administrative org units. */
-  public List<CodeOptionDto> recreationDistricts() {
-    return jdbc.query(
-        codeSql("recreation_district_code", "the.recreation_district_code"), MAPPER);
-  }
 }

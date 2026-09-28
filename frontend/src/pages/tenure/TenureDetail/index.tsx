@@ -1,4 +1,18 @@
-import { ArrowLeft, Document, Edit } from '@carbon/icons-react';
+import {
+  ArrowLeft,
+  ChartColumn,
+  Currency,
+  Document,
+  Edit,
+  Folders,
+  Notebook,
+  Report,
+  Road as RoadIcon,
+  Stamp,
+  TableOfContents,
+  Tree,
+  UserMultiple,
+} from '@carbon/icons-react';
 import {
   Button,
   Tab,
@@ -13,21 +27,19 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Tag,
 } from '@carbon/react';
 import { Link, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
-import DefinitionGrid from '@/components/DefinitionGrid';
-import SectionTile from '@/components/SectionTile';
-import Tombstone from '@/components/Tombstone';
+import StatusTag from '@/components/StatusTag/StatusTag';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import PageLayout from '@/pages/PageLayout';
 import { canEdit } from '@/routes/access';
 import { getTenureDetail } from '@/services/tenure_detail';
 
-import type { FC } from 'react';
+import type { CarbonIconType } from '@carbon/icons-react';
+import type { FC, ReactNode } from 'react';
 
 const nf = new Intl.NumberFormat('en-CA');
 
@@ -52,12 +64,47 @@ type AssociatedClient = {
 };
 type Note = { date: string; author: string; text: string };
 
+interface Field {
+  label: string;
+  value: ReactNode;
+}
+
 /**
- * FTA100 — Tenure detail. Persistent "tombstone" header (key identifiers) +
- * Carbon Tabs across the tenure's sub-entities (CP/Mark, Cut Block, Assoc
- * Clients, AAC, Notes) — the tabbed-detail pattern the other FTA record
- * screens follow. Backed by the backend {@code GET /api/fta/tenures/{id}}
- * endpoint, which ports THE.FTA_100_TENURE (+ FTA_930_AAC, FTA_940_SALE_INFO).
+ * A white section card on the grey tab canvas: an icon heading over a
+ * label/value list — the section treatment of nr-fsp-new's FSP Information tab.
+ */
+const DetailTile: FC<{
+  title: string;
+  icon: CarbonIconType;
+  fields: Field[];
+  /** Right-aligned in the card header — where FSP puts its "Edit …" buttons. */
+  action?: ReactNode;
+}> = ({ title, icon: Icon, fields, action }) => (
+  <section className="fsp-info__tile">
+    <header className="fsp-info__tile-header">
+      <h2 className="fsp-info__section-title">
+        <Icon size={20} />
+        <span>{title}</span>
+      </h2>
+      {action}
+    </header>
+    <dl className="fsp-info__field-list">
+      {fields.map((f) => (
+        <div key={f.label} className="fsp-info__field">
+          <dt>{f.label}</dt>
+          <dd>{f.value}</dd>
+        </div>
+      ))}
+    </dl>
+  </section>
+);
+
+/**
+ * FTA100 — Tenure detail. Title and actions, then Carbon contained Tabs over a
+ * full-bleed grey pane (the nr-fsp-new FSP information layout): Details first,
+ * holding the tenure summary, then the tenure's sub-entities. Backed by the
+ * backend {@code GET /api/fta/tenures/{id}} endpoint, which ports
+ * THE.FTA_100_TENURE (+ FTA_930_AAC, FTA_940_SALE_INFO).
  */
 const TenureDetail: FC = () => {
   const { fileId = '' } = useParams();
@@ -76,17 +123,23 @@ const TenureDetail: FC = () => {
   const associatedClients: AssociatedClient[] = [];
   const notes: Note[] = [];
 
+  // FSP places each section's edit action in that section's card header,
+  // shown only to users who may edit. Not wired to an edit mode yet.
+  const editButton = (label: string) =>
+    canEdit(user) ? (
+      <Button kind="tertiary" size="sm" renderIcon={Edit}>
+        {label}
+      </Button>
+    ) : undefined;
+
+  const status = tenure?.fileStatusDesc ?? tenure?.fileStatusCode;
+  const allowableAnnualCut =
+    tenure?.allowableAnnualCut != null ? `${nf.format(tenure.allowableAnnualCut)} m³/yr` : '—';
+
   return (
     <PageLayout
       title={`Tenure ${fileId}`}
       subtitle="Tenure record: cutting permits, cut blocks, roads, associated files and clients, AAC and sale details."
-      actions={
-        tenure && canEdit(user) ? (
-          <Button size="md" kind="tertiary" renderIcon={Edit}>
-            Edit tenure
-          </Button>
-        ) : undefined
-      }
     >
       <Link to="/search/tenure" className="back-link">
         <ArrowLeft size={16} /> Back to Tenure Search
@@ -94,63 +147,61 @@ const TenureDetail: FC = () => {
 
       <AsyncBoundary loading={loading} error={error} onRetry={reload} loadingText="Loading tenure…">
         {tenure && (
-          <>
-            <SectionTile title="Tenure summary" icon={Document}>
-              <Tombstone
-                ariaLabel="Tenure summary"
-                items={[
-                  { label: 'File ID', value: tenure.forestFileId },
-                  { label: 'File Type', value: tenure.fileTypeCode ?? '—' },
-                  {
-                    label: 'Status',
-                    value:
-                      (tenure.fileStatusDesc ?? tenure.fileStatusCode) ? (
-                        <Tag type="green">{tenure.fileStatusDesc ?? tenure.fileStatusCode}</Tag>
-                      ) : (
-                        '—'
-                      ),
-                  },
-                  { label: 'Org Unit', value: tenure.orgUnitCode ?? '—' },
-                  { label: 'Licensee', value: tenure.licensee ?? '—' },
-                  { label: 'Client #', value: tenure.clientNumber ?? '—' },
-                  { label: 'Issued', value: tenure.awardDate ?? '—' },
-                  { label: 'Expires', value: tenure.expiryDate ?? '—' },
-                ]}
-              />
-            </SectionTile>
-
+          // Carbon's <Tabs> renders no DOM of its own, so the grey full-bleed
+          // pane is styled through this wrapper (styles/_detail.scss).
+          <div className="fsp-info__page-tabs">
             <Tabs>
               <TabList aria-label="Tenure sections" contained>
-                <Tab>Tenure</Tab>
-                <Tab>CP / Mark</Tab>
-                <Tab>Cut Block</Tab>
-                <Tab>Roads</Tab>
-                <Tab>Assoc Files</Tab>
-                <Tab>Assoc Clients</Tab>
-                <Tab>AAC</Tab>
-                <Tab>Sale Info</Tab>
-                <Tab>Notes</Tab>
+                <Tab renderIcon={TableOfContents}>Details</Tab>
+                <Tab renderIcon={Document}>Tenure</Tab>
+                <Tab renderIcon={Stamp}>CP / mark</Tab>
+                <Tab renderIcon={Tree}>Cut block</Tab>
+                <Tab renderIcon={RoadIcon}>Roads</Tab>
+                <Tab renderIcon={Folders}>Assoc files</Tab>
+                <Tab renderIcon={UserMultiple}>Assoc clients</Tab>
+                <Tab renderIcon={ChartColumn}>AAC</Tab>
+                <Tab renderIcon={Currency}>Sale info</Tab>
+                <Tab renderIcon={Notebook}>Notes</Tab>
               </TabList>
               <TabPanels>
                 <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      { label: 'Management Unit', value: tenure.managementUnit ?? '—' },
-                      {
-                        label: 'Allowable Annual Cut',
-                        value:
-                          tenure.allowableAnnualCut != null
-                            ? `${nf.format(tenure.allowableAnnualCut)} m³/yr`
-                            : '—',
-                      },
-                      { label: 'Issue Date', value: tenure.awardDate ?? '—' },
-                      { label: 'Expiry Date', value: tenure.expiryDate ?? '—' },
-                    ]}
-                  />
+                  <div className="fsp-info__tab-panel">
+                    <DetailTile
+                      title="Tenure summary"
+                      action={editButton('Edit tenure details')}
+                      icon={Report}
+                      fields={[
+                        { label: 'File ID', value: tenure.forestFileId },
+                        { label: 'File Type', value: tenure.fileTypeCode ?? '—' },
+                        { label: 'Status', value: status ? <StatusTag status={status} /> : '—' },
+                        { label: 'Org Unit', value: tenure.orgUnitCode ?? '—' },
+                        { label: 'Licensee', value: tenure.licensee ?? '—' },
+                        { label: 'Client #', value: tenure.clientNumber ?? '—' },
+                        { label: 'Issued', value: tenure.awardDate ?? '—' },
+                        { label: 'Expires', value: tenure.expiryDate ?? '—' },
+                      ]}
+                    />
+                  </div>
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="bordered-table">
+                  <div className="fsp-info__tab-panel">
+                    <DetailTile
+                      title="Tenure"
+                      action={editButton('Edit tenure')}
+                      icon={Document}
+                      fields={[
+                        { label: 'Management Unit', value: tenure.managementUnit ?? '—' },
+                        { label: 'Allowable Annual Cut', value: allowableAnnualCut },
+                        { label: 'Issue Date', value: tenure.awardDate ?? '—' },
+                        { label: 'Expiry Date', value: tenure.expiryDate ?? '—' },
+                      ]}
+                    />
+                  </div>
+                </TabPanel>
+
+                <TabPanel>
+                  <div className="fsp-info__tab-panel bordered-table">
                     <TableContainer title="Cutting Permits & Timber Marks">
                       <Table>
                         <TableHead>
@@ -181,7 +232,7 @@ const TenureDetail: FC = () => {
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="bordered-table">
+                  <div className="fsp-info__tab-panel bordered-table">
                     <TableContainer title="Cut Blocks">
                       <Table>
                         <TableHead>
@@ -212,7 +263,7 @@ const TenureDetail: FC = () => {
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="bordered-table">
+                  <div className="fsp-info__tab-panel bordered-table">
                     <TableContainer title="Road Sections">
                       <Table>
                         <TableHead>
@@ -243,7 +294,7 @@ const TenureDetail: FC = () => {
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="bordered-table">
+                  <div className="fsp-info__tab-panel bordered-table">
                     <TableContainer title="Associated Files">
                       <Table>
                         <TableHead>
@@ -272,7 +323,7 @@ const TenureDetail: FC = () => {
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="bordered-table">
+                  <div className="fsp-info__tab-panel bordered-table">
                     <TableContainer title="Associated Clients">
                       <Table>
                         <TableHead>
@@ -299,58 +350,62 @@ const TenureDetail: FC = () => {
                 </TabPanel>
 
                 <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      {
-                        label: 'Allowable Annual Cut',
-                        value:
-                          tenure.allowableAnnualCut != null
-                            ? `${nf.format(tenure.allowableAnnualCut)} m³/yr`
-                            : '—',
-                      },
-                      {
-                        label: 'Schedule A Area',
-                        value:
-                          tenure.scheduleAArea != null
-                            ? `${nf.format(tenure.scheduleAArea)} ha`
-                            : '—',
-                      },
-                      {
-                        label: 'Schedule B Area',
-                        value:
-                          tenure.scheduleBArea != null
-                            ? `${nf.format(tenure.scheduleBArea)} ha`
-                            : '—',
-                      },
-                      { label: 'Management Unit', value: tenure.managementUnit ?? '—' },
-                    ]}
-                  />
+                  <div className="fsp-info__tab-panel">
+                    <DetailTile
+                      title="Allowable annual cut"
+                      action={editButton('Edit AAC')}
+                      icon={ChartColumn}
+                      fields={[
+                        { label: 'Allowable Annual Cut', value: allowableAnnualCut },
+                        {
+                          label: 'Schedule A Area',
+                          value:
+                            tenure.scheduleAArea != null
+                              ? `${nf.format(tenure.scheduleAArea)} ha`
+                              : '—',
+                        },
+                        {
+                          label: 'Schedule B Area',
+                          value:
+                            tenure.scheduleBArea != null
+                              ? `${nf.format(tenure.scheduleBArea)} ha`
+                              : '—',
+                        },
+                        { label: 'Management Unit', value: tenure.managementUnit ?? '—' },
+                      ]}
+                    />
+                  </div>
                 </TabPanel>
 
                 <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      { label: 'Sale Method', value: tenure.saleMethodCode ?? '—' },
-                      { label: 'Sale Type', value: tenure.saleTypeCode ?? '—' },
-                      { label: 'Payment Method', value: tenure.paymentMethodCode ?? '—' },
-                      {
-                        label: 'Bonus Bid',
-                        value:
-                          tenure.ftaBonusBid != null ? `$${nf.format(tenure.ftaBonusBid)}` : '—',
-                      },
-                      {
-                        label: 'Cash Sale Total',
-                        value:
-                          tenure.cashSaleTotDol != null
-                            ? `$${nf.format(tenure.cashSaleTotDol)}`
-                            : '—',
-                      },
-                    ]}
-                  />
+                  <div className="fsp-info__tab-panel">
+                    <DetailTile
+                      title="Sale information"
+                      action={editButton('Edit sale information')}
+                      icon={Currency}
+                      fields={[
+                        { label: 'Sale Method', value: tenure.saleMethodCode ?? '—' },
+                        { label: 'Sale Type', value: tenure.saleTypeCode ?? '—' },
+                        { label: 'Payment Method', value: tenure.paymentMethodCode ?? '—' },
+                        {
+                          label: 'Bonus Bid',
+                          value:
+                            tenure.ftaBonusBid != null ? `$${nf.format(tenure.ftaBonusBid)}` : '—',
+                        },
+                        {
+                          label: 'Cash Sale Total',
+                          value:
+                            tenure.cashSaleTotDol != null
+                              ? `$${nf.format(tenure.cashSaleTotDol)}`
+                              : '—',
+                        },
+                      ]}
+                    />
+                  </div>
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="bordered-table">
+                  <div className="fsp-info__tab-panel bordered-table">
                     <TableContainer title="Forest / Range Notes">
                       <Table>
                         <TableHead>
@@ -375,7 +430,7 @@ const TenureDetail: FC = () => {
                 </TabPanel>
               </TabPanels>
             </Tabs>
-          </>
+          </div>
         )}
       </AsyncBoundary>
     </PageLayout>

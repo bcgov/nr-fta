@@ -2,7 +2,7 @@ package ca.bc.gov.nrs.fta.range.controller;
 
 import ca.bc.gov.nrs.fta.range.dto.RangeTenureSearchDto;
 import ca.bc.gov.nrs.fta.range.service.RangeTenureSearchService;
-import java.util.List;
+import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/fta/range-tenures")
 public class RangeTenureSearchController {
 
+  /** Rows per page when the caller does not say; matches the frontend default. */
+  private static final int DEFAULT_PAGE_SIZE = 10;
+
+  /** Upper bound on page size so a hand-built request cannot ask for the world. */
+  private static final int MAX_PAGE_SIZE = 100;
+
   private final RangeTenureSearchService rangeTenureSearchService;
 
   public RangeTenureSearchController(RangeTenureSearchService rangeTenureSearchService) {
@@ -24,10 +30,10 @@ public class RangeTenureSearchController {
   }
 
   @GetMapping
-  public ResponseEntity<List<RangeTenureSearchDto>> search(
+  public ResponseEntity<PagedResponse<RangeTenureSearchDto>> search(
       @RequestParam(required = false) String forestFileId,
       @RequestParam(required = false) String fileTypeCode,
-      @RequestParam(required = false) String orgUnitCode,
+      @RequestParam(required = false) String orgUnitNo,
       @RequestParam(required = false) String zone,
       @RequestParam(required = false) String clientName,
       @RequestParam(required = false) String clientNumber,
@@ -50,12 +56,16 @@ public class RangeTenureSearchController {
       @RequestParam(required = false) String nonBillableNonUseFrom,
       @RequestParam(required = false) String nonBillableNonUseTo,
       @RequestParam(required = false) String totalAnnualUseFrom,
-      @RequestParam(required = false) String totalAnnualUseTo) {
+      @RequestParam(required = false) String totalAnnualUseTo,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
+    int safePage = Math.max(page, 0);
+    int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
     return ResponseEntity.ok(
         rangeTenureSearchService.search(
             forestFileId,
             fileTypeCode,
-            orgUnitCode,
+            orgUnitNo,
             zone,
             clientName,
             clientNumber,
@@ -78,6 +88,8 @@ public class RangeTenureSearchController {
             nonBillableNonUseFrom,
             nonBillableNonUseTo,
             totalAnnualUseFrom,
-            totalAnnualUseTo));
+            totalAnnualUseTo,
+            safePage,
+            safeSize));
   }
 }

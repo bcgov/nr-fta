@@ -18,11 +18,10 @@ import './LayoutSideNav.css';
  * <p>Two shapes, one source of truth:
  *
  * <ul>
- *   <li><b>Expanded</b> — the legacy FTA menu's five headings, each a
+ *   <li><b>Expanded</b> — the legacy FTA menu's headings, each a
  *       collapsible {@code SideNavMenu} holding its destinations. The section
  *       containing the current route opens on load; the rest stay closed.
- *   <li><b>Collapsed</b> — a 48px icon rail showing one icon per section, five
- *       in all. The icons do not navigate: clicking one expands the nav and
+ *   <li><b>Collapsed</b> — a 48px icon rail showing one icon per section. The icons do not navigate: clicking one expands the nav and
  *       opens that section, so the rail is a way back into the menu rather
  *       than a shortcut past it. Hovering names the section.
  * </ul>
@@ -58,7 +57,7 @@ export const LayoutSideNav: FC = () => {
   }, [isSideNavExpanded]);
 
   /**
-   * A section in the collapsed rail: one icon per heading, five in all.
+   * A section in the collapsed rail: one icon per heading.
    *
    * <p>Rendered as a {@code SideNavLink} with a button element rather than a
    * router link — the rail's job here is to open the nav, not to navigate. The
@@ -116,30 +115,6 @@ export const LayoutSideNav: FC = () => {
   };
 
   const renderSection = (section: MenuSection) => {
-    // A heading kept for parity with legacy that has nothing to point at yet
-    // (Recreation: FTA007 and FTA701 were never built here). Shown so the menu
-    // matches legacy's five, but it opens onto nothing, so it is inert.
-    if (section.placeholder) {
-      return (
-        <SideNavMenu
-          key={section.id}
-          title={section.label}
-          // No renderIcon: headings carry no icon, so the placeholder looks
-          // like its siblings rather than the odd one out.
-          //
-          // No data-testid either: SideNavMenu destructures a fixed prop list
-          // with no rest spread, so arbitrary attributes never reach the DOM.
-          // className is the only hook that lands. (SideNavMenuItem does
-          // spread, so the per-destination testids below work.)
-          className={`side-nav-section side-nav-section--placeholder side-nav-section--${section.id}`}
-        >
-          <SideNavMenuItem as="span" className="side-nav-section__empty">
-            No screens yet
-          </SideNavMenuItem>
-        </SideNavMenu>
-      );
-    }
-
     return (
       <SideNavMenu
         key={section.id}

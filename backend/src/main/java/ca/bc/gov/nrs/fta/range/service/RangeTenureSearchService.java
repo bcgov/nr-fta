@@ -1,6 +1,9 @@
 package ca.bc.gov.nrs.fta.range.service;
 
 import ca.bc.gov.nrs.fta.range.dto.RangeTenureSearchDto;
+import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
+import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
+import java.sql.Types;
 import java.util.List;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -19,10 +22,6 @@ import org.springframework.stereotype.Service;
  *
  * <p>NOTE: some legacy behaviour is simplified for the native port —
  * <ul>
- *   <li>the org-unit filter binds directly on {@code ou.org_unit_code} rather
- *       than resolving region-vs-district via {@code Sil_Get_Org_Level};</li>
- *   <li>{@code RANGE_PROVISION rp} is always LEFT-joined rather than joined only
- *       when a range-provision filter is supplied;</li>
  *   <li>the client-name filter matches on {@code fc.client_name} as a prefix.</li>
  * </ul>
  *
@@ -39,12 +38,17 @@ public class RangeTenureSearchService {
     this.jdbc = jdbc;
   }
 
-  private static final String SEARCH_SQL =
+  // The client name is built from the joined V_CLIENT_PUBLIC row rather than
+  // by calling SIL_GET_CLIENT_NAME per row; see ClientNameSql. Concatenated, not
+  // String.formatted, because the SQL below contains LIKE '%' patterns.
+  private static final String SELECT_COLUMNS =
       """
       SELECT ou.org_unit_code AS org_unit_code,
              fcl.client_number AS client_number,
              fcl.client_locn_code AS client_locn_code,
-             SUBSTR(the.sil_get_client_name(fcl.client_number), 1, 60) AS client_name,
+      """
+          + "       SUBSTR(" + ClientNameSql.displayName("fc") + ", 1, 60) AS client_name,\n"
+          + """
              pfu.forest_file_id AS forest_file_id,
              pfu.file_type_code AS file_type_code,
              fcl.forest_file_client_type_code
@@ -56,6 +60,10 @@ public class RangeTenureSearchService {
              SUBSTR(pfu.file_status_st || ' - ' || sts.description, 1, 30) AS file_status_desc,
              tt.legal_effective_dt AS issue_date,
              NVL(tt.current_expiry_dt, tt.initial_expiry_dt) AS expiry_date
+      """;
+
+  private static final String FROM_WHERE =
+      """
         FROM the.prov_forest_use pfu
         LEFT OUTER JOIN the.tenure_file_status_code sts
                ON pfu.file_status_st = sts.tenure_file_status_code
@@ -73,7 +81,9 @@ public class RangeTenureSearchService {
                ON fc.client_number = fcl.client_number
         LEFT OUTER JOIN the.range_provision rp
                ON rp.forest_file_id = pfu.forest_file_id
-       WHERE (:orgUnitCode IS NULL OR ou.org_unit_code = :orgUnitCode)
+              AND :provisionCriteria = 'Y'
+       WHERE (:regionNo IS NULL OR pfu.forest_region = :regionNo)
+         AND (:districtNo IS NULL OR rt.admin_forest_district_no = :districtNo)
          AND (:forestFileId IS NULL OR pfu.forest_file_id LIKE :forestFileId || '%')
          AND (:mgmtUnitType IS NULL OR pfu.mgmt_unit_type = :mgmtUnitType)
          AND (:mgmtUnitId IS NULL OR pfu.mgmt_unit_id = :mgmtUnitId)
@@ -103,19 +113,26 @@ public class RangeTenureSearchService {
          AND (:nonBillableNonUseTo IS NULL OR rp.non_use_nonbillable <= :nonBillableNonUseTo)
          AND (:totalAnnualUseFrom IS NULL OR rp.total_annual_use >= :totalAnnualUseFrom)
          AND (:totalAnnualUseTo IS NULL OR rp.total_annual_use <= :totalAnnualUseTo)
-       ORDER BY ou.org_unit_code, pfu.forest_file_id
-       FETCH FIRST 200 ROWS ONLY
       """;
+
+  // The legacy sort is org unit then file. A file can carry several client rows
+  // and tenure terms, so the rest of the key breaks those ties — without it
+  // OFFSET/FETCH could repeat or skip rows between pages. Rows still tied after
+  // this show identical values, so their relative order cannot be seen.
+  private static final String ORDER_BY =
+      "\n ORDER BY ou.org_unit_code, pfu.forest_file_id, fcl.client_number,"
+          + " fcl.client_locn_code, fcl.forest_file_client_type_code,"
+          + " tt.legal_effective_dt, NVL(tt.current_expiry_dt, tt.initial_expiry_dt)";
 
   /**
    * Range tenure search — mirrors {@code FTA_001R_TENR_SRCH.mainline}
    * ({@code GET} action). Each filter is applied only when its bind value is
    * non-null.
    */
-  public List<RangeTenureSearchDto> search(
+  public PagedResponse<RangeTenureSearchDto> search(
       String forestFileId,
       String fileTypeCode,
-      String orgUnitCode,
+      String orgUnitNo,
       String zone,
       String clientName,
       String clientNumber,
@@ -138,11 +155,12 @@ public class RangeTenureSearchService {
       String nonBillableNonUseFrom,
       String nonBillableNonUseTo,
       String totalAnnualUseFrom,
-      String totalAnnualUseTo) {
+      String totalAnnualUseTo,
+      int page,
+      int size) {
     MapSqlParameterSource params = new MapSqlParameterSource()
         .addValue("forestFileId", blankToNull(forestFileId))
         .addValue("fileTypeCode", blankToNull(fileTypeCode))
-        .addValue("orgUnitCode", blankToNull(orgUnitCode))
         .addValue("zone", blankToNull(zone))
         .addValue("clientName", blankToNull(clientName))
         .addValue("clientNumber", blankToNull(clientNumber))
@@ -167,20 +185,90 @@ public class RangeTenureSearchService {
         .addValue("totalAnnualUseFrom", blankToNull(totalAnnualUseFrom))
         .addValue("totalAnnualUseTo", blankToNull(totalAnnualUseTo));
 
-    return jdbc.query(SEARCH_SQL, params, (rs, rowNum) -> new RangeTenureSearchDto(
-        rs.getString("org_unit_code"),
-        rs.getString("client_number"),
-        rs.getString("client_locn_code"),
-        rs.getString("client_name"),
-        rs.getString("forest_file_id"),
-        rs.getString("file_type_code"),
-        rs.getString("file_client_type_desc"),
-        rs.getString("mgmt_unit_type"),
-        rs.getString("mgmt_unit_id"),
-        rs.getString("file_status_code"),
-        rs.getString("file_status_desc"),
-        rs.getObject("issue_date", java.time.LocalDate.class),
-        rs.getObject("expiry_date", java.time.LocalDate.class)));
+    addOrgUnitFilter(params, orgUnitNo);
+
+    // Legacy joins RANGE_PROVISION only when one of its criteria is entered.
+    // Joined unconditionally, a tenure would repeat once per provision year.
+    boolean provisionCriteria = java.util.stream.Stream.of(
+            provisionYear, authorizedUseFrom, authorizedUseTo,
+            temporaryIncreaseFrom, temporaryIncreaseTo,
+            billableNonUseFrom, billableNonUseTo,
+            nonBillableNonUseFrom, nonBillableNonUseTo,
+            totalAnnualUseFrom, totalAnnualUseTo)
+        .anyMatch(v -> blankToNull(v) != null);
+    params.addValue("provisionCriteria", provisionCriteria ? "Y" : "N");
+
+    Long total = jdbc.queryForObject("SELECT COUNT(*)\n" + FROM_WHERE, params, Long.class);
+    long totalElements = total == null ? 0L : total;
+
+    MapSqlParameterSource pageParams = new MapSqlParameterSource()
+        .addValues(params.getValues())
+        .addValue("offset", (long) page * size)
+        .addValue("size", size);
+
+    List<RangeTenureSearchDto> rows = jdbc.query(
+        SELECT_COLUMNS + FROM_WHERE + ORDER_BY
+            + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
+        pageParams,
+        (rs, rowNum) -> new RangeTenureSearchDto(
+            rs.getString("org_unit_code"),
+            rs.getString("client_number"),
+            rs.getString("client_locn_code"),
+            rs.getString("client_name"),
+            rs.getString("forest_file_id"),
+            rs.getString("file_type_code"),
+            rs.getString("file_client_type_desc"),
+            rs.getString("mgmt_unit_type"),
+            rs.getString("mgmt_unit_id"),
+            rs.getString("file_status_code"),
+            rs.getString("file_status_desc"),
+            rs.getObject("issue_date", java.time.LocalDate.class),
+            rs.getObject("expiry_date", java.time.LocalDate.class)));
+
+    return PagedResponse.ofPage(rows, page, size, totalElements);
+  }
+
+  /**
+   * The admin org unit filter, following {@code BUILD_WHERE_CLAUSE}: the caller
+   * passes an org unit number, and its level decides what it filters.
+   * <ul>
+   *   <li>a region matches files whose {@code pfu.forest_region} is that region;</li>
+   *   <li>a district matches files whose {@code rt.admin_forest_district_no} is
+   *       that district;</li>
+   *   <li>anything else — another level, an unknown number — adds no filter at
+   *       all, because the legacy level lookup returns null and neither branch
+   *       applies.</li>
+   * </ul>
+   */
+  private void addOrgUnitFilter(MapSqlParameterSource params, String orgUnitNo) {
+    Long regionNo = null;
+    Long districtNo = null;
+    Long unitNo = parseLong(blankToNull(orgUnitNo));
+    if (unitNo != null) {
+      List<String> levels = jdbc.queryForList(
+          "SELECT org_level_code FROM the.org_unit WHERE org_unit_no = :orgUnitNo",
+          new MapSqlParameterSource("orgUnitNo", unitNo),
+          String.class);
+      String level = levels.isEmpty() ? null : levels.get(0);
+      if ("R".equals(level)) {
+        regionNo = unitNo;
+      } else if ("D".equals(level)) {
+        districtNo = unitNo;
+      }
+    }
+    params.addValue("regionNo", regionNo, Types.NUMERIC);
+    params.addValue("districtNo", districtNo, Types.NUMERIC);
+  }
+
+  private static Long parseLong(String s) {
+    if (s == null) {
+      return null;
+    }
+    try {
+      return Long.valueOf(s.trim());
+    } catch (NumberFormatException e) {
+      return null;
+    }
   }
 
   private static String blankToNull(String s) {
