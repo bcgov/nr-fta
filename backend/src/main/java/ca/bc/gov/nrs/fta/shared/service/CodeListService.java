@@ -238,6 +238,71 @@ public class CodeListService {
   }
 
   /**
+   * Districts — ORG_UNIT rows at the district level, for the FTA510 District
+   * dropdown (legacy {@code sil.lookup.districtOrgUnitCode}). The code is the
+   * ORG_UNIT_NO, as {@link #orgUnits()}.
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> districts() {
+    return jdbc.query(
+        """
+        SELECT TO_CHAR(org_unit_no)                   AS code,
+               org_unit_code || ' - ' || org_unit_name AS description
+          FROM the.org_unit
+         WHERE org_level_code = 'D'
+           AND SYSDATE BETWEEN effective_date AND expiry_date
+         ORDER BY org_unit_code
+        """,
+        MAPPER);
+  }
+
+  /** Marking requirements (MARKING_METHOD_CODE), for the FTA510 edit form. */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> markingMethods() {
+    return jdbc.query(codeSql("marking_method_code", "the.marking_method_code"), MAPPER);
+  }
+
+  /** Marking instruments (MARKING_INSTRUMENT_CODE), for the FTA510 edit form. */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> markingInstruments() {
+    return jdbc.query(
+        codeSql("marking_instrument_code", "the.marking_instrument_code"), MAPPER);
+  }
+
+  /** Cascade split codes, for the FTA510 edit form. */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> cascadeSplits() {
+    return jdbc.query(codeSql("cascade_split_code", "the.cascade_split_code"), MAPPER);
+  }
+
+  /**
+   * Private mark types — the FTA510 Mark Type dropdown (legacy
+   * {@code fta.lookup.privateMarkTypeCode}). B15 and B16 are left out: legacy treats them
+   * as view-only and refuses to assign a mark of either.
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> privateMarkTypes() {
+    return jdbc.query(
+        """
+        SELECT private_mark_type_code AS code,
+               private_mark_type_code || ' - ' || description AS description
+          FROM the.private_mark_type_code
+         WHERE SYSDATE BETWEEN effective_date AND expiry_date
+           AND private_mark_type_code NOT IN ('B15', 'B16')
+         ORDER BY private_mark_type_code
+        """,
+        MAPPER);
+  }
+
+  /** Private mark amendment statuses (PRIVATE_MARK_AMEND_STATUS_CODE). */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> privateMarkAmendStatuses() {
+    return jdbc.query(
+        codeSql("private_mark_amend_status_code", "the.private_mark_amend_status_code"),
+        MAPPER);
+  }
+
+  /**
    * Private mark statuses, for the FTA500 application/amendment list.
    *
    * <p>Not {@code MARK_STATUS_CODE} — that one belongs to

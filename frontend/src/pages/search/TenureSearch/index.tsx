@@ -28,6 +28,7 @@ import ClientComboBox from '@/components/ClientComboBox';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
 import ExportCsvButton from '@/components/ExportCsvButton';
 import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
+import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
 import { safeErrorMessage } from '@/lib/errorMessage';
@@ -552,6 +553,9 @@ const TenureSearch: FC = () => {
                           </TableHead>
                           <TableBody>
                             {dtRows.map((row) => {
+                              // The status column shows the description; its
+                              // colour comes from the code on the same row.
+                              const statusCode = rows?.find((r) => r.id === row.id)?.fileStatusCode;
                               // Navigate from the file id cell, not row.id —
                               // that carries the disambiguating index suffix.
                               const forestFileId =
@@ -578,7 +582,14 @@ const TenureSearch: FC = () => {
                                     if (cell.info.header === 'fileStatusDesc') {
                                       return (
                                         <TableCell key={cell.id}>
-                                          {value ? <StatusTag status={value} /> : '—'}
+                                          {value ? (
+                                            <StatusTag
+                                              status={value}
+                                              variant={statusCodeVariant(statusCode)}
+                                            />
+                                          ) : (
+                                            '—'
+                                          )}
                                         </TableCell>
                                       );
                                     }

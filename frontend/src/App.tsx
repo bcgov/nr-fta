@@ -33,7 +33,6 @@ import AddTenure from './pages/tenure/AddTenure';
 import RoadDetail from './pages/tenure/RoadDetail';
 import MarkList from './pages/marks/MarkList';
 import MarkDetail from './pages/marks/MarkDetail';
-import MarkApplication from './pages/marks/MarkApplication';
 import RangeTenureSearch from './pages/search/RangeTenureSearch';
 import RangeUnitSearch from './pages/search/RangeUnitSearch';
 import RangeTenureDetail from './pages/range/RangeTenureDetail';
@@ -148,7 +147,8 @@ export default function App() {
 
           {/* ── Private Marks ──────────────────────────────────────── */}
           <Route path="/marks" element={guarded(withLayout(<MarkList />))} />
-          <Route path="/marks/application" element={guarded(withLayout(<MarkApplication />))} />
+          {/* The list, with the New Mark Application modal open over it. */}
+          <Route path="/marks/application" element={guarded(withLayout(<MarkList />))} />
           <Route path="/marks/:markNumber" element={guarded(withLayout(<MarkDetail />))} />
 
           {/* ── Range ──────────────────────────────────────────────── */}

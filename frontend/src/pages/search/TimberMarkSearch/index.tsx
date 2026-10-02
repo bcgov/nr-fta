@@ -29,6 +29,7 @@ import ClientComboBox from '@/components/ClientComboBox';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
 import ExportCsvButton from '@/components/ExportCsvButton';
 import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
+import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
 import { safeErrorMessage } from '@/lib/errorMessage';
@@ -45,6 +46,7 @@ import {
   type CodeOption,
 } from '@/services/codeLists';
 import type { ManagementUnit } from '@/services/codeLists';
+import { markDetailPath } from '@/services/mark_detail';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 import {
   searchTimbermarks,
@@ -559,11 +561,20 @@ const TimberMarkSearch: FC = () => {
                           </TableHead>
                           <TableBody>
                             {dtRows.map((row) => {
-                              const cp =
-                                (row.cells.find((c) => c.info.header === 'cuttingPermitId')
-                                  ?.value as string | undefined) ?? '';
+                              const valueOf = (key: string) =>
+                                (row.cells.find((c) => c.info.header === key)?.value as
+                                  string | null | undefined) ?? null;
+                              const cp = valueOf('cuttingPermitId');
+                              // A private mark (it has a certificate) opens its timber mark
+                              // detail, as legacy's Certificate link opened FTA510. A Crown
+                              // mark has no detail of its own, so it opens its cutting permit.
+                              const target = valueOf('certificate')
+                                ? markDetailPath(valueOf('timberMark'), valueOf('certificate'))
+                                : cp
+                                  ? `/harvesting-authority/${encodeURIComponent(cp)}`
+                                  : null;
                               const open = () => {
-                                if (cp) navigate(`/harvesting-authority/${encodeURIComponent(cp)}`);
+                                if (target) navigate(target);
                               };
                               return (
                                 <TableRow
@@ -585,7 +596,14 @@ const TimberMarkSearch: FC = () => {
                                     if (cell.info.header === 'markStatusSt') {
                                       return (
                                         <TableCell key={cell.id}>
-                                          {value ? <StatusTag status={value} /> : '—'}
+                                          {value ? (
+                                            <StatusTag
+                                              status={value}
+                                              variant={statusCodeVariant(value)}
+                                            />
+                                          ) : (
+                                            '—'
+                                          )}
                                         </TableCell>
                                       );
                                     }

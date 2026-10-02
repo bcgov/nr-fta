@@ -37,6 +37,13 @@
       text-decoration: underline;
     }
   }
+
+  // Shown in place of the link while a page is mid-edit, so leaving cannot
+  // drop unsaved changes.
+  &--disabled {
+    color: var(--cds-text-disabled);
+    cursor: not-allowed;
+  }
 }
 
 // Subtle outer border + rounded corners wrapper for Carbon DataTables. Pair

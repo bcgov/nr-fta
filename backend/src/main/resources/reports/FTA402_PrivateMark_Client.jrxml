@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FTA402 secondary licensees (FTAR402P_Client), ported like FTA402_PrivateMark.jrxml. -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="FTA402_PrivateMark_Sub1_Client" pageWidth="251" pageHeight="802" columnWidth="251" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="fb32fe0e-225a-4695-a817-311755a26638">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="p_certificate" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_timber_mark" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<field name="TIMBER_MARK" class="java.lang.String"/>
+	<field name="SECONDARY_LICENSEE" class="java.lang.String"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="16" splitType="Stretch">
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="ff540df2-ebde-4881-8bbf-9ead7ca7cd06" x="0" y="0" width="251" height="16">
+					<property name="net.sf.jasperreports.text.truncate.at.char" value="true"/>
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement>
+					<font fontName="Times New Roman" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{SECONDARY_LICENSEE} != null ? $F{SECONDARY_LICENSEE}.toUpperCase() : $F{SECONDARY_LICENSEE}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

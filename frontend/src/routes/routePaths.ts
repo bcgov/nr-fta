@@ -38,7 +38,7 @@ import type { ComponentType } from 'react';
 //   - Legacy's menu is not role-gated at all: every user sees all thirty items
 //     and the server refuses the click. Here an entry is shown only when the
 //     user's role may open its page (routes/access.ts): the admin screens are
-//     hidden from viewers, and a Timber Mark Administrator sees only Tenure
+//     hidden from viewers, and a Timber Mark Headquarters Administrator sees only Tenure
 //     Search, Timber Mark Search and Private Marks.
 //   - Legacy's `Links` submenu (seven external systems) is omitted: its URLs
 //     come from servlet init-params per environment and have no home in this
@@ -141,10 +141,12 @@ const NAV: MenuSection[] = [
     label: 'Private Marks',
     icon: Tag,
     items: [
-      { id: 'marks-list', label: 'Application/Amendment List', path: '/marks', icon: Tag },
+      // Legacy labels these "Application/Amendment List" and "Mark Application";
+      // shortened here, as the section heading already says Private Marks.
+      { id: 'marks-list', label: 'Application List', path: '/marks', icon: Tag },
       {
         id: 'marks-application',
-        label: 'Mark Application',
+        label: 'New Application',
         path: '/marks/application',
         icon: DocumentAdd,
       },

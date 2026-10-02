@@ -54,6 +54,24 @@ const list = (name: string) => cached(`/api/fta/code-lists/${name}`);
  */
 export const getOrgUnits = () => list('org-units');
 
+/** District-level org units (code = ORG_UNIT_NO), for the FTA510 District dropdown. */
+export const getDistricts = () => list('districts');
+
+/** Marking requirements (MARKING_METHOD_CODE), for the FTA510 edit form. */
+export const getMarkingMethods = () => list('marking-methods');
+
+/** Marking instruments (MARKING_INSTRUMENT_CODE), for the FTA510 edit form. */
+export const getMarkingInstruments = () => list('marking-instruments');
+
+/** Cascade split codes, for the FTA510 edit form. */
+export const getCascadeSplits = () => list('cascade-splits');
+
+/** Private mark types (B08, B09, B14…), for the FTA510 Mark Type dropdown. */
+export const getPrivateMarkTypes = () => list('private-mark-types');
+
+/** Private mark amendment statuses (PRIVATE_MARK_AMEND_STATUS_CODE). */
+export const getPrivateMarkAmendStatuses = () => list('private-mark-amend-statuses');
+
 export const getFileTypes = () => list('file-types');
 
 /**

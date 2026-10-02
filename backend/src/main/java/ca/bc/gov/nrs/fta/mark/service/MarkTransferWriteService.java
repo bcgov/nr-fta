@@ -1,10 +1,15 @@
 package ca.bc.gov.nrs.fta.mark.service;
 
 import ca.bc.gov.nrs.fta.mark.dto.MarkTransferRequest;
+import java.sql.Types;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Write operations for the timber-mark transfer screen (FTA240).
@@ -122,13 +127,16 @@ public class MarkTransferWriteService {
    */
   @Transactional
   public String transfer(MarkTransferRequest request, String userId) {
+    String effectiveDate = effectiveDate(request.transferEffDate());
     MapSqlParameterSource params = new MapSqlParameterSource()
         .addValue("sourceForestFileId", request.sourceForestFileId())
         .addValue("sourceCuttingPermitId", request.sourceCuttingPermitId())
         .addValue("timberMark", request.timberMark())
         .addValue("targetForestFileId", request.targetForestFileId())
         .addValue("targetCuttingPermitId", request.targetCuttingPermitId())
-        .addValue("transferEffDate", request.transferEffDate())
+        // Text by design: the insert appends the current time and converts the whole
+        // string (TO_DATE), as the legacy package did. Bound as VARCHAR explicitly.
+        .addValue("transferEffDate", effectiveDate, Types.VARCHAR)
         .addValue("userId", userId);
 
     jdbc.update(UPDATE_HAULING_AUTHORITY_SQL, params);
@@ -141,5 +149,25 @@ public class MarkTransferWriteService {
     jdbc.update(INSERT_MARK_TRANSFER_SQL, params);
 
     return request.timberMark();
+  }
+
+  /**
+   * The effective date, checked before any update runs. Unchecked, a missing date made
+   * {@code TO_DATE} parse the time alone and a malformed one failed in Oracle — either way
+   * only at the final insert, after the re-pointing updates had run.
+   *
+   * @throws ResponseStatusException 400 if it is missing or not a {@code YYYY-MM-DD} date
+   */
+  private static String effectiveDate(String value) {
+    if (value == null || value.isBlank()) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "The transfer effective date is required.");
+    }
+    try {
+      return LocalDate.parse(value.trim()).toString();
+    } catch (DateTimeParseException e) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "The transfer effective date must be a date (YYYY-MM-DD).");
+    }
   }
 }

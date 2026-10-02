@@ -58,7 +58,8 @@ Grouped by domain slice; see each `*/controller/` package for full
 request/response shapes. All `/api/fta/**` routes are bearer-token-protected and
 require `FTA_ADMIN` or `FTA_VIEWER`; writes are `FTA_ADMIN` only, and
 `/api/fta/admin/**` is `FTA_ADMIN` for *every* method including GET.
-`FTA_TIMBER_MARK_ADMIN` gets an allow-list instead: GET on tenure and timber
+`FTA_TIMBER_MARK_HEADQUARTERS_ADMIN` and `FTA_TIMBER_MARK_DISTRICT_ADMIN` get an allow-list instead
+(the same one; a district user's certificate print also moves the mark from HN to HI): GET on tenure and timber
 mark search, the tenure / cutting-permit / private-mark details, the code lists
 and the client type-ahead, plus `POST /api/fta/marks`. The authoritative matrix
 is `security/ApiAuthorizationCustomizer`.

@@ -17,25 +17,36 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react';
-import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState, type FC, type FormEvent } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
+import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
+import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
+import { canEditMarks } from '@/routes/access';
 import { getOrgUnits, getPrivateMarkStatuses, type CodeOption } from '@/services/codeLists';
 import { markDetailPath } from '@/services/mark_detail';
-import { listMarks, type MarkListParams, type MarkListRow } from '@/services/mark_list';
+import {
+  listMarks,
+  markListExportPath,
+  type MarkListParams,
+  type MarkListRow,
+} from '@/services/mark_list';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 import { formatDate } from '@/utils/formatDate';
+
+import NewMarkApplicationModal from '../NewMarkApplicationModal';
 
 // Column order follows the legacy FTA500 grid.
 const HEADERS = [
   { key: 'certificate', header: 'Certificate' },
   { key: 'timberMark', header: 'Timber mark' },
-  { key: 'markApplDate', header: 'Applied' },
+  { key: 'markApplDate', header: 'Application date' },
   { key: 'orgUnitCode', header: 'District' },
   { key: 'markStatusSt', header: 'Status' },
   { key: 'clientName', header: 'Client' },
@@ -65,10 +76,28 @@ const EMPTY_FORM: MarkListParams = {};
  */
 const MarkList: FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { display } = useNotification();
+  const { user } = useAuth();
+  const mayCreate = canEditMarks(user);
+
+  // The New Mark Application modal opens over this list — from its button, or
+  // from the menu's "New Application" (/marks/application), which renders this
+  // page with the modal open.
+  const onNewRoute = location.pathname === '/marks/application';
+  const [newOpen, setNewOpen] = useState(false);
+  const modalOpen = mayCreate && (newOpen || onNewRoute);
+  const closeNew = () => {
+    setNewOpen(false);
+    if (onNewRoute) navigate('/marks', { replace: true });
+  };
 
   const [form, setForm] = useState<MarkListParams>(EMPTY_FORM);
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<MarkListParams | null>(null);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -113,6 +142,7 @@ const MarkList: FC = () => {
       setError(null);
       try {
         const data = await listMarks({ ...form, page: nextPage, size: nextSize });
+        setSearched({ ...form });
         setRows(
           data.content.map((r, i) => ({
             ...r,
@@ -133,6 +163,16 @@ const MarkList: FC = () => {
     [form],
   );
 
+  // Open on the unfiltered list rather than an empty page. Once only: runSearch
+  // changes identity as the form is edited, and the ref also absorbs
+  // StrictMode's double effect run in development.
+  const autoSearched = useRef(false);
+  useEffect(() => {
+    if (autoSearched.current) return;
+    autoSearched.current = true;
+    void runSearch(0, pageSize);
+  }, [runSearch, pageSize]);
+
   const onSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -151,6 +191,7 @@ const MarkList: FC = () => {
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
     setRows(null);
+    setSearched(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
@@ -170,19 +211,22 @@ const MarkList: FC = () => {
 
   return (
     <PageLayout
-      title="Private Marks"
+      title="Private Mark Applications"
       subtitle="Search private timber mark applications and amendments, or start a new one"
       actions={
-        <Button
-          size="md"
-          kind="tertiary"
-          renderIcon={DocumentAdd}
-          onClick={() => navigate('/marks/application')}
-        >
-          New Mark Application
-        </Button>
+        mayCreate ? (
+          <Button
+            size="md"
+            kind="tertiary"
+            renderIcon={DocumentAdd}
+            onClick={() => setNewOpen(true)}
+          >
+            New Mark Application
+          </Button>
+        ) : undefined
       }
     >
+      <NewMarkApplicationModal open={modalOpen} onClose={closeNew} />
       <Tile className="fsp-search__tile">
         <form className="fsp-search__form" onSubmit={onSubmit}>
           <div className="fsp-search__field-grid">
@@ -274,6 +318,7 @@ const MarkList: FC = () => {
                   <span className="fsp-search__results-count">
                     {totalElements.toLocaleString()} {totalElements === 1 ? 'mark' : 'marks'} found
                   </span>
+                  {searched && <ExportCsvButton path={markListExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">
@@ -322,7 +367,10 @@ const MarkList: FC = () => {
                                       return (
                                         <TableCell key={cell.id}>
                                           {value ? (
-                                            <StatusTag status={statusNames.get(value) || value} />
+                                            <StatusTag
+                                              status={statusNames.get(value) || value}
+                                              variant={statusCodeVariant(value)}
+                                            />
                                           ) : (
                                             '—'
                                           )}

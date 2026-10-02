@@ -43,6 +43,11 @@ interface ClientComboBoxProps {
   onChange: (next: { clientNumber: string; clientLocnCode: string; clientName: string }) => void;
   /** Overrides the default hint where a screen needs to say something else. */
   helperText?: string;
+  /** Overrides the "Client" label — a form may name the field for its role. */
+  titleText?: string;
+  invalid?: boolean;
+  invalidText?: string;
+  disabled?: boolean;
 }
 
 /**
@@ -70,6 +75,10 @@ const ClientComboBox: FC<ClientComboBoxProps> = ({
   clientName,
   onChange,
   helperText = 'Pick a client, or type a name to search every client starting with it',
+  titleText = 'Client',
+  invalid,
+  invalidText,
+  disabled,
 }) => {
   const [options, setOptions] = useState<ClientOption[]>([]);
   const [typed, setTyped] = useState('');
@@ -131,9 +140,12 @@ const ClientComboBox: FC<ClientComboBoxProps> = ({
     <ComboBox
       key={clearedFromOutside ? 'cleared' : 'live'}
       id={id}
-      titleText="Client"
+      titleText={titleText}
       placeholder="Client number or name"
       helperText={helperText}
+      invalid={invalid}
+      invalidText={invalidText}
+      disabled={disabled}
       items={options}
       itemToString={(item) => item?.label ?? ''}
       selectedItem={selectedItem}

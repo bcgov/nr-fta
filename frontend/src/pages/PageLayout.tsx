@@ -5,11 +5,13 @@ import PageTitle from '@/components/PageTitle';
 import './PageLayout.css';
 
 interface PageLayoutProps {
-  title: string;
+  title: ReactNode;
   /** Supporting line under the title, where the screen needs one. */
   subtitle?: string;
   /** Screen-level buttons, laid out level with the title. */
   actions?: ReactNode;
+  /** A "Back to …" link, shown above the title — where a detail screen says where it came from. */
+  backLink?: ReactNode;
   children: ReactNode;
 }
 
@@ -23,9 +25,16 @@ interface PageLayoutProps {
  * with the sibling apps. Sections inside `children` are expected to be
  * `<SectionTile>`s; the body spaces them so a page doesn't have to.
  */
-export default function PageLayout({ title, subtitle, actions, children }: PageLayoutProps) {
+export default function PageLayout({
+  title,
+  subtitle,
+  actions,
+  backLink,
+  children,
+}: PageLayoutProps) {
   return (
     <main className="page-layout" id="main-content">
+      {backLink && <div className="page-layout__back">{backLink}</div>}
       <PageTitle title={title} subtitle={subtitle} actions={actions} />
       <div className="page-layout__body">{children}</div>
     </main>
