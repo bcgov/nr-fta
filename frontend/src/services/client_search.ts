@@ -37,3 +37,21 @@ export function searchClients(
 ): Promise<PageableResponse<ClientSearchResult>> {
   return apiGet<PageableResponse<ClientSearchResult>>(`/api/fta/clients${toQuery({ ...params })}`);
 }
+
+/**
+ * GET /api/fta/clients/export — every matching client as a CSV download.
+ *
+ * Paging is dropped: the export covers the whole result set, not a page of it.
+ */
+export function clientSearchExportPath(params: ClientSearchParams): string {
+  return `/api/fta/clients/export${toQuery({ ...params, page: undefined, size: undefined })}`;
+}
+
+/**
+ * GET /api/fta/clients/suggest — type-ahead for the search screens' single
+ * client field. Matches the typed text as a client number or name prefix and
+ * returns a short list; not cached, since it changes with every keystroke.
+ */
+export function suggestClients(query: string): Promise<ClientSearchResult[]> {
+  return apiGet<ClientSearchResult[]>(`/api/fta/clients/suggest${toQuery({ q: query })}`);
+}

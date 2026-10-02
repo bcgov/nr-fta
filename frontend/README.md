@@ -71,19 +71,26 @@ Leaflet.
 
 ## Routing & access
 
-Two roles, and a user resolves to exactly one of them — no stacking:
+Three roles, and a user resolves to exactly one of them — no stacking. When
+several are granted, the highest in this table wins:
 
 | Role | Menus | Capability |
 |---|---|---|
 | `FTA_ADMIN` | all, including Admin | full CRUD |
+| `FTA_TIMBER_MARK_ADMIN` | Tenure Search, Timber Mark Search, Private Marks (plus the tenure, cutting-permit and mark details they open) | private-mark writes; read-only elsewhere |
 | `FTA_VIEWER` | all except Admin | read-only |
 
-- `routes/routePaths.ts` is the **nav model** — entries carry an optional
-  `roles` gate (only the Admin branch has one, `['FTA_ADMIN']`); an entry
-  without one is shown to every authenticated user.
-- `routes/access.ts` holds the **capability predicates** — `effectiveRole`,
-  `isAdministrator`, `canEdit`, `isPathAllowedForUser`, `defaultRouteForUser`.
-  Screens gate their edit affordances on `canEdit`.
+- `routes/access.ts` is the **source of truth for page access** —
+  `isPathAllowedForRole` / `isPathAllowedForUser` drive both the route guard
+  and the nav. `FTA_TIMBER_MARK_ADMIN` is an allow-list of page patterns, so a
+  new screen is hidden from it until listed there.
+- `routes/routePaths.ts` is the **nav model**. An entry is shown only when the
+  role may open its page; entries may also carry an extra `roles` gate (only
+  the Admin branch does, `['FTA_ADMIN']`).
+- `routes/access.ts` also holds the **capability predicates** — `effectiveRole`,
+  `isAdministrator`, `canEdit`, `canEditMarks`, `defaultRouteForUser`. Screens
+  gate their edit affordances on `canEdit`; the private-mark screens use
+  `canEditMarks`, which also admits `FTA_TIMBER_MARK_ADMIN`.
 
 Whatever the UI hides, the backend independently enforces via URL-level
 authority checks — see

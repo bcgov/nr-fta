@@ -13,6 +13,10 @@ import {
   UserFollow,
 } from '@carbon/icons-react';
 
+import type { ROLE_TYPE } from '@/context/auth/types';
+
+import { isPathAllowedForRole } from './access';
+
 import type { ComponentType } from 'react';
 
 // The SideNav is two levels: a small set of section headings, each holding a
@@ -32,8 +36,10 @@ import type { ComponentType } from 'react';
 //   - Legacy nests up to four levels under Admin; Carbon's SideNav supports
 //     two, so Admin is flattened to a single list.
 //   - Legacy's menu is not role-gated at all: every user sees all thirty items
-//     and the server refuses the click. Here the admin screens are hidden from
-//     viewers instead.
+//     and the server refuses the click. Here an entry is shown only when the
+//     user's role may open its page (routes/access.ts): the admin screens are
+//     hidden from viewers, and a Timber Mark Administrator sees only Tenure
+//     Search, Timber Mark Search and Private Marks.
 //   - Legacy's `Links` submenu (seven external systems) is omitted: its URLs
 //     come from servlet init-params per environment and have no home in this
 //     app's configuration yet.
@@ -146,7 +152,7 @@ const NAV: MenuSection[] = [
   },
   {
     id: 'admin',
-    label: 'Admin',
+    label: 'Administration',
     icon: Settings,
     roles: ADMIN_ONLY,
     items: [
@@ -167,7 +173,7 @@ const NAV: MenuSection[] = [
       { id: 'admin-range-zone', label: 'Manage Zone', path: '/admin/range-zone', icon: Map },
       {
         id: 'admin-org-unit',
-        label: 'Org Unit Maintenance',
+        label: 'Organization Unit Maintenance',
         path: '/admin/org-unit',
         icon: Settings,
       },
@@ -224,16 +230,21 @@ const isVisible = (userRoles: string[], required?: string[]) =>
 /**
  * The nav sections visible to the user's effective role.
  *
- * <p>A section may carry a `roles` allow-list, and so may an individual entry;
- * a section whose every entry is filtered out is dropped.
+ * <p>An entry is shown only when the role may open its page — the same rule
+ * the route guard applies, so the menu never offers a page that answers
+ * Forbidden. A section or entry may also carry its own `roles` allow-list; a
+ * section whose every entry is filtered out is dropped.
  *
- * @param userRoles  the user's canonical FTA role(s).
+ * @param userRoles  the user's canonical FTA role(s); the first is effective.
  */
 export function getMenuSections(userRoles: string[]): MenuSection[] {
+  const role = userRoles[0] as ROLE_TYPE | undefined;
   return NAV.filter((section) => isVisible(userRoles, section.roles))
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => isVisible(userRoles, item.roles)),
+      items: section.items.filter(
+        (item) => isVisible(userRoles, item.roles) && isPathAllowedForRole(role, item.path),
+      ),
     }))
     .filter((section) => section.items.length > 0);
 }

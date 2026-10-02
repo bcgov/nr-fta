@@ -1,9 +1,13 @@
 package ca.bc.gov.nrs.fta.tenure.service;
 
+import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
+import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import ca.bc.gov.nrs.fta.tenure.dto.CutblockSearchDto;
+import java.time.LocalDate;
 import java.util.List;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -29,8 +33,12 @@ public class CutblockSearchService {
 
   private final NamedParameterJdbcTemplate jdbc;
 
-  public CutblockSearchService(NamedParameterJdbcTemplate jdbc) {
+  private final CsvStreamingJdbc streamingJdbc;
+
+  public CutblockSearchService(
+      NamedParameterJdbcTemplate jdbc, CsvStreamingJdbc streamingJdbc) {
     this.jdbc = jdbc;
+    this.streamingJdbc = streamingJdbc;
   }
 
   /** Sort on the administrative district — the legacy default. */
@@ -169,6 +177,26 @@ public class CutblockSearchService {
     return "\n ORDER BY org_unit_code, forest_file_id, cutting_permit_id, cut_block_id";
   }
 
+  /**
+   * The query behind the results table, everything but the paging: the formatted
+   * columns over the distinct rows, sorted.
+   *
+   * <p>The {@code ORDER BY} references the select aliases, so it is applied
+   * outside the DISTINCT rather than inside it — hence the outer
+   * {@code SELECT *}.
+   *
+   * <p>Shared by {@link #search}, which appends {@code OFFSET}/{@code FETCH}, and
+   * {@link #exportCsv}, which appends nothing. The two must not diverge: the
+   * formatted client columns are built here, so an export running any other
+   * shape would show different client values than the table.
+   */
+  private static String pageQuery(String sortBy) {
+    return "SELECT * FROM (" + PAGE_COLUMNS
+        + "  FROM (" + SELECT_COLUMNS + FROM_WHERE + ") b\n"
+        + "  LEFT JOIN the.forest_client lic_fc ON lic_fc.client_number = b.lic_client_number)"
+        + orderBy(sortBy);
+  }
+
   private static final RowMapper<CutblockSearchDto> ROW_MAPPER =
       (rs, rowNum) -> new CutblockSearchDto(
           rs.getObject("cb_skey", Long.class),
@@ -180,8 +208,8 @@ public class CutblockSearchService {
           rs.getString("timber_mark"),
           rs.getString("cut_block_id"),
           rs.getString("block_status_st"),
-          rs.getObject("disturbance_start_date", java.time.LocalDate.class),
-          rs.getObject("disturbance_end_date", java.time.LocalDate.class));
+          rs.getObject("disturbance_start_date", LocalDate.class),
+          rs.getObject("disturbance_end_date", LocalDate.class));
 
   /**
    * Cut-block search — mirrors {@code FTA_003_CUTBLK_SRCH.get}.
@@ -222,7 +250,112 @@ public class CutblockSearchService {
       String sortBy,
       int page,
       int size) {
-    MapSqlParameterSource params = new MapSqlParameterSource()
+    MapSqlParameterSource params = criteria(
+        forestFileId, cuttingPermitId, timberMark, cutBlockId, blockStatusSt, orgUnitNo,
+        clientNumber, clientLocnCode, clientName, managedByFile, managedByCp,
+        harvestStartDateFrom, harvestStartDateTo, districtAdminZone);
+
+    // COUNT over the distinct rows, not the join's raw cardinality: the page
+    // query is SELECT DISTINCT, so counting the join directly would overstate
+    // the total wherever a block joins more than one row.
+    Long total = jdbc.queryForObject(
+        "SELECT COUNT(*) FROM (" + SELECT_COLUMNS + FROM_WHERE + ")", params, Long.class);
+    long totalElements = total == null ? 0L : total;
+
+    MapSqlParameterSource pageParams = new MapSqlParameterSource()
+        .addValues(params.getValues())
+        .addValue("offset", (long) page * size)
+        .addValue("size", size);
+
+    List<CutblockSearchDto> rows = jdbc.query(
+        pageQuery(sortBy) + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
+        pageParams,
+        ROW_MAPPER);
+
+    return PagedResponse.ofPage(rows, page, size, totalElements);
+  }
+
+  /**
+   * Streams every matching cut block to a CSV — the same criteria and order as
+   * {@link #search}, with no paging.
+   *
+   * <p>Runs {@link #pageQuery}, not the count's shape: the two client columns are
+   * formatted by the page query's outer select, so only that shape yields the
+   * values the table shows.
+   *
+   * <p>Columns track the Cut Block Search page's {@code HEADERS}; keep the two in
+   * step. The dates are read as {@link LocalDate} so the writer renders them ISO
+   * — the screen's "Apr 10, 2021" is for reading, whereas a spreadsheet can sort
+   * and filter ISO.
+   */
+  public void exportCsv(
+      String forestFileId,
+      String cuttingPermitId,
+      String timberMark,
+      String cutBlockId,
+      String blockStatusSt,
+      String orgUnitNo,
+      String clientNumber,
+      String clientLocnCode,
+      String clientName,
+      String managedByFile,
+      String managedByCp,
+      String harvestStartDateFrom,
+      String harvestStartDateTo,
+      String districtAdminZone,
+      String sortBy,
+      CsvWriter csv) {
+
+    csv.writeRow(
+        "District",
+        "Client name",
+        "Client number",
+        "File ID",
+        "Cutting permit",
+        "Timber mark",
+        "Cut block",
+        "Block status",
+        "Start date",
+        "End date");
+
+    streamingJdbc.jdbc().query(
+        pageQuery(sortBy),
+        criteria(
+            forestFileId, cuttingPermitId, timberMark, cutBlockId, blockStatusSt, orgUnitNo,
+            clientNumber, clientLocnCode, clientName, managedByFile, managedByCp,
+            harvestStartDateFrom, harvestStartDateTo, districtAdminZone),
+        // Cast required: a void lambda body matches both the RowCallbackHandler
+        // and ResultSetExtractor overloads, so the compiler cannot choose.
+        (RowCallbackHandler) rs -> csv.writeRow(
+            rs.getString("org_unit_code"),
+            rs.getString("client_name"),
+            rs.getString("client_number"),
+            rs.getString("forest_file_id"),
+            rs.getString("cutting_permit_id"),
+            rs.getString("timber_mark"),
+            rs.getString("cut_block_id"),
+            rs.getString("block_status_st"),
+            rs.getObject("disturbance_start_date", LocalDate.class),
+            rs.getObject("disturbance_end_date", LocalDate.class)));
+  }
+
+  /** The bind values, shared by the count, the page and the export. */
+  private static MapSqlParameterSource criteria(
+      String forestFileId,
+      String cuttingPermitId,
+      String timberMark,
+      String cutBlockId,
+      String blockStatusSt,
+      String orgUnitNo,
+      String clientNumber,
+      String clientLocnCode,
+      String clientName,
+      String managedByFile,
+      String managedByCp,
+      String harvestStartDateFrom,
+      String harvestStartDateTo,
+      String districtAdminZone) {
+    return new MapSqlParameterSource()
         .addValue("forestFileId", blankToNull(forestFileId))
         .addValue("cuttingPermitId", blankToNull(cuttingPermitId))
         .addValue("timberMark", blankToNull(timberMark))
@@ -237,31 +370,6 @@ public class CutblockSearchService {
         .addValue("harvestStartDateFrom", blankToNull(harvestStartDateFrom))
         .addValue("harvestStartDateTo", blankToNull(harvestStartDateTo))
         .addValue("districtAdminZone", blankToNull(districtAdminZone));
-
-    // COUNT over the distinct rows, not the join's raw cardinality: the page
-    // query is SELECT DISTINCT, so counting the join directly would overstate
-    // the total wherever a block joins more than one row.
-    Long total = jdbc.queryForObject(
-        "SELECT COUNT(*) FROM (" + SELECT_COLUMNS + FROM_WHERE + ")", params, Long.class);
-    long totalElements = total == null ? 0L : total;
-
-    MapSqlParameterSource pageParams = new MapSqlParameterSource()
-        .addValues(params.getValues())
-        .addValue("offset", (long) page * size)
-        .addValue("size", size);
-
-    // The ORDER BY references the select aliases, so it is applied outside the
-    // DISTINCT rather than inside it.
-    List<CutblockSearchDto> rows = jdbc.query(
-        "SELECT * FROM (" + PAGE_COLUMNS
-            + "  FROM (" + SELECT_COLUMNS + FROM_WHERE + ") b\n"
-            + "  LEFT JOIN the.forest_client lic_fc ON lic_fc.client_number = b.lic_client_number)"
-            + orderBy(sortBy)
-            + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
-        pageParams,
-        ROW_MAPPER);
-
-    return PagedResponse.ofPage(rows, page, size, totalElements);
   }
 
   private static String blankToNull(String s) {

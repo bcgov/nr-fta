@@ -121,3 +121,9 @@
     word-break: break-word;
   }
 }
+
+// The lone row of a tab's table when it has nothing to list.
+.fsp-info__empty-cell {
+  color: var(--cds-text-secondary);
+  text-align: center;
+}

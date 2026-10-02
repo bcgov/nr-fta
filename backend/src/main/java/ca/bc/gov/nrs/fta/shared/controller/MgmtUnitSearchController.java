@@ -1,5 +1,6 @@
 package ca.bc.gov.nrs.fta.shared.controller;
 
+import ca.bc.gov.nrs.fta.shared.csv.CsvExport;
 import ca.bc.gov.nrs.fta.shared.dto.MgmtUnitSearchDto;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.service.MgmtUnitSearchService;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /**
  * Management-unit-type search API — {@code GET /api/fta/management-units}.
@@ -41,5 +43,18 @@ public class MgmtUnitSearchController {
     int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
     return ResponseEntity.ok(
         mgmtUnitSearchService.search(mgmtUnitTypeCode, description, safePage, safeSize));
+  }
+
+  /**
+   * Every matching management-unit type as a CSV download — the same criteria as
+   * the search, with no paging, streamed as the rows arrive.
+   */
+  @GetMapping("/export")
+  public ResponseEntity<StreamingResponseBody> exportCsv(
+      @RequestParam(required = false) String mgmtUnitTypeCode,
+      @RequestParam(required = false) String description) {
+    return CsvExport.response(
+        "management-units",
+        csv -> mgmtUnitSearchService.exportCsv(mgmtUnitTypeCode, description, csv));
   }
 }

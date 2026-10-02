@@ -1,5 +1,6 @@
 package ca.bc.gov.nrs.fta.tenure.controller;
 
+import ca.bc.gov.nrs.fta.shared.csv.CsvExport;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.tenure.dto.CutblockSearchDto;
 import ca.bc.gov.nrs.fta.tenure.service.CutblockSearchService;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /**
  * Cut-block search API — {@code GET /api/fta/cut-blocks}. Parameters mirror the
@@ -55,5 +57,34 @@ public class CutblockSearchController {
         clientNumber, clientLocnCode, clientName, managedByFile, managedByCp,
         harvestStartDateFrom, harvestStartDateTo, districtAdminZone,
         sortBy, safePage, safeSize));
+  }
+
+  /**
+   * Every matching cut block as a CSV download — the same criteria and sort as
+   * the search, with no paging, streamed as the rows arrive.
+   */
+  @GetMapping("/export")
+  public ResponseEntity<StreamingResponseBody> exportCsv(
+      @RequestParam(required = false) String forestFileId,
+      @RequestParam(required = false) String cuttingPermitId,
+      @RequestParam(required = false) String timberMark,
+      @RequestParam(required = false) String cutBlockId,
+      @RequestParam(required = false) String blockStatusSt,
+      @RequestParam(required = false) String orgUnitNo,
+      @RequestParam(required = false) String clientNumber,
+      @RequestParam(required = false) String clientLocnCode,
+      @RequestParam(required = false) String clientName,
+      @RequestParam(required = false) String managedByFile,
+      @RequestParam(required = false) String managedByCp,
+      @RequestParam(required = false) String harvestStartDateFrom,
+      @RequestParam(required = false) String harvestStartDateTo,
+      @RequestParam(required = false) String districtAdminZone,
+      @RequestParam(required = false) String sortBy) {
+    return CsvExport.response(
+        "cut-blocks",
+        csv -> cutblockSearchService.exportCsv(
+            forestFileId, cuttingPermitId, timberMark, cutBlockId, blockStatusSt, orgUnitNo,
+            clientNumber, clientLocnCode, clientName, managedByFile, managedByCp,
+            harvestStartDateFrom, harvestStartDateTo, districtAdminZone, sortBy, csv));
   }
 }

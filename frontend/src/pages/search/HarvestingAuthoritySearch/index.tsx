@@ -25,12 +25,16 @@ import {
 import { useCallback, useEffect, useMemo, useState, type FC, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import ClientComboBox from '@/components/ClientComboBox';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
+import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { useNotification } from '@/context/notification/useNotification';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
   getFileTypes,
+  getManagementUnits,
   getHarvestAuthClientTypes,
   getHarvestAuthStatuses,
   getLicenceToCutCodes,
@@ -38,7 +42,9 @@ import {
   getSalvageTypes,
   type CodeOption,
 } from '@/services/codeLists';
+import type { ManagementUnit } from '@/services/codeLists';
 import {
+  harvestingSearchExportPath,
   searchHarvestingAuthorities,
   showOilAndGasColumns,
   SORT_CLIENT,
@@ -56,7 +62,7 @@ const BASE_HEADERS = [
   { key: 'clientNumber', header: 'Client number' },
   { key: 'fileTypeCode', header: 'File type' },
   { key: 'forestFileId', header: 'File ID' },
-  { key: 'cuttingPermitId', header: 'CP' },
+  { key: 'cuttingPermitId', header: 'Cutting permit' },
   { key: 'timberMark', header: 'Timber mark' },
 ];
 
@@ -116,6 +122,10 @@ const HarvestingAuthoritySearch: FC = () => {
 
   const [form, setForm] = useState<HarvestingSearchParams>(EMPTY_FORM);
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<HarvestingSearchParams | null>(null);
   const [showOg, setShowOg] = useState(false);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
@@ -129,6 +139,7 @@ const HarvestingAuthoritySearch: FC = () => {
   const [clientTypes, setClientTypes] = useState<CodeOption[]>([]);
   const [salvageTypes, setSalvageTypes] = useState<CodeOption[]>([]);
   const [purposes, setPurposes] = useState<CodeOption[]>([]);
+  const [mgmtUnits, setMgmtUnits] = useState<ManagementUnit[]>([]);
   const [codeListsLoading, setCodeListsLoading] = useState(true);
 
   useEffect(() => {
@@ -140,6 +151,7 @@ const HarvestingAuthoritySearch: FC = () => {
       getHarvestAuthClientTypes(),
       getSalvageTypes(),
       getLicenceToCutCodes(),
+      getManagementUnits(),
     ]).then((settled) => {
       if (cancelled) return;
       const setters = [
@@ -149,18 +161,22 @@ const HarvestingAuthoritySearch: FC = () => {
         setClientTypes,
         setSalvageTypes,
         setPurposes,
+        setMgmtUnits,
       ];
       const names = [
         'districts',
         'file types',
-        'CP statuses',
+        'cutting permit statuses',
         'client types',
         'salvage types',
         'purposes',
+        'management units',
       ];
       const failed: string[] = [];
       settled.forEach((r, i) => {
-        if (r.status === 'fulfilled') setters[i](r.value);
+        // Each setter takes the shape its own list returns; the array is
+        // parallel to the promises above, so index i lines them up.
+        if (r.status === 'fulfilled') (setters[i] as (v: unknown) => void)(r.value);
         else failed.push(names[i]);
       });
       if (failed.length > 0) setError(`Could not load ${failed.join(', ')}`);
@@ -247,6 +263,7 @@ const HarvestingAuthoritySearch: FC = () => {
           page: nextPage,
           size: nextSize,
         });
+        setSearched({ ...form });
         setRows(
           data.content.map((r, i) => ({
             ...r,
@@ -325,23 +342,15 @@ const HarvestingAuthoritySearch: FC = () => {
               {codeItems(orgUnits)}
             </Select>
 
-            <TextInput
-              id="ha-mgmt-unit-type"
-              labelText="Mgmt unit type"
-              value={form.mgmtUnitType ?? ''}
-              onChange={(e) => set('mgmtUnitType', e.target.value)}
-              maxLength={1}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ha-mgmt-unit-id"
-              labelText="Mgmt unit ID"
-              value={form.mgmtUnitId ?? ''}
-              onChange={(e) => set('mgmtUnitId', e.target.value)}
-              maxLength={4}
-              autoComplete="off"
-            />
+            <div className="fsp-search__wide-cell">
+              <ManagementUnitComboBox
+                id="ha-mgmt-unit"
+                units={mgmtUnits}
+                typeCode={form.mgmtUnitType}
+                unitId={form.mgmtUnitId}
+                onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
+              />
+            </div>
 
             <TextInput
               id="ha-file"
@@ -355,7 +364,7 @@ const HarvestingAuthoritySearch: FC = () => {
 
             <TextInput
               id="ha-cp"
-              labelText="CP"
+              labelText="Cutting permit"
               helperText="Requires a File ID"
               value={form.cuttingPermitId ?? ''}
               onChange={(e) => set('cuttingPermitId', e.target.value)}
@@ -396,7 +405,7 @@ const HarvestingAuthoritySearch: FC = () => {
 
             <Select
               id="ha-cp-status"
-              labelText="CP status"
+              labelText="Cutting permit status"
               value={form.harvestAuthStatusCode ?? ''}
               onChange={(e) => set('harvestAuthStatusCode', e.target.value)}
             >
@@ -404,37 +413,27 @@ const HarvestingAuthoritySearch: FC = () => {
               {codeItems(cpStatuses)}
             </Select>
 
-            <TextInput
-              id="ha-client-number"
-              labelText="Client number"
-              value={form.clientNumber ?? ''}
-              onChange={(e) => set('clientNumber', e.target.value)}
-              maxLength={8}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ha-client-locn"
-              labelText="Client location"
-              value={form.clientLocationCode ?? ''}
-              onChange={(e) => set('clientLocationCode', e.target.value)}
-              maxLength={2}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ha-client-name"
-              labelText="Client name"
-              value={form.clientName ?? ''}
-              onChange={(e) => set('clientName', e.target.value)}
-              maxLength={60}
-              autoComplete="off"
+            <ClientComboBox
+              id="ha-client"
+              clientNumber={form.clientNumber}
+              clientLocnCode={form.clientLocationCode}
+              clientName={form.clientName}
+              helperText="Pick a client, or type a name. Defaults to the cutting permit licensee."
+              onChange={(next) =>
+                setForm((prev) => ({
+                  ...prev,
+                  clientNumber: next.clientNumber,
+                  // This screen's criterion is clientLocationCode, not clientLocnCode.
+                  clientLocationCode: next.clientLocnCode,
+                  clientName: next.clientName,
+                }))
+              }
             />
 
             <Select
               id="ha-client-type"
               labelText="Client type"
-              helperText="Defaults to the CP licensee"
+              helperText="Defaults to the cutting permit licensee"
               value={form.clientTypeCode ?? ''}
               onChange={(e) => set('clientTypeCode', e.target.value)}
             >
@@ -689,6 +688,7 @@ const HarvestingAuthoritySearch: FC = () => {
                     {totalElements.toLocaleString()}{' '}
                     {totalElements === 1 ? 'harvesting authority' : 'harvesting authorities'} found
                   </span>
+                  {searched && <ExportCsvButton path={harvestingSearchExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">

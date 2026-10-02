@@ -104,7 +104,7 @@ const BillingReportScreen: FC<BillingReportScreenProps> = ({
                 <TableRow>
                   <TableHeader>File / Agreement</TableHeader>
                   <TableHeader>Client</TableHeader>
-                  <TableHeader>Org Unit</TableHeader>
+                  <TableHeader>Organization Unit</TableHeader>
                   <TableHeader>Rent Due</TableHeader>
                   <TableHeader>Fee Due</TableHeader>
                   <TableHeader>Total</TableHeader>

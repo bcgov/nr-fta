@@ -68,3 +68,12 @@ export function searchTimbermarks(
     `/api/fta/timber-marks${toQuery({ ...params })}`,
   );
 }
+
+/**
+ * GET /api/fta/timber-marks/export — every matching mark as a CSV download.
+ *
+ * Paging is dropped: the export covers the whole result set, not a page of it.
+ */
+export function timbermarkSearchExportPath(params: TimbermarkSearchParams): string {
+  return `/api/fta/timber-marks/export${toQuery({ ...params, page: undefined, size: undefined })}`;
+}

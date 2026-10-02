@@ -23,9 +23,17 @@ public class RoleConstants {
     /** CSS role / Spring authority for full read-write access. */
     public static final String ADMIN_AUTHORITY = "FTA_ADMIN";
 
+    /**
+     * CSS role / Spring authority for timber mark administrators: a narrow set of reads
+     * (tenure and timber mark search and their details, private marks) plus private-mark
+     * writes.
+     */
+    public static final String TIMBER_MARK_ADMIN_AUTHORITY = "FTA_TIMBER_MARK_ADMIN";
+
     /** CSS role / Spring authority for read-only access. */
     public static final String VIEWER_AUTHORITY = "FTA_VIEWER";
 
     public final Role FTA_ADMIN = Role.FTA_ADMIN;
+    public final Role FTA_TIMBER_MARK_ADMIN = Role.FTA_TIMBER_MARK_ADMIN;
     public final Role FTA_VIEWER = Role.FTA_VIEWER;
 }

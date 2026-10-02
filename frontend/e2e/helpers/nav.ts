@@ -121,7 +121,7 @@ export const PAGES = {
   },
   orgUnit: {
     path: '/admin/org-unit',
-    heading: /Org Unit Maintenance/i,
+    heading: /Organization Unit Maintenance/i,
     navId: 'admin-org-unit',
     role: 'FTA_ADMIN',
   },

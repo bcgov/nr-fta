@@ -27,7 +27,7 @@ import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import PageLayout from '@/pages/PageLayout';
-import { canEdit } from '@/routes/access';
+import { canEdit, isPathAllowedForUser } from '@/routes/access';
 import { getCuttingPermitDetail } from '@/services/cutting_permit_detail';
 
 const nf = new Intl.NumberFormat('en-CA');
@@ -90,9 +90,17 @@ const CuttingPermitDetail: FC = () => {
       subtitle="Permit details, cut blocks, and harvest history"
       actions={actions}
     >
-      <Link to="/search/harvesting-authority" className="back-link">
-        <ArrowLeft size={16} /> Back to Harvesting Authority Search
-      </Link>
+      {/* A Timber Mark Administrator reaches this page from Timber Mark Search
+          and may not open Harvesting Authority Search, so goes back there. */}
+      {isPathAllowedForUser(user, '/search/harvesting-authority') ? (
+        <Link to="/search/harvesting-authority" className="back-link">
+          <ArrowLeft size={16} /> Back to Harvesting Authority Search
+        </Link>
+      ) : (
+        <Link to="/search/timber-mark" className="back-link">
+          <ArrowLeft size={16} /> Back to Timber Mark Search
+        </Link>
+      )}
 
       <AsyncBoundary
         loading={loading}
@@ -119,7 +127,7 @@ const CuttingPermitDetail: FC = () => {
                   label: 'Status',
                   value: <Tag type="green">{cp.statusDesc ?? cp.statusCode ?? '—'}</Tag>,
                 },
-                { label: 'Org Unit', value: cp.adminOrgCode ?? '—' },
+                { label: 'Organization Unit', value: cp.adminOrgCode ?? '—' },
                 { label: 'Area', value: area },
                 { label: 'Issued', value: cp.issueDate ?? '—' },
                 { label: 'Expires', value: cp.expiryDate ?? '—' },
@@ -180,11 +188,15 @@ const CuttingPermitDetail: FC = () => {
                           <TableBody>
                             <TableRow>
                               <TableCell colSpan={4}>
-                                <Link
-                                  to={`/search/cut-block?cpId=${encodeURIComponent(cp.cuttingPermitId ?? cpId)}`}
-                                >
-                                  View cut blocks for this permit
-                                </Link>
+                                {isPathAllowedForUser(user, '/search/cut-block') ? (
+                                  <Link
+                                    to={`/search/cut-block?cpId=${encodeURIComponent(cp.cuttingPermitId ?? cpId)}`}
+                                  >
+                                    View cut blocks for this permit
+                                  </Link>
+                                ) : (
+                                  'Cut blocks are not available for your role.'
+                                )}
                               </TableCell>
                             </TableRow>
                           </TableBody>

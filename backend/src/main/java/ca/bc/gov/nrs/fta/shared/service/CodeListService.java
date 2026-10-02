@@ -2,6 +2,7 @@ package ca.bc.gov.nrs.fta.shared.service;
 
 import ca.bc.gov.nrs.fta.configuration.CodeListCacheConfiguration;
 import ca.bc.gov.nrs.fta.shared.dto.CodeOptionDto;
+import ca.bc.gov.nrs.fta.shared.dto.ManagementUnitDto;
 import java.util.List;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.RowMapper;
@@ -16,6 +17,11 @@ import org.springframework.stereotype.Service;
  * so the queries are generated from that one shape. Expired codes are filtered
  * out: they still exist on historical records but must not be offered as new
  * criteria.
+ *
+ * <p>Every label reads "{@code CODE - description}". The code is what appears on
+ * the other screens, in correspondence and in the exported CSVs, so it belongs
+ * in front of the description wherever a user picks from a list; the value
+ * submitted back is still the bare code.
  *
  * <p>Every list is cached in memory and the cache is cleared on a schedule; see
  * {@link CodeListCacheConfiguration}. Search screens open with several of these at once, and
@@ -39,16 +45,29 @@ public class CodeListService {
   private static final RowMapper<CodeOptionDto> MAPPER =
       (rs, rowNum) -> new CodeOptionDto(rs.getString("code"), rs.getString("description"));
 
-  /** The uniform code-table query, for the tables that follow the standard shape. */
+  /**
+   * The uniform code-table query, for the tables that follow the standard shape.
+   *
+   * <p>The label carries the code in front of the description — "A01 - Forest
+   * Licence". The codes are what appear on other screens, in correspondence and
+   * in the exported CSVs, so a user picking from a list needs to see them. The
+   * value submitted is still the bare code.
+   *
+   * <p>Ordering is on the code, which is also the order the labels read in, so
+   * the prefixes run A01, A02, B01 down the list. The two lists that do not use
+   * this helper — org units and range zones — compose the same shape in their
+   * own SQL.
+   */
   private static String codeSql(String column, String table) {
     return """
         SELECT %s AS code,
-               description AS description
+               %s || ' - ' || description AS description
           FROM %s
          WHERE SYSDATE BETWEEN effective_date AND expiry_date
          ORDER BY %s
-        """.formatted(column, table, column);
+        """.formatted(column, column, table, column);
   }
+
 
   private static final String ORG_UNITS_SQL =
       """
@@ -58,6 +77,44 @@ public class CodeListService {
        WHERE SYSDATE BETWEEN effective_date AND expiry_date
        ORDER BY org_unit_code
       """;
+
+  /**
+   * Management units, ported from the legacy {@code SIL_004_MGMT_SRCH} picker
+   * screen (SIL004): every unit with its type, spelled-out type and name.
+   *
+   * <p>Legacy offered this as a popup search reached from the tenure screens;
+   * here it backs a single autocomplete, so the whole list is fetched once and
+   * filtered in the browser rather than queried per keystroke.
+   *
+   * <p>Unlike legacy, expired units are left out — the same rule every other
+   * list here follows. A unit that has expired can still sit on a historical
+   * tenure, so if those need to be searchable this filter is what to relax.
+   */
+  private static final String MANAGEMENT_UNITS_SQL =
+      """
+      SELECT fmu.mgmt_unit_type_code                                  AS mgmt_unit_type_code,
+             fmu.mgmt_unit_id                                         AS mgmt_unit_id,
+             fmu.mgmt_unit_type_code || ' - ' || mutc.description     AS type_description,
+             fmu.description                                         AS description
+        FROM the.forest_mgmt_unit fmu
+        JOIN the.mgmt_unit_type_code mutc
+              ON mutc.mgmt_unit_type_code = fmu.mgmt_unit_type_code
+       WHERE SYSDATE BETWEEN fmu.effective_date AND fmu.expiry_date
+       ORDER BY fmu.mgmt_unit_type_code, fmu.mgmt_unit_id
+      """;
+
+  private static final RowMapper<ManagementUnitDto> MANAGEMENT_UNIT_MAPPER =
+      (rs, rowNum) -> new ManagementUnitDto(
+          rs.getString("mgmt_unit_type_code"),
+          rs.getString("mgmt_unit_id"),
+          rs.getString("type_description"),
+          rs.getString("description"));
+
+  /** Management units for the tenure search's autocomplete (legacy SIL004). */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<ManagementUnitDto> managementUnits() {
+    return jdbc.query(MANAGEMENT_UNITS_SQL, MANAGEMENT_UNIT_MAPPER);
+  }
 
   /** Administrative org units, keyed by the numeric id the search package expects. */
   @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")

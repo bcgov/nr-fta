@@ -1,10 +1,16 @@
 package ca.bc.gov.nrs.fta.tenure.service;
 
+import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
+import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import ca.bc.gov.nrs.fta.tenure.dto.HarvestingSearchCriteria;
 import ca.bc.gov.nrs.fta.tenure.dto.HarvestingSearchDto;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -44,8 +50,12 @@ public class HarvestingSearchService {
 
   private final NamedParameterJdbcTemplate jdbc;
 
-  public HarvestingSearchService(NamedParameterJdbcTemplate jdbc) {
+  private final CsvStreamingJdbc streamingJdbc;
+
+  public HarvestingSearchService(
+      NamedParameterJdbcTemplate jdbc, CsvStreamingJdbc streamingJdbc) {
     this.jdbc = jdbc;
+    this.streamingJdbc = streamingJdbc;
   }
 
   /**
@@ -364,6 +374,94 @@ public class HarvestingSearchService {
             rs.getString("geographic_identifier")));
 
     return PagedResponse.ofPage(rows, page, size, totalElements);
+  }
+
+  /**
+   * Streams every matching harvesting authority to a CSV — the same criteria,
+   * grouping and order as {@link #search}, with no paging.
+   *
+   * <p>The page query is reused whole (select list, {@code GROUP_BY} and
+   * {@code ORDER_BY}) minus {@code OFFSET}/{@code FETCH}, not the count's
+   * shape: the count only needs the row identities, whereas the values the
+   * table shows come out of this select list and the grouping that collapses it.
+   * Running anything else here would risk a file that disagrees with the screen.
+   *
+   * <p>Columns track the Harvesting Authority Search page's {@code BASE_HEADERS}
+   * (plus {@code OG_HEADERS} when the oil and gas columns are on screen); keep
+   * the two in step.
+   *
+   * @param showOilAndGas whether the five oil and gas columns are showing. The
+   *     caller decides this the way the page does — the "only oil and gas" box
+   *     ticked, or the file type being A11 — so the file carries the same
+   *     columns the user is looking at.
+   */
+  public void exportCsv(
+      HarvestingSearchCriteria criteria, boolean showOilAndGas, CsvWriter csv) {
+
+    List<Object> header = new ArrayList<>(List.of(
+        "District",
+        "Client name",
+        "Client number",
+        "File type",
+        "File ID",
+        "Cutting permit",
+        "Timber mark"));
+    if (showOilAndGas) {
+      header.addAll(List.of(
+          "OGC number",
+          "NTS",
+          "NTS mapsheet",
+          "Program number",
+          "Geographic identifier"));
+    }
+    csv.writeRow(header.toArray());
+
+    streamingJdbc.jdbc().query(
+        SELECT_LIST + FROM_AND_WHERE + GROUP_BY + ORDER_BY,
+        bind(criteria),
+        // Cast required: a void lambda body matches both the RowCallbackHandler
+        // and ResultSetExtractor overloads, so the compiler cannot choose.
+        (RowCallbackHandler) rs -> {
+          // A mutable list rather than List.of: every one of these columns is
+          // nullable, and the oil and gas ones are only appended sometimes.
+          List<Object> row = new ArrayList<>();
+          row.add(rs.getString("org_unit_code"));
+          row.add(rs.getString("client_name"));
+          row.add(rs.getString("client_number"));
+          row.add(rs.getString("file_type_code"));
+          row.add(rs.getString("forest_file_id"));
+          row.add(rs.getString("cutting_permit_id"));
+          row.add(rs.getString("timber_mark"));
+          if (showOilAndGas) {
+            row.add(rs.getString("ogc_number"));
+            row.add(joinParts(
+                rs.getString("nts_mapquarter"),
+                rs.getString("nts_mapunit"),
+                rs.getString("nts_mapblock")));
+            row.add(joinParts(
+                rs.getString("nts_mapsheet_grid"),
+                rs.getString("nts_mapsheet_letter"),
+                rs.getString("nts_mapsheet_square")));
+            row.add(rs.getString("program_number"));
+            row.add(rs.getString("geographic_identifier"));
+          }
+          csv.writeRow(row.toArray());
+        });
+  }
+
+  /**
+   * The NTS parts as one value — space separated, blanks dropped.
+   *
+   * <p>The grid renders NTS and NTS Mapsheet as a single cell each, joined from
+   * three source columns. This mirrors the page's {@code joinParts} so a CSV
+   * cell reads the same as the one on screen rather than splitting into columns
+   * the table does not have.
+   */
+  private static String joinParts(String... parts) {
+    return Arrays.stream(parts)
+        .filter(p -> p != null && !p.isBlank())
+        .map(String::trim)
+        .collect(Collectors.joining(" "));
   }
 
   private static MapSqlParameterSource bind(HarvestingSearchCriteria c) {

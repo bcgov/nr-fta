@@ -183,7 +183,7 @@ sequenceDiagram
     C->>A: reverse_proxy, X-Real-IP / X-Forwarded-*
     A->>K: fetch JWKS (Nimbus, refresh-ahead cache + retry)
     K-->>A: signing keys
-    Note over A: validate issuer + signature + exp<br/>require azp == KEYCLOAK_CLIENT_ID<br/>read client_roles → FTA_ADMIN / FTA_VIEWER
+    Note over A: validate issuer + signature + exp<br/>require azp == KEYCLOAK_CLIENT_ID<br/>read client_roles → FTA_ADMIN / FTA_TIMBER_MARK_ADMIN / FTA_VIEWER
     A->>O: native SQL over TCPS 1543
     O-->>A: rows
     A-->>B: JSON, + XSRF-TOKEN cookie (HttpOnly=false)
@@ -204,7 +204,10 @@ sequenceDiagram
 
 Role codes are unchanged: **`FTA_ADMIN`** (full CRUD) and **`FTA_VIEWER`**
 (read-only), matched verbatim. Writes are admin-only at the endpoint level, and
-sign-in remains IDIR only.
+sign-in remains IDIR only. A third role, **`FTA_TIMBER_MARK_ADMIN`**, was added
+after the migration: tenure and timber mark search, their detail screens and
+Private Marks, with private-mark writes (`POST /api/fta/marks`) and nothing else.
+It must be created as a role on FTA's CSS integration in each environment.
 
 ### Three things that are easy to get wrong
 

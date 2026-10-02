@@ -27,7 +27,7 @@ const HEADERS: ColumnDef[] = [
   { key: 'esfId', header: 'ESF ID' },
   { key: 'fileId', header: 'File ID' },
   { key: 'applicationType', header: 'Type' },
-  { key: 'orgUnit', header: 'Org Unit' },
+  { key: 'orgUnit', header: 'Organization Unit' },
   { key: 'status', header: 'Status' },
   { key: 'processingDays', header: 'Processing Days' },
   { key: 'holdDays', header: 'Hold Days' },
@@ -53,7 +53,7 @@ function buildMetrics(orgUnit?: string): MetricRow[] {
 
 /**
  * FTA008 — Application Metrics Export. Search application processing metrics by
- * org unit / date range and export. Export is mock-only (raises a notification).
+ * organization unit / date range and export. Export is mock-only (raises a notification).
  */
 const ApplicationMetrics: FC = () => {
   const notify = useNotification();
@@ -79,7 +79,7 @@ const ApplicationMetrics: FC = () => {
   return (
     <PageLayout
       title="Application Metrics Export"
-      subtitle="Find application processing metrics by org unit and date range, and export to CSV"
+      subtitle="Find application processing metrics by organization unit and date range, and export to CSV"
     >
       <SectionTile title="Search criteria" icon={SearchIcon}>
         <form className="am-search__form" onSubmit={onSearch}>
@@ -87,11 +87,11 @@ const ApplicationMetrics: FC = () => {
             <Column sm={4} md={4} lg={5}>
               <Select
                 id="am-org"
-                labelText="Org Unit"
+                labelText="Organization Unit"
                 value={orgUnit}
                 onChange={(e) => setOrgUnit(e.target.value)}
               >
-                <SelectItem value="" text="All org units" />
+                <SelectItem value="" text="All organization units" />
                 {ORG_UNITS.map((o) => (
                   <SelectItem key={o} value={o} text={o} />
                 ))}
@@ -133,7 +133,7 @@ const ApplicationMetrics: FC = () => {
             rows={rows}
             headers={HEADERS}
             emptyTitle="No metrics found"
-            emptyBody="No applications match the selected org unit."
+            emptyBody="No applications match the selected organization unit."
           />
         </div>
       )}
