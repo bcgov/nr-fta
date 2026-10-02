@@ -4,6 +4,12 @@ import type { FC, ReactNode } from 'react';
 export interface DetailField {
   label: string;
   value: ReactNode;
+  /** Span the full row — for long free text that would stretch a column. */
+  wide?: boolean;
+  /** Start a new row, whatever the column count. */
+  rowStart?: boolean;
+  /** Take two columns — for a value too long for one. */
+  span2?: boolean;
 }
 
 /**
@@ -29,7 +35,17 @@ const DetailTile: FC<{
     </header>
     <dl className="fsp-info__field-list">
       {fields.map((f) => (
-        <div key={f.label} className="fsp-info__field">
+        <div
+          key={f.label}
+          className={[
+            'fsp-info__field',
+            f.wide && 'fsp-info__field--wide',
+            f.rowStart && 'fsp-info__field--row-start',
+            f.span2 && 'fsp-info__field--span-2',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
           <dt>{f.label}</dt>
           <dd>{f.value}</dd>
         </div>

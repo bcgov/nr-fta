@@ -71,18 +71,19 @@ Leaflet.
 
 ## Routing & access
 
-Three roles, and a user resolves to exactly one of them — no stacking. When
+Four roles, and a user resolves to exactly one of them — no stacking. When
 several are granted, the highest in this table wins:
 
 | Role | Menus | Capability |
 |---|---|---|
 | `FTA_ADMIN` | all, including Admin | full CRUD |
-| `FTA_TIMBER_MARK_ADMIN` | Tenure Search, Timber Mark Search, Private Marks (plus the tenure, cutting-permit and mark details they open) | private-mark writes; read-only elsewhere |
+| `FTA_TIMBER_MARK_HEADQUARTERS_ADMIN` | Tenure Search, Timber Mark Search, Private Marks (plus the tenure, cutting-permit and mark details they open) | private-mark writes; read-only elsewhere |
+| `FTA_TIMBER_MARK_DISTRICT_ADMIN` | as `FTA_TIMBER_MARK_HEADQUARTERS_ADMIN` | as `FTA_TIMBER_MARK_HEADQUARTERS_ADMIN`; new applications start PA and go to Headquarters with Submit to HQ (PA → PI); printing a mark's certificate also marks it issued (HN → HI) |
 | `FTA_VIEWER` | all except Admin | read-only |
 
 - `routes/access.ts` is the **source of truth for page access** —
   `isPathAllowedForRole` / `isPathAllowedForUser` drive both the route guard
-  and the nav. `FTA_TIMBER_MARK_ADMIN` is an allow-list of page patterns, so a
+  and the nav. The two timber mark roles share an allow-list of page patterns, so a
   new screen is hidden from it until listed there.
 - `routes/routePaths.ts` is the **nav model**. An entry is shown only when the
   role may open its page; entries may also carry an extra `roles` gate (only
@@ -90,7 +91,7 @@ several are granted, the highest in this table wins:
 - `routes/access.ts` also holds the **capability predicates** — `effectiveRole`,
   `isAdministrator`, `canEdit`, `canEditMarks`, `defaultRouteForUser`. Screens
   gate their edit affordances on `canEdit`; the private-mark screens use
-  `canEditMarks`, which also admits `FTA_TIMBER_MARK_ADMIN`.
+  `canEditMarks`, which also admits both timber mark roles.
 
 Whatever the UI hides, the backend independently enforces via URL-level
 authority checks — see

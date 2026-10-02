@@ -28,7 +28,7 @@ type MgmtUnitOption = {
  * The type entries are derived from the units themselves rather than from the
  * type code list, so a type with no units never appears as a dead end.
  */
-const buildOptions = (units: ManagementUnit[]): MgmtUnitOption[] => {
+const buildOptions = (units: ManagementUnit[], typeSuffix: string): MgmtUnitOption[] => {
   const types = new Map<string, MgmtUnitOption>();
   const unitItems: MgmtUnitOption[] = [];
 
@@ -37,7 +37,7 @@ const buildOptions = (units: ManagementUnit[]): MgmtUnitOption[] => {
       types.set(u.mgmtUnitTypeCode, {
         id: u.mgmtUnitTypeCode,
         typeCode: u.mgmtUnitTypeCode,
-        label: `${u.typeDescription} (all units)`,
+        label: `${u.typeDescription}${typeSuffix}`,
         haystack: `${u.mgmtUnitTypeCode} ${u.typeDescription} all units`.toLowerCase(),
       });
     }
@@ -74,6 +74,19 @@ interface ManagementUnitComboBoxProps {
   unitId?: string;
   /** Receives both criteria at once; empty strings when the field is cleared. */
   onChange: (next: { mgmtUnitType: string; mgmtUnitId: string }) => void;
+  /** Defaults suit a search filter; an edit form passes its own. */
+  titleText?: string;
+  helperText?: string;
+  hideLabel?: boolean;
+  /**
+   * Appended to a type-only entry. A search reads it as "every unit of the
+   * type"; on a record it is a unit with no id (e.g. Z), so an edit form
+   * passes ''.
+   */
+  typeEntrySuffix?: string;
+  invalid?: boolean;
+  invalidText?: string;
+  disabled?: boolean;
 }
 
 /**
@@ -95,8 +108,15 @@ const ManagementUnitComboBox: FC<ManagementUnitComboBoxProps> = ({
   typeCode,
   unitId,
   onChange,
+  titleText = 'Management unit',
+  helperText = 'Leave blank to search every management unit',
+  hideLabel = false,
+  typeEntrySuffix = ' (all units)',
+  invalid,
+  invalidText,
+  disabled,
 }) => {
-  const items = useMemo(() => buildOptions(units), [units]);
+  const items = useMemo(() => buildOptions(units, typeEntrySuffix), [units, typeEntrySuffix]);
 
   const selectedItem = useMemo(
     () =>
@@ -108,9 +128,14 @@ const ManagementUnitComboBox: FC<ManagementUnitComboBoxProps> = ({
   return (
     <ComboBox
       id={id}
-      titleText="Management unit"
+      // Carbon's ComboBox has no hideLabel; a visually hidden title keeps the
+      // field named for screen readers when the screen shows its own label.
+      titleText={hideLabel ? <span className="cds--visually-hidden">{titleText}</span> : titleText}
       placeholder="Search by type, ID or name"
-      helperText="Leave blank to search every management unit"
+      helperText={helperText}
+      invalid={invalid}
+      invalidText={invalidText}
+      disabled={disabled}
       items={items}
       itemToString={(item) => item?.label ?? ''}
       selectedItem={selectedItem}

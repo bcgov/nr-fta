@@ -32,6 +32,15 @@ export interface MarkListParams {
   size?: number;
 }
 
+/**
+ * GET /api/fta/marks/export — every matching row as a CSV download.
+ *
+ * Paging is dropped: the export covers the whole list, not a page of it.
+ */
+export function markListExportPath(params: MarkListParams): string {
+  return `/api/fta/marks/export${toQuery({ ...params, page: undefined, size: undefined })}`;
+}
+
 /** GET /api/fta/marks — private mark application/amendment list (FTA_500_MARK_LIST). */
 export function listMarks(params: MarkListParams): Promise<PageableResponse<MarkListRow>> {
   return apiGet<PageableResponse<MarkListRow>>(`/api/fta/marks${toQuery({ ...params })}`);

@@ -28,12 +28,21 @@ public class RoleConstants {
      * (tenure and timber mark search and their details, private marks) plus private-mark
      * writes.
      */
-    public static final String TIMBER_MARK_ADMIN_AUTHORITY = "FTA_TIMBER_MARK_ADMIN";
+    public static final String TIMBER_MARK_HEADQUARTERS_AUTHORITY =
+        "FTA_TIMBER_MARK_HEADQUARTERS_ADMIN";
+
+    /**
+     * CSS role / Spring authority for timber mark district users: everything
+     * {@link #TIMBER_MARK_HEADQUARTERS_AUTHORITY} may do, and their certificate print marks an issued
+     * mark issued (HN to HI) — legacy FTA510's district print.
+     */
+    public static final String TIMBER_MARK_DISTRICT_AUTHORITY = "FTA_TIMBER_MARK_DISTRICT_ADMIN";
 
     /** CSS role / Spring authority for read-only access. */
     public static final String VIEWER_AUTHORITY = "FTA_VIEWER";
 
     public final Role FTA_ADMIN = Role.FTA_ADMIN;
-    public final Role FTA_TIMBER_MARK_ADMIN = Role.FTA_TIMBER_MARK_ADMIN;
+    public final Role FTA_TIMBER_MARK_HEADQUARTERS_ADMIN = Role.FTA_TIMBER_MARK_HEADQUARTERS_ADMIN;
+    public final Role FTA_TIMBER_MARK_DISTRICT_ADMIN = Role.FTA_TIMBER_MARK_DISTRICT_ADMIN;
     public final Role FTA_VIEWER = Role.FTA_VIEWER;
 }

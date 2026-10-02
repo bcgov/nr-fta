@@ -1,8 +1,11 @@
 package ca.bc.gov.nrs.fta.mark.service;
 
 import ca.bc.gov.nrs.fta.mark.dto.MarkListDto;
+import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
+import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import java.util.List;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -32,9 +35,11 @@ import org.springframework.stereotype.Service;
 public class MarkListService {
 
   private final NamedParameterJdbcTemplate jdbc;
+  private final CsvStreamingJdbc streamingJdbc;
 
-  public MarkListService(NamedParameterJdbcTemplate jdbc) {
+  public MarkListService(NamedParameterJdbcTemplate jdbc, CsvStreamingJdbc streamingJdbc) {
     this.jdbc = jdbc;
+    this.streamingJdbc = streamingJdbc;
   }
 
   private static final String SELECT_COLUMNS =
@@ -153,12 +158,8 @@ public class MarkListService {
       String clientName,
       int page,
       int size) {
-    MapSqlParameterSource params = new MapSqlParameterSource()
-        .addValue("hdrDistrict", blankToNull(hdrDistrict))
-        .addValue("timberMark", blankToNull(timberMark))
-        .addValue("markStatusSt", blankToNull(markStatusSt))
-        .addValue("orgUnitCode", blankToNull(orgUnitCode))
-        .addValue("clientName", blankToNull(clientName));
+    MapSqlParameterSource params =
+        filters(hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName);
 
     Long total = jdbc.queryForObject("SELECT COUNT(*)\n" + FROM_WHERE, params, Long.class);
     long totalElements = total == null ? 0L : total;
@@ -187,6 +188,53 @@ public class MarkListService {
             rs.getString("idir")));
 
     return PagedResponse.ofPage(rows, page, size, totalElements);
+  }
+
+  /**
+   * Streams every matching row to a CSV: the rows the list shows, in the same
+   * order, with neither a row cap nor paging.
+   *
+   * <p>Columns track the Private Mark Applications table on screen (the
+   * frontend MarkList page's {@code HEADERS}); keep the two in step.
+   */
+  public void exportCsv(
+      String hdrDistrict,
+      String timberMark,
+      String markStatusSt,
+      String orgUnitCode,
+      String clientName,
+      CsvWriter csv) {
+    csv.writeRow(
+        "Certificate", "Timber mark", "Application date", "District", "Status", "Client", "IDIR");
+
+    streamingJdbc.jdbc().query(
+        SELECT_COLUMNS + FROM_WHERE + ORDER_BY,
+        filters(hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName),
+        // Cast required: a void lambda body matches both the RowCallbackHandler
+        // and ResultSetExtractor overloads, so the compiler cannot choose.
+        (RowCallbackHandler) rs -> csv.writeRow(
+            rs.getString("certificate"),
+            rs.getString("timber_mark"),
+            rs.getObject("mark_appl_date", java.time.LocalDate.class),
+            rs.getString("org_unit_code"),
+            rs.getString("mark_status_st"),
+            rs.getString("client_name"),
+            rs.getString("idir")));
+  }
+
+  /** The filter binds, shared by the page query, the count and the export. */
+  private static MapSqlParameterSource filters(
+      String hdrDistrict,
+      String timberMark,
+      String markStatusSt,
+      String orgUnitCode,
+      String clientName) {
+    return new MapSqlParameterSource()
+        .addValue("hdrDistrict", blankToNull(hdrDistrict))
+        .addValue("timberMark", blankToNull(timberMark))
+        .addValue("markStatusSt", blankToNull(markStatusSt))
+        .addValue("orgUnitCode", blankToNull(orgUnitCode))
+        .addValue("clientName", blankToNull(clientName));
   }
 
   private static String blankToNull(String s) {

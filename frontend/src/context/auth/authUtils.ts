@@ -137,13 +137,20 @@ export function parsePrivileges(input: string[]): USER_PRIVILEGE_TYPE {
 
 /**
  * Role precedence, highest first. FTA_ADMIN (full CRUD) outranks
- * FTA_TIMBER_MARK_ADMIN (private-mark writes, a narrow set of screens), which
+ * FTA_TIMBER_MARK_HEADQUARTERS_ADMIN (private-mark writes, a narrow set of screens), then
+ * FTA_TIMBER_MARK_DISTRICT_ADMIN (the same screens and writes; only its certificate print
+ * differs, and that is decided by the backend from the token, not by this ranking), which
  * outranks FTA_VIEWER (read-only). Mirrors the backend Role enum ordering.
  *
- * Timber Mark Administrator over Viewer is a trade: someone granted both keeps
+ * Timber Mark Headquarters Administrator over Viewer is a trade: someone granted both keeps
  * the mark writes but loses the Viewer's wider menu, because roles do not stack.
  */
-const ROLE_PRECEDENCE: ROLE_TYPE[] = ['FTA_ADMIN', 'FTA_TIMBER_MARK_ADMIN', 'FTA_VIEWER'];
+const ROLE_PRECEDENCE: ROLE_TYPE[] = [
+  'FTA_ADMIN',
+  'FTA_TIMBER_MARK_HEADQUARTERS_ADMIN',
+  'FTA_TIMBER_MARK_DISTRICT_ADMIN',
+  'FTA_VIEWER',
+];
 
 /**
  * Collapses a user's granted roles to their single effective role (no

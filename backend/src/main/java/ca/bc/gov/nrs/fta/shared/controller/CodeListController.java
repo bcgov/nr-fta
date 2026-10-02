@@ -41,6 +41,36 @@ public class CodeListController {
     return ResponseEntity.ok(codeListService.orgUnits());
   }
 
+  @GetMapping("/districts")
+  public ResponseEntity<List<CodeOptionDto>> districts() {
+    return ResponseEntity.ok(codeListService.districts());
+  }
+
+  @GetMapping("/marking-methods")
+  public ResponseEntity<List<CodeOptionDto>> markingMethods() {
+    return ResponseEntity.ok(codeListService.markingMethods());
+  }
+
+  @GetMapping("/marking-instruments")
+  public ResponseEntity<List<CodeOptionDto>> markingInstruments() {
+    return ResponseEntity.ok(codeListService.markingInstruments());
+  }
+
+  @GetMapping("/cascade-splits")
+  public ResponseEntity<List<CodeOptionDto>> cascadeSplits() {
+    return ResponseEntity.ok(codeListService.cascadeSplits());
+  }
+
+  @GetMapping("/private-mark-types")
+  public ResponseEntity<List<CodeOptionDto>> privateMarkTypes() {
+    return ResponseEntity.ok(codeListService.privateMarkTypes());
+  }
+
+  @GetMapping("/private-mark-amend-statuses")
+  public ResponseEntity<List<CodeOptionDto>> privateMarkAmendStatuses() {
+    return ResponseEntity.ok(codeListService.privateMarkAmendStatuses());
+  }
+
   @GetMapping("/file-types")
   public ResponseEntity<List<CodeOptionDto>> fileTypes() {
     return ResponseEntity.ok(codeListService.fileTypes());

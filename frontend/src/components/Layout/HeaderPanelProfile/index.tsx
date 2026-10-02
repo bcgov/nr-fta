@@ -19,12 +19,18 @@ const PROVIDER_LABEL: Record<string, string> = {
 // Friendly labels for the FTA roles shown beside the user's name.
 const ROLE_LABEL: Record<ROLE_TYPE, string> = {
   FTA_ADMIN: 'Administrator',
-  FTA_TIMBER_MARK_ADMIN: 'Timber Mark Administrator',
+  FTA_TIMBER_MARK_HEADQUARTERS_ADMIN: 'Timber Mark Headquarters Administrator',
+  FTA_TIMBER_MARK_DISTRICT_ADMIN: 'Timber Mark District Administrator',
   FTA_VIEWER: 'Viewer',
 };
 
 // Most-privileged first, so a user's "current role" shows their highest.
-const ROLE_PRIORITY: ROLE_TYPE[] = ['FTA_ADMIN', 'FTA_TIMBER_MARK_ADMIN', 'FTA_VIEWER'];
+const ROLE_PRIORITY: ROLE_TYPE[] = [
+  'FTA_ADMIN',
+  'FTA_TIMBER_MARK_HEADQUARTERS_ADMIN',
+  'FTA_TIMBER_MARK_DISTRICT_ADMIN',
+  'FTA_VIEWER',
+];
 
 const HeaderPanelProfile: FC = () => {
   const { theme, toggleTheme } = useTheme();

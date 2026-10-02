@@ -83,6 +83,33 @@
   }
 }
 
+// Tiles side by side, each sized to its content: they share the row in
+// proportion to what they hold, and wrap to one per row when they do not fit.
+.fsp-info__tile-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 1.5rem;
+
+  // An even split of the row. Sizing each tile to its content let one long value
+  // (a mark type description, say) widen a tile until the pair no longer fitted
+  // beside the side nav, and the second dropped beneath the first. They stack only
+  // when the row is narrower than two 24rem tiles.
+  > .fsp-info__tile {
+    flex: 1 1 24rem;
+    min-width: 0;
+  }
+
+  // Two columns sharing the tile's width; long values wrap within them rather
+  // than widening it. (Not more on wide screens: the media query sees the
+  // viewport, not the half-row the tile actually has.)
+  .fsp-info__field-list {
+    @media (min-width: 672px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
 // Label/value pairs — the Information tab's "Plan details" list: bold labels
 // over values, content-sized columns packed to the left.
 .fsp-info__field-list {
@@ -119,6 +146,30 @@
     font-size: 0.95rem;
     color: var(--cds-text-primary);
     word-break: break-word;
+  }
+}
+
+// A field spanning the whole list — long free text. Line breaks typed into it
+// are kept.
+.fsp-info__field--wide {
+  grid-column: 1 / -1;
+
+  dd {
+    white-space: pre-wrap;
+    max-width: 72rem;
+  }
+}
+
+// A field that begins a new row, however many columns the list has.
+.fsp-info__field--row-start {
+  grid-column-start: 1;
+}
+
+// A field two columns wide. Only where the list has columns to span — on a
+// phone it is a single column, and spanning would invent a second.
+.fsp-info__field--span-2 {
+  @media (min-width: 672px) {
+    grid-column-end: span 2;
   }
 }
 

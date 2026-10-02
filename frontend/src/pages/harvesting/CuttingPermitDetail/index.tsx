@@ -90,7 +90,7 @@ const CuttingPermitDetail: FC = () => {
       subtitle="Permit details, cut blocks, and harvest history"
       actions={actions}
     >
-      {/* A Timber Mark Administrator reaches this page from Timber Mark Search
+      {/* A Timber Mark Headquarters Administrator reaches this page from Timber Mark Search
           and may not open Harvesting Authority Search, so goes back there. */}
       {isPathAllowedForUser(user, '/search/harvesting-authority') ? (
         <Link to="/search/harvesting-authority" className="back-link">
