@@ -66,3 +66,12 @@ export function searchTenures(
 ): Promise<PageableResponse<TenureSummary>> {
   return apiGet<PageableResponse<TenureSummary>>(`/api/fta/tenures${toQuery({ ...params })}`);
 }
+
+/**
+ * GET /api/fta/tenures/export — every matching tenure as a CSV download.
+ *
+ * Paging is dropped: the export covers the whole result set, not a page of it.
+ */
+export function tenureSearchExportPath(params: TenureSearchParams): string {
+  return `/api/fta/tenures/export${toQuery({ ...params, page: undefined, size: undefined })}`;
+}

@@ -1,5 +1,6 @@
 package ca.bc.gov.nrs.fta.tenure.controller;
 
+import ca.bc.gov.nrs.fta.shared.csv.CsvExport;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.tenure.dto.HarvestingSearchCriteria;
 import ca.bc.gov.nrs.fta.tenure.dto.HarvestingSearchDto;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.http.HttpStatus;
 
 /**
@@ -32,6 +34,13 @@ public class HarvestingSearchController {
    * {@code HarvestingAuthoritySearchBOImpl}.
    */
   private static final int MIN_CRITERIA = 2;
+
+  /**
+   * The oil and gas file type. Legacy's {@code getShowOilAndGasColumns} shows the
+   * five oil and gas result columns when this file type is chosen, whether or not
+   * the "only oil and gas" box is ticked — only the box filters rows.
+   */
+  private static final String OIL_AND_GAS_FILE_TYPE = "A11";
 
   private final HarvestingSearchService harvestingSearchService;
 
@@ -83,17 +92,92 @@ public class HarvestingSearchController {
         ntsQuarter, ntsMapUnit, ntsMapBlock, ntsMapsheetGrid, ntsMapsheetLetter,
         ntsMapsheetSquare, sortBy);
 
-    criteria = applyKeySearch(criteria);
-
-    String validationError = harvestingSearchService.validateFileKeys(
-        criteria.forestFileId(), criteria.cuttingPermitId(), criteria.hvaId());
-    if (validationError != null && !validationError.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, validationError);
-    }
+    criteria = validated(criteria);
 
     int safePage = Math.max(page, 0);
     int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
     return ResponseEntity.ok(harvestingSearchService.search(criteria, safePage, safeSize));
+  }
+
+  /**
+   * Every matching harvesting authority as a CSV download — the same criteria as
+   * the search, with no paging, streamed as the rows arrive.
+   *
+   * <p>The criteria go through the same key-search rewriting and validation as
+   * the search, so the file covers exactly the result set the table is paging
+   * through.
+   */
+  @GetMapping("/export")
+  public ResponseEntity<StreamingResponseBody> exportCsv(
+      @RequestParam(required = false) String forestDistrict,
+      @RequestParam(required = false) String mgmtUnitType,
+      @RequestParam(required = false) String mgmtUnitId,
+      @RequestParam(required = false) String forestFileId,
+      @RequestParam(required = false) String cuttingPermitId,
+      @RequestParam(required = false) String timberMark,
+      @RequestParam(required = false) String hvaId,
+      @RequestParam(required = false) String fileTypeCode,
+      @RequestParam(required = false) String harvestAuthStatusCode,
+      @RequestParam(required = false) String clientNumber,
+      @RequestParam(required = false) String clientLocationCode,
+      @RequestParam(required = false) String clientName,
+      @RequestParam(required = false) String clientTypeCode,
+      @RequestParam(required = false) String issueDateFrom,
+      @RequestParam(required = false) String issueDateTo,
+      @RequestParam(required = false) String expiryDateFrom,
+      @RequestParam(required = false) String expiryDateTo,
+      @RequestParam(required = false) String salvageTypeCode,
+      @RequestParam(required = false) String zone,
+      @RequestParam(required = false) String invoiceNumber,
+      @RequestParam(required = false) String searchOnlyOg,
+      @RequestParam(required = false) String ogcNumber,
+      @RequestParam(required = false) String geographicIdentifier,
+      @RequestParam(required = false) String purposeCode,
+      @RequestParam(required = false) String ntsQuarter,
+      @RequestParam(required = false) String ntsMapUnit,
+      @RequestParam(required = false) String ntsMapBlock,
+      @RequestParam(required = false) String ntsMapsheetGrid,
+      @RequestParam(required = false) String ntsMapsheetLetter,
+      @RequestParam(required = false) String ntsMapsheetSquare,
+      @RequestParam(required = false) String sortBy) {
+
+    HarvestingSearchCriteria criteria = new HarvestingSearchCriteria(
+        forestDistrict, mgmtUnitType, mgmtUnitId, forestFileId, cuttingPermitId, timberMark,
+        hvaId, fileTypeCode, harvestAuthStatusCode, clientNumber, clientLocationCode, clientName,
+        clientTypeCode, issueDateFrom, issueDateTo, expiryDateFrom, expiryDateTo, salvageTypeCode,
+        zone, invoiceNumber, searchOnlyOg, ogcNumber, geographicIdentifier, purposeCode,
+        ntsQuarter, ntsMapUnit, ntsMapBlock, ntsMapsheetGrid, ntsMapsheetLetter,
+        ntsMapsheetSquare, sortBy);
+
+    // Decided from the criteria as submitted, before applyKeySearch clears them:
+    // the page decides its columns from the submitted form the same way, so this
+    // is the only reading that gives the file the columns on screen.
+    boolean showOilAndGas =
+        "Y".equals(searchOnlyOg) || OIL_AND_GAS_FILE_TYPE.equals(fileTypeCode);
+
+    HarvestingSearchCriteria effective = validated(criteria);
+
+    return CsvExport.response(
+        "harvesting-authorities",
+        csv -> harvestingSearchService.exportCsv(effective, showOilAndGas, csv));
+  }
+
+  /**
+   * The criteria a request actually runs with: legacy's key-search rewriting,
+   * then the file-key combination check.
+   *
+   * <p>Shared by the search and the export so the export can never resolve to a
+   * different result set than the table it mirrors.
+   */
+  private HarvestingSearchCriteria validated(HarvestingSearchCriteria criteria) {
+    HarvestingSearchCriteria effective = applyKeySearch(criteria);
+
+    String validationError = harvestingSearchService.validateFileKeys(
+        effective.forestFileId(), effective.cuttingPermitId(), effective.hvaId());
+    if (validationError != null && !validationError.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, validationError);
+    }
+    return effective;
   }
 
   /**

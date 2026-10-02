@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
  * <p>The role names must match the CSS/Keycloak role names exactly:
  * <ul>
  *   <li>{@code FTA_ADMIN} — full CRUD access to all resources</li>
+ *   <li>{@code FTA_TIMBER_MARK_ADMIN} — tenure and timber mark search, their detail screens,
+ *       and private-mark writes (see {@code ApiAuthorizationCustomizer})</li>
  *   <li>{@code FTA_VIEWER} — read-only access (GET requests only)</li>
  * </ul>
  */
@@ -19,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 public enum Role {
     /** Full read/write access — maps to the CSS role "FTA_ADMIN". */
     FTA_ADMIN(RoleType.CONCRETE),
+    /** Private-mark administration — maps to the CSS role "FTA_TIMBER_MARK_ADMIN". */
+    FTA_TIMBER_MARK_ADMIN(RoleType.CONCRETE),
     /** Read-only access — maps to the CSS role "FTA_VIEWER". */
     FTA_VIEWER(RoleType.CONCRETE);
 

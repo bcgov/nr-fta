@@ -5,7 +5,7 @@ export interface OrgUnitMaintRequest {
   orgUnitCode: string;
 }
 
-/** POST /api/fta/admin/org-unit-default — set the user's default org unit (SIL99). */
+/** POST /api/fta/admin/org-unit-default — set the user's default organization unit (SIL99). */
 export function setDefaultOrgUnit(req: OrgUnitMaintRequest): Promise<{ updated: number }> {
   return apiPost<{ updated: number }>('/api/fta/admin/org-unit-default', req);
 }

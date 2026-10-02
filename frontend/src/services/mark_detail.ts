@@ -35,7 +35,8 @@ export interface MarkAmendment {
 }
 
 export interface MarkDetail {
-  timberMark: string;
+  /** Null until the application is issued — the record is then known by its certificate. */
+  timberMark: string | null;
   certificate: string | null;
   fileTypeCode: string | null;
   markStatusCode: string | null;
@@ -62,7 +63,22 @@ export interface MarkDetail {
   amendments: MarkAmendment[];
 }
 
-/** GET /api/fta/marks/{markNumber} — private mark detail (FTA_510/511/513). */
-export function getMarkDetail(markNumber: string): Promise<MarkDetail> {
-  return apiGet<MarkDetail>(`/api/fta/marks/${encodeURIComponent(markNumber)}`);
+/**
+ * GET /api/fta/marks/{id} — private mark detail (FTA_510/511/513). The id is a
+ * timber mark, or with `byCertificate` the certificate of an application that
+ * has no timber mark yet.
+ */
+export function getMarkDetail(id: string, byCertificate = false): Promise<MarkDetail> {
+  const query = byCertificate ? '?by=certificate' : '';
+  return apiGet<MarkDetail>(`/api/fta/marks/${encodeURIComponent(id)}${query}`);
+}
+
+/** The detail route for a list row: by timber mark, else by certificate. */
+export function markDetailPath(
+  timberMark: string | null,
+  certificate: string | null,
+): string | null {
+  if (timberMark) return `/marks/${encodeURIComponent(timberMark)}`;
+  if (certificate) return `/marks/${encodeURIComponent(certificate)}?by=certificate`;
+  return null;
 }

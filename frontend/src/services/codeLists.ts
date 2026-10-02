@@ -19,7 +19,7 @@ export interface CodeOption {
  */
 const CODE_LIST_TTL_MS = 15 * 60 * 1000;
 
-const cache = new Map<string, { expires: number; request: Promise<CodeOption[]> }>();
+const cache = new Map<string, { expires: number; request: Promise<unknown> }>();
 
 /**
  * Fetches a code list once and shares it until it expires.
@@ -29,12 +29,15 @@ const cache = new Map<string, { expires: number; request: Promise<CodeOption[]> 
  * is dropped from the cache straight away, so the next caller retries rather than inheriting the
  * failure for the rest of the interval.
  */
-function cached(path: string): Promise<CodeOption[]> {
+function cached<T = CodeOption[]>(path: string): Promise<T> {
   const hit = cache.get(path);
   if (hit && hit.expires > Date.now()) {
-    return hit.request;
+    // Safe: a path always returns the same shape, and every caller of a given
+    // path asks for that shape. The cache is keyed by path, so the only way to
+    // get the type wrong is to ask for two shapes from one endpoint.
+    return hit.request as Promise<T>;
   }
-  const request = apiGet<CodeOption[]>(path);
+  const request = apiGet<T>(path);
   cache.set(path, { expires: Date.now() + CODE_LIST_TTL_MS, request });
   request.catch(() => {
     if (cache.get(path)?.request === request) cache.delete(path);
@@ -52,6 +55,27 @@ const list = (name: string) => cached(`/api/fta/code-lists/${name}`);
 export const getOrgUnits = () => list('org-units');
 
 export const getFileTypes = () => list('file-types');
+
+/**
+ * One management unit — a Timber Supply Area, Tree Farm Licence and so on.
+ * Mirrors the backend `ManagementUnitDto`.
+ */
+export interface ManagementUnit {
+  mgmtUnitTypeCode: string;
+  mgmtUnitId: string;
+  /** The type spelled out, e.g. "T - Timber Supply Area". */
+  typeDescription: string;
+  /** The unit's name, e.g. "Arrow TSA". */
+  description: string;
+}
+
+/**
+ * Management units for the tenure search's autocomplete — the list legacy
+ * showed in its own SIL004 popup. Fetched whole and filtered in the browser:
+ * the list is small and stable, so a request per keystroke would buy nothing.
+ */
+export const getManagementUnits = () =>
+  cached<ManagementUnit[]>('/api/fta/code-lists/management-units');
 
 /** Tenure file statuses — `TENURE_FILE_STATUS_CODE`, not `FILE_STATUS_CODE`. */
 export const getFileStatuses = () => list('file-statuses');
@@ -74,7 +98,7 @@ export const getBlockStatuses = () => list('block-statuses');
 /**
  * Range zones, for the FTA001R range tenure search. The only code list that
  * takes a filter — pass a district org-unit number to narrow it, as the legacy
- * screen does when Admin Org Unit changes.
+ * screen does when Admin Organization Unit changes.
  */
 export const getRangeZones = (adminDistrictNo?: string) =>
   cached(

@@ -7,7 +7,7 @@ import SectionTile from '@/components/SectionTile';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import PageLayout from '@/pages/PageLayout';
-import { canEdit } from '@/routes/access';
+import { canEditMarks } from '@/routes/access';
 import { createMarkApplication } from '@/services/mark_write';
 import './MarkApplication.scss';
 
@@ -48,7 +48,7 @@ const MarkApplication: FC = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState<MarkForm>(EMPTY);
   const [saving, setSaving] = useState(false);
-  const readOnly = !canEdit(user);
+  const readOnly = !canEditMarks(user);
 
   const set = (f: keyof MarkForm) => (v: string) => setForm((s) => ({ ...s, [f]: v }));
 
@@ -83,14 +83,14 @@ const MarkApplication: FC = () => {
   };
 
   return (
-    <PageLayout title="Mark Application" subtitle="Submit a new private timber mark application">
+    <PageLayout title="Mark Application" subtitle="Submit a new private timber mark application.">
+      {readOnly && (
+        <p className="mark-app__readonly">
+          You have read-only access. Submitting a mark application requires the Administrator or
+          Timber Mark Administrator role.
+        </p>
+      )}
       <SectionTile title="Application details" icon={DocumentAdd}>
-        {readOnly && (
-          <p className="mark-app__readonly">
-            You have read-only access. Submitting a mark application requires the Administrator
-            role.
-          </p>
-        )}
         <form className="mark-app__form" onSubmit={onSubmit}>
           <Grid narrow>
             <Column sm={4} md={4} lg={4}>
@@ -127,12 +127,12 @@ const MarkApplication: FC = () => {
             <Column sm={4} md={4} lg={4}>
               <Select
                 id="ma-org"
-                labelText="Org Unit"
+                labelText="Organization Unit"
                 disabled={readOnly}
                 value={form.orgUnit}
                 onChange={(e) => set('orgUnit')(e.target.value)}
               >
-                <SelectItem value="" text="Choose an org unit" />
+                <SelectItem value="" text="Choose an organization unit" />
                 {ORG_UNITS.map((o) => (
                   <SelectItem key={o.code} value={o.code} text={o.label} />
                 ))}
@@ -156,7 +156,7 @@ const MarkApplication: FC = () => {
             <Button
               type="button"
               size="md"
-              kind="tertiary"
+              kind="ghost"
               renderIcon={Reset}
               onClick={() => setForm(EMPTY)}
               disabled={readOnly || saving}

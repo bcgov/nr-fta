@@ -31,3 +31,13 @@ export function searchRangeUnits(
     `/api/fta/range-units${toQuery({ ...params })}`,
   );
 }
+
+/**
+ * GET /api/fta/range-units/export — every matching range unit / pasture as a CSV
+ * download.
+ *
+ * Paging is dropped: the export covers the whole result set, not a page of it.
+ */
+export function rangeUnitSearchExportPath(params: RangeUnitSearchParams): string {
+  return `/api/fta/range-units/export${toQuery({ ...params, page: undefined, size: undefined })}`;
+}

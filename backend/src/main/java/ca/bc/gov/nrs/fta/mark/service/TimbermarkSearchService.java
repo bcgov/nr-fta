@@ -2,9 +2,12 @@ package ca.bc.gov.nrs.fta.mark.service;
 
 import ca.bc.gov.nrs.fta.mark.dto.TimbermarkSearchCriteria;
 import ca.bc.gov.nrs.fta.mark.dto.TimbermarkSearchDto;
+import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
+import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import java.util.List;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -41,8 +44,12 @@ public class TimbermarkSearchService {
 
   private final NamedParameterJdbcTemplate jdbc;
 
-  public TimbermarkSearchService(NamedParameterJdbcTemplate jdbc) {
+  private final CsvStreamingJdbc streamingJdbc;
+
+  public TimbermarkSearchService(
+      NamedParameterJdbcTemplate jdbc, CsvStreamingJdbc streamingJdbc) {
     this.jdbc = jdbc;
+    this.streamingJdbc = streamingJdbc;
   }
 
   /**
@@ -135,17 +142,73 @@ public class TimbermarkSearchService {
         .addValue("offset", (long) page * size)
         .addValue("size", size);
 
-    // Sorted outside the join: FOREST_CLIENT has a client_name column of its
-    // own, and Oracle's OFFSET/FETCH rewrite can resolve an ORDER BY name
-    // against the joined tables instead of the select list (ORA-00918).
     List<TimbermarkSearchDto> rows = jdbc.query(
-        "SELECT * FROM (\n" + SELECT_COLUMNS + q.from() + LICENSEE_JOINS + q.where() + ")"
-            + orderBy(criteria.sortBy())
-            + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
+        resultsQuery(q, criteria.sortBy()) + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
         pageParams,
         ROW_MAPPER);
 
     return PagedResponse.ofPage(rows, page, size, totalElements);
+  }
+
+  /**
+   * Streams every matching mark to a CSV: the same rows the results table
+   * shows, in the same order, with neither a row cap nor paging.
+   *
+   * <p>Runs {@link #resultsQuery} — not the count's clause — so
+   * {@link #LICENSEE_JOINS} is in play and the client columns carry the same
+   * values as on screen rather than coming back empty.
+   *
+   * <p>Columns track the Timber Mark Search table on screen (the frontend
+   * page's {@code HEADERS}); keep the two in step.
+   */
+  public void exportCsv(TimbermarkSearchCriteria criteria, CsvWriter csv) {
+    csv.writeRow(
+        "District",
+        "Client name",
+        "Client number",
+        "File type",
+        "File ID",
+        "Cutting permit",
+        "Timber mark",
+        "Salvage type",
+        "Certificate",
+        "Mark status",
+        "Issue date",
+        "Expiry date");
+
+    Query q = build(criteria);
+    streamingJdbc.jdbc().query(
+        resultsQuery(q, criteria.sortBy()),
+        q.params(),
+        // Cast required: a void lambda body matches both the RowCallbackHandler
+        // and ResultSetExtractor overloads, so the compiler cannot choose.
+        (RowCallbackHandler) rs -> csv.writeRow(
+            rs.getString("org_unit_code"),
+            rs.getString("client_name"),
+            rs.getString("client_number"),
+            rs.getString("file_type_code"),
+            rs.getString("forest_file_id"),
+            rs.getString("cutting_permit_id"),
+            rs.getString("timber_mark"),
+            rs.getString("salvage_ind"),
+            rs.getString("certificate"),
+            rs.getString("mark_status_st"),
+            rs.getObject("mark_issue_date", java.time.LocalDate.class),
+            rs.getObject("mark_expiry_date", java.time.LocalDate.class)));
+  }
+
+  /**
+   * The displayed rows, unpaged — what the page query and the export share.
+   *
+   * <p>Sorted outside the join: FOREST_CLIENT has a client_name column of its
+   * own, and Oracle's OFFSET/FETCH rewrite can resolve an ORDER BY name
+   * against the joined tables instead of the select list (ORA-00918). The
+   * export keeps the wrapping even without OFFSET, so both read the same
+   * columns.
+   */
+  private static String resultsQuery(Query q, String sortBy) {
+    return "SELECT * FROM (\n" + SELECT_COLUMNS + q.from() + LICENSEE_JOINS + q.where() + ")"
+        + orderBy(sortBy);
   }
 
   /** Cutting permit trails the sort key so a row cannot land on two pages. */

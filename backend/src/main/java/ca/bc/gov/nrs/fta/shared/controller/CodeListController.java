@@ -1,6 +1,7 @@
 package ca.bc.gov.nrs.fta.shared.controller;
 
 import ca.bc.gov.nrs.fta.shared.dto.CodeOptionDto;
+import ca.bc.gov.nrs.fta.shared.dto.ManagementUnitDto;
 import ca.bc.gov.nrs.fta.shared.service.CodeListService;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,15 @@ public class CodeListController {
 
   public CodeListController(CodeListService codeListService) {
     this.codeListService = codeListService;
+  }
+
+  /**
+   * Management units for the tenure search's autocomplete — the list legacy
+   * SIL004 showed in its own popup screen.
+   */
+  @GetMapping("/management-units")
+  public ResponseEntity<List<ManagementUnitDto>> managementUnits() {
+    return ResponseEntity.ok(codeListService.managementUnits());
   }
 
   @GetMapping("/org-units")

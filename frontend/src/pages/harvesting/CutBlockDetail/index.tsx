@@ -130,7 +130,7 @@ const CutBlockDetail: FC = () => {
                   label: 'Status',
                   value: data.blockStatus ? <Tag type="green">{data.blockStatus}</Tag> : '—',
                 },
-                { label: 'Org Unit', value: data.forestDistrict ?? '—' },
+                { label: 'Organization Unit', value: data.forestDistrict ?? '—' },
                 { label: 'Gross Area', value: fmtArea(data.plannedGrossBlockArea) },
                 { label: 'Net Area', value: fmtArea(data.plannedNetBlockArea) },
               ]}

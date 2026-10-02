@@ -140,12 +140,12 @@ const AddTenure: FC = () => {
             <Column sm={4} md={4} lg={4}>
               <Select
                 id="at-org"
-                labelText="Org Unit"
+                labelText="Organization Unit"
                 disabled={readOnly}
                 value={form.orgUnit}
                 onChange={(e) => set('orgUnit')(e.target.value)}
               >
-                <SelectItem value="" text="Choose an org unit" />
+                <SelectItem value="" text="Choose an organization unit" />
                 {ORG_UNITS.map((o) => (
                   <SelectItem key={o.code} value={o.code} text={o.label} />
                 ))}

@@ -25,12 +25,16 @@ import {
 import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import ClientComboBox from '@/components/ClientComboBox';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
+import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
+  getManagementUnits,
   getFileClientTypes,
   getFileTypes,
   getHarvestAuthStatuses,
@@ -40,9 +44,11 @@ import {
   getSalvageTypes,
   type CodeOption,
 } from '@/services/codeLists';
+import type { ManagementUnit } from '@/services/codeLists';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 import {
   searchTimbermarks,
+  timbermarkSearchExportPath,
   type TimbermarkSearchParams,
   type TimbermarkSummary,
 } from '@/services/timbermark_search';
@@ -55,7 +61,7 @@ const HEADERS = [
   { key: 'clientNumber', header: 'Client number' },
   { key: 'fileTypeCode', header: 'File type' },
   { key: 'forestFileId', header: 'File ID' },
-  { key: 'cuttingPermitId', header: 'CP' },
+  { key: 'cuttingPermitId', header: 'Cutting permit' },
   { key: 'timberMark', header: 'Timber mark' },
   { key: 'salvageInd', header: 'Salvage type' },
   { key: 'certificate', header: 'Certificate' },
@@ -95,6 +101,10 @@ const TimberMarkSearch: FC = () => {
 
   const [form, setForm] = useState<TimbermarkSearchParams>(EMPTY_FORM);
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<TimbermarkSearchParams | null>(null);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -108,6 +118,7 @@ const TimberMarkSearch: FC = () => {
   const [salvageTypes, setSalvageTypes] = useState<CodeOption[]>([]);
   const [landDistricts, setLandDistricts] = useState<CodeOption[]>([]);
   const [primaryIds, setPrimaryIds] = useState<CodeOption[]>([]);
+  const [mgmtUnits, setMgmtUnits] = useState<ManagementUnit[]>([]);
   const [codeListsLoading, setCodeListsLoading] = useState(true);
 
   useEffect(() => {
@@ -120,6 +131,7 @@ const TimberMarkSearch: FC = () => {
       getSalvageTypes(),
       getLandDistricts(),
       getPrimaryIds(),
+      getManagementUnits(),
     ]).then((settled) => {
       if (cancelled) return;
       const setters = [
@@ -130,6 +142,7 @@ const TimberMarkSearch: FC = () => {
         setSalvageTypes,
         setLandDistricts,
         setPrimaryIds,
+        setMgmtUnits,
       ];
       const names = [
         'districts',
@@ -139,10 +152,13 @@ const TimberMarkSearch: FC = () => {
         'salvage types',
         'land districts',
         'primary IDs',
+        'management units',
       ];
       const failed: string[] = [];
       settled.forEach((r, i) => {
-        if (r.status === 'fulfilled') setters[i](r.value);
+        // Each setter takes the shape its own list returns; the array is
+        // parallel to the promises above, so index i lines them up.
+        if (r.status === 'fulfilled') (setters[i] as (v: unknown) => void)(r.value);
         else failed.push(names[i]);
       });
       if (failed.length > 0) setError(`Could not load ${failed.join(', ')}`);
@@ -176,6 +192,7 @@ const TimberMarkSearch: FC = () => {
       setError(null);
       try {
         const data = await searchTimbermarks({ ...form, page: nextPage, size: nextSize });
+        setSearched({ ...form });
         setRows(
           data.content.map((r, i) => ({
             ...r,
@@ -250,23 +267,15 @@ const TimberMarkSearch: FC = () => {
               {codeItems(orgUnits)}
             </Select>
 
-            <TextInput
-              id="tm-mgmt-unit-type"
-              labelText="Mgmt unit type"
-              value={form.mgmtUnitType ?? ''}
-              onChange={(e) => set('mgmtUnitType', e.target.value)}
-              maxLength={1}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="tm-mgmt-unit-id"
-              labelText="Mgmt unit ID"
-              value={form.mgmtUnitId ?? ''}
-              onChange={(e) => set('mgmtUnitId', e.target.value)}
-              maxLength={3}
-              autoComplete="off"
-            />
+            <div className="fsp-search__wide-cell">
+              <ManagementUnitComboBox
+                id="tm-mgmt-unit"
+                units={mgmtUnits}
+                typeCode={form.mgmtUnitType}
+                unitId={form.mgmtUnitId}
+                onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
+              />
+            </div>
 
             <TextInput
               id="tm-file"
@@ -280,7 +289,7 @@ const TimberMarkSearch: FC = () => {
 
             <TextInput
               id="tm-cp"
-              labelText="CP"
+              labelText="Cutting permit"
               value={form.cuttingPermitId ?? ''}
               onChange={(e) => set('cuttingPermitId', e.target.value)}
               maxLength={3}
@@ -318,31 +327,12 @@ const TimberMarkSearch: FC = () => {
               {codeItems(markStatuses)}
             </Select>
 
-            <TextInput
-              id="tm-client-number"
-              labelText="Client number"
-              value={form.clientNumber ?? ''}
-              onChange={(e) => set('clientNumber', e.target.value)}
-              maxLength={8}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="tm-client-locn"
-              labelText="Client location"
-              value={form.clientLocnCode ?? ''}
-              onChange={(e) => set('clientLocnCode', e.target.value)}
-              maxLength={2}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="tm-client-name"
-              labelText="Client name"
-              value={form.clientName ?? ''}
-              onChange={(e) => set('clientName', e.target.value)}
-              maxLength={60}
-              autoComplete="off"
+            <ClientComboBox
+              id="tm-client"
+              clientNumber={form.clientNumber}
+              clientLocnCode={form.clientLocnCode}
+              clientName={form.clientName}
+              onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
             />
 
             <Select
@@ -550,6 +540,7 @@ const TimberMarkSearch: FC = () => {
                     {totalElements.toLocaleString()}{' '}
                     {totalElements === 1 ? 'timber mark' : 'timber marks'} found
                   </span>
+                  {searched && <ExportCsvButton path={timbermarkSearchExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">

@@ -22,6 +22,11 @@ import org.springframework.stereotype.Component;
  *   <li><strong>FTA_ADMIN</strong> — full CRUD on every {@code /api/**} endpoint</li>
  *   <li><strong>FTA_VIEWER</strong> — {@code GET /api/**} + {@code POST /api/reports/**}
  *       (report generation); all other write methods are rejected with 403</li>
+ *   <li><strong>FTA_TIMBER_MARK_ADMIN</strong> — an allow-list: {@code GET} on the endpoints
+ *       behind Tenure Search, Timber Mark Search, the tenure / cutting-permit / private-mark
+ *       details and the code lists those screens read, plus {@code POST /api/fta/marks} (mark
+ *       application). Every other endpoint is 403. Mirrors the page allow-list in the
+ *       frontend's {@code routes/access.ts}.</li>
  *   <li><strong>No recognized role</strong> — rejected (403) for any {@code /api/**} endpoint</li>
  * </ul>
  *
@@ -59,6 +64,14 @@ public class ApiAuthorizationCustomizer implements
         .requestMatchers(HttpMethod.POST, "/api/reports/**")
         .hasAnyAuthority(RoleConstants.ADMIN_AUTHORITY, RoleConstants.VIEWER_AUTHORITY);
 
+    // Mark application — FTA_ADMIN or FTA_TIMBER_MARK_ADMIN. Exact path, so the mark
+    // transfer (/api/fta/marks/transfer, an admin screen) stays FTA_ADMIN only.
+    // Must appear BEFORE the generic POST /api/** admin-only rule.
+    authorize
+        .requestMatchers(HttpMethod.POST, "/api/fta/marks")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.TIMBER_MARK_ADMIN_AUTHORITY);
+
     // Write operations — FTA_ADMIN only
     authorize
         .requestMatchers(HttpMethod.POST, "/api/**")
@@ -72,7 +85,26 @@ public class ApiAuthorizationCustomizer implements
         .requestMatchers(HttpMethod.DELETE, "/api/**")
         .hasAuthority(RoleConstants.ADMIN_AUTHORITY);
 
-    // Read operations — any recognized role
+    // Reads open to FTA_TIMBER_MARK_ADMIN as well — only what its screens call. Must
+    // appear BEFORE the generic GET /api/** rule, which excludes that role.
+    authorize
+        .requestMatchers(
+            HttpMethod.GET,
+            "/api/fta/code-lists/**",
+            "/api/fta/clients/suggest",    // client type-ahead on the search screens
+            "/api/fta/tenures",            // Tenure Search (+ /export, detail below)
+            "/api/fta/tenures/*",
+            "/api/fta/timber-marks",       // Timber Mark Search
+            "/api/fta/timber-marks/export",
+            "/api/fta/cutting-permits/*",  // the detail Timber Mark Search opens
+            "/api/fta/marks",              // Application/Amendment List
+            "/api/fta/marks/*")            // private mark detail
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY,
+            RoleConstants.VIEWER_AUTHORITY,
+            RoleConstants.TIMBER_MARK_ADMIN_AUTHORITY);
+
+    // Read operations — FTA_ADMIN and FTA_VIEWER
     authorize
         .requestMatchers(HttpMethod.GET, "/api/**")
         .hasAnyAuthority(RoleConstants.ADMIN_AUTHORITY, RoleConstants.VIEWER_AUTHORITY);

@@ -1,10 +1,13 @@
 package ca.bc.gov.nrs.fta.tenure.service;
 
+import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
+import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.tenure.dto.TenureSearchCriteria;
 import ca.bc.gov.nrs.fta.tenure.dto.TenureSummaryDto;
 import java.util.Arrays;
 import java.util.List;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -44,8 +47,11 @@ public class TenureSearchTableSource {
 
   private final NamedParameterJdbcTemplate jdbc;
 
-  public TenureSearchTableSource(NamedParameterJdbcTemplate jdbc) {
+  private final CsvStreamingJdbc streamingJdbc;
+
+  public TenureSearchTableSource(NamedParameterJdbcTemplate jdbc, CsvStreamingJdbc streamingJdbc) {
     this.jdbc = jdbc;
+    this.streamingJdbc = streamingJdbc;
   }
 
   /**
@@ -208,12 +214,7 @@ public class TenureSearchTableSource {
       return PagedResponse.ofPage(List.of(), page, size, 0);
     }
 
-    // Sorted outside the join. Several of the lookup tables carry an
-    // org_unit_code column of their own, and Oracle's rewrite of OFFSET/FETCH
-    // can resolve an ORDER BY name against the joined tables rather than the
-    // select list — ORA-00918. Outside, each name means one column.
-    String sql = "SELECT * FROM (\n" + SELECT_COLUMNS + q.from() + ADMIN_ORG_JOINS + q.where()
-        + ")" + orderBy(criteria.sortBy())
+    String sql = resultsQuery(q, criteria.sortBy())
         + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY";
 
     MapSqlParameterSource pageParams = new MapSqlParameterSource()
@@ -223,6 +224,58 @@ public class TenureSearchTableSource {
 
     List<TenureSummaryDto> rows = jdbc.query(sql, pageParams, ROW_MAPPER);
     return PagedResponse.ofPage(rows, page, size, totalElements);
+  }
+
+  /**
+   * Streams every matching tenure to a CSV: the same rows the results table
+   * shows, in the same order, with neither a row cap nor paging.
+   *
+   * <p>Runs {@link #resultsQuery} — not the count's clause — so the admin org
+   * unit is resolved here too; it is a displayed column.
+   *
+   * <p>Columns track the Tenure Search table on screen (the frontend page's
+   * {@code HEADERS}); keep the two in step.
+   */
+  public void exportCsv(TenureSearchCriteria criteria, CsvWriter csv) {
+    csv.writeRow(
+        "Administration organization unit",
+        "Client name",
+        "Client type",
+        "File type",
+        "File ID",
+        "File status",
+        "Issue date",
+        "Expiry date");
+
+    Query q = build(criteria);
+    streamingJdbc.jdbc().query(
+        resultsQuery(q, criteria.sortBy()),
+        q.params(),
+        // Cast required: a void lambda body matches both the RowCallbackHandler
+        // and ResultSetExtractor overloads, so the compiler cannot choose.
+        (RowCallbackHandler) rs -> csv.writeRow(
+            rs.getString("org_unit_code"),
+            rs.getString("client_name"),
+            rs.getString("file_client_type_desc"),
+            rs.getString("file_type_code"),
+            rs.getString("forest_file_id"),
+            rs.getString("file_status_desc"),
+            rs.getObject("issue_date", java.time.LocalDate.class),
+            rs.getObject("expiry_date", java.time.LocalDate.class)));
+  }
+
+  /**
+   * The displayed rows, unpaged — what the page query and the export share.
+   *
+   * <p>Sorted outside the join. Several of the lookup tables carry an
+   * org_unit_code column of their own, and Oracle's rewrite of OFFSET/FETCH
+   * can resolve an ORDER BY name against the joined tables rather than the
+   * select list — ORA-00918. Outside, each name means one column. The export
+   * keeps the wrapping even without OFFSET, so both read the same columns.
+   */
+  private static String resultsQuery(Query q, String sortBy) {
+    return "SELECT * FROM (\n" + SELECT_COLUMNS + q.from() + ADMIN_ORG_JOINS + q.where()
+        + ")" + orderBy(sortBy);
   }
 
   /**

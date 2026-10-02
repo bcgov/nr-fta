@@ -18,10 +18,12 @@ import {
 import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
 
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
 import { useNotification } from '@/context/notification/useNotification';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
+  mgmtUnitSearchExportPath,
   searchManagementUnits,
   type MgmtUnitSearch,
   type MgmtUnitSearchParams,
@@ -61,6 +63,10 @@ const ManagementUnitSearch: FC = () => {
 
   const [form, setForm] = useState<MgmtUnitSearchParams>(EMPTY_FORM);
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<MgmtUnitSearchParams | null>(null);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -82,6 +88,7 @@ const ManagementUnitSearch: FC = () => {
       setError(null);
       try {
         const data = await searchManagementUnits({ ...form, page: nextPage, size: nextSize });
+        setSearched({ ...form });
         setRows(data.content.map((r) => ({ ...r, id: r.mgmtUnitTypeCode })));
         setTotalElements(data.page.totalElements);
         setPage(data.page.number);
@@ -195,6 +202,7 @@ const ManagementUnitSearch: FC = () => {
                     {totalElements.toLocaleString()}{' '}
                     {totalElements === 1 ? 'management unit type' : 'management unit types'} found
                   </span>
+                  {searched && <ExportCsvButton path={mgmtUnitSearchExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">

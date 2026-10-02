@@ -11,7 +11,7 @@ import { setDefaultOrgUnit } from '@/services/org_unit_maint';
 import './OrgUnitMaintenance.scss';
 
 /**
- * SIL99 — Org Unit Maintenance. Sets the user's default org unit.
+ * SIL99 — Organization Unit Maintenance. Sets the user's default organization unit.
  */
 const OrgUnitMaintenance: FC = () => {
   const notify = useNotification();
@@ -24,14 +24,14 @@ const OrgUnitMaintenance: FC = () => {
       await setDefaultOrgUnit({ orgUnitCode: orgUnit });
       notify.display({
         kind: 'success',
-        title: 'Default org unit saved',
+        title: 'Default organization unit saved',
         subtitle: `${orgUnit} set as your default.`,
         timeout: 5000,
       });
     } catch (err) {
       notify.display({
         kind: 'error',
-        title: 'Could not save default org unit',
+        title: 'Could not save default organization unit',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 6000,
       });
@@ -42,11 +42,11 @@ const OrgUnitMaintenance: FC = () => {
 
   return (
     <PageLayout
-      title="Org Unit Maintenance"
-      subtitle="Set the default org unit applied to your searches and new records."
+      title="Organization Unit Maintenance"
+      subtitle="Set the default organization unit applied to your searches and new records."
     >
       <SectionTile
-        title="Default org unit"
+        title="Default organization unit"
         icon={Location}
         actions={
           <Button size="md" renderIcon={Save} onClick={() => void onSave()} disabled={saving}>
@@ -57,7 +57,7 @@ const OrgUnitMaintenance: FC = () => {
         <div className="org-unit-maintenance__field">
           <Select
             id="ou-default"
-            labelText="Default org unit"
+            labelText="Default organization unit"
             value={orgUnit}
             onChange={(e) => setOrgUnit(e.target.value)}
           >

@@ -26,6 +26,7 @@ import { useNotification } from '@/context/notification/useNotification';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import { getOrgUnits, getPrivateMarkStatuses, type CodeOption } from '@/services/codeLists';
+import { markDetailPath } from '@/services/mark_detail';
 import { listMarks, type MarkListParams, type MarkListRow } from '@/services/mark_list';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 import { formatDate } from '@/utils/formatDate';
@@ -86,7 +87,7 @@ const MarkList: FC = () => {
       if (orgRes.status === 'fulfilled') setOrgUnits(orgRes.value);
       if (statusRes.status === 'fulfilled') setStatuses(statusRes.value);
       const failed = [
-        orgRes.status === 'rejected' ? 'org units' : null,
+        orgRes.status === 'rejected' ? 'organization units' : null,
         statusRes.status === 'rejected' ? 'statuses' : null,
       ].filter(Boolean);
       if (failed.length > 0) setError(`Could not load ${failed.join(', ')}`);
@@ -156,6 +157,8 @@ const MarkList: FC = () => {
   }, []);
 
   const hasResults = rows !== null && rows.length > 0;
+  const rowsById = new Map((rows ?? []).map((r) => [r.id, r]));
+  const statusNames = new Map(statuses.map((o) => [o.code, o.description]));
 
   if (codeListsLoading) {
     return (
@@ -289,14 +292,14 @@ const MarkList: FC = () => {
                           </TableHead>
                           <TableBody>
                             {dtRows.map((row) => {
-                              const mark =
-                                (row.cells.find((c) => c.info.header === 'timberMark')?.value as
-                                  string | undefined) ||
-                                (row.cells.find((c) => c.info.header === 'certificate')?.value as
-                                  string | undefined) ||
-                                '';
+                              // An application not yet issued has no timber
+                              // mark; it opens by its certificate instead.
+                              const source = rowsById.get(row.id);
+                              const path = source
+                                ? markDetailPath(source.timberMark, source.certificate)
+                                : null;
                               const open = () => {
-                                if (mark) navigate(`/marks/${encodeURIComponent(mark)}`);
+                                if (path) navigate(path);
                               };
                               return (
                                 <TableRow
@@ -318,7 +321,11 @@ const MarkList: FC = () => {
                                     if (cell.info.header === 'markStatusSt') {
                                       return (
                                         <TableCell key={cell.id}>
-                                          {value ? <StatusTag status={value} /> : '—'}
+                                          {value ? (
+                                            <StatusTag status={statusNames.get(value) || value} />
+                                          ) : (
+                                            '—'
+                                          )}
                                         </TableCell>
                                       );
                                     }

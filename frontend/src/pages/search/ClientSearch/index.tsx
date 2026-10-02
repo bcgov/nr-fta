@@ -18,11 +18,13 @@ import {
 import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
 
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
+  clientSearchExportPath,
   searchClients,
   type ClientSearchParams,
   type ClientSearchResult,
@@ -69,6 +71,10 @@ const ClientSearch: FC = () => {
 
   const [form, setForm] = useState<ClientSearchParams>(EMPTY_FORM);
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<ClientSearchParams | null>(null);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -103,6 +109,7 @@ const ClientSearch: FC = () => {
       setError(null);
       try {
         const data = await searchClients({ ...form, page: nextPage, size: nextSize });
+        setSearched({ ...form });
         // A client appears once per location, so the client number alone is not
         // unique across rows — the location code and index disambiguate.
         setRows(
@@ -248,6 +255,7 @@ const ClientSearch: FC = () => {
                     {totalElements.toLocaleString()} {totalElements === 1 ? 'client' : 'clients'}{' '}
                     found
                   </span>
+                  {searched && <ExportCsvButton path={clientSearchExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">

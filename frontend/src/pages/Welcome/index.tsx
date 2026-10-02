@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import SectionTile from '@/components/SectionTile';
 import { useAuth } from '@/context/auth/useAuth';
 import PageLayout from '@/pages/PageLayout';
+import { isPathAllowedForUser } from '@/routes/access';
 
 import type { FC } from 'react';
 import './Welcome.scss';
@@ -43,13 +44,15 @@ const Welcome: FC = () => {
       </p>
       <SectionTile title="Quick links" icon={Apps}>
         <div className="welcome__tiles">
-          {QUICK_LINKS.map(({ to, label, desc, Icon }) => (
-            <ClickableTile key={to} onClick={() => navigate(to)} className="welcome__tile">
-              <Icon size={24} />
-              <span className="welcome__tile-label">{label}</span>
-              <span className="welcome__tile-desc">{desc}</span>
-            </ClickableTile>
-          ))}
+          {QUICK_LINKS.filter(({ to }) => isPathAllowedForUser(user, to)).map(
+            ({ to, label, desc, Icon }) => (
+              <ClickableTile key={to} onClick={() => navigate(to)} className="welcome__tile">
+                <Icon size={24} />
+                <span className="welcome__tile-label">{label}</span>
+                <span className="welcome__tile-desc">{desc}</span>
+              </ClickableTile>
+            ),
+          )}
         </div>
       </SectionTile>
     </PageLayout>

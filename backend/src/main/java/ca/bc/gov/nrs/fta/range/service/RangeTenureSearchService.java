@@ -1,10 +1,13 @@
 package ca.bc.gov.nrs.fta.range.service;
 
 import ca.bc.gov.nrs.fta.range.dto.RangeTenureSearchDto;
+import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
+import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import java.sql.Types;
 import java.util.List;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -34,8 +37,12 @@ public class RangeTenureSearchService {
 
   private final NamedParameterJdbcTemplate jdbc;
 
-  public RangeTenureSearchService(NamedParameterJdbcTemplate jdbc) {
+  private final CsvStreamingJdbc streamingJdbc;
+
+  public RangeTenureSearchService(
+      NamedParameterJdbcTemplate jdbc, CsvStreamingJdbc streamingJdbc) {
     this.jdbc = jdbc;
+    this.streamingJdbc = streamingJdbc;
   }
 
   // The client name is built from the joined V_CLIENT_PUBLIC row rather than
@@ -158,6 +165,158 @@ public class RangeTenureSearchService {
       String totalAnnualUseTo,
       int page,
       int size) {
+    MapSqlParameterSource params = criteria(
+        forestFileId, fileTypeCode, orgUnitNo, zone,
+        clientName, clientNumber, clientLocnCode, fileClientType, fileStatus,
+        mgmtUnitType, mgmtUnitId,
+        issueDateFrom, issueDateTo, expiryDateFrom, expiryDateTo,
+        provisionYear, authorizedUseFrom, authorizedUseTo,
+        temporaryIncreaseFrom, temporaryIncreaseTo,
+        billableNonUseFrom, billableNonUseTo,
+        nonBillableNonUseFrom, nonBillableNonUseTo,
+        totalAnnualUseFrom, totalAnnualUseTo);
+
+    Long total = jdbc.queryForObject("SELECT COUNT(*)\n" + FROM_WHERE, params, Long.class);
+    long totalElements = total == null ? 0L : total;
+
+    MapSqlParameterSource pageParams = new MapSqlParameterSource()
+        .addValues(params.getValues())
+        .addValue("offset", (long) page * size)
+        .addValue("size", size);
+
+    List<RangeTenureSearchDto> rows = jdbc.query(
+        SELECT_COLUMNS + FROM_WHERE + ORDER_BY
+            + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
+        pageParams,
+        (rs, rowNum) -> new RangeTenureSearchDto(
+            rs.getString("org_unit_code"),
+            rs.getString("client_number"),
+            rs.getString("client_locn_code"),
+            rs.getString("client_name"),
+            rs.getString("forest_file_id"),
+            rs.getString("file_type_code"),
+            rs.getString("file_client_type_desc"),
+            rs.getString("mgmt_unit_type"),
+            rs.getString("mgmt_unit_id"),
+            rs.getString("file_status_code"),
+            rs.getString("file_status_desc"),
+            rs.getObject("issue_date", java.time.LocalDate.class),
+            rs.getObject("expiry_date", java.time.LocalDate.class)));
+
+    return PagedResponse.ofPage(rows, page, size, totalElements);
+  }
+
+  /**
+   * Streams every matching range tenure to a CSV — the same criteria, joins and
+   * order as {@link #search}, with no paging and no row cap.
+   *
+   * <p>Criteria are built by the same {@link #criteria} helper the search uses,
+   * so the org-unit level resolution and the conditional RANGE_PROVISION join
+   * cannot drift: an export that joined provisions differently would repeat a
+   * tenure once per provision year and quietly return a different row count from
+   * the one shown on screen.
+   *
+   * <p>Columns track the Range Tenure Search table on screen (the frontend
+   * page's {@code HEADERS}), in the same order with the same header text; keep
+   * the two in step.
+   */
+  public void exportCsv(
+      String forestFileId,
+      String fileTypeCode,
+      String orgUnitNo,
+      String zone,
+      String clientName,
+      String clientNumber,
+      String clientLocnCode,
+      String fileClientType,
+      String fileStatus,
+      String mgmtUnitType,
+      String mgmtUnitId,
+      String issueDateFrom,
+      String issueDateTo,
+      String expiryDateFrom,
+      String expiryDateTo,
+      String provisionYear,
+      String authorizedUseFrom,
+      String authorizedUseTo,
+      String temporaryIncreaseFrom,
+      String temporaryIncreaseTo,
+      String billableNonUseFrom,
+      String billableNonUseTo,
+      String nonBillableNonUseFrom,
+      String nonBillableNonUseTo,
+      String totalAnnualUseFrom,
+      String totalAnnualUseTo,
+      CsvWriter csv) {
+
+    csv.writeRow(
+        "Administration organization unit",
+        "Client name",
+        "Client type",
+        "File type",
+        "File ID",
+        "Status",
+        "Issue date",
+        "Expiry date");
+
+    streamingJdbc.jdbc().query(
+        SELECT_COLUMNS + FROM_WHERE + ORDER_BY,
+        criteria(
+            forestFileId, fileTypeCode, orgUnitNo, zone,
+            clientName, clientNumber, clientLocnCode, fileClientType, fileStatus,
+            mgmtUnitType, mgmtUnitId,
+            issueDateFrom, issueDateTo, expiryDateFrom, expiryDateTo,
+            provisionYear, authorizedUseFrom, authorizedUseTo,
+            temporaryIncreaseFrom, temporaryIncreaseTo,
+            billableNonUseFrom, billableNonUseTo,
+            nonBillableNonUseFrom, nonBillableNonUseTo,
+            totalAnnualUseFrom, totalAnnualUseTo),
+        // Cast required: a void lambda body matches both the RowCallbackHandler
+        // and ResultSetExtractor overloads, so the compiler cannot choose.
+        (RowCallbackHandler) rs -> csv.writeRow(
+            rs.getString("org_unit_code"),
+            rs.getString("client_name"),
+            rs.getString("file_client_type_desc"),
+            rs.getString("file_type_code"),
+            rs.getString("forest_file_id"),
+            rs.getString("file_status_desc"),
+            // Read as LocalDate, not getString: CsvWriter renders it ISO, the
+            // same as the JSON API, rather than the driver's locale format.
+            rs.getObject("issue_date", java.time.LocalDate.class),
+            rs.getObject("expiry_date", java.time.LocalDate.class)));
+  }
+
+  /**
+   * The bind values for one set of search criteria, shared by the page query,
+   * its count and the CSV export so none of the three can filter differently.
+   */
+  private MapSqlParameterSource criteria(
+      String forestFileId,
+      String fileTypeCode,
+      String orgUnitNo,
+      String zone,
+      String clientName,
+      String clientNumber,
+      String clientLocnCode,
+      String fileClientType,
+      String fileStatus,
+      String mgmtUnitType,
+      String mgmtUnitId,
+      String issueDateFrom,
+      String issueDateTo,
+      String expiryDateFrom,
+      String expiryDateTo,
+      String provisionYear,
+      String authorizedUseFrom,
+      String authorizedUseTo,
+      String temporaryIncreaseFrom,
+      String temporaryIncreaseTo,
+      String billableNonUseFrom,
+      String billableNonUseTo,
+      String nonBillableNonUseFrom,
+      String nonBillableNonUseTo,
+      String totalAnnualUseFrom,
+      String totalAnnualUseTo) {
     MapSqlParameterSource params = new MapSqlParameterSource()
         .addValue("forestFileId", blankToNull(forestFileId))
         .addValue("fileTypeCode", blankToNull(fileTypeCode))
@@ -198,34 +357,7 @@ public class RangeTenureSearchService {
         .anyMatch(v -> blankToNull(v) != null);
     params.addValue("provisionCriteria", provisionCriteria ? "Y" : "N");
 
-    Long total = jdbc.queryForObject("SELECT COUNT(*)\n" + FROM_WHERE, params, Long.class);
-    long totalElements = total == null ? 0L : total;
-
-    MapSqlParameterSource pageParams = new MapSqlParameterSource()
-        .addValues(params.getValues())
-        .addValue("offset", (long) page * size)
-        .addValue("size", size);
-
-    List<RangeTenureSearchDto> rows = jdbc.query(
-        SELECT_COLUMNS + FROM_WHERE + ORDER_BY
-            + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
-        pageParams,
-        (rs, rowNum) -> new RangeTenureSearchDto(
-            rs.getString("org_unit_code"),
-            rs.getString("client_number"),
-            rs.getString("client_locn_code"),
-            rs.getString("client_name"),
-            rs.getString("forest_file_id"),
-            rs.getString("file_type_code"),
-            rs.getString("file_client_type_desc"),
-            rs.getString("mgmt_unit_type"),
-            rs.getString("mgmt_unit_id"),
-            rs.getString("file_status_code"),
-            rs.getString("file_status_desc"),
-            rs.getObject("issue_date", java.time.LocalDate.class),
-            rs.getObject("expiry_date", java.time.LocalDate.class)));
-
-    return PagedResponse.ofPage(rows, page, size, totalElements);
+    return params;
   }
 
   /**

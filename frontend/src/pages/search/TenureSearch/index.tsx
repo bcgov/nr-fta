@@ -24,12 +24,16 @@ import {
 import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import ClientComboBox from '@/components/ClientComboBox';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
+import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
+  getManagementUnits,
   getFileClientTypes,
   getFileSources,
   getFileStatuses,
@@ -38,12 +42,18 @@ import {
   getOrgUnits,
   type CodeOption,
 } from '@/services/codeLists';
-import { searchTenures, type TenureSearchParams, type TenureSummary } from '@/services/tenure';
+import type { ManagementUnit } from '@/services/codeLists';
+import {
+  searchTenures,
+  tenureSearchExportPath,
+  type TenureSearchParams,
+  type TenureSummary,
+} from '@/services/tenure';
 import { formatDate } from '@/utils/formatDate';
 
 // Column order follows the legacy FTA001 results grid.
 const HEADERS = [
-  { key: 'orgUnitCode', header: 'Admin org unit' },
+  { key: 'orgUnitCode', header: 'Administration organization unit' },
   { key: 'clientName', header: 'Client name' },
   { key: 'fileClientTypeDesc', header: 'Client type' },
   { key: 'fileTypeCode', header: 'File type' },
@@ -85,7 +95,7 @@ const EMPTY_FORM: TenureSearchParams = { sortBy: 'org' };
  * FTA001 — Tenure Search.
  *
  * <p>Criteria match the legacy screen, which is also the parameter list of
- * `THE.FTA_001_TENR_SRCH.MAINLINE`: org unit, file, client, management unit,
+ * `THE.FTA_001_TENR_SRCH.MAINLINE`: organization unit, file, client, management unit,
  * associated file, both date ranges, salvage, cash sale, map notation, and the
  * sort choice. Legacy's recreation criteria — the Recreation tenure type and the
  * project-name field — are left out: that work moved to a separate application.
@@ -102,6 +112,10 @@ const TenureSearch: FC = () => {
 
   const [form, setForm] = useState<TenureSearchParams>(EMPTY_FORM);
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<TenureSearchParams | null>(null);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -115,6 +129,7 @@ const TenureSearch: FC = () => {
   const [clientTypes, setClientTypes] = useState<CodeOption[]>([]);
   const [fileSources, setFileSources] = useState<CodeOption[]>([]);
   const [mapNotationTypes, setMapNotationTypes] = useState<CodeOption[]>([]);
+  const [mgmtUnits, setMgmtUnits] = useState<ManagementUnit[]>([]);
   const [codeListsLoading, setCodeListsLoading] = useState(true);
 
   useEffect(() => {
@@ -128,6 +143,7 @@ const TenureSearch: FC = () => {
       getFileClientTypes(),
       getFileSources(),
       getMapNotationTypes(),
+      getManagementUnits(),
     ]).then((settled) => {
       if (cancelled) return;
       const setters = [
@@ -137,18 +153,22 @@ const TenureSearch: FC = () => {
         setClientTypes,
         setFileSources,
         setMapNotationTypes,
+        setMgmtUnits,
       ];
       const names = [
-        'org units',
+        'organization units',
         'file types',
         'file statuses',
         'client types',
         'file sources',
         'map notation types',
+        'management units',
       ];
       const failed: string[] = [];
       settled.forEach((r, i) => {
-        if (r.status === 'fulfilled') setters[i](r.value);
+        // Each setter takes the shape its own list returns; the array is
+        // parallel to the promises above, so index i lines them up.
+        if (r.status === 'fulfilled') (setters[i] as (v: unknown) => void)(r.value);
         else failed.push(names[i]);
       });
       if (failed.length > 0) setError(`Could not load ${failed.join(', ')}`);
@@ -186,6 +206,7 @@ const TenureSearch: FC = () => {
       setError(null);
       try {
         const data = await searchTenures({ ...form, page: nextPage, size: nextSize });
+        setSearched({ ...form });
         // The file id is unique within a page but can recur across pages as the
         // user moves back and forth, so the row key carries the index too.
         setRows(data.content.map((r, i) => ({ ...r, id: `${r.forestFileId}-${i}` })));
@@ -250,33 +271,27 @@ const TenureSearch: FC = () => {
       <Tile className="fsp-search__tile">
         <form className="fsp-search__form" onSubmit={onSubmit}>
           <div className="fsp-search__field-grid">
-            <Select
-              id="ts-org-unit"
-              labelText="Admin org unit"
-              value={form.adminOrgUnitNo ?? ''}
-              onChange={(e) => set('adminOrgUnitNo', e.target.value)}
-            >
-              <SelectItem value="" text="All org units" />
-              {codeItems(orgUnits)}
-            </Select>
+            <div className="fsp-search__wide-cell">
+              <Select
+                id="ts-org-unit"
+                labelText="Administration organization unit"
+                value={form.adminOrgUnitNo ?? ''}
+                onChange={(e) => set('adminOrgUnitNo', e.target.value)}
+              >
+                <SelectItem value="" text="All organization units" />
+                {codeItems(orgUnits)}
+              </Select>
+            </div>
 
-            <TextInput
-              id="ts-mgmt-unit-type"
-              labelText="Mgmt unit type"
-              value={form.mgmtUnitType ?? ''}
-              onChange={(e) => set('mgmtUnitType', e.target.value)}
-              maxLength={1}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ts-mgmt-unit-id"
-              labelText="Mgmt unit ID"
-              value={form.mgmtUnitId ?? ''}
-              onChange={(e) => set('mgmtUnitId', e.target.value)}
-              maxLength={4}
-              autoComplete="off"
-            />
+            <div className="fsp-search__wide-cell">
+              <ManagementUnitComboBox
+                id="ts-mgmt-unit"
+                units={mgmtUnits}
+                typeCode={form.mgmtUnitType}
+                unitId={form.mgmtUnitId}
+                onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
+              />
+            </div>
 
             <TextInput
               id="ts-file-id"
@@ -319,32 +334,12 @@ const TenureSearch: FC = () => {
               {codeItems(fileStatuses)}
             </Select>
 
-            <TextInput
-              id="ts-client-number"
-              labelText="Client number"
-              value={form.clientNumber ?? ''}
-              onChange={(e) => set('clientNumber', e.target.value)}
-              maxLength={8}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ts-client-locn"
-              labelText="Client location"
-              value={form.clientLocnCode ?? ''}
-              onChange={(e) => set('clientLocnCode', e.target.value)}
-              maxLength={2}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ts-client-name"
-              labelText="Client name"
-              placeholder="e.g. West Fraser"
-              value={form.clientName ?? ''}
-              onChange={(e) => set('clientName', e.target.value)}
-              maxLength={60}
-              autoComplete="off"
+            <ClientComboBox
+              id="ts-client"
+              clientNumber={form.clientNumber}
+              clientLocnCode={form.clientLocnCode}
+              clientName={form.clientName}
+              onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
             />
 
             <Select
@@ -371,7 +366,7 @@ const TenureSearch: FC = () => {
 
             <Select
               id="ts-file-source"
-              labelText="Assoc. file source"
+              labelText="Associated file source"
               value={form.fileSource ?? ''}
               onChange={(e) => set('fileSource', e.target.value)}
             >
@@ -381,7 +376,7 @@ const TenureSearch: FC = () => {
 
             <TextInput
               id="ts-assoc-file-id"
-              labelText="Assoc. file ID"
+              labelText="Associated file ID"
               value={form.assocFileId ?? ''}
               onChange={(e) => set('assocFileId', e.target.value)}
               maxLength={10}
@@ -485,7 +480,7 @@ const TenureSearch: FC = () => {
                 valueSelected={form.sortBy ?? 'org'}
                 onChange={(value) => set('sortBy', String(value))}
               >
-                <RadioButton labelText="Admin org" value="org" id="ts-sort-org" />
+                <RadioButton labelText="Administration organization" value="org" id="ts-sort-org" />
                 <RadioButton labelText="Client name" value="client" id="ts-sort-client" />
                 <RadioButton labelText="File type" value="fileType" id="ts-sort-filetype" />
               </RadioButtonGroup>
@@ -538,6 +533,7 @@ const TenureSearch: FC = () => {
                     {totalElements.toLocaleString()} {totalElements === 1 ? 'tenure' : 'tenures'}{' '}
                     found
                   </span>
+                  {searched && <ExportCsvButton path={tenureSearchExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">

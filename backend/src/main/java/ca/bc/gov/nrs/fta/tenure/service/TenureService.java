@@ -1,5 +1,6 @@
 package ca.bc.gov.nrs.fta.tenure.service;
 
+import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.tenure.dto.TenureSearchCriteria;
 import ca.bc.gov.nrs.fta.tenure.dto.TenureSummaryDto;
@@ -31,5 +32,16 @@ public class TenureService {
   public PagedResponse<TenureSummaryDto> search(
       TenureSearchCriteria criteria, int page, int size) {
     return source.search(criteria, page, size);
+  }
+
+  /**
+   * Every matching tenure as CSV rows — the same criteria and order as
+   * {@link #search}, with no paging.
+   *
+   * @param criteria the screen's criteria; any field may be null or blank
+   * @param csv      the writer the rows are streamed to
+   */
+  public void exportCsv(TenureSearchCriteria criteria, CsvWriter csv) {
+    source.exportCsv(criteria, csv);
   }
 }

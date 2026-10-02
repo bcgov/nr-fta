@@ -94,3 +94,15 @@ export function searchHarvestingAuthorities(
     `/api/fta/harvesting-authorities${toQuery({ ...params })}`,
   );
 }
+
+/**
+ * GET /api/fta/harvesting-authorities/export — every matching harvesting
+ * authority as a CSV download.
+ *
+ * Paging is dropped: the export covers the whole result set, not a page of it.
+ * `searchOnlyOg` and `fileTypeCode` stay, because the backend decides the five
+ * oil and gas columns from them exactly as {@link showOilAndGasColumns} does.
+ */
+export function harvestingSearchExportPath(params: HarvestingSearchParams): string {
+  return `/api/fta/harvesting-authorities/export${toQuery({ ...params, page: undefined, size: undefined })}`;
+}

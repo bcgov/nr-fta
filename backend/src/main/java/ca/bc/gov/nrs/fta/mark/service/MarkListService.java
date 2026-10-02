@@ -21,7 +21,8 @@ import org.springframework.stereotype.Service;
  * <p>The legacy {@code Sil_Get_Client_Name(client_number)} PL/SQL lookup is
  * replaced with a join to {@code THE.client} (matching the tenure exemplar).
  * Each filter is applied only when its bind value is supplied (NVL-style),
- * matching the legacy {@code LIKE NVL(...,'%')} behaviour.
+ * matching the legacy {@code LIKE NVL(...,'%')} behaviour — except the district,
+ * which is matched exactly (see {@link #list}).
  *
  * <p>The SQL runs against the BC Gov shared Oracle ({@code THE}) via the
  * configured {@code DataSource}; there is no local database, so it is exercised
@@ -116,22 +117,27 @@ public class MarkListService {
                  AND pmc.private_mark_status_code IN ('HI','HX')
                  AND amd.prv_mrk_amd_sts_st IN ('PI','HN','DV')
              ) m
-       WHERE (:hdrDistrict  IS NULL OR TO_CHAR(m.org_unit_no) LIKE :hdrDistrict || '%')
+       WHERE (:hdrDistrict  IS NULL OR TO_CHAR(m.org_unit_no) = :hdrDistrict)
          AND (:timberMark   IS NULL OR m.timber_mark LIKE :timberMark || '%')
          AND (:markStatusSt IS NULL OR m.mark_status_st = :markStatusSt)
          AND (:orgUnitCode  IS NULL OR m.org_unit_code = :orgUnitCode)
          AND (:clientName   IS NULL OR UPPER(m.client_name) LIKE UPPER(:clientName) || '%')
       """;
 
-  // The legacy list's order. Deterministic, so a row cannot appear on two
-  // different pages once OFFSET is applied.
-  private static final String ORDER_BY = " ORDER BY m.certificate\n";
+  // Newest application first; undated rows last rather than Oracle's default
+  // of first for DESC. Certificate and process type break ties so the order is
+  // deterministic and a row cannot appear on two pages once OFFSET is applied —
+  // an application and its amendment share a certificate.
+  private static final String ORDER_BY =
+      " ORDER BY m.mark_appl_date DESC NULLS LAST, m.certificate, m.process_type\n";
 
   /**
    * Private mark application/amendment list — mirrors
    * {@code FTA_500_MARK_LIST.mainline} with {@code p_action = 'GET'}.
    *
-   * @param hdrDistrict  administrative district org-unit number (prefix match), or null
+   * @param hdrDistrict  administrative district org-unit number, or null. Exact:
+   *                     the value comes from a picker, and a prefix match would
+   *                     let district 18 also return 1867's marks
    * @param timberMark   partial timber mark (prefix match), or null
    * @param markStatusSt exact mark/amendment status code, or null
    * @param orgUnitCode  exact org-unit code, or null

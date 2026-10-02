@@ -12,7 +12,10 @@ import org.springframework.stereotype.Service;
  * Private Mark detail business logic.
  *
  * <p>Ports the legacy Oracle private-mark packages to native queries against
- * the shared {@code THE} schema, keyed by timber mark:
+ * the shared {@code THE} schema. Legacy keys every one of them on the header's
+ * timber mark <em>or</em> certificate: an application that has not been issued
+ * yet has a certificate but no timber mark, and the FTA500 list links to it by
+ * that certificate.
  *
  * <ul>
  *   <li>the mark tombstone/application record — {@code FTA_510_PRIVATE_MARK.GET}
@@ -56,8 +59,8 @@ public class MarkDetailService {
              pmc.private_mark_tenure_term          AS tenure_term,
              pmc.forest_district                   AS forest_district,
              ou.org_unit_code                      AS org_unit_code,
-             ffc.client_number                     AS client_number,
-             ffc.client_locn_code                  AS client_locn_code,
+             COALESCE(pmcl.client_number, ffc.client_number)       AS client_number,
+             COALESCE(pmcl.client_locn_code, ffc.client_locn_code) AS client_locn_code,
              cli.client_name                       AS client_name,
              NVL(haa.marking_method_code, 'S')     AS marking_method_code,
              NVL(haa.marking_instrument_code, 'H') AS marking_instrument_code,
@@ -73,8 +76,18 @@ public class MarkDetailService {
         LEFT JOIN the.forest_file_client ffc
                ON ffc.forest_file_id = pmc.forest_file_id
               AND ffc.forest_file_client_type_code = 'A'
-        LEFT JOIN the.forest_client cli            ON cli.client_number = ffc.client_number
-       WHERE pmc.timber_mark = :markNumber
+        -- An unissued application has no forest file yet; its holder sits on
+        -- PRIVATE_MARK_CLIENT, keyed by certificate (as the FTA500 list reads it).
+        LEFT JOIN the.private_mark_client pmcl
+               ON pmcl.certificate = pmc.certificate
+              AND pmcl.private_mark_client_type_code = 'A'
+        LEFT JOIN the.forest_client cli
+               ON cli.client_number = COALESCE(pmcl.client_number, ffc.client_number)
+       WHERE (:byCertificate = 'N' AND pmc.timber_mark = :markNumber)
+          OR (:byCertificate = 'Y' AND pmc.certificate = :markNumber)
+       -- The outer joins can fan out (more than one 'A' client or hauling
+       -- authority row); the header is one record, so take the first.
+       FETCH FIRST 1 ROW ONLY
       """;
 
   private static final String LAND_INDEX_SQL =
@@ -94,7 +107,8 @@ public class MarkDetailService {
              ON li1.primary_land_index_code = mli.primary_land_index_code
         LEFT JOIN the.secondary_land_index_code li2
              ON li2.secondary_land_index_code = mli.secondary_land_index_code
-       WHERE mli.timber_mark = :markNumber
+       WHERE (mli.timber_mark = :timberMark AND :timberMark IS NOT NULL)
+          OR (mli.certificate = :certificate AND :certificate IS NOT NULL)
        ORDER BY mli.primary_land_index_code,
                 mli.secondary_land_index_code,
                 mli.mark_land_index_desc
@@ -120,8 +134,27 @@ public class MarkDetailService {
         LEFT JOIN the.client_location loc
              ON loc.client_number = ffc.client_number
             AND loc.client_locn_code = ffc.client_locn_code
-       WHERE pmc.timber_mark = :markNumber
-       ORDER BY ffc.client_number, ffc.client_locn_code
+       WHERE pmc.timber_mark = :timberMark
+      UNION
+      SELECT pcl.client_number                  AS client_number,
+             pcl.client_locn_code               AS client_locn_code,
+             cli.client_name                    AS client_name,
+             loc.city                           AS client_city,
+             pcl.private_mark_client_skey       AS for_client_link_skey,
+             pcl.private_mark_client_type_code  AS file_client_type,
+             fct.description                    AS file_client_type_desc,
+             pcl.licensee_start_date            AS licensee_start_dt,
+             pcl.licensee_end_date              AS licensee_end_date,
+             pcl.revision_count                 AS revision_count
+        FROM the.private_mark_client pcl
+        JOIN the.file_client_type_code fct
+             ON fct.file_client_type_code = pcl.private_mark_client_type_code
+        LEFT JOIN the.forest_client cli            ON cli.client_number = pcl.client_number
+        LEFT JOIN the.client_location loc
+             ON loc.client_number = pcl.client_number
+            AND loc.client_locn_code = pcl.client_locn_code
+       WHERE pcl.certificate = :certificate
+       ORDER BY 1, 2
       """;
 
   private static final String AMENDMENTS_SQL =
@@ -130,23 +163,39 @@ public class MarkDetailService {
              tma.prv_mrk_amd_sts_st AS prv_mrk_amd_sts_st,
              tma.revision_count     AS revision_count
         FROM the.tmbr_mark_amend tma
-       WHERE tma.timber_mark = :markNumber
+       WHERE tma.timber_mark = :timberMark
        ORDER BY tma.amend_request_date DESC
       """;
 
   /**
-   * Loads a single private mark by timber-mark number, or empty when none
-   * exists — mirrors the {@code GET}/{@code mainline} flow of the FTA_510/511/513
+   * Loads a single private mark by timber mark, or empty when none exists —
+   * mirrors the {@code GET}/{@code mainline} flow of the FTA_510/511/513
    * packages.
    *
    * @param markNumber the timber mark (path id)
    */
   public Optional<MarkDetailDto> findByMarkNumber(String markNumber) {
-    MapSqlParameterSource params = new MapSqlParameterSource().addValue("markNumber", markNumber);
+    return find(markNumber, false);
+  }
+
+  /**
+   * Loads a single private mark application by certificate — the key an
+   * application has before a timber mark is issued.
+   *
+   * @param certificate the certificate number (path id)
+   */
+  public Optional<MarkDetailDto> findByCertificate(String certificate) {
+    return find(certificate, true);
+  }
+
+  private Optional<MarkDetailDto> find(String id, boolean byCertificate) {
+    MapSqlParameterSource headerParams = new MapSqlParameterSource()
+        .addValue("markNumber", id)
+        .addValue("byCertificate", byCertificate ? "Y" : "N");
 
     MarkDetailDto base;
     try {
-      base = jdbc.queryForObject(MARK_SQL, params, (rs, rowNum) -> new MarkDetailDto(
+      base = jdbc.queryForObject(MARK_SQL, headerParams, (rs, rowNum) -> new MarkDetailDto(
           rs.getString("timber_mark"),
           rs.getString("certificate"),
           rs.getString("file_type_code"),
@@ -175,6 +224,11 @@ public class MarkDetailService {
     } catch (EmptyResultDataAccessException e) {
       return Optional.empty();
     }
+
+    // The sub-lists key on whichever of the two the header actually holds.
+    MapSqlParameterSource params = new MapSqlParameterSource()
+        .addValue("timberMark", base.timberMark())
+        .addValue("certificate", base.certificate());
 
     List<MarkDetailDto.LandIndex> landIndex =
         jdbc.query(LAND_INDEX_SQL, params, (rs, rowNum) -> new MarkDetailDto.LandIndex(

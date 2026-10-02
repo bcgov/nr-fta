@@ -69,7 +69,7 @@ const RangeUnitDetail: FC = () => {
                   { label: 'Unit ID', value: unit.rangeUnitId },
                   { label: 'Name', value: unit.rangeUnitName ?? '—' },
                   { label: 'Status', value: unit.statusDescription ?? unit.statusCode ?? '—' },
-                  { label: 'Admin Zone', value: unit.districtAdminZone ?? '—' },
+                  { label: 'Administration Zone', value: unit.districtAdminZone ?? '—' },
                   { label: 'Pastures', value: String(unit.pastures.length) },
                   { label: 'District', value: unit.districtDescription ?? '—' },
                 ]}
@@ -81,7 +81,7 @@ const RangeUnitDetail: FC = () => {
                 items={[
                   { label: 'Region', value: unit.regionDescription ?? '—' },
                   { label: 'District', value: unit.districtDescription ?? '—' },
-                  { label: 'Admin Zone', value: unit.districtAdminZone ?? '—' },
+                  { label: 'Administration Zone', value: unit.districtAdminZone ?? '—' },
                   { label: 'Status', value: unit.statusDescription ?? unit.statusCode ?? '—' },
                   { label: 'As Of', value: unit.statusDate ?? '—' },
                   { label: 'Pastures', value: String(unit.pastures.length) },

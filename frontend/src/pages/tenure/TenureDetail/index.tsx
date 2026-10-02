@@ -31,6 +31,7 @@ import {
 import { Link, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
+import DetailTile from '@/components/DetailTile';
 import StatusTag from '@/components/StatusTag/StatusTag';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
@@ -38,8 +39,7 @@ import PageLayout from '@/pages/PageLayout';
 import { canEdit } from '@/routes/access';
 import { getTenureDetail } from '@/services/tenure_detail';
 
-import type { CarbonIconType } from '@carbon/icons-react';
-import type { FC, ReactNode } from 'react';
+import type { FC } from 'react';
 
 const nf = new Intl.NumberFormat('en-CA');
 
@@ -63,41 +63,6 @@ type AssociatedClient = {
   location: string;
 };
 type Note = { date: string; author: string; text: string };
-
-interface Field {
-  label: string;
-  value: ReactNode;
-}
-
-/**
- * A white section card on the grey tab canvas: an icon heading over a
- * label/value list — the section treatment of nr-fsp-new's FSP Information tab.
- */
-const DetailTile: FC<{
-  title: string;
-  icon: CarbonIconType;
-  fields: Field[];
-  /** Right-aligned in the card header — where FSP puts its "Edit …" buttons. */
-  action?: ReactNode;
-}> = ({ title, icon: Icon, fields, action }) => (
-  <section className="fsp-info__tile">
-    <header className="fsp-info__tile-header">
-      <h2 className="fsp-info__section-title">
-        <Icon size={20} />
-        <span>{title}</span>
-      </h2>
-      {action}
-    </header>
-    <dl className="fsp-info__field-list">
-      {fields.map((f) => (
-        <div key={f.label} className="fsp-info__field">
-          <dt>{f.label}</dt>
-          <dd>{f.value}</dd>
-        </div>
-      ))}
-    </dl>
-  </section>
-);
 
 /**
  * FTA100 — Tenure detail. Title and actions, then Carbon contained Tabs over a
@@ -154,11 +119,11 @@ const TenureDetail: FC = () => {
               <TabList aria-label="Tenure sections" contained>
                 <Tab renderIcon={TableOfContents}>Details</Tab>
                 <Tab renderIcon={Document}>Tenure</Tab>
-                <Tab renderIcon={Stamp}>CP / mark</Tab>
+                <Tab renderIcon={Stamp}>Cutting permit / mark</Tab>
                 <Tab renderIcon={Tree}>Cut block</Tab>
                 <Tab renderIcon={RoadIcon}>Roads</Tab>
-                <Tab renderIcon={Folders}>Assoc files</Tab>
-                <Tab renderIcon={UserMultiple}>Assoc clients</Tab>
+                <Tab renderIcon={Folders}>Associated files</Tab>
+                <Tab renderIcon={UserMultiple}>Associated clients</Tab>
                 <Tab renderIcon={ChartColumn}>AAC</Tab>
                 <Tab renderIcon={Currency}>Sale info</Tab>
                 <Tab renderIcon={Notebook}>Notes</Tab>
@@ -174,7 +139,7 @@ const TenureDetail: FC = () => {
                         { label: 'File ID', value: tenure.forestFileId },
                         { label: 'File Type', value: tenure.fileTypeCode ?? '—' },
                         { label: 'Status', value: status ? <StatusTag status={status} /> : '—' },
-                        { label: 'Org Unit', value: tenure.orgUnitCode ?? '—' },
+                        { label: 'Organization Unit', value: tenure.orgUnitCode ?? '—' },
                         { label: 'Licensee', value: tenure.licensee ?? '—' },
                         { label: 'Client #', value: tenure.clientNumber ?? '—' },
                         { label: 'Issued', value: tenure.awardDate ?? '—' },
@@ -206,7 +171,7 @@ const TenureDetail: FC = () => {
                       <Table>
                         <TableHead>
                           <TableRow>
-                            <TableHeader>CP</TableHeader>
+                            <TableHeader>Cutting permit</TableHeader>
                             <TableHeader>Timber Mark</TableHeader>
                             <TableHeader>Status</TableHeader>
                             <TableHeader>Issue Date</TableHeader>
@@ -238,7 +203,7 @@ const TenureDetail: FC = () => {
                         <TableHead>
                           <TableRow>
                             <TableHeader>Block</TableHeader>
-                            <TableHeader>CP</TableHeader>
+                            <TableHeader>Cutting permit</TableHeader>
                             <TableHeader>Status</TableHeader>
                             <TableHeader>Area (ha)</TableHeader>
                           </TableRow>
