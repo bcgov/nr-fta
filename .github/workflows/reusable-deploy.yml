@@ -73,6 +73,18 @@ on:
       keystore_secret:
         description: Oracle keystore passphrase
         required: true
+      keycloak_sa_client_id:
+        description: |
+          Keycloak admin service-account client id (needs realm-management
+          'manage-clients'). Used to create/sync the FTA backend's user-lookup
+          service account. Omit to skip that step (e.g. PR previews).
+        required: false
+      keycloak_sa_client_secret:
+        description: Keycloak admin service-account client secret
+        required: false
+      user_lookup_base_url:
+        description: nr-user-lookup-api base URL for this environment.
+        required: false
 
     outputs:
       triggered:
@@ -104,9 +116,52 @@ jobs:
     env:
       DATABASE_PASSWORD: ${{ secrets.database_password }}
       KEYSTORE_SECRET: ${{ secrets.keystore_secret }}
+      # Job-level so the step `if:` below can read it (a step's own `env` isn't
+      # available to that step's `if`).
+      KC_SA_CLIENT_ID: ${{ secrets.keycloak_sa_client_id }}
     steps:
+      # The deployer action checks out internally, but the Keycloak script runs
+      # before it, so check out here to make ./.github/scripts available.
+      - uses: actions/checkout@v6
+
+      # Idempotently create the FTA backend's user-lookup service-account
+      # client and assign the nr-user-lookup-api scope. Skipped when the admin
+      # service-account credentials aren't configured (e.g. PR previews), so
+      # those deploys are unaffected. The resulting client id/secret are exposed
+      # as masked step outputs for the deploy step below.
+      #
+      # NOTE THE REALM. This runs against KEYCLOAK_SA_ISSUER_URI (the *forests*
+      # realm, where nr-user-lookup-api's service accounts live, as for REPT) —
+      # NOT KEYCLOAK_ISSUER_URI, which is the standard realm the API
+      # and SPA authenticate users against. The script derives the realm from
+      # whatever issuer it is given, so pointing it at the wrong one silently
+      # creates the client in the wrong realm and every lookup then fails to
+      # authenticate. The two variables have similar names and different
+      # values; that is the whole reason the SA one is named separately.
+      - name: Ensure Keycloak service account
+        id: keycloak_sa
+        if: ${{ env.KC_SA_CLIENT_ID != '' }}
+        env:
+          KEYCLOAK_ISSUER_URI: ${{ vars.KEYCLOAK_SA_ISSUER_URI }}
+          KC_SA_CLIENT_SECRET: ${{ secrets.keycloak_sa_client_secret }}
+        run: ./.github/scripts/ensure-keycloak-service-account.sh
+
       - uses: bcgov/action-deployer-openshift@bb9d143f4f03187239580c17c4b77da04cdb6e66 # v4.2.2
         id: deploy
+        # The user-lookup client secret is a step OUTPUT (from keycloak_sa), so
+        # it can't sit in the job-level env; set it here and reference
+        # "$USER_LOOKUP_CLIENT_SECRET" in parameters — single bash expansion,
+        # same reasoning as DATABASE_PASSWORD above. Empty when the keycloak_sa
+        # step is skipped (PR previews); the backend then shows IDIR ids.
+        env:
+          USER_LOOKUP_CLIENT_SECRET: ${{ steps.keycloak_sa.outputs.client_secret }}
+          # USER_LOOKUP_BASE_URL is a secret; route through env (not inline in
+          # `parameters`) so bash does a single expansion.
+          USER_LOOKUP_BASE_URL: ${{ secrets.user_lookup_base_url }}
+          # Derived from KEYCLOAK_SA_ISSUER_URI, not KEYCLOAK_ISSUER_URI: the
+          # backend presents these credentials to the service-account client
+          # created above, in that realm. Empty when the variable isn't set.
+          USER_LOOKUP_TOKEN_URL: ${{ vars.KEYCLOAK_SA_ISSUER_URI != '' && format('{0}/protocol/openid-connect/token', vars.KEYCLOAK_SA_ISSUER_URI) || '' }}
         with:
           file: backend/openshift.deploy.yml
           oc_namespace: ${{ secrets.oc_namespace }}
@@ -128,6 +183,10 @@ jobs:
             -p MAX_REPLICAS="${{ inputs.backend_replicas }}"
             -p KEYCLOAK_ISSUER_URI="${{ vars.KEYCLOAK_ISSUER_URI }}"
             -p KEYCLOAK_CLIENT_ID="${{ vars.KEYCLOAK_CLIENT_ID }}"
+            -p USER_LOOKUP_BASE_URL="$USER_LOOKUP_BASE_URL"
+            -p USER_LOOKUP_TOKEN_URL="$USER_LOOKUP_TOKEN_URL"
+            -p USER_LOOKUP_CLIENT_ID="${{ steps.keycloak_sa.outputs.client_id }}"
+            -p USER_LOOKUP_CLIENT_SECRET="$USER_LOOKUP_CLIENT_SECRET"
             -p DATABASE_HOST="${{ secrets.database_host }}"
             -p DATABASE_SERVICE_NAME="${{ secrets.database_service_name }}"
             -p DATABASE_USER="${{ secrets.database_user }}"

@@ -343,9 +343,9 @@ const MarkApplicationPanel: FC<Props> = ({
     maxLength?: number,
     size: 'cell' | 'sm' | 'xs' = 'cell',
   ) => (
-    <div className={`mark-edit__input mark-edit__input--${size}`}>
+    <div className={`detail-edit__input detail-edit__input--${size}`}>
       <TextInput
-        id={`mark-edit-${key}`}
+        id={`detail-edit-${key}`}
         labelText={label}
         hideLabel
         value={form[key]}
@@ -364,9 +364,9 @@ const MarkApplicationPanel: FC<Props> = ({
     options: { code: string; description: string }[],
     placeholder = true,
   ) => (
-    <div className="mark-edit__input mark-edit__input--cell">
+    <div className="detail-edit__input detail-edit__input--cell">
       <Select
-        id={`mark-edit-${key}`}
+        id={`detail-edit-${key}`}
         labelText={label}
         hideLabel
         value={form[key]}
@@ -384,7 +384,7 @@ const MarkApplicationPanel: FC<Props> = ({
   );
 
   const dateInput = (key: keyof MarkEditForm, label: string, helperText?: string) => (
-    <div className="mark-edit__input mark-edit__input--cell">
+    <div className="detail-edit__input detail-edit__input--cell">
       <DatePicker
         datePickerType="single"
         dateFormat="Y-m-d"
@@ -394,7 +394,7 @@ const MarkApplicationPanel: FC<Props> = ({
         onChange={(dates: Date[]) => set(key, dates[0] ? toIsoDate(dates[0]) : '')}
       >
         <DatePickerInput
-          id={`mark-edit-${key}`}
+          id={`detail-edit-${key}`}
           labelText={label}
           hideLabel
           placeholder="yyyy-mm-dd"
@@ -443,7 +443,7 @@ const MarkApplicationPanel: FC<Props> = ({
     {
       label: 'Timber Mark',
       value: willIssue ? (
-        <span className="mark-edit__pending">Assigned on save</span>
+        <span className="detail-edit__pending">Assigned on save</span>
       ) : (
         dash(mark.timberMark)
       ),
@@ -494,7 +494,7 @@ const MarkApplicationPanel: FC<Props> = ({
           value: (
             <span>
               <StatusTag status="HN" variant={statusCodeVariant('HN')} />
-              <span className="mark-edit__pending"> on save</span>
+              <span className="detail-edit__pending"> on save</span>
             </span>
           ),
         }
@@ -507,9 +507,9 @@ const MarkApplicationPanel: FC<Props> = ({
     field('Mark Type', dash(mark.fileTypeDesc ?? mark.fileTypeCode), open(rules?.markType), () => (
       // Legacy FTA510's Mark Type dropdown. Saving a type issues the mark: a timber
       // mark is generated for it (E…, N…, IR…) and the status goes to HN.
-      <div className="mark-edit__input mark-edit__input--cell">
+      <div className="detail-edit__input detail-edit__input--cell">
         <Select
-          id="mark-edit-fileTypeCode"
+          id="detail-edit-fileTypeCode"
           labelText="Mark Type"
           hideLabel
           value={form.fileTypeCode}
@@ -623,9 +623,9 @@ const MarkApplicationPanel: FC<Props> = ({
     },
     {
       ...field('Management Unit', managementUnit, locationOpen, () => (
-        <div className="mark-edit__input mark-edit__input--cell">
+        <div className="detail-edit__input detail-edit__input--cell">
           <ManagementUnitComboBox
-            id="mark-edit-mgmtUnit"
+            id="detail-edit-mgmtUnit"
             units={codes.mgmtUnits}
             typeCode={form.mgmtUnitTypeCode}
             unitId={form.mgmtUnitId}
@@ -658,7 +658,7 @@ const MarkApplicationPanel: FC<Props> = ({
       regComp,
       locationOpen,
       () => (
-        <div className="mark-edit__pair">
+        <div className="detail-edit__pair">
           {text('mapReferenceReg', 'Reg', MAX.mapReferenceReg, 'xs')}
           <span aria-hidden="true">/</span>
           {text('mapReferenceComp', 'Comp', MAX.mapReferenceComp, 'xs')}
@@ -672,11 +672,11 @@ const MarkApplicationPanel: FC<Props> = ({
       locationOpen,
       () => (
         <TextArea
-          id="mark-edit-proofOfCrownOrLegal"
+          id="detail-edit-proofOfCrownOrLegal"
           labelText="Legal"
           hideLabel
           rows={4}
-          className="mark-edit__textarea"
+          className="detail-edit__textarea"
           value={form.proofOfCrownOrLegal}
           // A counter would render beside the hidden label, on a line of its own.
           maxLength={MAX.proofOfCrownOrLegal}
@@ -691,17 +691,17 @@ const MarkApplicationPanel: FC<Props> = ({
   ];
 
   return (
-    <div className={editing ? 'fsp-info__tab-panel mark-edit' : 'fsp-info__tab-panel'}>
+    <div className={editing ? 'fsp-info__tab-panel detail-edit' : 'fsp-info__tab-panel'}>
       {canEdit && rules && (
-        <div className="mark-edit__toolbar">
+        <div className="detail-edit__toolbar">
           {editing ? (
-            <p className="mark-edit__strap">All fields are required unless marked optional.</p>
+            <p className="detail-edit__strap">All fields are required unless marked optional.</p>
           ) : (
             <>
               {!rules.editable && rules.reason && (
-                <p className="mark-edit__reason">{rules.reason}</p>
+                <p className="detail-edit__reason">{rules.reason}</p>
               )}
-              {submitReason && <p className="mark-edit__reason">{submitReason}</p>}
+              {submitReason && <p className="detail-edit__reason">{submitReason}</p>}
               <Button
                 kind="tertiary"
                 size="sm"
@@ -743,7 +743,7 @@ const MarkApplicationPanel: FC<Props> = ({
       <DetailTile title="Location" icon={Location} fields={locationFields} />
 
       {editing && (
-        <div className="mark-edit__actions">
+        <div className="detail-edit__actions">
           <Button kind="tertiary" size="md" disabled={saving} onClick={onCancel}>
             Cancel
           </Button>
@@ -758,18 +758,18 @@ const MarkApplicationPanel: FC<Props> = ({
         open={confirmSubmit}
         passiveModal
         size="sm"
-        className="mark-dialog"
+        className="detail-dialog"
         modalHeading="Submit to Headquarters"
         onRequestClose={() => {
           if (!submitting) setConfirmSubmit(false);
         }}
         preventCloseOnClickOutside
       >
-        <p className="mark-dialog__subtitle">
+        <p className="detail-dialog__subtitle">
           Certificate {mark.certificate} goes to Headquarters for approval and becomes PI - Pending
           Issuance.
         </p>
-        <div className="mark-dialog__actions">
+        <div className="detail-dialog__actions">
           <Button kind="tertiary" disabled={submitting} onClick={() => setConfirmSubmit(false)}>
             Cancel
           </Button>

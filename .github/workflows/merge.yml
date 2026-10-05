@@ -46,6 +46,9 @@ jobs:
       database_host: ${{ secrets.database_host }}
       database_service_name: ${{ secrets.database_service_name }}
       keystore_secret: ${{ secrets.keystore_secret }}
+      keycloak_sa_client_id: ${{ secrets.KEYCLOAK_SA_CLIENT_ID }}
+      keycloak_sa_client_secret: ${{ secrets.KEYCLOAK_SA_CLIENT_SECRET }}
+      user_lookup_base_url: ${{ secrets.USER_LOOKUP_BASE_URL }}
     with:
       environment: test
       target: test
@@ -82,6 +85,9 @@ jobs:
       database_host: ${{ secrets.database_host }}
       database_service_name: ${{ secrets.database_service_name }}
       keystore_secret: ${{ secrets.keystore_secret }}
+      keycloak_sa_client_id: ${{ secrets.KEYCLOAK_SA_CLIENT_ID }}
+      keycloak_sa_client_secret: ${{ secrets.KEYCLOAK_SA_CLIENT_SECRET }}
+      user_lookup_base_url: ${{ secrets.USER_LOOKUP_BASE_URL }}
     with:
       environment: prod
       target: prod

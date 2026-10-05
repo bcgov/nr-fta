@@ -571,7 +571,11 @@ const TimberMarkSearch: FC = () => {
                               const target = valueOf('certificate')
                                 ? markDetailPath(valueOf('timberMark'), valueOf('certificate'))
                                 : cp
-                                  ? `/harvesting-authority/${encodeURIComponent(cp)}`
+                                  ? `/harvesting-authority/${encodeURIComponent(cp)}${
+                                      valueOf('forestFileId')
+                                        ? `?forestFileId=${encodeURIComponent(valueOf('forestFileId') ?? '')}`
+                                        : ''
+                                    }`
                                   : null;
                               const open = () => {
                                 if (target) navigate(target);

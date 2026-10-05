@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { Modal } from '@/components/Modal';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import StatusTag from '@/components/StatusTag/StatusTag';
+import UserName from '@/components/UserName';
 import { useNotification } from '@/context/notification/useNotification';
 import { addAmendment, type MarkAmendment } from '@/services/mark_detail';
 import { formatDate } from '@/utils/formatDate';
@@ -139,18 +140,18 @@ const AmendmentsPanel: FC<Props> = ({
           body="Request an amendment to change an issued mark's area or legal description."
           action={
             // Always shown; disabled, with the reason, when a request isn't allowed.
-            <div className="mark-tab__empty-action">
+            <div className="detail-tab__empty-action">
               <Button kind="primary" renderIcon={Add} disabled={!canAdd} onClick={openDialog}>
                 Request amendment
               </Button>
-              {!canAdd && disabledReason && <p className="mark-tab__reason">{disabledReason}</p>}
+              {!canAdd && disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             </div>
           }
         />
       ) : (
         <div>
-          <header className="mark-tab__actions">
-            {!canAdd && disabledReason && <p className="mark-tab__reason">{disabledReason}</p>}
+          <header className="detail-tab__actions">
+            {!canAdd && disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             <Button
               kind="tertiary"
               size="sm"
@@ -187,11 +188,13 @@ const AmendmentsPanel: FC<Props> = ({
                           '—'
                         )}
                       </TableCell>
-                      <TableCell>{dash(a.requestingUserid)}</TableCell>
+                      <TableCell>
+                        <UserName userId={a.requestingUserid} />
+                      </TableCell>
                       <TableCell>
                         {a.permitBlockArea === null ? '—' : a.permitBlockArea.toFixed(1)}
                       </TableCell>
-                      <TableCell className="mark-tab__long-text">
+                      <TableCell className="detail-tab__long-text">
                         {dash(a.requestedChanges)}
                       </TableCell>
                     </TableRow>
@@ -208,13 +211,13 @@ const AmendmentsPanel: FC<Props> = ({
         open={open}
         passiveModal
         size="sm"
-        className="mark-dialog"
+        className="detail-dialog"
         modalHeading="Request amendment"
         onRequestClose={closeDialog}
         preventCloseOnClickOutside
       >
         <Stack gap={5}>
-          <p className="mark-dialog__subtitle">
+          <p className="detail-dialog__subtitle">
             All fields are required unless marked optional. The request is saved as PI - Pending
             Issuance.
           </p>
@@ -249,7 +252,7 @@ const AmendmentsPanel: FC<Props> = ({
             }}
           />
         </Stack>
-        <div className="mark-dialog__actions">
+        <div className="detail-dialog__actions">
           <Button kind="tertiary" disabled={saving} onClick={closeDialog}>
             Cancel
           </Button>

@@ -30,7 +30,6 @@ import AssignMarks from './pages/harvesting/AssignMarks';
 import CutBlockAction from './pages/harvesting/CutBlockAction';
 import TenureLanding from './pages/tenure/TenureLanding';
 import AddTenure from './pages/tenure/AddTenure';
-import RoadDetail from './pages/tenure/RoadDetail';
 import MarkList from './pages/marks/MarkList';
 import MarkDetail from './pages/marks/MarkDetail';
 import RangeTenureSearch from './pages/search/RangeTenureSearch';
@@ -143,7 +142,6 @@ export default function App() {
             path="/cut-block/:blockId/:action"
             element={guarded(withLayout(<CutBlockAction />))}
           />
-          <Route path="/road/:roadId" element={guarded(withLayout(<RoadDetail />))} />
 
           {/* ── Private Marks ──────────────────────────────────────── */}
           <Route path="/marks" element={guarded(withLayout(<MarkList />))} />

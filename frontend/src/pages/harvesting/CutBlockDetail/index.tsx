@@ -15,7 +15,7 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
@@ -46,10 +46,14 @@ const fmtArea = (n: number | null): string => (n == null ? '—' : `${n.toFixed(
  */
 const CutBlockDetail: FC = () => {
   const { blockId = '' } = useParams();
+  // A block id repeats across tenures and permits, so links from a tenure say which.
+  const [searchParams] = useSearchParams();
+  const forestFileId = searchParams.get('forestFileId') ?? undefined;
+  const cuttingPermitId = searchParams.get('cuttingPermitId') ?? undefined;
   const { user } = useAuth();
   const { data, loading, error, reload } = useApiResource(
-    () => getCutblockDetail(blockId),
-    [blockId],
+    () => getCutblockDetail(blockId, { forestFileId, cuttingPermitId }),
+    [blockId, forestFileId, cuttingPermitId],
   );
 
   const id = data?.cutBlockId ?? blockId;

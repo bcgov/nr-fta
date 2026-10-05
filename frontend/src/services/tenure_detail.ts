@@ -1,4 +1,4 @@
-import { apiGet, toQuery } from './http';
+import { apiGet, apiPost, toQuery } from './http';
 
 // Mirrors the backend TenureDetailDto (ca.bc.gov.nrs.fta.tenure.dto), which
 // ports the file-level GET of THE.FTA_100_TENURE, enriched with the AAC summary
@@ -43,4 +43,62 @@ export interface TenureDetail {
 /** GET /api/fta/tenures/{forestFileId} — tenure detail (FTA_100_TENURE). */
 export function getTenureDetail(forestFileId: string): Promise<TenureDetail> {
   return apiGet<TenureDetail>(`/api/fta/tenures/${encodeURIComponent(forestFileId)}${toQuery({})}`);
+}
+
+/** One cutting permit of a tenure — mirrors the backend TenureCuttingPermitDto (FTA901). */
+export interface TenureCuttingPermit {
+  orgUnitCode: string | null;
+  /** The CP, or a Fort St. John authority's harvesting authority id. */
+  cuttingPermitId: string | null;
+  timberMark: string | null;
+  statusCode: string | null;
+  /** "<code> - <description>". */
+  statusDesc: string | null;
+  issueDate: string | null; // ISO date
+  expiryDate: string | null; // ISO date
+  extendDate: string | null; // ISO date
+  salvageTypeCode: string | null;
+  hvaSkey: number | null;
+  fsj: boolean;
+}
+
+/** GET /api/fta/tenures/{forestFileId}/cutting-permits — the tenure's cutting permits (FTA901). */
+export function getTenureCuttingPermits(forestFileId: string): Promise<TenureCuttingPermit[]> {
+  return apiGet<TenureCuttingPermit[]>(
+    `/api/fta/tenures/${encodeURIComponent(forestFileId)}/cutting-permits`,
+  );
+}
+
+/** Mirrors the backend CuttingPermitCreateRequest — a new cutting permit (ESF create). */
+export interface CuttingPermitCreateRequest {
+  cuttingPermitId: string;
+  /** District ORG_UNIT_NO. */
+  forestDistrict: string;
+  location: string | null;
+  /** Months: at most 48 (60 for an A11). */
+  tenureTerm: number;
+  harvestArea: number | null;
+  markingMethodCode: string;
+  /** Not needed when the marking method is E. */
+  markingInstrumentCode: string | null;
+  salvageTypeCode: string | null;
+  /** Null for the district's default. */
+  cascadeSplitCode: string | null;
+  deciduous: boolean;
+  catastrophic: boolean;
+  cruiseBased: boolean;
+}
+
+/**
+ * POST /api/fta/tenures/{forestFileId}/cutting-permits — add a cutting permit with
+ * its timber mark (FTA_ADMIN). Returns the CP and the mark generated for it.
+ */
+export function addCuttingPermit(
+  forestFileId: string,
+  request: CuttingPermitCreateRequest,
+): Promise<{ cuttingPermitId: string; timberMark: string }> {
+  return apiPost<{ cuttingPermitId: string; timberMark: string }>(
+    `/api/fta/tenures/${encodeURIComponent(forestFileId)}/cutting-permits`,
+    request,
+  );
 }

@@ -32,7 +32,7 @@ public class TenureWriteController {
   public ResponseEntity<Map<String, String>> create(
       @RequestBody CreateTenureRequest request,
       JwtAuthenticationToken principal) {
-    String userId = JwtPrincipalUtil.getIdpUsername(principal);
+    String userId = JwtPrincipalUtil.getAuditUserId(principal);
     String forestFileId = tenureWriteService.create(request, userId);
     return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("forestFileId", forestFileId));
   }

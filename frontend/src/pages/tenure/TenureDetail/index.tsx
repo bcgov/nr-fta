@@ -1,37 +1,26 @@
 import {
   ArrowLeft,
+  Campsite,
+  Copy,
+  DocumentTasks,
+  Grid,
+  RecentlyViewed,
+  Sprout,
+  Wheat,
   ChartColumn,
   Currency,
-  Document,
-  Edit,
   Folders,
   Notebook,
-  Report,
-  Road as RoadIcon,
   Stamp,
   TableOfContents,
   Tree,
   UserMultiple,
 } from '@carbon/icons-react';
-import {
-  Button,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Tabs,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@carbon/react';
+import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import { Link, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
-import DetailTile from '@/components/DetailTile';
+import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import StatusTag from '@/components/StatusTag/StatusTag';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
@@ -39,37 +28,32 @@ import PageLayout from '@/pages/PageLayout';
 import { canEdit } from '@/routes/access';
 import { getTenureDetail } from '@/services/tenure_detail';
 
+import AacPanel from './AacPanel';
+import AssociatedClientsPanel from './AssociatedClientsPanel';
+import AssociatedFilesPanel from './AssociatedFilesPanel';
+import CopyRotationPanel from './CopyRotationPanel';
+import CpCbAmendmentsPanel from './CpCbAmendmentsPanel';
+import CutBlocksPanel from './CutBlocksPanel';
+import CuttingPermitsPanel from './CuttingPermitsPanel';
+import DetailsPanel from './DetailsPanel';
+import GrazingRotationPanel from './GrazingRotationPanel';
+import HayCuttingRotationPanel from './HayCuttingRotationPanel';
+import RecProjectPanel from './RecProjectPanel';
+import SaleInfoPanel from './SaleInfoPanel';
+import TenureApplicationPanel from './TenureApplicationPanel';
+import TenureNotesPanel from './TenureNotesPanel';
+import TlBlocksPanel from './TlBlocksPanel';
+
+import type { TenurePanelProps } from './panelProps';
 import type { FC } from 'react';
 
-const nf = new Intl.NumberFormat('en-CA');
-
-// Sub-collection tabs (CP/Mark, Cut Block, Roads, Assoc Files, Assoc Clients,
-// Notes) are served by separate endpoints not yet ported in this vertical
-// slice; the columns/cross-links are kept intact, driven by empty lists for now.
-type CuttingPermit = {
-  cpId: string;
-  timberMark: string;
-  status: string;
-  issueDate: string;
-  volume: number;
-};
-type CutBlock = { blockId: string; cpId: string; status: string; areaHa: number };
-type Road = { roadId: string; name: string; status: string; lengthKm: number; tenureType: string };
-type AssociatedFile = { fileId: string; relationship: string; fileType: string; status: string };
-type AssociatedClient = {
-  clientNumber: string;
-  name: string;
-  relationship: string;
-  location: string;
-};
-type Note = { date: string; author: string; text: string };
-
 /**
- * FTA100 — Tenure detail. Title and actions, then Carbon contained Tabs over a
- * full-bleed grey pane (the nr-fsp-new FSP information layout): Details first,
- * holding the tenure summary, then the tenure's sub-entities. Backed by the
- * backend {@code GET /api/fta/tenures/{id}} endpoint, which ports
- * THE.FTA_100_TENURE (+ FTA_930_AAC, FTA_940_SALE_INFO).
+ * FTA100 — Tenure detail, laid out as the private-mark detail: a back link
+ * above the title, the file id in a status-coloured pill, then Carbon
+ * contained Tabs over a full-bleed grey pane — Details first (summary and term
+ * side by side), then the tenure's sub-entities. Backed by the backend
+ * {@code GET /api/fta/tenures/{id}} endpoint, which ports THE.FTA_100_TENURE
+ * (+ FTA_930_AAC, FTA_940_SALE_INFO).
  */
 const TenureDetail: FC = () => {
   const { fileId = '' } = useParams();
@@ -81,317 +65,123 @@ const TenureDetail: FC = () => {
     reload,
   } = useApiResource(() => getTenureDetail(fileId), [fileId]);
 
-  const cuttingPermits: CuttingPermit[] = [];
-  const cutBlocks: CutBlock[] = [];
-  const roads: Road[] = [];
-  const associatedFiles: AssociatedFile[] = [];
-  const associatedClients: AssociatedClient[] = [];
-  const notes: Note[] = [];
+  const statusVariant = statusCodeVariant(tenure?.fileStatusCode);
 
-  // FSP places each section's edit action in that section's card header,
-  // shown only to users who may edit. Not wired to an edit mode yet.
-  const editButton = (label: string) =>
-    canEdit(user) ? (
-      <Button kind="tertiary" size="sm" renderIcon={Edit}>
-        {label}
-      </Button>
-    ) : undefined;
+  // What every tab panel gets (panelProps.ts).
+  const panelProps: TenurePanelProps | null = tenure
+    ? { tenure, canEdit: canEdit(user), onTenureChanged: reload }
+    : null;
 
-  const status = tenure?.fileStatusDesc ?? tenure?.fileStatusCode;
-  const allowableAnnualCut =
-    tenure?.allowableAnnualCut != null ? `${nf.format(tenure.allowableAnnualCut)} m³/yr` : '—';
+  // The file id in a large pill beside the words, coloured as its status is in
+  // Tenure Search (grey until the tenure has loaded).
+  const title = (
+    <span className="detail-title">
+      Tenure
+      <StatusTag
+        status={fileId}
+        variant={statusVariant ?? 'default'}
+        className="detail-title__pill"
+      />
+    </span>
+  );
 
   return (
     <PageLayout
-      title={`Tenure ${fileId}`}
-      subtitle="Tenure record: cutting permits, cut blocks, roads, associated files and clients, AAC and sale details."
+      title={title}
+      subtitle="Tenure record: cutting permits, cut blocks, associated files and clients, AAC and sale details."
+      backLink={
+        <Link to="/search/tenure" className="back-link">
+          <ArrowLeft size={16} /> Back to Tenure Search
+        </Link>
+      }
     >
-      <Link to="/search/tenure" className="back-link">
-        <ArrowLeft size={16} /> Back to Tenure Search
-      </Link>
-
       <AsyncBoundary loading={loading} error={error} onRetry={reload} loadingText="Loading tenure…">
-        {tenure && (
+        {tenure && panelProps && (
           // Carbon's <Tabs> renders no DOM of its own, so the grey full-bleed
           // pane is styled through this wrapper (styles/_detail.scss).
           <div className="fsp-info__page-tabs">
             <Tabs>
               <TabList aria-label="Tenure sections" contained>
                 <Tab renderIcon={TableOfContents}>Details</Tab>
-                <Tab renderIcon={Document}>Tenure</Tab>
                 <Tab renderIcon={Stamp}>Cutting permit / mark</Tab>
                 <Tab renderIcon={Tree}>Cut block</Tab>
-                <Tab renderIcon={RoadIcon}>Roads</Tab>
                 <Tab renderIcon={Folders}>Associated files</Tab>
                 <Tab renderIcon={UserMultiple}>Associated clients</Tab>
                 <Tab renderIcon={ChartColumn}>AAC</Tab>
                 <Tab renderIcon={Currency}>Sale info</Tab>
+                <Tab renderIcon={DocumentTasks}>Tenure application</Tab>
                 <Tab renderIcon={Notebook}>Notes</Tab>
+                <Tab renderIcon={Sprout}>Grazing rotation</Tab>
+                <Tab renderIcon={Wheat}>Hay cutting rotation</Tab>
+                <Tab renderIcon={Copy}>Copy rotation</Tab>
+                <Tab renderIcon={Grid}>TL blocks</Tab>
+                <Tab renderIcon={RecentlyViewed}>CP/CB amendments</Tab>
+                <Tab renderIcon={Campsite}>Rec project</Tab>
               </TabList>
               <TabPanels>
                 <TabPanel>
-                  <div className="fsp-info__tab-panel">
-                    <DetailTile
-                      title="Tenure summary"
-                      action={editButton('Edit tenure details')}
-                      icon={Report}
-                      fields={[
-                        { label: 'File ID', value: tenure.forestFileId },
-                        { label: 'File Type', value: tenure.fileTypeCode ?? '—' },
-                        { label: 'Status', value: status ? <StatusTag status={status} /> : '—' },
-                        { label: 'Organization Unit', value: tenure.orgUnitCode ?? '—' },
-                        { label: 'Licensee', value: tenure.licensee ?? '—' },
-                        { label: 'Client #', value: tenure.clientNumber ?? '—' },
-                        { label: 'Issued', value: tenure.awardDate ?? '—' },
-                        { label: 'Expires', value: tenure.expiryDate ?? '—' },
-                      ]}
-                    />
-                  </div>
+                  <DetailsPanel {...panelProps} />
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="fsp-info__tab-panel">
-                    <DetailTile
-                      title="Tenure"
-                      action={editButton('Edit tenure')}
-                      icon={Document}
-                      fields={[
-                        { label: 'Management Unit', value: tenure.managementUnit ?? '—' },
-                        { label: 'Allowable Annual Cut', value: allowableAnnualCut },
-                        { label: 'Issue Date', value: tenure.awardDate ?? '—' },
-                        { label: 'Expiry Date', value: tenure.expiryDate ?? '—' },
-                      ]}
-                    />
-                  </div>
+                  <CuttingPermitsPanel
+                    forestFileId={tenure.forestFileId}
+                    fileTypeCode={tenure.fileTypeCode}
+                    orgUnitCode={tenure.orgUnitCode}
+                    canEdit={canEdit(user)}
+                  />
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="fsp-info__tab-panel bordered-table">
-                    <TableContainer title="Cutting Permits & Timber Marks">
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Cutting permit</TableHeader>
-                            <TableHeader>Timber Mark</TableHeader>
-                            <TableHeader>Status</TableHeader>
-                            <TableHeader>Issue Date</TableHeader>
-                            <TableHeader>Volume (m³)</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {cuttingPermits.map((cp) => (
-                            <TableRow key={cp.cpId}>
-                              <TableCell>
-                                <Link to={`/harvesting-authority/${cp.cpId}`}>{cp.cpId}</Link>
-                              </TableCell>
-                              <TableCell>{cp.timberMark}</TableCell>
-                              <TableCell>{cp.status}</TableCell>
-                              <TableCell>{cp.issueDate}</TableCell>
-                              <TableCell>{nf.format(cp.volume)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
+                  <CutBlocksPanel {...panelProps} />
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="fsp-info__tab-panel bordered-table">
-                    <TableContainer title="Cut Blocks">
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Block</TableHeader>
-                            <TableHeader>Cutting permit</TableHeader>
-                            <TableHeader>Status</TableHeader>
-                            <TableHeader>Area (ha)</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {cutBlocks.map((b) => (
-                            <TableRow key={b.blockId}>
-                              <TableCell>
-                                <Link to={`/cut-block/${b.blockId}`}>{b.blockId}</Link>
-                              </TableCell>
-                              <TableCell>
-                                <Link to={`/harvesting-authority/${b.cpId}`}>{b.cpId}</Link>
-                              </TableCell>
-                              <TableCell>{b.status}</TableCell>
-                              <TableCell>{b.areaHa.toFixed(1)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
+                  <AssociatedFilesPanel {...panelProps} />
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="fsp-info__tab-panel bordered-table">
-                    <TableContainer title="Road Sections">
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Road</TableHeader>
-                            <TableHeader>Name</TableHeader>
-                            <TableHeader>Status</TableHeader>
-                            <TableHeader>Length (km)</TableHeader>
-                            <TableHeader>Tenure Type</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {roads.map((r) => (
-                            <TableRow key={r.roadId}>
-                              <TableCell>
-                                <Link to={`/road/${r.roadId}`}>{r.roadId}</Link>
-                              </TableCell>
-                              <TableCell>{r.name}</TableCell>
-                              <TableCell>{r.status}</TableCell>
-                              <TableCell>{r.lengthKm.toFixed(1)}</TableCell>
-                              <TableCell>{r.tenureType}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
+                  <AssociatedClientsPanel {...panelProps} />
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="fsp-info__tab-panel bordered-table">
-                    <TableContainer title="Associated Files">
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>File ID</TableHeader>
-                            <TableHeader>Relationship</TableHeader>
-                            <TableHeader>File Type</TableHeader>
-                            <TableHeader>Status</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {associatedFiles.map((f) => (
-                            <TableRow key={f.fileId}>
-                              <TableCell>
-                                <Link to={`/tenures/${f.fileId}`}>{f.fileId}</Link>
-                              </TableCell>
-                              <TableCell>{f.relationship}</TableCell>
-                              <TableCell>{f.fileType}</TableCell>
-                              <TableCell>{f.status}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
+                  <AacPanel {...panelProps} />
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="fsp-info__tab-panel bordered-table">
-                    <TableContainer title="Associated Clients">
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Client #</TableHeader>
-                            <TableHeader>Name</TableHeader>
-                            <TableHeader>Relationship</TableHeader>
-                            <TableHeader>Location</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {associatedClients.map((c) => (
-                            <TableRow key={c.clientNumber + c.location}>
-                              <TableCell>{c.clientNumber}</TableCell>
-                              <TableCell>{c.name}</TableCell>
-                              <TableCell>{c.relationship}</TableCell>
-                              <TableCell>{c.location}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
+                  <SaleInfoPanel {...panelProps} />
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="fsp-info__tab-panel">
-                    <DetailTile
-                      title="Allowable annual cut"
-                      action={editButton('Edit AAC')}
-                      icon={ChartColumn}
-                      fields={[
-                        { label: 'Allowable Annual Cut', value: allowableAnnualCut },
-                        {
-                          label: 'Schedule A Area',
-                          value:
-                            tenure.scheduleAArea != null
-                              ? `${nf.format(tenure.scheduleAArea)} ha`
-                              : '—',
-                        },
-                        {
-                          label: 'Schedule B Area',
-                          value:
-                            tenure.scheduleBArea != null
-                              ? `${nf.format(tenure.scheduleBArea)} ha`
-                              : '—',
-                        },
-                        { label: 'Management Unit', value: tenure.managementUnit ?? '—' },
-                      ]}
-                    />
-                  </div>
+                  <TenureApplicationPanel {...panelProps} />
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="fsp-info__tab-panel">
-                    <DetailTile
-                      title="Sale information"
-                      action={editButton('Edit sale information')}
-                      icon={Currency}
-                      fields={[
-                        { label: 'Sale Method', value: tenure.saleMethodCode ?? '—' },
-                        { label: 'Sale Type', value: tenure.saleTypeCode ?? '—' },
-                        { label: 'Payment Method', value: tenure.paymentMethodCode ?? '—' },
-                        {
-                          label: 'Bonus Bid',
-                          value:
-                            tenure.ftaBonusBid != null ? `$${nf.format(tenure.ftaBonusBid)}` : '—',
-                        },
-                        {
-                          label: 'Cash Sale Total',
-                          value:
-                            tenure.cashSaleTotDol != null
-                              ? `$${nf.format(tenure.cashSaleTotDol)}`
-                              : '—',
-                        },
-                      ]}
-                    />
-                  </div>
+                  <TenureNotesPanel {...panelProps} />
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="fsp-info__tab-panel bordered-table">
-                    <TableContainer title="Forest / Range Notes">
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Date</TableHeader>
-                            <TableHeader>Author</TableHeader>
-                            <TableHeader>Note</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {notes.map((n, i) => (
-                            <TableRow key={i}>
-                              <TableCell>{n.date}</TableCell>
-                              <TableCell>{n.author}</TableCell>
-                              <TableCell>{n.text}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
+                  <GrazingRotationPanel {...panelProps} />
+                </TabPanel>
+
+                <TabPanel>
+                  <HayCuttingRotationPanel {...panelProps} />
+                </TabPanel>
+
+                <TabPanel>
+                  <CopyRotationPanel {...panelProps} />
+                </TabPanel>
+
+                <TabPanel>
+                  <TlBlocksPanel {...panelProps} />
+                </TabPanel>
+
+                <TabPanel>
+                  <CpCbAmendmentsPanel {...panelProps} />
+                </TabPanel>
+
+                <TabPanel>
+                  <RecProjectPanel {...panelProps} />
                 </TabPanel>
               </TabPanels>
             </Tabs>

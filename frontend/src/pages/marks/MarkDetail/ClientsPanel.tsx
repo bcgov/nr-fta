@@ -196,7 +196,7 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, disabledReas
     <DatePicker
       datePickerType="single"
       dateFormat="Y-m-d"
-      className="mark-dialog__date"
+      className="detail-dialog__date"
       value={form[key]}
       invalid={!!errors[key]}
       onChange={(dates: Date[]) => set(key, dates[0] ? toIsoDate(dates[0]) : '')}
@@ -223,18 +223,18 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, disabledReas
           body="Add the Main Licensee first, then any other licensees or agents."
           action={
             // Always shown; disabled, with the reason, when adding isn't allowed.
-            <div className="mark-tab__empty-action">
+            <div className="detail-tab__empty-action">
               <Button kind="primary" renderIcon={Add} disabled={!canAdd} onClick={openDialog}>
                 Add client
               </Button>
-              {!canAdd && disabledReason && <p className="mark-tab__reason">{disabledReason}</p>}
+              {!canAdd && disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             </div>
           }
         />
       ) : (
         <div>
-          <header className="mark-tab__actions">
-            {!canAdd && disabledReason && <p className="mark-tab__reason">{disabledReason}</p>}
+          <header className="detail-tab__actions">
+            {!canAdd && disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             <Button
               kind="tertiary"
               size="sm"
@@ -288,13 +288,13 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, disabledReas
         open={open}
         passiveModal
         size="sm"
-        className="mark-dialog"
+        className="detail-dialog"
         modalHeading="Add client"
         onRequestClose={closeDialog}
         preventCloseOnClickOutside
       >
         <Stack gap={5}>
-          <p className="mark-dialog__subtitle">All fields are required unless marked optional.</p>
+          <p className="detail-dialog__subtitle">All fields are required unless marked optional.</p>
           <ClientComboBox
             id="client-picker"
             titleText="Client"
@@ -336,7 +336,7 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, disabledReas
               <SelectItem key={o.code} value={o.code} text={o.description || o.code} />
             ))}
           </Select>
-          <div className="mark-dialog__pair">
+          <div className="detail-dialog__pair">
             {dateInput(
               'start',
               type && !startRequired(type) ? 'Start date (optional)' : 'Start date',
@@ -348,7 +348,7 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, disabledReas
             )}
           </div>
         </Stack>
-        <div className="mark-dialog__actions">
+        <div className="detail-dialog__actions">
           <Button kind="tertiary" disabled={saving} onClick={closeDialog}>
             Cancel
           </Button>

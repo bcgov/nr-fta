@@ -32,7 +32,7 @@ public class RatesSaveWriteController {
   public ResponseEntity<Map<String, Integer>> save(
       @RequestBody RatesSaveRequest request,
       JwtAuthenticationToken principal) {
-    String userId = JwtPrincipalUtil.getIdpUsername(principal);
+    String userId = JwtPrincipalUtil.getAuditUserId(principal);
     int updated = ratesSaveWriteService.save(request, userId);
     return ResponseEntity.ok(Map.of("updated", updated));
   }
