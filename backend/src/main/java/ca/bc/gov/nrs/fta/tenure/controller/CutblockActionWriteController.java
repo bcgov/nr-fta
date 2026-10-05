@@ -36,7 +36,7 @@ public class CutblockActionWriteController {
       @PathVariable String blockId,
       @RequestBody CutblockActionRequest request,
       JwtAuthenticationToken principal) {
-    String userId = JwtPrincipalUtil.getIdpUsername(principal);
+    String userId = JwtPrincipalUtil.getAuditUserId(principal);
     int updated = cutblockActionWriteService.perform(blockId, request, userId);
     return ResponseEntity.status(HttpStatus.OK)
         .body(Map.of("blockId", blockId, "action", request.action(), "updated", updated));

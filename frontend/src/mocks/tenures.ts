@@ -35,14 +35,6 @@ export interface AssociatedClient {
   location: string;
 }
 
-export interface RoadSection {
-  roadId: string;
-  name: string;
-  status: string;
-  lengthKm: number;
-  tenureType: string;
-}
-
 export interface AssociatedFile {
   fileId: string;
   relationship: string;
@@ -65,7 +57,6 @@ export interface TenureDetailRecord extends TenureSummary {
   cutBlocks: CutBlock[];
   associatedClients: AssociatedClient[];
   notes: { date: string; author: string; text: string }[];
-  roads: RoadSection[];
   associatedFiles: AssociatedFile[];
   saleInfo: SaleInfo;
 }
@@ -182,29 +173,6 @@ const DETAIL_EXTRAS = {
     { date: '2023-08-14', author: 'M. Clarke', text: 'Annual rent invoice issued.' },
     { date: '2022-11-02', author: 'L. Ferris', text: 'AAC apportionment reviewed — no change.' },
   ],
-  roads: [
-    {
-      roadId: 'RD-4001',
-      name: 'Beaver Creek FSR',
-      status: 'Active',
-      lengthKm: 12.4,
-      tenureType: 'Road Permit',
-    },
-    {
-      roadId: 'RD-4002',
-      name: 'Ridge Mainline',
-      status: 'Active',
-      lengthKm: 8.1,
-      tenureType: 'Road Permit',
-    },
-    {
-      roadId: 'RD-4003',
-      name: 'Spur 12',
-      status: 'Retired',
-      lengthKm: 2.7,
-      tenureType: 'Section 115',
-    },
-  ],
   associatedFiles: [
     { fileId: 'A20115', relationship: 'Adjacent', fileType: 'Forest Licence', status: 'Active' },
     {
@@ -222,13 +190,6 @@ const DETAIL_EXTRAS = {
     cashSale: false,
   },
 };
-
-export const MOCK_ROADS: RoadSection[] = DETAIL_EXTRAS.roads;
-
-export function findRoad(roadId: string): (RoadSection & { fileId: string }) | undefined {
-  const road = MOCK_ROADS.find((r) => r.roadId.toLowerCase() === roadId.toLowerCase());
-  return road ? { ...road, fileId: 'A19201' } : undefined;
-}
 
 export function findTenure(fileId: string): TenureDetailRecord | undefined {
   const summary = MOCK_TENURES.find((t) => t.fileId.toLowerCase() === fileId.toLowerCase());

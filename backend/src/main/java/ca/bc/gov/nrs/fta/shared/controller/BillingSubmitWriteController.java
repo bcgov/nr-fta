@@ -32,7 +32,7 @@ public class BillingSubmitWriteController {
   public ResponseEntity<Map<String, Integer>> submit(
       @RequestBody BillingSubmitRequest request,
       JwtAuthenticationToken principal) {
-    String userId = JwtPrincipalUtil.getIdpUsername(principal);
+    String userId = JwtPrincipalUtil.getAuditUserId(principal);
     int submitted = billingSubmitWriteService.submit(request, userId);
     return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("submitted", submitted));
   }

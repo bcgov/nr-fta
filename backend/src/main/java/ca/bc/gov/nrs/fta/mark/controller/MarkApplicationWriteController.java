@@ -33,7 +33,7 @@ public class MarkApplicationWriteController {
   public ResponseEntity<Map<String, String>> create(
       @RequestBody MarkApplicationRequest request,
       JwtAuthenticationToken principal) {
-    String userId = JwtPrincipalUtil.getIdpUsername(principal);
+    String userId = JwtPrincipalUtil.getAuditUserId(principal);
     String certificate = markApplicationWriteService.create(
         request, userId, MarkDetailController.isDistrictUser(principal));
     // A new application has no timber mark yet; it is known by its certificate.

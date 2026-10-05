@@ -35,7 +35,7 @@ public class AssignMarksWriteController {
       @PathVariable String cpId,
       @RequestBody AssignMarksRequest request,
       JwtAuthenticationToken principal) {
-    String userId = JwtPrincipalUtil.getIdpUsername(principal);
+    String userId = JwtPrincipalUtil.getAuditUserId(principal);
     int updated = assignMarksWriteService.assignMarks(request, userId);
     return ResponseEntity.ok(Map.of("cpId", cpId, "updated", updated));
   }

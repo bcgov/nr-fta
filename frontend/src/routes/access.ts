@@ -53,6 +53,15 @@ export function canEditMarks(user: FamLoginUser | null | undefined): boolean {
 }
 
 /**
+ * Whether the user may add a note to a tenure — FTA_ADMIN or either timber mark role. Legacy
+ * FTA970 let anyone who could open the file add a note; every other tenure write is
+ * FTA_ADMIN's ({@link canEdit}).
+ */
+export function canAddTenureNotes(user: FamLoginUser | null | undefined): boolean {
+  return canEditMarks(user);
+}
+
+/**
  * The two timber mark roles. FTA_TIMBER_MARK_DISTRICT_ADMIN has exactly
  * FTA_TIMBER_MARK_HEADQUARTERS_ADMIN's pages and rights; they differ only where legacy
  * FTA510 told a district from Headquarters, which the backend decides: a district's

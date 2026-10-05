@@ -30,7 +30,7 @@ public class OrgUnitMaintWriteController {
   public ResponseEntity<Map<String, Object>> setDefaultOrgUnit(
       @RequestBody OrgUnitMaintRequest request,
       JwtAuthenticationToken principal) {
-    String userId = JwtPrincipalUtil.getIdpUsername(principal);
+    String userId = JwtPrincipalUtil.getAuditUserId(principal);
     int updated = orgUnitMaintWriteService.setDefaultOrgUnit(request, userId);
     return ResponseEntity.ok(Map.of("updated", updated));
   }

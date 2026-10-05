@@ -18,7 +18,7 @@ import {
   ListItem,
 } from '@carbon/react';
 import { useCallback, type FC } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
@@ -41,10 +41,16 @@ const nf = new Intl.NumberFormat('en-CA');
  */
 const CuttingPermitDetail: FC = () => {
   const { cpId = '' } = useParams();
+  // A CP id is unique only within its tenure, so links from a tenure say which.
+  const [searchParams] = useSearchParams();
+  const forestFileId = searchParams.get('forestFileId') ?? undefined;
   const { user } = useAuth();
 
-  const fetcher = useCallback(() => getCuttingPermitDetail(cpId), [cpId]);
-  const { data: cp, loading, error, reload } = useApiResource(fetcher, [cpId]);
+  const fetcher = useCallback(
+    () => getCuttingPermitDetail(cpId, { forestFileId }),
+    [cpId, forestFileId],
+  );
+  const { data: cp, loading, error, reload } = useApiResource(fetcher, [cpId, forestFileId]);
 
   const issuanceConditions = cp
     ? [

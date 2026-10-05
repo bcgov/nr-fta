@@ -23,6 +23,23 @@ server:
 fta:
   code-lists:
     cache-eviction: ${FTA_CODE_LIST_CACHE_EVICTION:PT1H}
+  # nr-user-lookup-api — the shared BC Gov IDIR directory that turns the IDIR\USERNAME values
+  # in FTA's audit columns into people's names on screen (see user/UserLookupClient). Calls
+  # authenticate with FTA's own Keycloak client_credentials service account in the *forests*
+  # realm (token-url), not the caller's token. All optional, so PR previews (which skip the service-account step) and local runs
+  # still start — names just show as their IDIR ids. Set token-url/client-id/client-secret
+  # together or none; a partial set fails at startup.
+  user-lookup:
+    base-url: ${USER_LOOKUP_BASE_URL:}
+    token-url: ${USER_LOOKUP_TOKEN_URL:}
+    client-id: ${USER_LOOKUP_CLIENT_ID:}
+    client-secret: ${USER_LOOKUP_CLIENT_SECRET:}
+    # Optional — the lookup scope is a DEFAULT client scope on the service account.
+    scope: ${USER_LOOKUP_SCOPE:}
+    connect-timeout: 5s
+    read-timeout: 10s
+    # How long a resolved name is kept in memory (ISO-8601 duration).
+    cache-ttl: ${USER_LOOKUP_CACHE_TTL:PT12H}
 
 spring:
   application:

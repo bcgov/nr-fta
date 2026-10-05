@@ -92,7 +92,7 @@ public class MarkDetailController {
     boolean districtUser = isDistrictUser(principal);
     markSubmitService.submit(
         markNumber, isCertificate(by), body.get("revisionCount"), districtUser,
-        JwtPrincipalUtil.getIdpUsername(principal));
+        JwtPrincipalUtil.getAuditUserId(principal));
     return find(markNumber, by)
         .map(mark -> mark.withEditRules(MarkEditRules.of(mark, true, districtUser)))
         .map(ResponseEntity::ok)
@@ -110,7 +110,7 @@ public class MarkDetailController {
       @RequestBody MarkAmendmentRequest request,
       JwtAuthenticationToken principal) {
     markAmendmentWriteService.add(
-        markNumber, isCertificate(by), request, JwtPrincipalUtil.getIdpUsername(principal));
+        markNumber, isCertificate(by), request, JwtPrincipalUtil.getAuditUserId(principal));
     return ResponseEntity.noContent().build();
   }
 
@@ -125,7 +125,7 @@ public class MarkDetailController {
       @RequestBody MarkClientRequest request,
       JwtAuthenticationToken principal) {
     String note = markClientWriteService.add(
-        markNumber, isCertificate(by), request, JwtPrincipalUtil.getIdpUsername(principal));
+        markNumber, isCertificate(by), request, JwtPrincipalUtil.getAuditUserId(principal));
     return ResponseEntity.ok(note == null ? Map.of() : Map.of("note", note));
   }
 
@@ -140,7 +140,7 @@ public class MarkDetailController {
       @RequestBody MarkLandIndexRequest request,
       JwtAuthenticationToken principal) {
     markLandIndexWriteService.add(
-        markNumber, isCertificate(by), request, JwtPrincipalUtil.getIdpUsername(principal));
+        markNumber, isCertificate(by), request, JwtPrincipalUtil.getAuditUserId(principal));
     // 204, not 201: there is no body, and the client re-reads the mark.
     return ResponseEntity.noContent().build();
   }
@@ -157,7 +157,7 @@ public class MarkDetailController {
       JwtAuthenticationToken principal) {
     boolean districtUser = isDistrictUser(principal);
     byte[] pdf = markPrintService.print(
-        markNumber, isCertificate(by), districtUser, JwtPrincipalUtil.getIdpUsername(principal));
+        markNumber, isCertificate(by), districtUser, JwtPrincipalUtil.getAuditUserId(principal));
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_PDF);
     headers.setContentDisposition(ContentDisposition.attachment()
@@ -187,7 +187,7 @@ public class MarkDetailController {
       @RequestBody MarkUpdateRequest request,
       JwtAuthenticationToken principal) {
     markUpdateService.update(
-        markNumber, isCertificate(by), request, JwtPrincipalUtil.getIdpUsername(principal));
+        markNumber, isCertificate(by), request, JwtPrincipalUtil.getAuditUserId(principal));
     // Re-read, so the client gets the saved record with its new revision counts and the
     // rules for its new status.
     boolean districtUser = isDistrictUser(principal);

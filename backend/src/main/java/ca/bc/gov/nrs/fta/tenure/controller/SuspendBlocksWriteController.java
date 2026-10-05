@@ -35,7 +35,7 @@ public class SuspendBlocksWriteController {
       @PathVariable String cpId,
       @RequestBody SuspendBlocksRequest request,
       JwtAuthenticationToken principal) {
-    String userId = JwtPrincipalUtil.getIdpUsername(principal);
+    String userId = JwtPrincipalUtil.getAuditUserId(principal);
     int suspended = suspendBlocksWriteService.suspend(cpId, request, userId);
     return ResponseEntity.ok(Map.of("suspended", suspended));
   }

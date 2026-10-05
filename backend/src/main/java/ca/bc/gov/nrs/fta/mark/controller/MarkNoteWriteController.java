@@ -37,7 +37,7 @@ public class MarkNoteWriteController {
       @RequestParam(required = false) String by,
       @RequestBody MarkNoteRequest request,
       JwtAuthenticationToken principal) {
-    String userId = JwtPrincipalUtil.getIdpUsername(principal);
+    String userId = JwtPrincipalUtil.getAuditUserId(principal);
     String forestFileId = markNoteWriteService.add(
         markNumber, "certificate".equals(by), request.note(), userId);
     return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("forestFileId", forestFileId));

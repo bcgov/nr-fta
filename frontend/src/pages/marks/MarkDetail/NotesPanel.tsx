@@ -15,6 +15,7 @@ import { useState, type FC } from 'react';
 
 import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { Modal } from '@/components/Modal';
+import UserName from '@/components/UserName';
 import { useNotification } from '@/context/notification/useNotification';
 import type { MarkNote } from '@/services/mark_detail';
 import { addMarkNote, MARK_NOTE_MAX_LENGTH } from '@/services/mark_write';
@@ -118,18 +119,18 @@ const NotesPanel: FC<Props> = ({ id, byCertificate, forestFileId, notes, canAdd,
           body="Add a note to record decisions, contacts or anything else about this mark."
           action={
             // Always shown; disabled, with the reason, when adding isn't allowed.
-            <div className="mark-tab__empty-action">
+            <div className="detail-tab__empty-action">
               <Button kind="primary" renderIcon={Add} disabled={!allowed} onClick={openDialog}>
                 Add note
               </Button>
-              {disabledReason && <p className="mark-tab__reason">{disabledReason}</p>}
+              {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             </div>
           }
         />
       ) : (
         <div>
-          <header className="mark-tab__actions">
-            {disabledReason && <p className="mark-tab__reason">{disabledReason}</p>}
+          <header className="detail-tab__actions">
+            {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             <Button
               kind="tertiary"
               size="sm"
@@ -153,7 +154,9 @@ const NotesPanel: FC<Props> = ({ id, byCertificate, forestFileId, notes, canAdd,
                 <TableBody>
                   {notes.map((n, i) => (
                     <TableRow key={`${n.entryTimestamp ?? 'note'}-${i}`}>
-                      <TableCell>{n.entryUserid || '—'}</TableCell>
+                      <TableCell>
+                        <UserName userId={n.entryUserid} />
+                      </TableCell>
                       <TableCell className="mark-notes__when">
                         {formatTimestamp(n.entryTimestamp)}
                       </TableCell>
@@ -172,13 +175,13 @@ const NotesPanel: FC<Props> = ({ id, byCertificate, forestFileId, notes, canAdd,
         open={open}
         passiveModal
         size="sm"
-        className="mark-dialog"
+        className="detail-dialog"
         modalHeading="Add note"
         onRequestClose={closeDialog}
         preventCloseOnClickOutside
       >
         <Stack gap={5}>
-          <p className="mark-dialog__subtitle">
+          <p className="detail-dialog__subtitle">
             Notes are added to the mark&apos;s forest file and cannot be changed afterwards.
           </p>
           <TextArea
@@ -194,7 +197,7 @@ const NotesPanel: FC<Props> = ({ id, byCertificate, forestFileId, notes, canAdd,
             onChange={(e) => setNote(e.target.value)}
           />
         </Stack>
-        <div className="mark-dialog__actions">
+        <div className="detail-dialog__actions">
           <Button kind="tertiary" disabled={saving} onClick={closeDialog}>
             Cancel
           </Button>

@@ -67,12 +67,12 @@ const MarkDetail: FC = () => {
   // The mark (or an application's certificate) in a large pill beside the words,
   // coloured as its status is everywhere else (grey until the mark has loaded).
   const title = (
-    <span className="mark-title">
+    <span className="detail-title">
       {byCertificate ? 'Private Mark Application' : 'Private Mark'}
       <StatusTag
         status={markNumber}
         variant={statusCodeVariant(mark?.markStatusCode) ?? 'default'}
-        className="mark-title__pill"
+        className="detail-title__pill"
       />
     </span>
   );

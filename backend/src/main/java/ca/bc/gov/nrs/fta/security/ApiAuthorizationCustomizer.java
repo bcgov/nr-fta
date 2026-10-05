@@ -21,19 +21,22 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li><strong>FTA_ADMIN</strong> — full CRUD on every {@code /api/**} endpoint</li>
  *   <li><strong>FTA_VIEWER</strong> — {@code GET /api/**} + {@code POST /api/reports/**}
- *       (report generation); all other write methods are rejected with 403</li>
+ *       (report generation) + {@code POST /api/fta/users/resolve} (display names, a read); all
+ *       other write methods are rejected with 403</li>
  *   <li><strong>FTA_TIMBER_MARK_HEADQUARTERS_ADMIN</strong> and
  *       <strong>FTA_TIMBER_MARK_DISTRICT_ADMIN</strong> (identical here; they differ only in
  *       what printing a certificate does) — an allow-list: {@code GET} on the endpoints behind
  *       Tenure Search, Timber Mark Search, the tenure / cutting-permit / private-mark details
  *       and the code lists those screens read, plus creating a mark application
- *       ({@code POST /api/fta/marks}), a note on a mark ({@code POST /api/fta/marks/{id}/notes}),
+ *       ({@code POST /api/fta/marks}), a note on a mark ({@code POST /api/fta/marks/{id}/notes})
+ *       or on a tenure ({@code POST /api/fta/tenures/{id}/notes}),
  *       printing its certificate ({@code POST /api/fta/marks/{id}/print}), adding a land
  *       index ({@code POST /api/fta/marks/{id}/land-index}), a client
  *       ({@code POST /api/fta/marks/{id}/clients}) or an amendment
  *       ({@code POST /api/fta/marks/{id}/amendments}), submitting it to Headquarters
  *       ({@code POST /api/fta/marks/{id}/submit}), and saving it
- *       ({@code PUT /api/fta/marks/{id}}). Every other endpoint is 403. Mirrors the page
+ *       ({@code PUT /api/fta/marks/{id}}), and resolving display names
+ *       ({@code POST /api/fta/users/resolve}). Every other endpoint is 403. Mirrors the page
  *       allow-list in the frontend's {@code routes/access.ts}.</li>
  *   <li><strong>No recognized role</strong> — rejected (403) for any {@code /api/**} endpoint</li>
  * </ul>
@@ -81,12 +84,24 @@ public class ApiAuthorizationCustomizer implements
             RoleConstants.ADMIN_AUTHORITY, RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY);
 
-    // Notes on a private mark — FTA_ADMIN or FTA_TIMBER_MARK_HEADQUARTERS_ADMIN, like the mark
-    // application. Must appear BEFORE the generic POST /api/** admin-only rule.
+    // Display names for the user ids on screen (nr-user-lookup-api). A read sent as a POST so a
+    // table's worth of ids fits in the body — open to every role that reads FTA. Must appear
+    // BEFORE the generic POST /api/** admin-only rule.
+    authorize
+        .requestMatchers(HttpMethod.POST, "/api/fta/users/resolve")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.VIEWER_AUTHORITY,
+            RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
+            RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY);
+
+    // Notes on a private mark or a tenure, and the mark actions — FTA_ADMIN or either timber
+    // mark role, like the mark application (legacy FTA970 let anyone who could open the file add
+    // a note). Must appear BEFORE the generic POST /api/** admin-only rule.
     authorize
         .requestMatchers(
             HttpMethod.POST,
             "/api/fta/marks/*/notes",
+            "/api/fta/tenures/*/notes",
             "/api/fta/marks/*/print",
             "/api/fta/marks/*/land-index",
             "/api/fta/marks/*/clients",
@@ -126,6 +141,8 @@ public class ApiAuthorizationCustomizer implements
             "/api/fta/clients/suggest",    // client type-ahead on the search screens
             "/api/fta/tenures",            // Tenure Search (+ /export, detail below)
             "/api/fta/tenures/*",
+            "/api/fta/tenures/*/**",       // the tenure detail's tabs (cutting permits, cut blocks…)
+            "/api/fta/tenure-lookups/**",  // code lists the tenure detail's tabs use
             "/api/fta/timber-marks",       // Timber Mark Search
             "/api/fta/timber-marks/export",
             "/api/fta/cutting-permits/*",  // the detail Timber Mark Search opens

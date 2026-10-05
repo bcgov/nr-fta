@@ -24,6 +24,7 @@ import { EmptyState } from '@/components/EmptyState/EmptyState';
 import ExportCsvButton from '@/components/ExportCsvButton';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
+import UserName from '@/components/UserName';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import { safeErrorMessage } from '@/lib/errorMessage';
@@ -50,7 +51,7 @@ const HEADERS = [
   { key: 'orgUnitCode', header: 'District' },
   { key: 'markStatusSt', header: 'Status' },
   { key: 'clientName', header: 'Client' },
-  { key: 'idir', header: 'IDIR' },
+  { key: 'idir', header: 'User' },
 ];
 
 /** A result row carrying the id Carbon's DataTable requires. */
@@ -374,6 +375,13 @@ const MarkList: FC = () => {
                                           ) : (
                                             '—'
                                           )}
+                                        </TableCell>
+                                      );
+                                    }
+                                    if (cell.info.header === 'idir') {
+                                      return (
+                                        <TableCell key={cell.id}>
+                                          <UserName userId={value} />
                                         </TableCell>
                                       );
                                     }

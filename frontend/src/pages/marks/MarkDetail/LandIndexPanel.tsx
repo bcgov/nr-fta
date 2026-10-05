@@ -149,18 +149,18 @@ const LandIndexPanel: FC<Props> = ({
           body="Add the land district and primary ID the timber mark may be used on."
           action={
             // Always shown; disabled, with the reason, when adding isn't allowed.
-            <div className="mark-tab__empty-action">
+            <div className="detail-tab__empty-action">
               <Button kind="primary" renderIcon={Add} disabled={!canAdd} onClick={openDialog}>
                 Add land index
               </Button>
-              {!canAdd && disabledReason && <p className="mark-tab__reason">{disabledReason}</p>}
+              {!canAdd && disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             </div>
           }
         />
       ) : (
         <div>
-          <header className="mark-tab__actions">
-            {!canAdd && disabledReason && <p className="mark-tab__reason">{disabledReason}</p>}
+          <header className="detail-tab__actions">
+            {!canAdd && disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             <Button
               kind="tertiary"
               size="sm"
@@ -216,13 +216,13 @@ const LandIndexPanel: FC<Props> = ({
         open={open}
         passiveModal
         size="sm"
-        className="mark-dialog"
+        className="detail-dialog"
         modalHeading="Add land index"
         onRequestClose={closeDialog}
         preventCloseOnClickOutside
       >
         <Stack gap={5}>
-          <p className="mark-dialog__subtitle">All fields are required unless marked optional.</p>
+          <p className="detail-dialog__subtitle">All fields are required unless marked optional.</p>
           <Select
             id="land-index-primary"
             labelText="Land District/Island"
@@ -259,7 +259,7 @@ const LandIndexPanel: FC<Props> = ({
             onChange={(e) => setDescription(e.target.value)}
           />
         </Stack>
-        <div className="mark-dialog__actions">
+        <div className="detail-dialog__actions">
           <Button kind="tertiary" disabled={saving} onClick={closeDialog}>
             Cancel
           </Button>
