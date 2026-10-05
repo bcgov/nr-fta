@@ -21,7 +21,7 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react';
-import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FC, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import ClientComboBox from '@/components/ClientComboBox';
@@ -31,6 +31,7 @@ import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
+import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
@@ -111,7 +112,13 @@ const TenureSearch: FC = () => {
   const navigate = useNavigate();
   const { display } = useNotification();
 
-  const [form, setForm] = useState<TenureSearchParams>(EMPTY_FORM);
+  // Criteria and the last search are kept for the browser tab, so coming back
+  // (e.g. via a detail page's back link) shows the same search again.
+  const [form, setForm] = useSessionState<TenureSearchParams>('fta.search.tenure.form', EMPTY_FORM);
+  const [lastSearch, setLastSearch] = useSessionState<LastSearch<TenureSearchParams> | null>(
+    'fta.search.tenure.last',
+    null,
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
   // The criteria the rows on screen came from. The export must use these, not
   // `form` — the user may have edited a field since searching, and exporting
@@ -191,23 +198,52 @@ const TenureSearch: FC = () => {
   const set = <K extends keyof TenureSearchParams>(key: K, value: TenureSearchParams[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  // Once a search the user ran (or a page change) finishes, bring the table into view.
+  // Not for the search re-run on coming back to the page, which shouldn't jump.
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const scrollPending = useRef(false);
+  useEffect(() => {
+    if (loading || !scrollPending.current) return;
+    scrollPending.current = false;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    resultsRef.current?.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  }, [loading]);
+
   const runSearch = useCallback(
-    async (nextPage: number, nextSize: number) => {
+    async (
+      nextPage: number,
+      nextSize: number,
+      criteria: TenureSearchParams = form,
+      scrollToResults = true,
+    ) => {
       // The package rejects a date range that runs backwards with a message the
       // user can't act on; catch it here instead of spending the round-trip.
-      if (form.issueDateFrom && form.issueDateTo && form.issueDateFrom > form.issueDateTo) {
+      if (
+        criteria.issueDateFrom &&
+        criteria.issueDateTo &&
+        criteria.issueDateFrom > criteria.issueDateTo
+      ) {
         setError('Issue Date From must be on or before Issue Date To.');
         return;
       }
-      if (form.expiryDateFrom && form.expiryDateTo && form.expiryDateFrom > form.expiryDateTo) {
+      if (
+        criteria.expiryDateFrom &&
+        criteria.expiryDateTo &&
+        criteria.expiryDateFrom > criteria.expiryDateTo
+      ) {
         setError('Expiry Date From must be on or before Expiry Date To.');
         return;
       }
+      scrollPending.current = scrollToResults;
       setLoading(true);
       setError(null);
       try {
-        const data = await searchTenures({ ...form, page: nextPage, size: nextSize });
-        setSearched({ ...form });
+        const data = await searchTenures({ ...criteria, page: nextPage, size: nextSize });
+        setSearched({ ...criteria });
+        setLastSearch({ criteria, page: data.page.number, size: data.page.size });
         // The file id is unique within a page but can recur across pages as the
         // user moves back and forth, so the row key carries the index too.
         setRows(data.content.map((r, i) => ({ ...r, id: `${r.forestFileId}-${i}` })));
@@ -222,7 +258,7 @@ const TenureSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form],
+    [form, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -243,11 +279,23 @@ const TenureSearch: FC = () => {
 
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
+    setLastSearch(null);
     setRows(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, []);
+  }, [setForm, setLastSearch]);
+
+  // Back on the page with a search from earlier in this tab: run it again (fresh
+  // results, same page), once the code lists — and so the form — are ready.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (codeListsLoading || restored) return;
+    setRestored(true);
+    if (lastSearch && rows === null) {
+      void runSearch(lastSearch.page, lastSearch.size, lastSearch.criteria, false);
+    }
+  }, [codeListsLoading, restored, lastSearch, rows, runSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
   // Legacy only offers map notation for map-notation files.
@@ -507,7 +555,7 @@ const TenureSearch: FC = () => {
       {/* Nothing is shown until a search has run, so the page opens on the
           criteria rather than on an empty table. */}
       {(loading || rows !== null) && (
-        <div className="fsp-search__results-fullbleed">
+        <div className="fsp-search__results-fullbleed" ref={resultsRef}>
           <div className="fsp-search__results">
             {loading ? (
               <>

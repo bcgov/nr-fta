@@ -1,6 +1,5 @@
 import {
   ArrowLeft,
-  Campsite,
   Copy,
   DocumentTasks,
   Grid,
@@ -24,6 +23,8 @@ import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import StatusTag from '@/components/StatusTag/StatusTag';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
+import { useLazyTabs, type LazyTabs } from '@/hooks/useLazyTabs';
+import { useNavOrigin } from '@/lib/navOrigin';
 import PageLayout from '@/pages/PageLayout';
 import { canEdit } from '@/routes/access';
 import { getTenureDetail } from '@/services/tenure_detail';
@@ -38,14 +39,106 @@ import CuttingPermitsPanel from './CuttingPermitsPanel';
 import DetailsPanel from './DetailsPanel';
 import GrazingRotationPanel from './GrazingRotationPanel';
 import HayCuttingRotationPanel from './HayCuttingRotationPanel';
-import RecProjectPanel from './RecProjectPanel';
 import SaleInfoPanel from './SaleInfoPanel';
 import TenureApplicationPanel from './TenureApplicationPanel';
 import TenureNotesPanel from './TenureNotesPanel';
 import TlBlocksPanel from './TlBlocksPanel';
 
 import type { TenurePanelProps } from './panelProps';
-import type { FC } from 'react';
+import type { CarbonIconType } from '@carbon/icons-react';
+import type { FC, ReactNode } from 'react';
+
+interface TenureTab {
+  label: string;
+  icon: CarbonIconType;
+  render: (props: TenurePanelProps, canEditCp: boolean) => ReactNode;
+  /** Only for these file types; every tenure when absent. */
+  fileTypes?: readonly string[];
+}
+
+/**
+ * Timber licence file types: A06 Timber Licence and A30 Consolidated Timber
+ * Licence — the pair legacy's TIMBER_LICENCE_SVW selects. TL blocks
+ * (FTA980) are blocks within a timber licence's area.
+ */
+const TIMBER_LICENCE_TYPES = ['A06', 'A30'];
+
+const TABS: TenureTab[] = [
+  { label: 'Details', icon: TableOfContents, render: (p) => <DetailsPanel {...p} /> },
+  {
+    label: 'Cutting permit / mark',
+    icon: Stamp,
+    render: (p, canEditCp) => (
+      <CuttingPermitsPanel
+        forestFileId={p.tenure.forestFileId}
+        fileTypeCode={p.tenure.fileTypeCode}
+        orgUnitCode={p.tenure.orgUnitCode}
+        canEdit={canEditCp}
+      />
+    ),
+  },
+  { label: 'Cut block', icon: Tree, render: (p) => <CutBlocksPanel {...p} /> },
+  { label: 'Associated files', icon: Folders, render: (p) => <AssociatedFilesPanel {...p} /> },
+  {
+    label: 'Associated clients',
+    icon: UserMultiple,
+    render: (p) => <AssociatedClientsPanel {...p} />,
+  },
+  { label: 'AAC', icon: ChartColumn, render: (p) => <AacPanel {...p} /> },
+  { label: 'Sale info', icon: Currency, render: (p) => <SaleInfoPanel {...p} /> },
+  {
+    label: 'Tenure application',
+    icon: DocumentTasks,
+    render: (p) => <TenureApplicationPanel {...p} />,
+  },
+  { label: 'Notes', icon: Notebook, render: (p) => <TenureNotesPanel {...p} /> },
+  { label: 'Grazing rotation', icon: Sprout, render: (p) => <GrazingRotationPanel {...p} /> },
+  {
+    label: 'Hay cutting rotation',
+    icon: Wheat,
+    render: (p) => <HayCuttingRotationPanel {...p} />,
+  },
+  { label: 'Copy rotation', icon: Copy, render: (p) => <CopyRotationPanel {...p} /> },
+  {
+    label: 'TL blocks',
+    icon: Grid,
+    render: (p) => <TlBlocksPanel {...p} />,
+    fileTypes: TIMBER_LICENCE_TYPES,
+  },
+  {
+    label: 'CP/CB amendments',
+    icon: RecentlyViewed,
+    render: (p) => <CpCbAmendmentsPanel {...p} />,
+  },
+];
+
+/** The tenure's tabs — each panel fetches its own data when first opened (useLazyTabs). */
+const TenureTabs: FC<{
+  panelProps: TenurePanelProps;
+  canEditCp: boolean;
+  tabs: LazyTabs;
+}> = ({ panelProps, canEditCp, tabs }) => {
+  // Fixed for the tenure (its file type isn't editable), so tab indices are stable.
+  const shown = TABS.filter(
+    (t) => !t.fileTypes || t.fileTypes.includes(panelProps.tenure.fileTypeCode ?? ''),
+  );
+  return (
+    <Tabs selectedIndex={tabs.selected} onChange={tabs.onChange}>
+      <TabList aria-label="Tenure sections" contained>
+        {shown.map((t) => (
+          <Tab key={t.label} renderIcon={t.icon}>
+            {t.label}
+          </Tab>
+        ))}
+      </TabList>
+      <TabPanels>
+        {shown.map((t, i) => (
+          <TabPanel key={t.label}>{tabs.isOpened(i) && t.render(panelProps, canEditCp)}</TabPanel>
+        ))}
+      </TabPanels>
+    </Tabs>
+  );
+};
 
 /**
  * FTA100 — Tenure detail, laid out as the private-mark detail: a back link
@@ -58,12 +151,16 @@ import type { FC } from 'react';
 const TenureDetail: FC = () => {
   const { fileId = '' } = useParams();
   const { user } = useAuth();
+  // Opened from Timber Mark Search: go back there.
+  const back = useNavOrigin() ?? { path: '/search/tenure', label: 'Tenure Search' };
   const {
     data: tenure,
     loading,
     error,
     reload,
   } = useApiResource(() => getTenureDetail(fileId), [fileId]);
+
+  const tabs = useLazyTabs(fileId);
 
   const statusVariant = statusCodeVariant(tenure?.fileStatusCode);
 
@@ -90,8 +187,8 @@ const TenureDetail: FC = () => {
       title={title}
       subtitle="Tenure record: cutting permits, cut blocks, associated files and clients, AAC and sale details."
       backLink={
-        <Link to="/search/tenure" className="back-link">
-          <ArrowLeft size={16} /> Back to Tenure Search
+        <Link to={back.path} className="back-link">
+          <ArrowLeft size={16} /> Back to {back.label}
         </Link>
       }
     >
@@ -100,91 +197,7 @@ const TenureDetail: FC = () => {
           // Carbon's <Tabs> renders no DOM of its own, so the grey full-bleed
           // pane is styled through this wrapper (styles/_detail.scss).
           <div className="fsp-info__page-tabs">
-            <Tabs>
-              <TabList aria-label="Tenure sections" contained>
-                <Tab renderIcon={TableOfContents}>Details</Tab>
-                <Tab renderIcon={Stamp}>Cutting permit / mark</Tab>
-                <Tab renderIcon={Tree}>Cut block</Tab>
-                <Tab renderIcon={Folders}>Associated files</Tab>
-                <Tab renderIcon={UserMultiple}>Associated clients</Tab>
-                <Tab renderIcon={ChartColumn}>AAC</Tab>
-                <Tab renderIcon={Currency}>Sale info</Tab>
-                <Tab renderIcon={DocumentTasks}>Tenure application</Tab>
-                <Tab renderIcon={Notebook}>Notes</Tab>
-                <Tab renderIcon={Sprout}>Grazing rotation</Tab>
-                <Tab renderIcon={Wheat}>Hay cutting rotation</Tab>
-                <Tab renderIcon={Copy}>Copy rotation</Tab>
-                <Tab renderIcon={Grid}>TL blocks</Tab>
-                <Tab renderIcon={RecentlyViewed}>CP/CB amendments</Tab>
-                <Tab renderIcon={Campsite}>Rec project</Tab>
-              </TabList>
-              <TabPanels>
-                <TabPanel>
-                  <DetailsPanel {...panelProps} />
-                </TabPanel>
-
-                <TabPanel>
-                  <CuttingPermitsPanel
-                    forestFileId={tenure.forestFileId}
-                    fileTypeCode={tenure.fileTypeCode}
-                    orgUnitCode={tenure.orgUnitCode}
-                    canEdit={canEdit(user)}
-                  />
-                </TabPanel>
-
-                <TabPanel>
-                  <CutBlocksPanel {...panelProps} />
-                </TabPanel>
-
-                <TabPanel>
-                  <AssociatedFilesPanel {...panelProps} />
-                </TabPanel>
-
-                <TabPanel>
-                  <AssociatedClientsPanel {...panelProps} />
-                </TabPanel>
-
-                <TabPanel>
-                  <AacPanel {...panelProps} />
-                </TabPanel>
-
-                <TabPanel>
-                  <SaleInfoPanel {...panelProps} />
-                </TabPanel>
-
-                <TabPanel>
-                  <TenureApplicationPanel {...panelProps} />
-                </TabPanel>
-
-                <TabPanel>
-                  <TenureNotesPanel {...panelProps} />
-                </TabPanel>
-
-                <TabPanel>
-                  <GrazingRotationPanel {...panelProps} />
-                </TabPanel>
-
-                <TabPanel>
-                  <HayCuttingRotationPanel {...panelProps} />
-                </TabPanel>
-
-                <TabPanel>
-                  <CopyRotationPanel {...panelProps} />
-                </TabPanel>
-
-                <TabPanel>
-                  <TlBlocksPanel {...panelProps} />
-                </TabPanel>
-
-                <TabPanel>
-                  <CpCbAmendmentsPanel {...panelProps} />
-                </TabPanel>
-
-                <TabPanel>
-                  <RecProjectPanel {...panelProps} />
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
+            <TenureTabs panelProps={panelProps} canEditCp={canEdit(user)} tabs={tabs} />
           </div>
         )}
       </AsyncBoundary>

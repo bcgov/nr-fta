@@ -23,6 +23,7 @@ import SectionTile from '@/components/SectionTile';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
+import { useLazyTabs } from '@/hooks/useLazyTabs';
 import PageLayout from '@/pages/PageLayout';
 import { canEdit } from '@/routes/access';
 import { getCutblockDetail } from '@/services/cutblock_detail';
@@ -55,6 +56,9 @@ const CutBlockDetail: FC = () => {
     () => getCutblockDetail(blockId, { forestFileId, cuttingPermitId }),
     [blockId, forestFileId, cuttingPermitId],
   );
+
+  // Each tab is rendered only once opened.
+  const tabs = useLazyTabs(`${blockId}|${forestFileId ?? ''}|${cuttingPermitId ?? ''}`);
 
   const id = data?.cutBlockId ?? blockId;
   const isSuspended = (data?.blockStatus ?? '').toUpperCase().startsWith('S');
@@ -141,7 +145,7 @@ const CutBlockDetail: FC = () => {
             />
 
             <SectionTile title="Cut block details" icon={Document}>
-              <Tabs>
+              <Tabs selectedIndex={tabs.selected} onChange={tabs.onChange}>
                 <TabList aria-label="Cut block sections" contained>
                   <Tab>Details</Tab>
                   <Tab>Amendments</Tab>
@@ -149,62 +153,72 @@ const CutBlockDetail: FC = () => {
                 </TabList>
                 <TabPanels>
                   <TabPanel>
-                    <DefinitionGrid
-                      items={[
-                        { label: 'Gross Area', value: fmtArea(data.plannedGrossBlockArea) },
-                        { label: 'Net Area', value: fmtArea(data.plannedNetBlockArea) },
-                        {
-                          label: 'Disturbance Gross Area',
-                          value: fmtArea(data.disturbanceGrossArea),
-                        },
-                        {
-                          label: 'Disturbance Start',
-                          value: data.disturbanceStartDate ?? 'Not started',
-                        },
-                      ]}
-                    />
-                  </TabPanel>
-
-                  <TabPanel>
-                    <div className="bordered-table">
-                      <TableContainer
-                        title="Amendments"
-                        description={`${MOCK_AMENDMENTS.length} amendment(s)`}
-                      >
-                        <Table>
-                          <TableHead>
-                            <TableRow>
-                              <TableHeader>Date</TableHeader>
-                              <TableHeader>Type</TableHeader>
-                              <TableHeader>Description</TableHeader>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {MOCK_AMENDMENTS.map((a, i) => (
-                              <TableRow key={i}>
-                                <TableCell>{a.date}</TableCell>
-                                <TableCell>{a.type}</TableCell>
-                                <TableCell>{a.description}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </div>
-                  </TabPanel>
-
-                  <TabPanel>
-                    {isSuspended ? (
+                    {tabs.isOpened(0) && (
                       <DefinitionGrid
                         items={[
-                          { label: 'Suspension Status', value: <Tag type="red">Suspended</Tag> },
-                          { label: 'Reason', value: 'Pending cutblock re-survey' },
-                          { label: 'Effective', value: data.blockStatusDate ?? '—' },
+                          { label: 'Gross Area', value: fmtArea(data.plannedGrossBlockArea) },
+                          { label: 'Net Area', value: fmtArea(data.plannedNetBlockArea) },
+                          {
+                            label: 'Disturbance Gross Area',
+                            value: fmtArea(data.disturbanceGrossArea),
+                          },
+                          {
+                            label: 'Disturbance Start',
+                            value: data.disturbanceStartDate ?? 'Not started',
+                          },
                         ]}
                       />
-                    ) : (
-                      <p style={{ padding: '1rem 0' }}>This cut block has no active suspensions.</p>
                     )}
+                  </TabPanel>
+
+                  <TabPanel>
+                    {tabs.isOpened(1) && (
+                      <div className="bordered-table">
+                        <TableContainer
+                          title="Amendments"
+                          description={`${MOCK_AMENDMENTS.length} amendment(s)`}
+                        >
+                          <Table>
+                            <TableHead>
+                              <TableRow>
+                                <TableHeader>Date</TableHeader>
+                                <TableHeader>Type</TableHeader>
+                                <TableHeader>Description</TableHeader>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {MOCK_AMENDMENTS.map((a, i) => (
+                                <TableRow key={i}>
+                                  <TableCell>{a.date}</TableCell>
+                                  <TableCell>{a.type}</TableCell>
+                                  <TableCell>{a.description}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </div>
+                    )}
+                  </TabPanel>
+
+                  <TabPanel>
+                    {tabs.isOpened(2) &&
+                      (isSuspended ? (
+                        <DefinitionGrid
+                          items={[
+                            {
+                              label: 'Suspension Status',
+                              value: <Tag type="red">Suspended</Tag>,
+                            },
+                            { label: 'Reason', value: 'Pending cutblock re-survey' },
+                            { label: 'Effective', value: data.blockStatusDate ?? '—' },
+                          ]}
+                        />
+                      ) : (
+                        <p style={{ padding: '1rem 0' }}>
+                          This cut block has no active suspensions.
+                        </p>
+                      ))}
                   </TabPanel>
                 </TabPanels>
               </Tabs>

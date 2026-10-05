@@ -15,22 +15,19 @@ interface Props {
 }
 
 /**
- * Renders a user id as a resolved display name. Shows the raw id with a small
- * spinner to its right while the (batched, session-cached) lookup is in
- * flight, then swaps to the name and hides the spinner. Falls back to the raw
- * id if it can't be resolved. Drop-in for any place a raw login is shown —
- * safe even on fields that already hold a real name (the lookup just misses
- * and the original value is displayed).
+ * Renders a user id as `Display Name (USERNAME)` — `IDIR\JSMITH` shows as
+ * `Jane Smith (JSMITH)`. Shows the username with a small spinner to its right
+ * while the (batched, session-cached) lookup is in flight, then swaps to the
+ * full text and hides the spinner. Falls back to the username alone if the
+ * name can't be resolved. Drop-in for any place a raw login is shown — safe
+ * even on fields that already hold a real name (the lookup just misses and the
+ * original value is displayed).
  */
 const UserName: FC<Props> = ({ userId, fallback = '—', className }) => {
   const { text, loading } = useUserName(userId);
   if (!(userId ?? '').trim()) return <>{fallback}</>;
   return (
-    // Once the name shows, the IDIR id is still a hover away.
-    <span
-      className={`user-name${className ? ` ${className}` : ''}`}
-      title={text !== userId ? (userId ?? undefined) : undefined}
-    >
+    <span className={`user-name${className ? ` ${className}` : ''}`}>
       <span className="user-name__text">{text}</span>
       {loading && (
         <Loading
