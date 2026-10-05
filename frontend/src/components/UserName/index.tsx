@@ -4,7 +4,6 @@ import { useUserName } from '@/hooks/useUserName';
 
 import type { FC } from 'react';
 
-
 import './UserName.css';
 
 interface Props {
