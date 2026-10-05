@@ -16,7 +16,8 @@ import java.util.Set;
  * endpoint (which fields it accepts), so the two cannot disagree.
  *
  * @param editable          whether the mark can be saved at all
- * @param reason            why not, when {@code editable} is false
+ * @param reason            why not, when {@code editable} is false — null for a status that
+ *                          can't be saved or a view-only mark type (both already show)
  * @param applicationDate   Application Date
  * @param term              Initial Term
  * @param location          District and the application fields: Geographic Location, Legal,
@@ -95,15 +96,17 @@ public record MarkEditRules(
 
   private static MarkEditRules none(
       String reason,
+      boolean landIndex,
       String landIndexReason,
+      boolean clients,
       String clientsReason,
       boolean amendments,
       String amendmentsReason,
       String submitReason) {
     return new MarkEditRules(
         false, reason, false, false, false, false, false, false, false, List.of(), false,
-        List.of(), landIndexReason == null, landIndexReason, clientsReason == null,
-        clientsReason, amendments, amendmentsReason, submitReason == null, submitReason);
+        List.of(), landIndex, landIndexReason, clients, clientsReason, amendments,
+        amendmentsReason, submitReason == null, submitReason);
   }
 
   /**
@@ -123,23 +126,25 @@ public record MarkEditRules(
     String status = mark.markStatusCode();
     boolean viewOnlyType =
         mark.fileTypeCode() != null && VIEW_ONLY_TYPES.contains(mark.fileTypeCode());
+    // A view-only mark type (B15/B16) disables every action without a reason: the type is
+    // on screen, and a note saying so isn't wanted.
     // FTA_511_MARK_LAND_INDEX.mainline GET: Headquarters only, not for HX/DV/DD, not B15/B16.
     // Null when a land index may be added.
     String landIndexReason = !userCanEdit
         ? "Your role cannot add a land index."
         : status != null && LAND_INDEX_LOCKED.contains(status)
             ? "Land index cannot be changed while the mark is " + status + "."
-            : viewOnlyType
-                ? "Mark type " + mark.fileTypeCode() + " can only be viewed."
-                : null;
+            : null;
+    boolean landIndex = landIndexReason == null && !viewOnlyType;
     // FTA_513_PM_CLIENT.mainline GET, Headquarters: not B15/B16, and only at HI, PI or PA.
     String clientsReason = !userCanEdit
         ? "Your role cannot add a client."
         : viewOnlyType
-            ? "Mark type " + mark.fileTypeCode() + " can only be viewed."
+            ? null
             : status == null || !CLIENTS_OPEN.contains(status)
                 ? "Clients can be added only while the mark is HI, PI or PA."
                 : null;
+    boolean clients = clientsReason == null && userCanEdit && !viewOnlyType;
     // FTA_512_MARK_AMEND.mainline GET: not B15/B16; only an HI mark, and only when no
     // amendment is outstanding. Legacy looks for a PI one; an approved one not yet printed
     // (HN) is outstanding too, and a second would leave the mark with two. That case
@@ -147,7 +152,7 @@ public record MarkEditRules(
     String amendmentsReason = !userCanEdit
         ? "Your role cannot request an amendment."
         : viewOnlyType
-            ? "Mark type " + mark.fileTypeCode() + " can only be viewed."
+            ? null
             : mark.outstandingAmendStatus() == null
                 && (!"HI".equals(status) || mark.timberMark() == null)
                     ? "Amendments can be requested only while the mark is HI (Issued)."
@@ -155,7 +160,8 @@ public record MarkEditRules(
                         ? "Timber mark " + mark.timberMark() + " has no TIMBER_MARK record,"
                             + " which an amendment needs. Ask for a data fix."
                         : null;
-    boolean amendments = amendmentsReason == null && mark.outstandingAmendStatus() == null;
+    boolean amendments = amendmentsReason == null && !viewOnlyType
+        && mark.outstandingAmendStatus() == null;
     // FTA_510.GET: "enable the Submit to HQ only if status is PA" and the user is not
     // Headquarters; its SUBMIT refuses an application without a client.
     String submitReason = !userCanEdit
@@ -171,25 +177,22 @@ public record MarkEditRules(
     if (!userCanEdit) {
       return none(
           "Your role cannot edit private marks.",
+          landIndex,
           landIndexReason,
+          clients,
           clientsReason,
           amendments,
           amendmentsReason,
           submitReason);
     }
     if (status == null || !SAVEABLE_STATUSES.contains(status)) {
-      return none("A mark in status " + (status == null ? "(none)" : status)
-          + " cannot be edited.", landIndexReason, clientsReason, amendments,
+      // No reason: the status is on screen, and a note saying so isn't wanted.
+      return none(null, landIndex, landIndexReason, clients, clientsReason, amendments,
           amendmentsReason, submitReason);
     }
     if (viewOnlyType) {
-      return none(
-          "Mark type " + mark.fileTypeCode() + " can only be viewed.",
-          landIndexReason,
-          clientsReason,
-          amendments,
-          amendmentsReason,
-          submitReason);
+      return none(null, landIndex, landIndexReason, clients, clientsReason, amendments,
+          amendmentsReason, submitReason);
     }
 
     // setProtectionStates, Headquarters, existing record, opened from the FTA500 list:
@@ -218,19 +221,20 @@ public record MarkEditRules(
         !hasClient,
         !amendmentOutstanding,
         true,
-        // Legacy writes the marking codes to HAULING_AUTHORITY only for an issued (HI)
-        // mark, and warns that otherwise they "will not be saved" — so they are offered
-        // only where a save keeps them.
-        "HI".equals(status) && mark.timberMark() != null,
+        // The marking codes live on HAULING_AUTHORITY, created when the mark is issued, so a
+        // save keeps them from HN on. Legacy wrote them only at HI, which left Branch and the
+        // district waiting for the certificate print (HN to HI) to change them; the marking
+        // decision is the district's, so both HN and HI are open here, by design.
+        ("HN".equals(status) || "HI".equals(status)) && mark.timberMark() != null,
         markTypeOpen,
         hasClient,
         statusOpen,
         statusOpen ? statusOptions : List.of(status),
         amendmentOutstanding,
         amendmentOutstanding ? AMENDMENT_STATUSES : List.of(),
-        landIndexReason == null,
+        landIndex,
         landIndexReason,
-        clientsReason == null,
+        clients,
         clientsReason,
         amendments,
         amendmentsReason,

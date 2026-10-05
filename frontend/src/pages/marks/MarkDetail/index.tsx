@@ -15,6 +15,8 @@ import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import StatusTag from '@/components/StatusTag/StatusTag';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
+import { useLazyTabs } from '@/hooks/useLazyTabs';
+import { useNavOrigin } from '@/lib/navOrigin';
 import PageLayout from '@/pages/PageLayout';
 import { canEditMarks } from '@/routes/access';
 import { getMarkDetail } from '@/services/mark_detail';
@@ -45,6 +47,8 @@ const MarkDetail: FC = () => {
   const [searchParams] = useSearchParams();
   const byCertificate = searchParams.get('by') === 'certificate';
   const { user } = useAuth();
+  // Opened from Timber Mark Search: go back there, not to the applications list.
+  const back = useNavOrigin() ?? { path: '/marks', label: 'Private Mark Applications' };
 
   const fetcher = useCallback(
     () => getMarkDetail(markNumber, byCertificate),
@@ -59,7 +63,8 @@ const MarkDetail: FC = () => {
 
   // Controlled, because saving a note reloads the mark: the loading state
   // unmounts the tabs, and an uncontrolled Tabs would come back on the first.
-  const [selectedTab, setSelectedTab] = useState(0);
+  // Each panel is mounted only once its tab is opened.
+  const tabs = useLazyTabs(`${markNumber}|${byCertificate}`);
   // While the Mark application tab is being edited, nothing else on the page
   // can be used — the FSP Information page's one-editor-at-a-time rule.
   const [editing, setEditing] = useState(false);
@@ -85,11 +90,11 @@ const MarkDetail: FC = () => {
         editing ? (
           // Leaving mid-edit would drop the changes without asking.
           <span className="back-link back-link--disabled" aria-disabled="true">
-            <ArrowLeft size={16} /> Back to Private Mark Applications
+            <ArrowLeft size={16} /> Back to {back.label}
           </span>
         ) : (
-          <Link to="/marks" className="back-link">
-            <ArrowLeft size={16} /> Back to Private Mark Applications
+          <Link to={back.path} className="back-link">
+            <ArrowLeft size={16} /> Back to {back.label}
           </Link>
         )
       }
@@ -99,10 +104,7 @@ const MarkDetail: FC = () => {
           // Carbon's <Tabs> renders no DOM of its own, so the grey full-bleed
           // pane is styled through this wrapper (styles/_detail.scss).
           <div className="fsp-info__page-tabs">
-            <Tabs
-              selectedIndex={selectedTab}
-              onChange={({ selectedIndex }) => setSelectedTab(selectedIndex)}
-            >
+            <Tabs selectedIndex={tabs.selected} onChange={tabs.onChange}>
               <TabList aria-label="Private mark sections" contained>
                 <Tab renderIcon={Document}>Mark application</Tab>
                 <Tab renderIcon={MapIcon} disabled={editing}>
@@ -120,57 +122,67 @@ const MarkDetail: FC = () => {
               </TabList>
               <TabPanels>
                 <TabPanel>
-                  <MarkApplicationPanel
-                    mark={mark}
-                    id={markNumber}
-                    byCertificate={byCertificate}
-                    canEdit={canEditMarks(user)}
-                    onEditingChange={setEditing}
-                    onSaved={reload}
-                  />
+                  {tabs.isOpened(0) && (
+                    <MarkApplicationPanel
+                      mark={mark}
+                      id={markNumber}
+                      byCertificate={byCertificate}
+                      canEdit={canEditMarks(user)}
+                      onEditingChange={setEditing}
+                      onSaved={reload}
+                    />
+                  )}
                 </TabPanel>
 
                 <TabPanel>
-                  <LandIndexPanel
-                    id={markNumber}
-                    byCertificate={byCertificate}
-                    rows={mark.landIndex}
-                    canAdd={!!mark.editRules?.landIndex}
-                    disabledReason={mark.editRules?.landIndexReason ?? null}
-                    onAdded={reload}
-                  />
+                  {tabs.isOpened(1) && (
+                    <LandIndexPanel
+                      id={markNumber}
+                      byCertificate={byCertificate}
+                      rows={mark.landIndex}
+                      canAdd={!!mark.editRules?.landIndex}
+                      disabledReason={mark.editRules?.landIndexReason ?? null}
+                      onAdded={reload}
+                    />
+                  )}
                 </TabPanel>
 
                 <TabPanel>
-                  <ClientsPanel
-                    id={markNumber}
-                    byCertificate={byCertificate}
-                    rows={mark.clients}
-                    canAdd={!!mark.editRules?.clients}
-                    disabledReason={mark.editRules?.clientsReason ?? null}
-                    onAdded={reload}
-                  />
+                  {tabs.isOpened(2) && (
+                    <ClientsPanel
+                      id={markNumber}
+                      byCertificate={byCertificate}
+                      rows={mark.clients}
+                      canAdd={!!mark.editRules?.clients}
+                      disabledReason={mark.editRules?.clientsReason ?? null}
+                      onAdded={reload}
+                    />
+                  )}
                 </TabPanel>
 
                 <TabPanel>
-                  <AmendmentsPanel
-                    id={markNumber}
-                    byCertificate={byCertificate}
-                    rows={mark.amendments}
-                    canAdd={!!mark.editRules?.amendments}
-                    disabledReason={mark.editRules?.amendmentsReason ?? null}
-                    onAdded={reload}
-                  />
+                  {tabs.isOpened(3) && (
+                    <AmendmentsPanel
+                      id={markNumber}
+                      byCertificate={byCertificate}
+                      rows={mark.amendments}
+                      canAdd={!!mark.editRules?.amendments}
+                      disabledReason={mark.editRules?.amendmentsReason ?? null}
+                      onAdded={reload}
+                    />
+                  )}
                 </TabPanel>
                 <TabPanel>
-                  <NotesPanel
-                    id={markNumber}
-                    byCertificate={byCertificate}
-                    forestFileId={mark.forestFileId}
-                    notes={mark.notes}
-                    canAdd={canEditMarks(user)}
-                    onAdded={reload}
-                  />
+                  {tabs.isOpened(4) && (
+                    <NotesPanel
+                      id={markNumber}
+                      byCertificate={byCertificate}
+                      forestFileId={mark.forestFileId}
+                      notes={mark.notes}
+                      canAdd={canEditMarks(user)}
+                      onAdded={reload}
+                    />
+                  )}
                 </TabPanel>
               </TabPanels>
             </Tabs>

@@ -26,6 +26,10 @@ package ca.bc.gov.nrs.fta.mark.dto;
  * @param issueDateTo         inclusive upper bound
  * @param expiryDateFrom      inclusive lower bound on extend-or-expiry date
  * @param expiryDateTo        inclusive upper bound
+ * @param amendDateFrom       inclusive lower bound on the private mark's amended date
+ *                            ({@code PRIVATE_MARK_AMEND_DATE}) — set when an amendment,
+ *                            such as a renewal, is approved. Not in legacy FTA002.
+ * @param amendDateTo         inclusive upper bound
  * @param salvageTypeCode     salvage type; the literal {@code ALL} means "any
  *                            salvage type at all" rather than an equality
  * @param certificate         private mark certificate
@@ -53,6 +57,8 @@ public record TimbermarkSearchCriteria(
     String issueDateTo,
     String expiryDateFrom,
     String expiryDateTo,
+    String amendDateFrom,
+    String amendDateTo,
     String salvageTypeCode,
     String certificate,
     String landDistrict,

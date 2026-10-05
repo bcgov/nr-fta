@@ -3,18 +3,27 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { peek, request, subscribe } from '@/lib/userNameStore';
 
 export interface UserNameState {
-  /** Text to display — the resolved display name, or the raw id fallback. */
+  /** Text to display — `Display Name (USERNAME)`, or just `USERNAME` if unresolved. */
   text: string;
   /** True while the lookup is in flight (caller shows a spinner). */
   loading: boolean;
 }
 
 /**
- * Resolves a single user id (`IDIR\JSMITH`) to a display name via the shared
- * session cache. Returns the raw id immediately (with {@code loading: true})
- * and swaps to the resolved name once the batched lookup lands. Cache hits
- * return the name synchronously with no loading flash. Unresolvable ids fall
- * back to the raw id with {@code loading: false}.
+ * The IDIR username without its domain: `IDIR\jsmith` gives `JSMITH`. Any other
+ * value (a bare id, or a field that already holds a name) is shown as stored.
+ */
+export function idirUsername(id: string): string {
+  const match = /^idir\\(.+)$/i.exec(id);
+  return match ? match[1].trim().toUpperCase() : id;
+}
+
+/**
+ * Resolves a single user id (`IDIR\JSMITH`) to `Jane Smith (JSMITH)` via the
+ * shared session cache. Shows the username immediately (with
+ * {@code loading: true}) and swaps to the full text once the batched lookup
+ * lands. Cache hits return synchronously with no loading flash. Ids that
+ * can't be resolved stay as the username, with {@code loading: false}.
  */
 export function useUserName(rawId: string | null | undefined): UserNameState {
   const id = (rawId ?? '').trim();
@@ -30,7 +39,8 @@ export function useUserName(rawId: string | null | undefined): UserNameState {
   }, [id]);
 
   if (!id) return { text: '', loading: false };
-  if (cached === undefined) return { text: id, loading: true };
-  // '' → looked up but unresolved: show the raw id. Otherwise the name.
-  return { text: cached === '' ? id : cached, loading: false };
+  const username = idirUsername(id);
+  if (cached === undefined) return { text: username, loading: true };
+  // '' → looked up but unresolved: the username alone.
+  return { text: cached === '' ? username : `${cached} (${username})`, loading: false };
 }

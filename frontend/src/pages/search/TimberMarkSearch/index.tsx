@@ -22,7 +22,7 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react';
-import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FC, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import ClientComboBox from '@/components/ClientComboBox';
@@ -32,7 +32,9 @@ import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
+import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
+import { originState, TIMBER_MARK_SEARCH_ORIGIN } from '@/lib/navOrigin';
 import PageLayout from '@/pages/PageLayout';
 import {
   getManagementUnits,
@@ -101,7 +103,16 @@ const TimberMarkSearch: FC = () => {
   const navigate = useNavigate();
   const { display } = useNotification();
 
-  const [form, setForm] = useState<TimbermarkSearchParams>(EMPTY_FORM);
+  // Criteria and the last search are kept for the browser tab, so coming back
+  // (e.g. via a detail page's back link) shows the same search again.
+  const [form, setForm] = useSessionState<TimbermarkSearchParams>(
+    'fta.search.timberMark.form',
+    EMPTY_FORM,
+  );
+  const [lastSearch, setLastSearch] = useSessionState<LastSearch<TimbermarkSearchParams> | null>(
+    'fta.search.timberMark.last',
+    null,
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
   // The criteria the rows on screen came from. The export must use these, not
   // `form` — the user may have edited a field since searching, and exporting
@@ -180,21 +191,58 @@ const TimberMarkSearch: FC = () => {
   const set = <K extends keyof TimbermarkSearchParams>(key: K, value: TimbermarkSearchParams[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  // Once a search the user ran (or a page change) finishes, bring the table into view.
+  // Not for the search re-run on coming back to the page, which shouldn't jump.
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const scrollPending = useRef(false);
+  useEffect(() => {
+    if (loading || !scrollPending.current) return;
+    scrollPending.current = false;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    resultsRef.current?.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  }, [loading]);
+
   const runSearch = useCallback(
-    async (nextPage: number, nextSize: number) => {
-      if (form.issueDateFrom && form.issueDateTo && form.issueDateFrom > form.issueDateTo) {
+    async (
+      nextPage: number,
+      nextSize: number,
+      criteria: TimbermarkSearchParams = form,
+      scrollToResults = true,
+    ) => {
+      if (
+        criteria.issueDateFrom &&
+        criteria.issueDateTo &&
+        criteria.issueDateFrom > criteria.issueDateTo
+      ) {
         setError('Issue date from must be on or before issue date to.');
         return;
       }
-      if (form.expiryDateFrom && form.expiryDateTo && form.expiryDateFrom > form.expiryDateTo) {
+      if (
+        criteria.expiryDateFrom &&
+        criteria.expiryDateTo &&
+        criteria.expiryDateFrom > criteria.expiryDateTo
+      ) {
         setError('Expiry date from must be on or before expiry date to.');
         return;
       }
+      if (
+        criteria.amendDateFrom &&
+        criteria.amendDateTo &&
+        criteria.amendDateFrom > criteria.amendDateTo
+      ) {
+        setError('Amended date from must be on or before amended date to.');
+        return;
+      }
+      scrollPending.current = scrollToResults;
       setLoading(true);
       setError(null);
       try {
-        const data = await searchTimbermarks({ ...form, page: nextPage, size: nextSize });
-        setSearched({ ...form });
+        const data = await searchTimbermarks({ ...criteria, page: nextPage, size: nextSize });
+        setSearched({ ...criteria });
+        setLastSearch({ criteria, page: data.page.number, size: data.page.size });
         setRows(
           data.content.map((r, i) => ({
             ...r,
@@ -212,7 +260,7 @@ const TimberMarkSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form],
+    [form, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -232,11 +280,23 @@ const TimberMarkSearch: FC = () => {
 
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
+    setLastSearch(null);
     setRows(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, []);
+  }, [setForm, setLastSearch]);
+
+  // Back on the page with a search from earlier in this tab: run it again (fresh
+  // results, same page), once the code lists — and so the form — are ready.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (codeListsLoading || restored) return;
+    setRestored(true);
+    if (lastSearch && rows === null) {
+      void runSearch(lastSearch.page, lastSearch.size, lastSearch.criteria, false);
+    }
+  }, [codeListsLoading, restored, lastSearch, rows, runSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
 
@@ -475,6 +535,41 @@ const TimberMarkSearch: FC = () => {
               autoComplete="off"
             />
 
+            {/* Amended Date is stamped when an amendment such as a renewal is approved, so it
+                finds a mark renewed in a period without knowing when it was first issued. */}
+            <DatePicker
+              datePickerType="single"
+              dateFormat="Y-m-d"
+              className="fsp-search__row-start"
+              value={form.amendDateFrom ? [form.amendDateFrom] : []}
+              onChange={(dates) =>
+                set('amendDateFrom', dates[0] ? dates[0].toISOString().slice(0, 10) : '')
+              }
+            >
+              <DatePickerInput
+                id="tm-amend-from"
+                labelText="Amended date from"
+                placeholder="YYYY-MM-DD"
+                pattern="\d{4}-\d{2}-\d{2}"
+              />
+            </DatePicker>
+
+            <DatePicker
+              datePickerType="single"
+              dateFormat="Y-m-d"
+              value={form.amendDateTo ? [form.amendDateTo] : []}
+              onChange={(dates) =>
+                set('amendDateTo', dates[0] ? dates[0].toISOString().slice(0, 10) : '')
+              }
+            >
+              <DatePickerInput
+                id="tm-amend-to"
+                labelText="Amended date to"
+                placeholder="YYYY-MM-DD"
+                pattern="\d{4}-\d{2}-\d{2}"
+              />
+            </DatePicker>
+
             <div className="fsp-search__full-cell">
               <Checkbox
                 id="tm-private-only"
@@ -515,7 +610,7 @@ const TimberMarkSearch: FC = () => {
       </Tile>
 
       {(loading || rows !== null) && (
-        <div className="fsp-search__results-fullbleed">
+        <div className="fsp-search__results-fullbleed" ref={resultsRef}>
           <div className="fsp-search__results">
             {loading ? (
               <>
@@ -564,21 +659,21 @@ const TimberMarkSearch: FC = () => {
                               const valueOf = (key: string) =>
                                 (row.cells.find((c) => c.info.header === key)?.value as
                                   string | null | undefined) ?? null;
-                              const cp = valueOf('cuttingPermitId');
-                              // A private mark (it has a certificate) opens its timber mark
-                              // detail, as legacy's Certificate link opened FTA510. A Crown
-                              // mark has no detail of its own, so it opens its cutting permit.
+                              // A private mark (it has a certificate) opens its application,
+                              // as legacy's Certificate link opened FTA510. Any other mark
+                              // opens its tenure.
+                              const fileId = valueOf('forestFileId');
                               const target = valueOf('certificate')
                                 ? markDetailPath(valueOf('timberMark'), valueOf('certificate'))
-                                : cp
-                                  ? `/harvesting-authority/${encodeURIComponent(cp)}${
-                                      valueOf('forestFileId')
-                                        ? `?forestFileId=${encodeURIComponent(valueOf('forestFileId') ?? '')}`
-                                        : ''
-                                    }`
+                                : fileId
+                                  ? `/tenures/${encodeURIComponent(fileId)}`
                                   : null;
                               const open = () => {
-                                if (target) navigate(target);
+                                // The detail's back link returns here, not to its usual list.
+                                if (target)
+                                  navigate(target, {
+                                    state: originState(TIMBER_MARK_SEARCH_ORIGIN),
+                                  });
                               };
                               return (
                                 <TableRow

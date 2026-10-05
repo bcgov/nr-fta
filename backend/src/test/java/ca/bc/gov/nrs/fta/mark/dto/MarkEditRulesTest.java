@@ -49,13 +49,26 @@ class MarkEditRulesTest {
       MarkEditRules rules = hq(mark("DV", "B01", "12A345", "00001", null));
 
       assertThat(rules.editable()).isFalse();
-      assertThat(rules.reason()).contains("DV");
+      assertThat(rules.reason()).isNull();
     }
 
     @Test
     void b15AndB16AreViewOnly() {
       assertThat(hq(mark("HI", "B15", "12A345", "00001", null)).editable()).isFalse();
       assertThat(hq(mark("HI", "B16", "12A345", "00001", null)).editable()).isFalse();
+    }
+
+    @Test
+    void viewOnlyTypeDisablesEverythingWithoutSayingWhy() {
+      MarkEditRules rules = hq(mark("HI", "B15", "12A345", "00001", null));
+
+      assertThat(rules.reason()).isNull();
+      assertThat(rules.landIndex()).isFalse();
+      assertThat(rules.landIndexReason()).isNull();
+      assertThat(rules.clients()).isFalse();
+      assertThat(rules.clientsReason()).isNull();
+      assertThat(rules.amendments()).isFalse();
+      assertThat(rules.amendmentsReason()).isNull();
     }
 
     @Test
@@ -91,6 +104,16 @@ class MarkEditRulesTest {
     void markingIsOnlyOpenOnceIssued() {
       assertThat(hq(mark("PI", null, null, "00001", null)).marking()).isFalse();
       assertThat(hq(mark("HX", "B01", "12A345", "00001", null)).marking()).isFalse();
+    }
+
+    @Test
+    void markingIsOpenAtHnAndHiForHeadquartersAndDistrict() {
+      for (String status : new String[] {"HN", "HI"}) {
+        MarkDetailDto issued = mark(status, "B01", "12A345", "00001", null);
+        assertThat(hq(issued).marking()).as("HQ at %s", status).isTrue();
+        assertThat(MarkEditRules.of(issued, true, true).marking())
+            .as("district at %s", status).isTrue();
+      }
     }
 
     @Test
@@ -202,8 +225,9 @@ class MarkEditRulesTest {
 
     @Test
     void lockedForViewOnlyTypesAndViewers() {
-      assertThat(hq(mark("HI", "B16", "E12345", "00001", null)).clientsReason())
-          .contains("B16");
+      MarkEditRules viewOnly = hq(mark("HI", "B16", "E12345", "00001", null));
+      assertThat(viewOnly.clients()).isFalse();
+      assertThat(viewOnly.clientsReason()).isNull();
       assertThat(MarkEditRules.of(mark("HI", "B08", "E12345", "00001", null), false).clients())
           .isFalse();
     }
@@ -263,8 +287,9 @@ class MarkEditRulesTest {
 
     @Test
     void lockedForViewOnlyTypesAndViewers() {
-      assertThat(hq(mark("HI", "B15", "E12345", "00001", null)).amendmentsReason())
-          .contains("B15");
+      MarkEditRules viewOnly = hq(mark("HI", "B15", "E12345", "00001", null));
+      assertThat(viewOnly.amendments()).isFalse();
+      assertThat(viewOnly.amendmentsReason()).isNull();
       MarkEditRules viewer = MarkEditRules.of(mark("HI", "B08", "E12345", "00001", null), false);
       assertThat(viewer.amendments()).isFalse();
       assertThat(viewer.amendmentsReason()).contains("Your role");

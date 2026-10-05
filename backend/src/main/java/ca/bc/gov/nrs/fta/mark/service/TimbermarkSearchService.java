@@ -315,6 +315,28 @@ public class TimbermarkSearchService {
           + " <= TO_DATE(:expiryDateTo, 'YYYY-MM-DD'))\n");
     }
 
+    // Amended date: on the certificate, not TIMBER_MARK, so matched like the land index.
+    // A renewal is an approved amendment, which stamps it — so this finds a mark by its
+    // latest renewal when its original issue date is unknown. Stamped with SYSDATE, so the
+    // upper bound takes the whole day.
+    if (notBlank(c.amendDateFrom()) || notBlank(c.amendDateTo())) {
+      StringBuilder sub = new StringBuilder("""
+             AND (tm.certificate IN (
+                    SELECT pmc.certificate FROM the.private_mark_certificate pmc WHERE 1 = 1
+          """);
+      if (notBlank(c.amendDateFrom())) {
+        p.addValue("amendDateFrom", c.amendDateFrom().trim());
+        sub.append("              AND pmc.private_mark_amend_date"
+            + " >= TO_DATE(:amendDateFrom, 'YYYY-MM-DD')\n");
+      }
+      if (notBlank(c.amendDateTo())) {
+        p.addValue("amendDateTo", c.amendDateTo().trim());
+        sub.append("              AND pmc.private_mark_amend_date"
+            + " < TO_DATE(:amendDateTo, 'YYYY-MM-DD') + 1\n");
+      }
+      where.append(sub).append("   ))\n");
+    }
+
     // Private marks only: file types drawn from the private-mark code table.
     // A mark with no file header still qualifies, as the legacy clause allows.
     if ("Y".equalsIgnoreCase(nullToEmpty(c.privateMarkOnlyInd()).trim())) {

@@ -108,7 +108,8 @@ public class MarkUpdateService {
 
     MarkEditRules rules = MarkEditRules.of(current, true);
     if (!rules.editable()) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, rules.reason());
+      throw new ResponseStatusException(HttpStatus.CONFLICT,
+          rules.reason() != null ? rules.reason() : "This mark cannot be edited.");
     }
     if (request.revisionCount() == null
         || !request.revisionCount().equals(current.revisionCount())) {

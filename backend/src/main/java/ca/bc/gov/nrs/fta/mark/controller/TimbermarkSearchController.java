@@ -51,6 +51,8 @@ public class TimbermarkSearchController {
       @RequestParam(required = false) String issueDateTo,
       @RequestParam(required = false) String expiryDateFrom,
       @RequestParam(required = false) String expiryDateTo,
+      @RequestParam(required = false) String amendDateFrom,
+      @RequestParam(required = false) String amendDateTo,
       @RequestParam(required = false) String salvageTypeCode,
       @RequestParam(required = false) String certificate,
       @RequestParam(required = false) String landDistrict,
@@ -64,7 +66,7 @@ public class TimbermarkSearchController {
         adminOrgUnitNo, districtAdminZone, forestFileId, cuttingPermitId, timberMark,
         fileTypeCode, markStatusSt, clientNumber, clientLocnCode, clientName, fileClientType,
         mgmtUnitType, mgmtUnitId, issueDateFrom, issueDateTo, expiryDateFrom, expiryDateTo,
-        salvageTypeCode, certificate, landDistrict, primaryId, primaryDetail,
+        amendDateFrom, amendDateTo, salvageTypeCode, certificate, landDistrict, primaryId, primaryDetail,
         privateMarkOnlyInd, sortBy);
 
     int safePage = Math.max(page, 0);
@@ -95,6 +97,8 @@ public class TimbermarkSearchController {
       @RequestParam(required = false) String issueDateTo,
       @RequestParam(required = false) String expiryDateFrom,
       @RequestParam(required = false) String expiryDateTo,
+      @RequestParam(required = false) String amendDateFrom,
+      @RequestParam(required = false) String amendDateTo,
       @RequestParam(required = false) String salvageTypeCode,
       @RequestParam(required = false) String certificate,
       @RequestParam(required = false) String landDistrict,
@@ -106,7 +110,7 @@ public class TimbermarkSearchController {
         adminOrgUnitNo, districtAdminZone, forestFileId, cuttingPermitId, timberMark,
         fileTypeCode, markStatusSt, clientNumber, clientLocnCode, clientName, fileClientType,
         mgmtUnitType, mgmtUnitId, issueDateFrom, issueDateTo, expiryDateFrom, expiryDateTo,
-        salvageTypeCode, certificate, landDistrict, primaryId, primaryDetail,
+        amendDateFrom, amendDateTo, salvageTypeCode, certificate, landDistrict, primaryId, primaryDetail,
         privateMarkOnlyInd, sortBy);
 
     return CsvExport.response(

@@ -85,11 +85,15 @@ public class UserDirectoryService {
       Optional<String> name = client.getIdirDetail(bare)
           .map(u -> displayName(u.firstName(), u.lastName()))
           .filter(StringUtils::hasText);
+      if (name.isEmpty()) {
+        LOG.debug("user-lookup: no IDIR account found for {}", raw);
+      }
       cache.put(bare, new Entry(name.orElse(null), now.plus(name.isPresent() ? ttl : MISS_TTL)));
       return name;
     } catch (RuntimeException ex) {
-      // Not cached, so the next screen retries.
-      LOG.debug("user-lookup miss for {} ({})", raw, ex.getMessage());
+      // Not cached, so the next screen retries. WARN, as this is a broken lookup (bad
+      // credentials, service down) rather than an unknown user, and the screen only shows ids.
+      LOG.warn("user-lookup failed for {}: {}", raw, ex.getMessage());
       return Optional.empty();
     }
   }

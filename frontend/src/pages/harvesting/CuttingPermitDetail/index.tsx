@@ -26,6 +26,7 @@ import SectionTile from '@/components/SectionTile';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
+import { useLazyTabs } from '@/hooks/useLazyTabs';
 import PageLayout from '@/pages/PageLayout';
 import { canEdit, isPathAllowedForUser } from '@/routes/access';
 import { getCuttingPermitDetail } from '@/services/cutting_permit_detail';
@@ -51,6 +52,9 @@ const CuttingPermitDetail: FC = () => {
     [cpId, forestFileId],
   );
   const { data: cp, loading, error, reload } = useApiResource(fetcher, [cpId, forestFileId]);
+
+  // Each tab is rendered only once opened.
+  const tabs = useLazyTabs(`${cpId}|${forestFileId ?? ''}`);
 
   const issuanceConditions = cp
     ? [
@@ -141,7 +145,7 @@ const CuttingPermitDetail: FC = () => {
             />
 
             <SectionTile title="Permit details" icon={Document}>
-              <Tabs>
+              <Tabs selectedIndex={tabs.selected} onChange={tabs.onChange}>
                 <TabList aria-label="Cutting permit sections" contained>
                   <Tab>Details</Tab>
                   <Tab>Cut Blocks</Tab>
@@ -149,87 +153,95 @@ const CuttingPermitDetail: FC = () => {
                 </TabList>
                 <TabPanels>
                   <TabPanel>
-                    <DefinitionGrid
-                      items={[
-                        { label: 'Legal Description', value: cp.location ?? '—' },
-                        { label: 'Timber Mark', value: cp.timberMark ?? '—' },
-                        {
-                          label: 'File Type',
-                          value: cp.fileTypeDescription ?? cp.fileTypeCode ?? '—',
-                        },
-                        { label: 'Licensee', value: cp.licensee ?? '—' },
-                        { label: 'Forest District', value: cp.forestDistrict ?? '—' },
-                        { label: 'Authorized Area', value: area },
-                      ]}
-                    />
-                    <h3 style={{ margin: '1rem 0 0.5rem', fontSize: '1rem' }}>
-                      Issuance Conditions
-                    </h3>
-                    {issuanceConditions.length ? (
-                      <UnorderedList>
-                        {issuanceConditions.map((c, i) => (
-                          <ListItem key={i}>{c}</ListItem>
-                        ))}
-                      </UnorderedList>
-                    ) : (
-                      <p>No issuance conditions recorded.</p>
+                    {tabs.isOpened(0) && (
+                      <>
+                        <DefinitionGrid
+                          items={[
+                            { label: 'Legal Description', value: cp.location ?? '—' },
+                            { label: 'Timber Mark', value: cp.timberMark ?? '—' },
+                            {
+                              label: 'File Type',
+                              value: cp.fileTypeDescription ?? cp.fileTypeCode ?? '—',
+                            },
+                            { label: 'Licensee', value: cp.licensee ?? '—' },
+                            { label: 'Forest District', value: cp.forestDistrict ?? '—' },
+                            { label: 'Authorized Area', value: area },
+                          ]}
+                        />
+                        <h3 style={{ margin: '1rem 0 0.5rem', fontSize: '1rem' }}>
+                          Issuance Conditions
+                        </h3>
+                        {issuanceConditions.length ? (
+                          <UnorderedList>
+                            {issuanceConditions.map((c, i) => (
+                              <ListItem key={i}>{c}</ListItem>
+                            ))}
+                          </UnorderedList>
+                        ) : (
+                          <p>No issuance conditions recorded.</p>
+                        )}
+                      </>
                     )}
                   </TabPanel>
 
                   <TabPanel>
-                    <div className="bordered-table">
-                      <TableContainer
-                        title="Cut Blocks"
-                        description="Cut blocks are managed on the Cut Block search screen"
-                      >
-                        <Table>
-                          <TableHead>
-                            <TableRow>
-                              <TableHeader>Block</TableHeader>
-                              <TableHeader>Status</TableHeader>
-                              <TableHeader>Area (ha)</TableHeader>
-                              <TableHeader>Planned Volume (m³)</TableHeader>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            <TableRow>
-                              <TableCell colSpan={4}>
-                                {isPathAllowedForUser(user, '/search/cut-block') ? (
-                                  <Link
-                                    to={`/search/cut-block?cpId=${encodeURIComponent(cp.cuttingPermitId ?? cpId)}`}
-                                  >
-                                    View cut blocks for this permit
-                                  </Link>
-                                ) : (
-                                  'Cut blocks are not available for your role.'
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </div>
+                    {tabs.isOpened(1) && (
+                      <div className="bordered-table">
+                        <TableContainer
+                          title="Cut Blocks"
+                          description="Cut blocks are managed on the Cut Block search screen"
+                        >
+                          <Table>
+                            <TableHead>
+                              <TableRow>
+                                <TableHeader>Block</TableHeader>
+                                <TableHeader>Status</TableHeader>
+                                <TableHeader>Area (ha)</TableHeader>
+                                <TableHeader>Planned Volume (m³)</TableHeader>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              <TableRow>
+                                <TableCell colSpan={4}>
+                                  {isPathAllowedForUser(user, '/search/cut-block') ? (
+                                    <Link
+                                      to={`/search/cut-block?cpId=${encodeURIComponent(cp.cuttingPermitId ?? cpId)}`}
+                                    >
+                                      View cut blocks for this permit
+                                    </Link>
+                                  ) : (
+                                    'Cut blocks are not available for your role.'
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </div>
+                    )}
                   </TabPanel>
 
                   <TabPanel>
-                    <DefinitionGrid
-                      items={[
-                        { label: 'Status', value: cp.statusDesc ?? cp.statusCode ?? '—' },
-                        { label: 'Status Date', value: cp.statusDate ?? '—' },
-                        {
-                          label: 'Tenure Term',
-                          value:
-                            cp.tenureTermYears != null || cp.tenureTermMonths != null
-                              ? `${cp.tenureTermYears ?? 0} yr ${cp.tenureTermMonths ?? 0} mo`
-                              : '—',
-                        },
-                        { label: 'Extend Date', value: cp.extendDate ?? '—' },
-                        {
-                          label: 'Extend Count',
-                          value: cp.extendCount != null ? String(cp.extendCount) : '—',
-                        },
-                      ]}
-                    />
+                    {tabs.isOpened(2) && (
+                      <DefinitionGrid
+                        items={[
+                          { label: 'Status', value: cp.statusDesc ?? cp.statusCode ?? '—' },
+                          { label: 'Status Date', value: cp.statusDate ?? '—' },
+                          {
+                            label: 'Tenure Term',
+                            value:
+                              cp.tenureTermYears != null || cp.tenureTermMonths != null
+                                ? `${cp.tenureTermYears ?? 0} yr ${cp.tenureTermMonths ?? 0} mo`
+                                : '—',
+                          },
+                          { label: 'Extend Date', value: cp.extendDate ?? '—' },
+                          {
+                            label: 'Extend Count',
+                            value: cp.extendCount != null ? String(cp.extendCount) : '—',
+                          },
+                        ]}
+                      />
+                    )}
                   </TabPanel>
                 </TabPanels>
               </Tabs>
