@@ -1,9 +1,11 @@
 import { SideNav, SideNavItems, SideNavLink, SideNavMenu, SideNavMenuItem } from '@carbon/react';
-import { useEffect, useState, type FC } from 'react';
+import { useEffect, useState, type FC, type MouseEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { useAuth } from '@/context/auth/useAuth';
 import { useLayout } from '@/context/layout/useLayout';
+import NewMarkApplicationModal from '@/pages/marks/NewMarkApplicationModal';
+import { canEditMarks } from '@/routes/access';
 import {
   getMenuSections,
   sectionIdForPath,
@@ -37,6 +39,9 @@ export const LayoutSideNav: FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const roles = user?.roles ?? [];
+  const mayCreateMark = canEditMarks(user);
+  // "New Application" pops its dialog over whatever page is open.
+  const [newMarkOpen, setNewMarkOpen] = useState(false);
 
   // Note: the drawer no longer auto-closes on link click or outside
   // pointer-down. The only way to dismiss it is the header X button,
@@ -94,13 +99,26 @@ export const LayoutSideNav: FC = () => {
    */
   const renderItem = (route: MenuLeaf) => {
     const Icon = route.icon;
+    // Only for a role that can use the dialog.
+    if (route.modal === 'new-mark-application' && !mayCreateMark) return null;
     return (
       <SideNavMenuItem
         data-testid={`side-nav-link-${route.id}`}
         key={route.id}
         as={Link}
         to={route.path}
-        isActive={route.path === location.pathname}
+        isActive={!route.modal && route.path === location.pathname}
+        // A dialog item keeps the link (and its look) but opens the dialog in place;
+        // a new-tab click still follows the link.
+        onClick={
+          route.modal
+            ? (e: MouseEvent) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                e.preventDefault();
+                setNewMarkOpen(true);
+              }
+            : undefined
+        }
       >
         <span className="side-nav-item">
           {Icon ? (
@@ -128,19 +146,23 @@ export const LayoutSideNav: FC = () => {
   };
 
   return (
-    <SideNav
-      expanded
-      isPersistent={false}
-      isChildOfHeader
-      className={`side-nav-drawer${isSideNavExpanded ? ' side-nav-drawer--open' : ''}`}
-      aria-label="Main navigation"
-    >
-      <SideNavItems>
-        {isSideNavExpanded
-          ? getMenuSections(roles).map(renderSection)
-          : getMenuSections(roles).map(renderRailSection)}
-      </SideNavItems>
-    </SideNav>
+    <>
+      <SideNav
+        expanded
+        isPersistent={false}
+        isChildOfHeader
+        className={`side-nav-drawer${isSideNavExpanded ? ' side-nav-drawer--open' : ''}`}
+        aria-label="Main navigation"
+      >
+        <SideNavItems>
+          {isSideNavExpanded
+            ? getMenuSections(roles).map(renderSection)
+            : getMenuSections(roles).map(renderRailSection)}
+        </SideNavItems>
+      </SideNav>
+      {/* Outside the nav, whose drawer styles would clip a fixed dialog. */}
+      <NewMarkApplicationModal open={newMarkOpen} onClose={() => setNewMarkOpen(false)} />
+    </>
   );
 };
 

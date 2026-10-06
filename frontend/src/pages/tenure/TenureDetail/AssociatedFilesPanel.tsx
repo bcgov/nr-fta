@@ -103,8 +103,6 @@ const AssociatedFilesPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
   const { data, loading, error, reload } = useApiResource(fetcher, [forestFileId]);
 
   const allowed = canEdit && !!data?.canAdd;
-  // A business reason only — a role that can't write just sees the button disabled.
-  const disabledReason = canEdit && data && !data.canAdd ? data.addReason : null;
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Form>(EMPTY);
@@ -247,19 +245,11 @@ const AssociatedFilesPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
               icon={<DocumentMultiple size={48} />}
               title="No associated files for this tenure"
               body="Associate another tenure, or a file from another system, with this one."
-              action={
-                <div className="detail-tab__empty-action">
-                  {addButton(true)}
-                  {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
-                </div>
-              }
+              action={<div className="detail-tab__empty-action">{addButton(true)}</div>}
             />
           ) : (
             <div>
-              <header className="detail-tab__actions">
-                {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
-                {addButton(false)}
-              </header>
+              <header className="detail-tab__actions">{addButton(false)}</header>
               <div className="bordered-table">
                 <TableContainer>
                   <Table size="md" useZebraStyles>

@@ -103,10 +103,6 @@ const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCod
   // Why the Add button is disabled, when it says why: a role without the right
   // just sees it disabled.
   const allowed = canEdit && timberTenure;
-  const disabledReason =
-    canEdit && !timberTenure
-      ? 'Cutting permits can be added only to a timber tenure (file type A…).'
-      : null;
   const maxTerm = fileTypeCode === 'A11' ? 60 : 48;
   const salvageFixed = fileTypeCode === 'A31';
 
@@ -266,19 +262,13 @@ const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCod
               title="No cutting permits for this tenure"
               body="Add a cutting permit; its timber mark is generated from the tenure."
               action={
-                // Always shown; disabled, with the reason, when adding isn't allowed.
-                <div className="detail-tab__empty-action">
-                  {addButton(true)}
-                  {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
-                </div>
+                // Always shown; disabled when adding isn't allowed.
+                <div className="detail-tab__empty-action">{addButton(true)}</div>
               }
             />
           ) : (
             <div>
-              <header className="detail-tab__actions">
-                {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
-                {addButton(false)}
-              </header>
+              <header className="detail-tab__actions">{addButton(false)}</header>
               <div className="bordered-table">
                 <TableContainer>
                   <Table size="md" useZebraStyles>

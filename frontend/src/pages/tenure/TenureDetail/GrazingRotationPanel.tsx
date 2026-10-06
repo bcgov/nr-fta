@@ -183,9 +183,6 @@ const GrazingRotationPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
   const rules = data?.rules;
   const shownYear = data?.calendarYear ?? null;
   const allowed = canEdit && !!rules?.edit && shownYear !== null;
-  // Why writes are off, when it is not the role: a role without the right just sees the
-  // buttons disabled.
-  const disabledReason = canEdit && rules && !rules.edit ? rules.reason : null;
 
   /** Re-read the same year after a write (the default year could move otherwise). */
   const refresh = () => {
@@ -576,19 +573,11 @@ const GrazingRotationPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                       : `No livestock rotations for ${shownYear}`
                   }
                   body="Add a rotation: the animal, head count, days and range unit pasture it grazes."
-                  action={
-                    <div className="detail-tab__empty-action">
-                      {addButton(true)}
-                      {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
-                    </div>
-                  }
+                  action={<div className="detail-tab__empty-action">{addButton(true)}</div>}
                 />
               ) : (
                 <div>
-                  <header className="detail-tab__actions">
-                    {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
-                    {addButton(false)}
-                  </header>
+                  <header className="detail-tab__actions">{addButton(false)}</header>
                   <div className="bordered-table">
                     <TableContainer>
                       <Table size="md" useZebraStyles>

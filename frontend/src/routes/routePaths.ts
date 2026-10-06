@@ -55,6 +55,11 @@ export type MenuLeaf = {
   path: string;
   icon?: ComponentType;
   roles?: string[];
+  /**
+   * Opens a dialog over the current page instead of navigating. `path` still
+   * names the screen for the role check and for a direct link.
+   */
+  modal?: 'new-mark-application';
 };
 
 /** A heading with its destinations. */
@@ -149,6 +154,7 @@ const NAV: MenuSection[] = [
         label: 'New Application',
         path: '/marks/application',
         icon: DocumentAdd,
+        modal: 'new-mark-application',
       },
     ],
   },

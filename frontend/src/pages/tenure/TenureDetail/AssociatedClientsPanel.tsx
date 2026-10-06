@@ -125,8 +125,6 @@ const AssociatedClientsPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
   const { data, loading, error, reload } = useApiResource(fetcher, [forestFileId]);
 
   const allowed = canEdit && !!data?.canEdit;
-  // A business reason only — a role that can't write just sees the buttons disabled.
-  const disabledReason = canEdit && data && !data.canEdit ? data.editReason : null;
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<TenureAssociatedClient | null>(null);
@@ -328,19 +326,11 @@ const AssociatedClientsPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
               icon={<UserMultiple size={48} />}
               title="No clients for this tenure"
               body="Add the Main Licensee first, then any other licensees or agents."
-              action={
-                <div className="detail-tab__empty-action">
-                  {addButton(true)}
-                  {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
-                </div>
-              }
+              action={<div className="detail-tab__empty-action">{addButton(true)}</div>}
             />
           ) : (
             <div>
-              <header className="detail-tab__actions">
-                {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
-                {addButton(false)}
-              </header>
+              <header className="detail-tab__actions">{addButton(false)}</header>
               <div className="bordered-table">
                 <TableContainer>
                   <Table size="md" useZebraStyles>

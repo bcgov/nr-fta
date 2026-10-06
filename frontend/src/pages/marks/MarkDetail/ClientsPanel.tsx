@@ -86,8 +86,6 @@ interface Props {
   rows: MarkAssociatedClient[];
   /** Whether the user may add (the mark's `editRules.clients`). */
   canAdd: boolean;
-  /** Why not, when `canAdd` is false — shown beside the disabled button. */
-  disabledReason: string | null;
   /** Called after an add, to re-read the mark. */
   onAdded: () => void;
 }
@@ -100,7 +98,7 @@ interface Props {
  * Who may add, and when, is the backend's `editRules.clients` (FTA_513: HI, PI
  * or PA only, not B15/B16); the backend enforces it and the field rules too.
  */
-const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, disabledReason, onAdded }) => {
+const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }) => {
   const { display } = useNotification();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Form>(EMPTY);
@@ -222,19 +220,17 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, disabledReas
           title="No clients for this mark"
           body="Add the Main Licensee first, then any other licensees or agents."
           action={
-            // Always shown; disabled, with the reason, when adding isn't allowed.
+            // Always shown; disabled when adding isn't allowed.
             <div className="detail-tab__empty-action">
               <Button kind="primary" renderIcon={Add} disabled={!canAdd} onClick={openDialog}>
                 Add client
               </Button>
-              {!canAdd && disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             </div>
           }
         />
       ) : (
         <div>
           <header className="detail-tab__actions">
-            {!canAdd && disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             <Button
               kind="tertiary"
               size="sm"

@@ -53,8 +53,6 @@ interface Props {
   rows: MarkAmendment[];
   /** Whether the user may request one (the mark's `editRules.amendments`). */
   canAdd: boolean;
-  /** Why not, when `canAdd` is false — shown beside the disabled button. */
-  disabledReason: string | null;
   /** Called after an add, to re-read the mark. */
   onAdded: () => void;
 }
@@ -69,14 +67,7 @@ interface Props {
  * PI; approving it is the Mark application tab's amendment status, and Print
  * issues it.
  */
-const AmendmentsPanel: FC<Props> = ({
-  id,
-  byCertificate,
-  rows,
-  canAdd,
-  disabledReason,
-  onAdded,
-}) => {
+const AmendmentsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }) => {
   const { display } = useNotification();
   const [open, setOpen] = useState(false);
   const [area, setArea] = useState('');
@@ -139,19 +130,17 @@ const AmendmentsPanel: FC<Props> = ({
           title="No amendments for this mark"
           body="Request an amendment to change an issued mark's area or legal description."
           action={
-            // Always shown; disabled, with the reason, when a request isn't allowed.
+            // Always shown; disabled when a request isn't allowed.
             <div className="detail-tab__empty-action">
               <Button kind="primary" renderIcon={Add} disabled={!canAdd} onClick={openDialog}>
                 Request amendment
               </Button>
-              {!canAdd && disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             </div>
           }
         />
       ) : (
         <div>
           <header className="detail-tab__actions">
-            {!canAdd && disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             <Button
               kind="tertiary"
               size="sm"

@@ -99,7 +99,6 @@ const CopyRotationPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
 
   const rules = data?.rules;
   const allowed = canEdit && !!rules?.edit;
-  const disabledReason = canEdit && rules && !rules.edit ? rules.reason : null;
   const grazing = data?.kind === 'GRAZING';
 
   const [form, setForm] = useState<Form>(emptyForm);
@@ -297,7 +296,6 @@ const CopyRotationPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
               <DetailTile title="This tenure" icon={Information} fields={tenureFields} />
               <DetailTile title="Copy rotations from" icon={Copy} fields={formFields} />
               <div className="detail-edit__actions">
-                {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
                 <Button
                   kind="tertiary"
                   size="md"

@@ -616,14 +616,6 @@ const SaleInfoPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                     </p>
                   ) : (
                     <>
-                      {canEdit && !data.rules.editable && data.rules.reason && (
-                        <p className="detail-edit__reason">{data.rules.reason}</p>
-                      )}
-                      {canEdit && data.rules.editable && !data.recordExists && (
-                        <p className="detail-edit__reason">
-                          No sale information yet; saving creates it.
-                        </p>
-                      )}
                       <Button
                         kind="tertiary"
                         size="sm"

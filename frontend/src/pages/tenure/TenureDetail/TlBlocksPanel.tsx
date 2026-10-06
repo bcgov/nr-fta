@@ -136,12 +136,6 @@ const TlBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
   const rules = data?.rules;
   const canAdd = canEdit && !!rules?.edit;
   const canRetire = canEdit && !!rules?.retire;
-  // Business reasons only: a role that can't write just sees disabled buttons.
-  const addReason = canEdit && rules && !rules.edit ? rules.editReason : null;
-  const retireReason =
-    canEdit && rules?.edit && !rules.retire && (data?.blocks.length ?? 0) > 0
-      ? rules.retireReason
-      : null;
 
   // Add / edit dialog — `editing` is the block being changed, null when adding.
   const [open, setOpen] = useState(false);
@@ -308,21 +302,13 @@ const TlBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                   : 'This tab lists the blocks within a Timber Licence (A06) area.'
               }
               action={
-                // Always shown; disabled, with the reason, when adding isn't allowed.
-                <div className="detail-tab__empty-action">
-                  {addButton(true)}
-                  {addReason && <p className="detail-tab__reason">{addReason}</p>}
-                </div>
+                // Always shown; disabled when adding isn't allowed.
+                <div className="detail-tab__empty-action">{addButton(true)}</div>
               }
             />
           ) : (
             <div>
-              <header className="detail-tab__actions">
-                {(addReason ?? retireReason) && (
-                  <p className="detail-tab__reason">{addReason ?? retireReason}</p>
-                )}
-                {addButton(false)}
-              </header>
+              <header className="detail-tab__actions">{addButton(false)}</header>
               <div className="bordered-table">
                 <TableContainer>
                   <Table size="md" useZebraStyles>

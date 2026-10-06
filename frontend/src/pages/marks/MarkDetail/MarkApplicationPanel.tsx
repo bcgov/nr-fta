@@ -257,12 +257,9 @@ const MarkApplicationPanel: FC<Props> = ({
   const printable = (mark.markStatusCode ?? '').startsWith('H');
 
   // Submit to HQ — a district's PA application goes to Headquarters as PI. The
-  // button is always there; why it is disabled is shown only for a PA
-  // application, the one case where submitting is in question.
+  // button is always there, disabled when submitting isn't allowed.
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const submitReason =
-    !rules?.submit && mark.markStatusCode === 'PA' ? (rules?.submitReason ?? null) : null;
   const onSubmit = async () => {
     setSubmitting(true);
     try {
@@ -698,10 +695,6 @@ const MarkApplicationPanel: FC<Props> = ({
             <p className="detail-edit__strap">All fields are required unless marked optional.</p>
           ) : (
             <>
-              {!rules.editable && rules.reason && (
-                <p className="detail-edit__reason">{rules.reason}</p>
-              )}
-              {submitReason && <p className="detail-edit__reason">{submitReason}</p>}
               <Button
                 kind="tertiary"
                 size="sm"

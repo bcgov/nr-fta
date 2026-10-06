@@ -62,13 +62,8 @@ const NotesPanel: FC<Props> = ({ id, byCertificate, forestFileId, notes, canAdd,
   const [showValidation, setShowValidation] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Why the Add button is disabled, if it is.
-  const disabledReason = !canAdd
-    ? 'Your role cannot add a note.'
-    : forestFileId === null
-      ? 'This application has no forest file yet, so it cannot take notes.'
-      : null;
-  const allowed = disabledReason === null;
+  // Notes hang off the forest file, so an application without one can't take them.
+  const allowed = canAdd && forestFileId !== null;
 
   const trimmed = note.trim();
   const error = !trimmed
@@ -118,19 +113,17 @@ const NotesPanel: FC<Props> = ({ id, byCertificate, forestFileId, notes, canAdd,
           title="No notes for this mark"
           body="Add a note to record decisions, contacts or anything else about this mark."
           action={
-            // Always shown; disabled, with the reason, when adding isn't allowed.
+            // Always shown; disabled when adding isn't allowed.
             <div className="detail-tab__empty-action">
               <Button kind="primary" renderIcon={Add} disabled={!allowed} onClick={openDialog}>
                 Add note
               </Button>
-              {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             </div>
           }
         />
       ) : (
         <div>
           <header className="detail-tab__actions">
-            {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             <Button
               kind="tertiary"
               size="sm"

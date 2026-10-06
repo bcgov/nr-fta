@@ -141,7 +141,6 @@ const MarkDetail: FC = () => {
                       byCertificate={byCertificate}
                       rows={mark.landIndex}
                       canAdd={!!mark.editRules?.landIndex}
-                      disabledReason={mark.editRules?.landIndexReason ?? null}
                       onAdded={reload}
                     />
                   )}
@@ -154,7 +153,6 @@ const MarkDetail: FC = () => {
                       byCertificate={byCertificate}
                       rows={mark.clients}
                       canAdd={!!mark.editRules?.clients}
-                      disabledReason={mark.editRules?.clientsReason ?? null}
                       onAdded={reload}
                     />
                   )}
@@ -167,7 +165,6 @@ const MarkDetail: FC = () => {
                       byCertificate={byCertificate}
                       rows={mark.amendments}
                       canAdd={!!mark.editRules?.amendments}
-                      disabledReason={mark.editRules?.amendmentsReason ?? null}
                       onAdded={reload}
                     />
                   )}
