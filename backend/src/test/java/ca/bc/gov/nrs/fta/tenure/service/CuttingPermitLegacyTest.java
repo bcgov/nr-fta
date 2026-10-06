@@ -12,9 +12,9 @@ class CuttingPermitLegacyTest {
   @Test
   void translatesKnownKeys() {
     assertThat(CuttingPermitLegacy.readable("fta.cp.letterIO.invalid;"))
-        .isEqualTo("CP ID cannot contain I or O.");
+        .isEqualTo("Cutting Permit ID cannot contain I or O.");
     assertThat(CuttingPermitLegacy.readable("fta.cp.exists;fta.cp.one.letter.only;"))
-        .isEqualTo("CP exists already. CP ID can only be 1 letter.");
+        .isEqualTo("CP exists already. Cutting Permit ID can only be 1 letter.");
   }
 
   @Test

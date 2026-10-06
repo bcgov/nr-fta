@@ -269,6 +269,12 @@ the landing page explains why. "Stay logged in" renews the tokens and restarts
 the clock. The refresh token lives only 30 minutes, so while the user is active
 the tokens are renewed every few minutes, and once more as the dialog opens.
 
+**Signing in again after a logout.** Keycloak's logout reaches Microsoft only while
+the realm session is alive, and an inactivity logout often finds it expired. So
+after any logout the next sign-in in that tab sends `prompt=login`, which Keycloak
+passes on to Microsoft, and the user must enter their credentials again rather
+than being signed straight back in.
+
 Redirect URIs are derived from the runtime origin
 (`<origin><base path>/authCallback`, post-logout `<origin><base path>`) so one
 built image is promotable across PR previews, TEST and PROD — each of those URIs
