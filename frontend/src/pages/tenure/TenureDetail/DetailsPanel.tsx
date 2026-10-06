@@ -635,9 +635,6 @@ const DetailsView: FC<{ details: TenureDetails; canEdit: boolean; onSaved: () =>
             <p className="detail-edit__strap">All fields are required unless marked optional.</p>
           ) : (
             <>
-              {!rules.editable && rules.reason && (
-                <p className="detail-edit__reason">{rules.reason}</p>
-              )}
               <Button
                 kind="tertiary"
                 size="sm"

@@ -35,8 +35,6 @@ interface Props {
   rows: MarkLandIndex[];
   /** Whether the user may add (the mark's `editRules.landIndex`). */
   canAdd: boolean;
-  /** Why not, when `canAdd` is false — shown beside the disabled button. */
-  disabledReason: string | null;
   /** Called after an add, to re-read the mark. */
   onAdded: () => void;
 }
@@ -49,14 +47,7 @@ interface Props {
  * Who may add, and when, is the backend's `editRules.landIndex` (FTA_511: not at
  * HX, DV or DD, not for B15/B16, Headquarters only); the backend enforces it too.
  */
-const LandIndexPanel: FC<Props> = ({
-  id,
-  byCertificate,
-  rows,
-  canAdd,
-  disabledReason,
-  onAdded,
-}) => {
+const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }) => {
   const { display } = useNotification();
   const [open, setOpen] = useState(false);
   const [primary, setPrimary] = useState('');
@@ -148,19 +139,17 @@ const LandIndexPanel: FC<Props> = ({
           title="No land index for this mark"
           body="Add the land district and primary ID the timber mark may be used on."
           action={
-            // Always shown; disabled, with the reason, when adding isn't allowed.
+            // Always shown; disabled when adding isn't allowed.
             <div className="detail-tab__empty-action">
               <Button kind="primary" renderIcon={Add} disabled={!canAdd} onClick={openDialog}>
                 Add land index
               </Button>
-              {!canAdd && disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             </div>
           }
         />
       ) : (
         <div>
           <header className="detail-tab__actions">
-            {!canAdd && disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
             <Button
               kind="tertiary"
               size="sm"

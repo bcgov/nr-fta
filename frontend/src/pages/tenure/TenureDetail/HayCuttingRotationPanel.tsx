@@ -154,7 +154,6 @@ const HayCuttingRotationPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
   const rules = data?.rules;
   const shownYear = data?.calendarYear ?? null;
   const allowed = canEdit && !!rules?.edit && shownYear !== null;
-  const disabledReason = canEdit && rules && !rules.edit ? rules.reason : null;
   const authorized = data?.provision?.authorizedForageTonnes ?? 0;
 
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -412,7 +411,6 @@ const HayCuttingRotationPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                       <Button renderIcon={Add} disabled={!allowed} onClick={() => startEdit(1)}>
                         Add rotations
                       </Button>
-                      {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
                     </div>
                   }
                 />
@@ -498,7 +496,6 @@ const HayCuttingRotationPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
               ) : (
                 <div>
                   <header className="detail-tab__actions">
-                    {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
                     <Button
                       kind="tertiary"
                       size="sm"

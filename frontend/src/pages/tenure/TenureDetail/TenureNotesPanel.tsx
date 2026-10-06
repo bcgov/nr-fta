@@ -68,8 +68,6 @@ const TenureNotesPanel: FC<TenurePanelProps> = ({ tenure }) => {
   const [saving, setSaving] = useState(false);
 
   const allowed = canEdit && !!data?.canAdd;
-  // The business reason only — a role that can't write just sees it disabled.
-  const disabledReason = canEdit && data && !data.canAdd ? data.addBlockedReason : null;
 
   const trimmed = note.trim();
   const invalid = validate(trimmed);
@@ -129,19 +127,13 @@ const TenureNotesPanel: FC<TenurePanelProps> = ({ tenure }) => {
               title="No notes for this tenure"
               body="Add a note to record decisions, contacts or anything else about this file."
               action={
-                // Always shown; disabled, with the reason, when adding isn't allowed.
-                <div className="detail-tab__empty-action">
-                  {addButton(true)}
-                  {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
-                </div>
+                // Always shown; disabled when adding isn't allowed.
+                <div className="detail-tab__empty-action">{addButton(true)}</div>
               }
             />
           ) : (
             <div>
-              <header className="detail-tab__actions">
-                {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
-                {addButton(false)}
-              </header>
+              <header className="detail-tab__actions">{addButton(false)}</header>
               <div className="bordered-table">
                 <TableContainer>
                   <Table size="md" useZebraStyles>

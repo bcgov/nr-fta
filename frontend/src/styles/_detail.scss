@@ -330,19 +330,11 @@
   flex-wrap: wrap;
 }
 
-.detail-edit__strap,
-.detail-edit__reason {
+.detail-edit__strap {
   margin: 0;
   font-size: 0.875rem;
-}
-
-.detail-edit__strap {
   margin-inline-end: auto;
   color: var(--cds-text-primary);
-}
-
-.detail-edit__reason {
-  color: var(--cds-text-secondary);
 }
 
 .detail-edit {

@@ -82,9 +82,9 @@ const MarkList: FC = () => {
   const { user } = useAuth();
   const mayCreate = canEditMarks(user);
 
-  // The New Mark Application modal opens over this list — from its button, or
-  // from the menu's "New Application" (/marks/application), which renders this
-  // page with the modal open.
+  // The New Mark Application modal opens over this list from its button. A
+  // direct link to /marks/application renders this page with it open too; the
+  // menu's "New Application" opens its own copy over whatever page is showing.
   const onNewRoute = location.pathname === '/marks/application';
   const [newOpen, setNewOpen] = useState(false);
   const modalOpen = mayCreate && (newOpen || onNewRoute);

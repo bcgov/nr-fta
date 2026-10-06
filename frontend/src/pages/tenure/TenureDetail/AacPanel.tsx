@@ -391,7 +391,6 @@ const AacPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
   const periods = data ? periodsOf(data.rows) : [];
   const current = periods[0];
   const allowed = canEdit && !!rules?.edit && !editingAreas;
-  const reason = canEdit && rules && !rules.edit ? rules.editReason : null;
 
   // The current period's amounts by area type, as legacy's Current AAC block sums them.
   const currentFields: DetailField[] = current
@@ -574,9 +573,6 @@ const AacPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                 </p>
               ) : (
                 <>
-                  {canEdit && !data.rules.areas && data.rules.areasReason && (
-                    <p className="detail-edit__reason">{data.rules.areasReason}</p>
-                  )}
                   <Button
                     kind="tertiary"
                     size="sm"
@@ -622,19 +618,11 @@ const AacPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                 icon={<ChartColumn size={48} />}
                 title="No AAC history for this tenure"
                 body="Add the tenure's allowable annual cut, by area type and cut type."
-                action={
-                  <div className="detail-tab__empty-action">
-                    {addButton(true)}
-                    {reason && <p className="detail-tab__reason">{reason}</p>}
-                  </div>
-                }
+                action={<div className="detail-tab__empty-action">{addButton(true)}</div>}
               />
             ) : (
               <div>
-                <header className="detail-tab__actions">
-                  {reason && <p className="detail-tab__reason">{reason}</p>}
-                  {addButton(false)}
-                </header>
+                <header className="detail-tab__actions">{addButton(false)}</header>
                 {historyTable}
               </div>
             )}

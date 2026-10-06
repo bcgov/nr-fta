@@ -169,8 +169,6 @@ const CutBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
 
   const rules = data?.rules;
   const allowed = canEdit && !!rules?.add;
-  // Role without the right: just disabled. Otherwise the business reason, beside the button.
-  const disabledReason = canEdit && rules && !rules.add ? rules.addReason : null;
   const eligible = (data?.permits ?? []).filter((p) => p.eligible);
 
   // ── Add dialog ──
@@ -370,12 +368,7 @@ const CutBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
               icon={<Tree size={48} />}
               title="No cut blocks for this tenure"
               body="Add a cut block to one of the tenure's salvage cutting permits."
-              action={
-                <div className="detail-tab__empty-action">
-                  {addButton(true)}
-                  {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
-                </div>
-              }
+              action={<div className="detail-tab__empty-action">{addButton(true)}</div>}
             />
           ) : (
             <>
@@ -397,7 +390,6 @@ const CutBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                       ))}
                     </Select>
                   )}
-                  {disabledReason && <p className="detail-tab__reason">{disabledReason}</p>}
                   {addButton(false)}
                 </header>
                 <div className="bordered-table">
