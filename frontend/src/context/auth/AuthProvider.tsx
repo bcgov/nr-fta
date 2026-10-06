@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode } from 'react';
 
-import { KC_IDP_HINT, ensureFreshUser, getUserManager, loadStoredUser } from '@/services/keycloak';
+import {
+  KC_IDP_HINT,
+  ensureFreshUser,
+  forceRenewUser,
+  getUserManager,
+  loadStoredUser,
+  noteSignIn,
+} from '@/services/keycloak';
 
 import { AuthContext, type AuthContextType } from './AuthContext';
 import { parseToken, type KeycloakProfile } from './authUtils';
@@ -133,9 +140,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return attempt;
   }, [applyUser, logout]);
 
+  /** Renews unconditionally — the session timeout's "Stay logged in". */
+  const forceRefreshSession = useCallback(async (): Promise<void> => {
+    const fresh = await forceRenewUser(getUserManager());
+    if (!applyUser(fresh)) throw new Error('No session to renew');
+  }, [applyUser]);
+
   /** Completes the redirect back from Keycloak. Used only by AuthCallback. */
   const completeLogin = useCallback(async (): Promise<void> => {
     const signedIn = await getUserManager().signinRedirectCallback();
+    noteSignIn();
     applyUser(signedIn);
   }, [applyUser]);
 
@@ -148,9 +162,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logout,
       userToken,
       ensureFreshToken,
+      forceRefreshSession,
       completeLogin,
     }),
-    [user, isLoading, login, logout, userToken, ensureFreshToken, completeLogin],
+    [
+      user,
+      isLoading,
+      login,
+      logout,
+      userToken,
+      ensureFreshToken,
+      forceRefreshSession,
+      completeLogin,
+    ],
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

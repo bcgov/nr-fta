@@ -136,3 +136,8 @@
   font-size: 0.875rem;
   line-height: 1.4;
 }
+
+// Bold the "You've been logged out" title in the session-expired banner.
+.landing-session-expired .cds--inline-notification__title {
+  font-weight: 700;
+}

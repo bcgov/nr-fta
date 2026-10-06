@@ -80,6 +80,13 @@ let userManager: UserManager | null = null;
 let renewInFlight: Promise<User | null> | null = null;
 
 /**
+ * When this tab last got fresh tokens (sign-in or renewal), in epoch ms; 0 when
+ * unknown, as for a session restored from storage. The session timeout uses it
+ * to keep the 30-minute refresh token younger than the idle window.
+ */
+let lastRenewalAt = 0;
+
+/**
  * Renews once, however many callers ask at the same moment.
  *
  * A rejection is shared too, which is correct: if the refresh token is spent,
@@ -89,9 +96,15 @@ const renewOnce = (manager: Pick<UserManager, 'signinSilent'>): Promise<User | n
   if (renewInFlight) {
     return renewInFlight;
   }
-  const attempt = manager.signinSilent().finally(() => {
-    renewInFlight = null;
-  });
+  const attempt = manager
+    .signinSilent()
+    .then((user) => {
+      lastRenewalAt = Date.now();
+      return user;
+    })
+    .finally(() => {
+      renewInFlight = null;
+    });
   renewInFlight = attempt;
   return attempt;
 };
@@ -145,7 +158,17 @@ export const getUserManager = (): UserManager => {
 export const resetUserManager = (): void => {
   userManager = null;
   renewInFlight = null;
+  lastRenewalAt = 0;
 };
+
+/** Records a sign-in, whose tokens are as fresh as a renewal's. */
+export const noteSignIn = (): void => {
+  lastRenewalAt = Date.now();
+};
+
+/** Milliseconds since this tab last got fresh tokens; Infinity when unknown. */
+export const msSinceRenewal = (): number =>
+  lastRenewalAt === 0 ? Number.POSITIVE_INFINITY : Date.now() - lastRenewalAt;
 
 /**
  * Whether this token is expired, or close enough that it soon will be.
@@ -213,3 +236,10 @@ export const ensureFreshUser = async (
   }
   return needsRenewal(user) ? await renewOnce(manager) : user;
 };
+
+/**
+ * Renews now, whatever the access token's expiry — shared with any renewal
+ * already in flight. Rejects when the refresh token is spent.
+ */
+export const forceRenewUser = (manager: Pick<UserManager, 'signinSilent'>): Promise<User | null> =>
+  renewOnce(manager);

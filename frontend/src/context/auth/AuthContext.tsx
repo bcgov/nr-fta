@@ -22,6 +22,12 @@ export type AuthContextType = {
    */
   ensureFreshToken: () => Promise<string | undefined>;
   /**
+   * Renews now, however long the access token has left, which also rotates the
+   * refresh token and slides the realm session. Rejects when the session is
+   * already over; the caller signs out.
+   */
+  forceRefreshSession: () => Promise<void>;
+  /**
    * Completes the authorization-code exchange after Keycloak redirects back.
    * Called only by the /authCallback route; rejects if the callback URL carries
    * no usable code or its state has already been consumed.
