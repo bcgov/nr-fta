@@ -27,17 +27,20 @@ public class CuttingPermitLegacy {
   /** ApplicationResources.properties text for the keys these procedures return. */
   private static final Map<String, String> MESSAGES = Map.ofEntries(
       Map.entry("fta.cp.exists", "CP exists already."),
-      Map.entry("fta.cp.mandatory", "CP ID is mandatory."),
-      Map.entry("fta.cp.one.letter.only", "CP ID can only be 1 letter."),
-      Map.entry("fta.cp.two.letters.only", "CP ID cannot be more than 2 letters."),
+      Map.entry("fta.cp.mandatory", "Cutting Permit ID is mandatory."),
+      Map.entry("fta.cp.one.letter.only", "Cutting Permit ID can only be 1 letter."),
+      // Legacy's text was "cannot be more than 2 letters", but FTA_EDIT_CP_ID sends this key
+      // when the tenure has a mark designate and the id isn't exactly 2 letters — 1 too.
+      Map.entry("fta.cp.two.letters.only",
+          "Cutting Permit ID must be exactly 2 letters when the tenure has a mark designate."),
       // No text for these two in legacy's resources; worded after the procedure's rules.
-      Map.entry("fta.cp.two.letters.max", "CP ID can be at most 2 letters."),
+      Map.entry("fta.cp.two.letters.max", "Cutting Permit ID can be at most 2 letters."),
       Map.entry("fta.cp.three.letters.only",
-          "CP ID must be 3 characters when the tenure has a mark designate."),
-      Map.entry("fta.cp.letterIO.invalid", "CP ID cannot contain I or O."),
+          "Cutting Permit ID must be 3 characters when the tenure has a mark designate."),
+      Map.entry("fta.cp.letterIO.invalid", "Cutting Permit ID cannot contain I or O."),
       Map.entry("fta.cp.specialchars.invalid",
-          "CP ID cannot contain spaces or special characters or the letters I and O."),
-      Map.entry("fta.cp.letter.format.invalid", "CP ID must only contain letters except I and O."),
+          "Cutting Permit ID cannot contain spaces or special characters or the letters I and O."),
+      Map.entry("fta.cp.letter.format.invalid", "Cutting Permit ID must only contain letters except I and O."),
       Map.entry("fta.web.xml.database.mark_designate_missing",
           "Mark Designate missing — the tenure needs a mark designate before a CP can be added."),
       Map.entry("fta.web.xml.database.max_cp_reached",

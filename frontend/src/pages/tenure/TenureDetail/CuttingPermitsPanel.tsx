@@ -62,7 +62,7 @@ type Errors = Partial<Record<keyof Form, string>>;
 
 const validate = (f: Form, maxTerm: number): Errors => {
   const e: Errors = {};
-  if (!f.cpId.trim()) e.cpId = 'CP ID is mandatory.';
+  if (!f.cpId.trim()) e.cpId = 'Cutting Permit ID is mandatory.';
   if (!f.district) e.district = 'District is mandatory.';
   const term = Number(f.term);
   if (!f.term.trim()) e.term = 'Term is mandatory.';
@@ -344,10 +344,10 @@ const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCod
           <div className="detail-dialog__pair">
             <TextInput
               id="cp-id"
-              labelText="CP ID"
+              labelText="Cutting Permit ID"
               value={form.cpId}
               maxLength={3}
-              helperText="Up to 3 characters."
+              helperText="Up to 3 characters; the tenure type may allow fewer."
               invalid={!!errors.cpId}
               invalidText={errors.cpId}
               disabled={saving}

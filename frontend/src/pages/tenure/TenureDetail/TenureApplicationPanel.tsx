@@ -362,7 +362,7 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
                   <Table size="md" useZebraStyles>
                     <TableHead>
                       <TableRow>
-                        <TableHeader>CP ID</TableHeader>
+                        <TableHeader>Cutting Permit ID</TableHeader>
                         <TableHeader>Submitted</TableHeader>
                         <TableHeader>Request type</TableHeader>
                         <TableHeader>State</TableHeader>
@@ -420,7 +420,7 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
                   <Table size="md" useZebraStyles>
                     <TableHead>
                       <TableRow>
-                        <TableHeader>CP ID</TableHeader>
+                        <TableHeader>Cutting Permit ID</TableHeader>
                         <TableHeader>Submission ID</TableHeader>
                         <TableHeader>Submitted</TableHeader>
                         <TableHeader>Rejected</TableHeader>
@@ -523,7 +523,7 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
                 ],
                 ['Declaration date', date(profDec.declarationDate)],
                 ['Tenure', dash(profDec.forestFileId)],
-                ['CP ID', dash(profDecFor?.cuttingPermitId)],
+                ['Cutting Permit ID', dash(profDecFor?.cuttingPermitId)],
                 ['Cut block ID', dash(profDec.cutBlockIds)],
                 ['Submission ID', dash(profDec.submissionId)],
                 [

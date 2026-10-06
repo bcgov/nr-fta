@@ -160,9 +160,9 @@ public class CuttingPermitCreateService {
 
     List<String> e = new ArrayList<>();
     if (cpId == null) {
-      e.add("CP ID is mandatory.");
+      e.add("Cutting Permit ID is mandatory.");
     } else if (cpId.length() > 3) {
-      e.add("CP ID can be at most 3 characters.");
+      e.add("Cutting Permit ID can be at most 3 characters.");
     } else {
       String problem = legacy.cpIdProblem(cpId, forestFileId, fileType);
       if (problem != null) {
