@@ -66,6 +66,9 @@ export const getMarkingInstruments = () => list('marking-instruments');
 /** Cascade split codes, for the FTA510 edit form. */
 export const getCascadeSplits = () => list('cascade-splits');
 
+/** District number (as in getDistricts) to its default cascade split code, in the description. */
+export const getDistrictDefaultCascades = () => list('district-default-cascades');
+
 /** Private mark types (B08, B09, B14…), for the FTA510 Mark Type dropdown. */
 export const getPrivateMarkTypes = () => list('private-mark-types');
 

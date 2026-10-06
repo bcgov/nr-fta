@@ -30,6 +30,7 @@ import ExportCsvButton from '@/components/ExportCsvButton';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
+import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import { getBlockStatuses, getOrgUnits, type CodeOption } from '@/services/codeLists';
@@ -41,6 +42,7 @@ import {
 } from '@/services/cutblock_search';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 import { formatDate } from '@/utils/formatDate';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 // Column order follows the legacy FTA003 results grid.
 const HEADERS = [
@@ -84,7 +86,15 @@ const CutBlockSearch: FC = () => {
   const navigate = useNavigate();
   const { display } = useNotification();
 
-  const [form, setForm] = useState<CutblockSearchParams>(EMPTY_FORM);
+  // Criteria and the last search are kept for the browser tab; see TenureSearch.
+  const [form, setForm] = useSessionState<CutblockSearchParams>(
+    'fta.search.cutBlock.form',
+    EMPTY_FORM,
+  );
+  const [lastSearch, setLastSearch] = useSessionState<LastSearch<CutblockSearchParams> | null>(
+    'fta.search.cutBlock.last',
+    null,
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
   // The criteria the rows on screen came from. The export must use these, not
   // `form` — the user may have edited a field since searching, and exporting
@@ -129,26 +139,27 @@ const CutBlockSearch: FC = () => {
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const runSearch = useCallback(
-    async (nextPage: number, nextSize: number) => {
+    async (nextPage: number, nextSize: number, criteria: CutblockSearchParams = form) => {
       if (
-        form.harvestStartDateFrom &&
-        form.harvestStartDateTo &&
-        form.harvestStartDateFrom > form.harvestStartDateTo
+        criteria.harvestStartDateFrom &&
+        criteria.harvestStartDateTo &&
+        criteria.harvestStartDateFrom > criteria.harvestStartDateTo
       ) {
         setError('Harvest date from must be on or before harvest date to.');
         return;
       }
       // Legacy ignores a managed-by CP given without its file; say so rather
       // than running a search that quietly drops the criterion.
-      if (form.managedByCp && !form.managedByFile) {
+      if (criteria.managedByCp && !criteria.managedByFile) {
         setError('Managed by cutting permit also needs a managed by file.');
         return;
       }
       setLoading(true);
       setError(null);
       try {
-        const data = await searchCutBlocks({ ...form, page: nextPage, size: nextSize });
-        setSearched({ ...form });
+        const data = await searchCutBlocks({ ...criteria, page: nextPage, size: nextSize });
+        setSearched({ ...criteria });
+        setLastSearch({ criteria, page: data.page.number, size: data.page.size });
         setRows(
           data.content.map((r, i) => ({ ...r, id: `${r.cbSkey ?? r.cutBlockId ?? 'row'}-${i}` })),
         );
@@ -163,7 +174,7 @@ const CutBlockSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form],
+    [form, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -183,11 +194,23 @@ const CutBlockSearch: FC = () => {
 
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
+    setLastSearch(null);
     setRows(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, []);
+  }, [setForm, setLastSearch]);
+
+  // Back on the page with a search from earlier in this tab: run it again (fresh
+  // results, same page), once the code lists — and so the form — are ready.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (codeListsLoading || restored) return;
+    setRestored(true);
+    if (lastSearch && rows === null) {
+      void runSearch(lastSearch.page, lastSearch.size, lastSearch.criteria);
+    }
+  }, [codeListsLoading, restored, lastSearch, rows, runSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
 
@@ -319,7 +342,15 @@ const CutBlockSearch: FC = () => {
                 id="cb-harvest-from"
                 labelText="Harvest date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('harvestStartDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('harvestStartDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -335,7 +366,15 @@ const CutBlockSearch: FC = () => {
                 id="cb-harvest-to"
                 labelText="Harvest date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('harvestStartDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('harvestStartDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 

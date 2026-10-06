@@ -13,7 +13,7 @@ import {
   TableRow,
   TextInput,
 } from '@carbon/react';
-import { useEffect, useState, type FC } from 'react';
+import { useEffect, useRef, useState, type FC } from 'react';
 
 import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { Modal } from '@/components/Modal';
@@ -88,11 +88,35 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded })
     };
   }, [open, display]);
 
-  const openDialog = () => {
+  // Land District/Island takes the focus when the dialog opens and after "Add
+  // additional" — once it's enabled again, as it's disabled while loading or
+  // saving. Retried briefly: the dialog can't take focus until it has faded in.
+  const primaryRef = useRef<HTMLSelectElement>(null);
+  const [focusPrimary, setFocusPrimary] = useState(false);
+  useEffect(() => {
+    if (!open || !focusPrimary || saving || listsLoading) return;
+    let tries = 0;
+    const timer = setInterval(() => {
+      const el = primaryRef.current;
+      el?.focus();
+      if ((el && document.activeElement === el) || ++tries >= 20) {
+        clearInterval(timer);
+        setFocusPrimary(false);
+      }
+    }, 50);
+    return () => clearInterval(timer);
+  }, [open, focusPrimary, saving, listsLoading]);
+
+  const resetForm = () => {
     setPrimary('');
     setSecondary('');
     setDescription('');
     setShowValidation(false);
+  };
+
+  const openDialog = () => {
+    resetForm();
+    setFocusPrimary(true);
     setOpen(true);
   };
 
@@ -100,7 +124,8 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded })
     if (!saving) setOpen(false);
   };
 
-  const submit = async () => {
+  // `another` keeps the dialog open, emptied for the next one.
+  const submit = async (another: boolean) => {
     if (!primary) {
       setShowValidation(true);
       return;
@@ -117,7 +142,10 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded })
         byCertificate,
       );
       display({ kind: 'success', title: 'Land index added', timeout: 5000 });
-      setOpen(false);
+      if (another) {
+        resetForm();
+        setFocusPrimary(true);
+      } else setOpen(false);
       onAdded();
     } catch (err) {
       display({
@@ -214,6 +242,7 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded })
           <p className="detail-dialog__subtitle">All fields are required unless marked optional.</p>
           <Select
             id="land-index-primary"
+            ref={primaryRef}
             labelText="Land District/Island"
             value={primary}
             invalid={showValidation && !primary}
@@ -252,7 +281,10 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded })
           <Button kind="tertiary" disabled={saving} onClick={closeDialog}>
             Cancel
           </Button>
-          <Button kind="primary" disabled={saving} onClick={() => void submit()}>
+          <Button kind="secondary" disabled={saving} onClick={() => void submit(true)}>
+            Add additional
+          </Button>
+          <Button kind="primary" disabled={saving} onClick={() => void submit(false)}>
             {saving ? 'Adding…' : 'Add land index'}
           </Button>
         </div>

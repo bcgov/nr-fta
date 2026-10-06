@@ -35,6 +35,7 @@ import {
   type MarkDetail,
 } from '@/services/mark_detail';
 import { formatDate } from '@/utils/formatDate';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 import {
   createForm,
@@ -399,8 +400,14 @@ const MarkApplicationPanel: FC<Props> = ({
           invalidText={errors[key]}
           disabled={saving}
           // Emptying the text does not reliably fire the picker's onChange.
+          pattern={TYPED_DATE_PATTERN}
           onChange={(e) => {
-            if (e.target.value.trim() === '') set(key, '');
+            const text = e.target.value;
+            if (text.trim() === '') set(key, '');
+            else {
+              const typed = parseTypedDate(text);
+              if (typed) set(key, typed);
+            }
           }}
         />
       </DatePicker>
@@ -485,22 +492,6 @@ const MarkApplicationPanel: FC<Props> = ({
   ];
 
   const administrationFields: DetailField[] = [
-    willIssue
-      ? {
-          label: 'Status',
-          value: (
-            <span>
-              <StatusTag status="HN" variant={statusCodeVariant('HN')} />
-              <span className="detail-edit__pending"> on save</span>
-            </span>
-          ),
-        }
-      : field(
-          'Status',
-          statusTag(mark.markStatusCode, mark.markStatusDesc),
-          open(rules?.status),
-          () => select('markStatusCode', 'Status', statusOptions, false),
-        ),
     field('Mark Type', dash(mark.fileTypeDesc ?? mark.fileTypeCode), open(rules?.markType), () => (
       // Legacy FTA510's Mark Type dropdown. Saving a type issues the mark: a timber
       // mark is generated for it (E…, N…, IR…) and the status goes to HN.
@@ -523,6 +514,25 @@ const MarkApplicationPanel: FC<Props> = ({
         </Select>
       </div>
     )),
+    willIssue
+      ? {
+          label: 'Status',
+          value: (
+            <span>
+              <StatusTag
+                status={codes.statuses.find((o) => o.code === 'HN')?.description ?? 'HN'}
+                variant={statusCodeVariant('HN')}
+              />
+              <span className="detail-edit__pending"> on save</span>
+            </span>
+          ),
+        }
+      : field(
+          'Status',
+          statusTag(mark.markStatusCode, mark.markStatusDesc),
+          open(rules?.status),
+          () => select('markStatusCode', 'Status', statusOptions, false),
+        ),
     field(
       'Initial Term',
       mark.tenureTerm != null ? `${mark.tenureTerm} months` : '—',

@@ -186,11 +186,12 @@ public class MarkDetailController {
       @RequestParam(required = false) String by,
       @RequestBody MarkUpdateRequest request,
       JwtAuthenticationToken principal) {
+    boolean districtUser = isDistrictUser(principal);
     markUpdateService.update(
-        markNumber, isCertificate(by), request, JwtPrincipalUtil.getAuditUserId(principal));
+        markNumber, isCertificate(by), request, districtUser,
+        JwtPrincipalUtil.getAuditUserId(principal));
     // Re-read, so the client gets the saved record with its new revision counts and the
     // rules for its new status.
-    boolean districtUser = isDistrictUser(principal);
     return find(markNumber, by)
         .map(mark -> mark.withEditRules(MarkEditRules.of(mark, true, districtUser)))
         .map(ResponseEntity::ok)

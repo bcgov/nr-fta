@@ -59,6 +59,7 @@ const MarkDetail: FC = () => {
     loading,
     error,
     reload,
+    refresh,
   } = useApiResource(fetcher, [markNumber, byCertificate]);
 
   // Controlled, because saving a note reloads the mark: the loading state
@@ -141,7 +142,8 @@ const MarkDetail: FC = () => {
                       byCertificate={byCertificate}
                       rows={mark.landIndex}
                       canAdd={!!mark.editRules?.landIndex}
-                      onAdded={reload}
+                      // Quietly: "Add additional" keeps its dialog open over the table.
+                      onAdded={refresh}
                     />
                   )}
                 </TabPanel>

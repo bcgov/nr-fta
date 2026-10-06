@@ -23,6 +23,7 @@ import { useNotification } from '@/context/notification/useNotification';
 import { getFileClientTypes, type CodeOption } from '@/services/codeLists';
 import { addClient, type MarkAssociatedClient } from '@/services/mark_detail';
 import { formatDate } from '@/utils/formatDate';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 const dash = (v: string | number | null | undefined) =>
   v === null || v === undefined || v === '' ? '—' : v;
@@ -203,10 +204,16 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }) =
         id={`client-${key}`}
         labelText={label}
         placeholder="yyyy-mm-dd"
+        pattern={TYPED_DATE_PATTERN}
         invalidText={errors[key]}
         disabled={saving || disabled}
         onChange={(e) => {
-          if (e.target.value.trim() === '') set(key, '');
+          const text = e.target.value;
+          if (text.trim() === '') set(key, '');
+          else {
+            const typed = parseTypedDate(text);
+            if (typed) set(key, typed);
+          }
         }}
       />
     </DatePicker>

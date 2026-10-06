@@ -41,6 +41,7 @@ import {
   type AacRow,
 } from '@/services/tenure_aac';
 import { formatDate } from '@/utils/formatDate';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 import type { TenurePanelProps } from './panelProps';
 
@@ -665,8 +666,14 @@ const AacPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                 placeholder="yyyy-mm-dd"
                 invalidText={errors.effectiveDate}
                 disabled={saving}
+                pattern={TYPED_DATE_PATTERN}
                 onChange={(e) => {
-                  if (e.target.value.trim() === '') set('effectiveDate', '');
+                  const text = e.target.value;
+                  if (text.trim() === '') set('effectiveDate', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('effectiveDate', typed);
+                  }
                 }}
               />
             </DatePicker>

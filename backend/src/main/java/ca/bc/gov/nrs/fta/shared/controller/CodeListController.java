@@ -46,6 +46,12 @@ public class CodeListController {
     return ResponseEntity.ok(codeListService.districts());
   }
 
+  /** District number to its default cascade split code. */
+  @GetMapping("/district-default-cascades")
+  public ResponseEntity<List<CodeOptionDto>> districtDefaultCascades() {
+    return ResponseEntity.ok(codeListService.districtDefaultCascades());
+  }
+
   @GetMapping("/marking-methods")
   public ResponseEntity<List<CodeOptionDto>> markingMethods() {
     return ResponseEntity.ok(codeListService.markingMethods());

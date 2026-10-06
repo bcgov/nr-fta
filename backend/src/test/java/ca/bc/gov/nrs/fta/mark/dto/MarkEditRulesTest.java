@@ -46,10 +46,23 @@ class MarkEditRulesTest {
 
     @Test
     void dvIsReadOnly() {
-      MarkEditRules rules = hq(mark("DV", "B01", "12A345", "00001", null));
+      // A disallowed application: no mark, so nothing Headquarters keeps open either.
+      MarkEditRules rules = hq(mark("DV", null, null, "00001", null));
 
       assertThat(rules.editable()).isFalse();
       assertThat(rules.reason()).isNull();
+      assertThat(MarkEditRules.of(mark("DV", "B01", "12A345", "00001", null), true, true)
+          .editable()).isFalse();
+    }
+
+    @Test
+    void headquartersKeepsMarkingAtAnUnsaveableStatus() {
+      MarkEditRules rules = hq(mark("DV", "B01", "12A345", "00001", null));
+
+      assertThat(rules.editable()).isTrue();
+      assertThat(rules.marking()).isTrue();
+      assertThat(rules.location()).isFalse();
+      assertThat(rules.branch()).isFalse();
     }
 
     @Test
@@ -101,19 +114,27 @@ class MarkEditRulesTest {
     }
 
     @Test
-    void markingIsOnlyOpenOnceIssued() {
+    void markingNeedsTheMark() {
       assertThat(hq(mark("PI", null, null, "00001", null)).marking()).isFalse();
-      assertThat(hq(mark("HX", "B01", "12A345", "00001", null)).marking()).isFalse();
     }
 
     @Test
-    void markingIsOpenAtHnAndHiForHeadquartersAndDistrict() {
-      for (String status : new String[] {"HN", "HI"}) {
-        MarkDetailDto issued = mark(status, "B01", "12A345", "00001", null);
-        assertThat(hq(issued).marking()).as("HQ at %s", status).isTrue();
-        assertThat(MarkEditRules.of(issued, true, true).marking())
-            .as("district at %s", status).isTrue();
+    void markingIsAlwaysOpenForHeadquartersAndUntilIssuedForDistrict() {
+      for (String status : new String[] {"HN", "HI", "HX"}) {
+        MarkDetailDto marked = mark(status, "B01", "12A345", "00001", null);
+        assertThat(hq(marked).marking()).as("HQ at %s", status).isTrue();
+        assertThat(MarkEditRules.of(marked, true, true).marking())
+            .as("district at %s", status).isEqualTo("HN".equals(status));
       }
+    }
+
+    @Test
+    void headquartersMayChangeACancelledMarksStatusWithoutAClient() {
+      MarkDetailDto cancelled = mark("HX", "B01", "12A345", null, null);
+
+      assertThat(hq(cancelled).status()).isTrue();
+      assertThat(hq(cancelled).statusOptions()).containsExactly("HX", "HI", "PI", "DD", "DV");
+      assertThat(MarkEditRules.of(cancelled, true, true).status()).isFalse();
     }
 
     @Test
@@ -127,13 +148,16 @@ class MarkEditRulesTest {
     }
 
     @Test
-    void outstandingAmendmentIsWorkedInsteadOfTermAndStatus() {
+    void outstandingAmendmentIsWorkedInsteadOfTerm() {
       MarkEditRules rules = hq(mark("HI", "B01", "12A345", "00001", "PI"));
 
       assertThat(rules.amendmentStatus()).isTrue();
       assertThat(rules.amendmentStatusOptions()).containsExactly("PI", "HN", "DV");
       assertThat(rules.term()).isFalse();
-      assertThat(rules.status()).isFalse();
+      // Headquarters may still change the status; a district works the amendment first.
+      assertThat(rules.status()).isTrue();
+      assertThat(MarkEditRules.of(mark("HI", "B01", "12A345", "00001", "PI"), true, true)
+          .status()).isFalse();
     }
   }
 

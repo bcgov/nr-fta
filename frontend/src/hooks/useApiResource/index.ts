@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface ApiResource<T> {
   data: T | undefined;
@@ -6,6 +6,11 @@ export interface ApiResource<T> {
   error: string | undefined;
   /** Re-run the fetch (e.g. a Retry button or after a mutation). */
   reload: () => void;
+  /**
+   * Re-run the fetch without the loading state, so what's on screen (an open
+   * dialog, say) stays mounted while the data updates underneath.
+   */
+  refresh: () => void;
 }
 
 /**
@@ -20,11 +25,17 @@ export function useApiResource<T>(fetcher: () => Promise<T>, deps: unknown[] = [
   const [error, setError] = useState<string | undefined>(undefined);
   const [nonce, setNonce] = useState(0);
 
+  const quiet = useRef(false);
   const reload = useCallback(() => setNonce((n) => n + 1), []);
+  const refresh = useCallback(() => {
+    quiet.current = true;
+    setNonce((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    if (!quiet.current) setLoading(true);
+    quiet.current = false;
     setError(undefined);
     fetcher()
       .then((result) => {
@@ -42,5 +53,5 @@ export function useApiResource<T>(fetcher: () => Promise<T>, deps: unknown[] = [
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, nonce]);
 
-  return { data, loading, error, reload };
+  return { data, loading, error, reload, refresh };
 }

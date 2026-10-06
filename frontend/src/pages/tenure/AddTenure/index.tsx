@@ -18,6 +18,7 @@ import { useNotification } from '@/context/notification/useNotification';
 import PageLayout from '@/pages/PageLayout';
 import { canEdit } from '@/routes/access';
 import { createTenure } from '@/services/tenure_write';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 import './AddTenure.scss';
 
 // value = the code stored/resolved by the backend; text = the display label.
@@ -174,13 +175,24 @@ const AddTenure: FC = () => {
             <Column sm={4} md={4} lg={4}>
               <DatePicker
                 datePickerType="single"
+                dateFormat="Y-m-d"
+                value={form.issueDate ? [form.issueDate] : []}
                 onChange={(d) => set('issueDate')(d[0]?.toISOString().slice(0, 10) ?? '')}
               >
                 <DatePickerInput
                   id="at-issue"
                   labelText="Issue Date"
                   placeholder="yyyy-mm-dd"
+                  pattern={TYPED_DATE_PATTERN}
                   disabled={readOnly}
+                  onChange={(e) => {
+                    const text = e.target.value;
+                    if (text.trim() === '') set('issueDate')('');
+                    else {
+                      const typed = parseTypedDate(text);
+                      if (typed) set('issueDate')(typed);
+                    }
+                  }}
                 />
               </DatePicker>
             </Column>

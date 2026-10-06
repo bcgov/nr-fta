@@ -39,12 +39,15 @@ public class MarkListController {
       @RequestParam(required = false) String markStatusSt,
       @RequestParam(required = false) String orgUnitCode,
       @RequestParam(required = false) String clientName,
+      @RequestParam(required = false) String clientNumber,
+      @RequestParam(required = false) String clientLocnCode,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
     int safePage = Math.max(page, 0);
     int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
     return ResponseEntity.ok(markListService.list(
-        hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName, safePage, safeSize));
+        hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName, clientNumber,
+        clientLocnCode, safePage, safeSize));
   }
 
   /**
@@ -58,10 +61,13 @@ public class MarkListController {
       @RequestParam(required = false) String timberMark,
       @RequestParam(required = false) String markStatusSt,
       @RequestParam(required = false) String orgUnitCode,
-      @RequestParam(required = false) String clientName) {
+      @RequestParam(required = false) String clientName,
+      @RequestParam(required = false) String clientNumber,
+      @RequestParam(required = false) String clientLocnCode) {
     return CsvExport.response(
         "private-mark-applications",
         csv -> markListService.exportCsv(
-            hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName, csv));
+            hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName, clientNumber,
+            clientLocnCode, csv));
   }
 }

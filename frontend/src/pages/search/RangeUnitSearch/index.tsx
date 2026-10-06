@@ -24,6 +24,7 @@ import { EmptyState } from '@/components/EmptyState/EmptyState';
 import ExportCsvButton from '@/components/ExportCsvButton';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
+import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import { getOrgUnits, getRangeUnitStatuses, type CodeOption } from '@/services/codeLists';
@@ -69,7 +70,15 @@ const RangeUnitSearch: FC = () => {
   const navigate = useNavigate();
   const { display } = useNotification();
 
-  const [form, setForm] = useState<RangeUnitSearchParams>(EMPTY_FORM);
+  // Criteria and the last search are kept for the browser tab; see TenureSearch.
+  const [form, setForm] = useSessionState<RangeUnitSearchParams>(
+    'fta.search.rangeUnit.form',
+    EMPTY_FORM,
+  );
+  const [lastSearch, setLastSearch] = useSessionState<LastSearch<RangeUnitSearchParams> | null>(
+    'fta.search.rangeUnit.last',
+    null,
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
   // The criteria the rows on screen came from. The export must use these, not
   // `form` — the user may have edited a field since searching, and exporting
@@ -114,18 +123,19 @@ const RangeUnitSearch: FC = () => {
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const runSearch = useCallback(
-    async (nextPage: number, nextSize: number) => {
+    async (nextPage: number, nextSize: number, criteria: RangeUnitSearchParams = form) => {
       // Legacy marks Admin Organization Unit mandatory. Without it the query spans every
       // district in the province, so it's refused here rather than run.
-      if (!form.orgUnitNo) {
+      if (!criteria.orgUnitNo) {
         setError('Administration organization unit is required.');
         return;
       }
       setLoading(true);
       setError(null);
       try {
-        const data = await searchRangeUnits({ ...form, page: nextPage, size: nextSize });
-        setSearched({ ...form });
+        const data = await searchRangeUnits({ ...criteria, page: nextPage, size: nextSize });
+        setSearched({ ...criteria });
+        setLastSearch({ criteria, page: data.page.number, size: data.page.size });
         setRows(data.content.map((r, i) => ({ ...r, id: `${r.rangeUnitId}-${r.pastureId ?? i}` })));
         setTotalElements(data.page.totalElements);
         setPage(data.page.number);
@@ -138,7 +148,7 @@ const RangeUnitSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form],
+    [form, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -158,11 +168,23 @@ const RangeUnitSearch: FC = () => {
 
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
+    setLastSearch(null);
     setRows(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, []);
+  }, [setForm, setLastSearch]);
+
+  // Back on the page with a search from earlier in this tab: run it again (fresh
+  // results, same page), once the code lists — and so the form — are ready.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (codeListsLoading || restored) return;
+    setRestored(true);
+    if (lastSearch && rows === null) {
+      void runSearch(lastSearch.page, lastSearch.size, lastSearch.criteria);
+    }
+  }, [codeListsLoading, restored, lastSearch, rows, runSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
 
