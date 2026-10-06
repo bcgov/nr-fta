@@ -26,6 +26,7 @@ import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
 import { getFileSources, type CodeOption } from '@/services/codeLists';
+import { markDetailPath } from '@/services/mark_detail';
 import {
   addTenureAssociatedFile,
   deleteTenureAssociatedFile,
@@ -34,6 +35,7 @@ import {
   type TenureAssociatedFile,
 } from '@/services/tenure_assocfiles';
 import { formatDate } from '@/utils/formatDate';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 import type { TenurePanelProps } from './panelProps';
 
@@ -267,7 +269,12 @@ const AssociatedFilesPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                         <TableRow key={`${r.associatedFileId}-${r.fileSourceCode}`}>
                           <TableCell>
                             {r.tenure ? (
-                              <Link to={`/tenures/${encodeURIComponent(r.associatedFileId)}`}>
+                              <Link
+                                to={
+                                  (r.markCertificate && markDetailPath(null, r.markCertificate)) ||
+                                  `/tenures/${encodeURIComponent(r.associatedFileId)}`
+                                }
+                              >
                                 {r.associatedFileId}
                               </Link>
                             ) : (
@@ -382,8 +389,14 @@ const AssociatedFilesPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
               }
               invalidText={errors.endDate}
               disabled={saving || !aac}
+              pattern={TYPED_DATE_PATTERN}
               onChange={(e) => {
-                if (e.target.value.trim() === '') set('endDate', '');
+                const text = e.target.value;
+                if (text.trim() === '') set('endDate', '');
+                else {
+                  const typed = parseTypedDate(text);
+                  if (typed) set('endDate', typed);
+                }
               }}
             />
           </DatePicker>

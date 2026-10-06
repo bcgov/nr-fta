@@ -27,6 +27,9 @@ export interface MarkListParams {
   markStatusSt?: string;
   orgUnitCode?: string;
   clientName?: string;
+  /** A picked client: matched exactly, with its location. */
+  clientNumber?: string;
+  clientLocnCode?: string;
   /** 0-indexed, following the backend. Carbon's Pagination is 1-indexed. */
   page?: number;
   size?: number;

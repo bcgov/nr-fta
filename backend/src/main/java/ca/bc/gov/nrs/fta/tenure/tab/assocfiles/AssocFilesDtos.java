@@ -21,6 +21,8 @@ public final class AssocFilesDtos {
    * @param revisionCount           for the optimistic lock on delete
    * @param tenure                  whether {@code associatedFileId} is an FTA file (source F) —
    *                                legacy's Details button, a link here
+   * @param markCertificate         the private mark certificate, when that FTA file is a
+   *                                private mark — the link opens the mark instead
    */
   public record AssocFileRowDto(
       String associatedFileId,
@@ -30,7 +32,8 @@ public final class AssocFilesDtos {
       String fileAssociationTypeDesc,
       LocalDate associationEndDate,
       Long revisionCount,
-      boolean tenure) {}
+      boolean tenure,
+      String markCertificate) {}
 
   /**
    * The tab: its rows, and whether an association may be added (and why not).

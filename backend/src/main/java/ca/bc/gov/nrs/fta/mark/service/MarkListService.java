@@ -74,6 +74,9 @@ public class MarkListService {
                      ou.org_unit_no                                       AS org_unit_no,
                      pmc.private_mark_status_code                         AS mark_status_st,
                      NVL(cli.client_name, 'Client not specified at present') AS client_name,
+                     cli.client_number                                    AS client_number,
+                     CASE WHEN fcl.client_number IS NOT NULL
+                          THEN fcl.client_locn_code ELSE ffc.client_locn_code END AS client_locn_code,
                      CASE WHEN pmc.private_mark_status_code = 'HN' THEN 'N' ELSE 'Y' END AS disable_print_ind,
                      CASE WHEN pmc.private_mark_status_code = 'DV' THEN 'N' ELSE 'Y' END AS disable_ack_ind,
                      pmc.revision_count                                   AS tm_revision_count,
@@ -104,11 +107,15 @@ public class MarkListService {
                      ou.org_unit_no                                       AS org_unit_no,
                      amd.prv_mrk_amd_sts_st                               AS mark_status_st,
                      cli.client_name                                      AS client_name,
+                     cli.client_number                                    AS client_number,
+                     fcl.client_locn_code                                 AS client_locn_code,
                      CASE WHEN amd.prv_mrk_amd_sts_st = 'HN' THEN 'N' ELSE 'Y' END AS disable_print_ind,
                      CASE WHEN amd.prv_mrk_amd_sts_st = 'DV' THEN 'N' ELSE 'Y' END AS disable_ack_ind,
                      pmc.revision_count                                   AS tm_revision_count,
                      amd.revision_count                                   AS amend_revision_count,
-                     pmc.update_userid                                    AS idir
+                     -- Whoever touched the row last: the amendment or the mark.
+                     CASE WHEN amd.update_timestamp >= pmc.update_timestamp
+                          THEN amd.update_userid ELSE pmc.update_userid END AS idir
                 FROM the.private_mark_certificate pmc
                 JOIN the.prov_forest_use pfu      ON pfu.forest_file_id = pmc.forest_file_id
                 JOIN the.org_unit ou              ON ou.org_unit_no = pmc.forest_district
@@ -127,6 +134,8 @@ public class MarkListService {
          AND (:markStatusSt IS NULL OR m.mark_status_st = :markStatusSt)
          AND (:orgUnitCode  IS NULL OR m.org_unit_code = :orgUnitCode)
          AND (:clientName   IS NULL OR UPPER(m.client_name) LIKE UPPER(:clientName) || '%')
+         AND (:clientNumber IS NULL OR m.client_number = :clientNumber)
+         AND (:clientLocnCode IS NULL OR m.client_locn_code = :clientLocnCode)
       """;
 
   // Newest application first; undated rows last rather than Oracle's default
@@ -147,6 +156,8 @@ public class MarkListService {
    * @param markStatusSt exact mark/amendment status code, or null
    * @param orgUnitCode  exact org-unit code, or null
    * @param clientName   client/holder name (prefix match), or null
+   * @param clientNumber exact client number (a picked client), or null
+   * @param clientLocnCode exact client location, with a picked client, or null
    * @param page         0-indexed page number
    * @param size         rows per page
    */
@@ -156,10 +167,13 @@ public class MarkListService {
       String markStatusSt,
       String orgUnitCode,
       String clientName,
+      String clientNumber,
+      String clientLocnCode,
       int page,
       int size) {
     MapSqlParameterSource params =
-        filters(hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName);
+        filters(hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName,
+            clientNumber, clientLocnCode);
 
     Long total = jdbc.queryForObject("SELECT COUNT(*)\n" + FROM_WHERE, params, Long.class);
     long totalElements = total == null ? 0L : total;
@@ -203,13 +217,17 @@ public class MarkListService {
       String markStatusSt,
       String orgUnitCode,
       String clientName,
+      String clientNumber,
+      String clientLocnCode,
       CsvWriter csv) {
     csv.writeRow(
-        "Certificate", "Timber mark", "Application date", "District", "Status", "Client", "IDIR");
+        "Certificate", "Timber mark", "Application date", "District", "Status", "Client",
+        "Last updated by");
 
     streamingJdbc.jdbc().query(
         SELECT_COLUMNS + FROM_WHERE + ORDER_BY,
-        filters(hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName),
+        filters(hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName,
+            clientNumber, clientLocnCode),
         // Cast required: a void lambda body matches both the RowCallbackHandler
         // and ResultSetExtractor overloads, so the compiler cannot choose.
         (RowCallbackHandler) rs -> csv.writeRow(
@@ -228,13 +246,17 @@ public class MarkListService {
       String timberMark,
       String markStatusSt,
       String orgUnitCode,
-      String clientName) {
+      String clientName,
+      String clientNumber,
+      String clientLocnCode) {
     return new MapSqlParameterSource()
         .addValue("hdrDistrict", blankToNull(hdrDistrict))
         .addValue("timberMark", blankToNull(timberMark))
         .addValue("markStatusSt", blankToNull(markStatusSt))
         .addValue("orgUnitCode", blankToNull(orgUnitCode))
-        .addValue("clientName", blankToNull(clientName));
+        .addValue("clientName", blankToNull(clientName))
+        .addValue("clientNumber", blankToNull(clientNumber))
+        .addValue("clientLocnCode", blankToNull(clientLocnCode));
   }
 
   private static String blankToNull(String s) {

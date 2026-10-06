@@ -16,6 +16,7 @@ import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
 import {
   getCascadeSplits,
+  getDistrictDefaultCascades,
   getDistricts,
   getManagementUnits,
   type CodeOption,
@@ -23,6 +24,7 @@ import {
 } from '@/services/codeLists';
 import { markDetailPath } from '@/services/mark_detail';
 import { createMarkApplication } from '@/services/mark_write';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 import { MAX, TERM_OPTIONS } from '../MarkDetail/markEditForm';
 import './NewMarkApplicationModal.scss';
@@ -54,11 +56,12 @@ const toIsoDate = (d: Date) =>
 
 /**
  * Legacy's new-record defaults (ADD_NEW_DEFAULTS / Fta510PrivateMarkForm.setDefaults):
- * today's application date, area 0.0 and management unit type Z.
+ * today's application date, area 0.0 and management unit type Z. The initial
+ * term starts at 60 months, the usual choice.
  */
 const emptyForm = (): Form => ({
   applicationDate: toIsoDate(new Date()),
-  tenureTerm: '',
+  tenureTerm: '60',
   forestDistrict: '',
   cascadeSplitCode: '',
   clientNumber: '',
@@ -128,6 +131,8 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
   const [saving, setSaving] = useState(false);
   const [districts, setDistricts] = useState<CodeOption[]>([]);
   const [cascades, setCascades] = useState<CodeOption[]>([]);
+  // District number to its default cascade (legacy FTA_GET_DEFAULT_CASCADE).
+  const [defaultCascades, setDefaultCascades] = useState<Map<string, string>>(new Map());
   const [mgmtUnits, setMgmtUnits] = useState<ManagementUnit[]>([]);
 
   // A fresh form each time it opens — and only then.
@@ -157,6 +162,12 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
           });
         }
       });
+    // Only a convenience: without it the user picks the cascade themselves.
+    getDistrictDefaultCascades()
+      .then((rows) => {
+        if (!cancelled) setDefaultCascades(new Map(rows.map((r) => [r.code, r.description])));
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -230,7 +241,12 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
     />
   );
 
-  const select = (key: keyof Form, label: string, options: CodeOption[]) => (
+  const select = (
+    key: keyof Form,
+    label: string,
+    options: CodeOption[],
+    onPicked?: (value: string) => void,
+  ) => (
     <Select
       id={`new-mark-${key}`}
       labelText={label}
@@ -238,7 +254,10 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
       invalid={!!errors[key]}
       invalidText={errors[key]}
       disabled={saving}
-      onChange={(e) => set(key, e.target.value)}
+      onChange={(e) => {
+        set(key, e.target.value);
+        onPicked?.(e.target.value);
+      }}
     >
       <SelectItem value="" text="Choose…" />
       {options.map((o) => (
@@ -280,8 +299,14 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
               placeholder="yyyy-mm-dd"
               invalidText={errors.applicationDate}
               disabled={saving}
+              pattern={TYPED_DATE_PATTERN}
               onChange={(e) => {
-                if (e.target.value.trim() === '') set('applicationDate', '');
+                const text = e.target.value;
+                if (text.trim() === '') set('applicationDate', '');
+                else {
+                  const typed = parseTypedDate(text);
+                  if (typed) set('applicationDate', typed);
+                }
               }}
             />
           </DatePicker>
@@ -292,7 +317,11 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
           TERM_OPTIONS.map((t) => ({ code: t, description: `${t} months` })),
         )}
 
-        {select('forestDistrict', 'District', districts)}
+        {select('forestDistrict', 'District', districts, (district) => {
+          // The district's default cascade, as legacy defaults a new tenure's.
+          const cascade = defaultCascades.get(district);
+          if (cascade && cascades.some((c) => c.code === cascade)) set('cascadeSplitCode', cascade);
+        })}
         {select('cascadeSplitCode', 'Cascade', cascades)}
 
         <div className="new-mark__full">
@@ -371,7 +400,7 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
           <TextArea
             id="new-mark-proofOfCrownOrLegal"
             labelText="Legal"
-            helperText="The legal description of the land, or proof of Crown grant."
+            helperText="The legal description of the land."
             rows={4}
             value={form.proofOfCrownOrLegal}
             maxLength={MAX.proofOfCrownOrLegal}

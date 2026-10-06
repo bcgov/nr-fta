@@ -4,8 +4,6 @@ import {
   DocumentTasks,
   Grid,
   RecentlyViewed,
-  Sprout,
-  Wheat,
   ChartColumn,
   Currency,
   Folders,
@@ -37,8 +35,6 @@ import CpCbAmendmentsPanel from './CpCbAmendmentsPanel';
 import CutBlocksPanel from './CutBlocksPanel';
 import CuttingPermitsPanel from './CuttingPermitsPanel';
 import DetailsPanel from './DetailsPanel';
-import GrazingRotationPanel from './GrazingRotationPanel';
-import HayCuttingRotationPanel from './HayCuttingRotationPanel';
 import SaleInfoPanel from './SaleInfoPanel';
 import TenureApplicationPanel from './TenureApplicationPanel';
 import TenureNotesPanel from './TenureNotesPanel';
@@ -92,12 +88,6 @@ const TABS: TenureTab[] = [
     render: (p) => <TenureApplicationPanel {...p} />,
   },
   { label: 'Notes', icon: Notebook, render: (p) => <TenureNotesPanel {...p} /> },
-  { label: 'Grazing rotation', icon: Sprout, render: (p) => <GrazingRotationPanel {...p} /> },
-  {
-    label: 'Hay cutting rotation',
-    icon: Wheat,
-    render: (p) => <HayCuttingRotationPanel {...p} />,
-  },
   { label: 'Copy rotation', icon: Copy, render: (p) => <CopyRotationPanel {...p} /> },
   {
     label: 'TL blocks',

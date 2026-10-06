@@ -94,19 +94,25 @@ public class MarkUpdateService {
    * @param id            the timber mark, or the certificate when {@code byCertificate}
    * @param byCertificate whether {@code id} is a certificate
    * @param request       the edited values
+   * @param districtUser  whether the user holds the district role, which edits less
    * @param userId        the authenticated user id (audit columns)
    * @throws ResponseStatusException 404 if the mark does not exist; 409 if it cannot be edited
    *     or was changed by someone else since it was read; 400 if a value is invalid
    */
   @Transactional
-  public void update(String id, boolean byCertificate, MarkUpdateRequest request, String userId) {
+  public void update(
+      String id,
+      boolean byCertificate,
+      MarkUpdateRequest request,
+      boolean districtUser,
+      String userId) {
     MarkDetailDto current = (byCertificate
             ? markDetailService.findByCertificate(id)
             : markDetailService.findByMarkNumber(id))
         .orElseThrow(() -> new ResponseStatusException(
             HttpStatus.NOT_FOUND, "Private mark not found."));
 
-    MarkEditRules rules = MarkEditRules.of(current, true);
+    MarkEditRules rules = MarkEditRules.of(current, true, districtUser);
     if (!rules.editable()) {
       throw new ResponseStatusException(HttpStatus.CONFLICT,
           rules.reason() != null ? rules.reason() : "This mark cannot be edited.");

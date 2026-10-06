@@ -57,6 +57,7 @@ import {
   type TimbermarkSummary,
 } from '@/services/timbermark_search';
 import { formatDate } from '@/utils/formatDate';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 // Column order follows the legacy FTA002 results grid.
 const HEADERS = [
@@ -442,7 +443,15 @@ const TimberMarkSearch: FC = () => {
                 id="tm-issue-from"
                 labelText="Issue date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('issueDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('issueDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -458,7 +467,15 @@ const TimberMarkSearch: FC = () => {
                 id="tm-issue-to"
                 labelText="Issue date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('issueDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('issueDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -474,7 +491,15 @@ const TimberMarkSearch: FC = () => {
                 id="tm-expiry-from"
                 labelText="Expiry date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('expiryDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('expiryDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -490,7 +515,15 @@ const TimberMarkSearch: FC = () => {
                 id="tm-expiry-to"
                 labelText="Expiry date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('expiryDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('expiryDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -550,7 +583,15 @@ const TimberMarkSearch: FC = () => {
                 id="tm-amend-from"
                 labelText="Amended date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('amendDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('amendDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -566,7 +607,15 @@ const TimberMarkSearch: FC = () => {
                 id="tm-amend-to"
                 labelText="Amended date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('amendDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('amendDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 

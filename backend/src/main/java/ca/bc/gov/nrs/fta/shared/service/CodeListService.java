@@ -272,6 +272,24 @@ public class CodeListService {
         codeSql("marking_instrument_code", "the.marking_instrument_code"), MAPPER);
   }
 
+  /**
+   * Each district's default cascade split, from {@code DIST_TENR_DEFLT} — what
+   * legacy's {@code FTA_GET_DEFAULT_CASCADE} returns. The code is the district's
+   * {@code ORG_UNIT_NO}, as in {@link #districts()}; the description is the
+   * cascade split code. Districts without a default are absent.
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> districtDefaultCascades() {
+    return jdbc.query(
+        """
+        SELECT TO_CHAR(admin_forest_dist) AS code,
+               cascade_ind                AS description
+          FROM the.dist_tenr_deflt
+         WHERE cascade_ind IS NOT NULL
+        """,
+        MAPPER);
+  }
+
   /** Cascade split codes, for the FTA510 edit form. */
   @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> cascadeSplits() {

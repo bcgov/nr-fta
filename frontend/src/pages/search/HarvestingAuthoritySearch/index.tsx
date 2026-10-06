@@ -30,6 +30,7 @@ import { EmptyState } from '@/components/EmptyState/EmptyState';
 import ExportCsvButton from '@/components/ExportCsvButton';
 import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { useNotification } from '@/context/notification/useNotification';
+import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
@@ -54,6 +55,7 @@ import {
   type HarvestingSearchResult,
 } from '@/services/harvesting_search';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 /** The seven columns always shown, in legacy result-grid order. */
 const BASE_HEADERS = [
@@ -98,6 +100,58 @@ const EMPTY_FORM: HarvestingSearchParams = { sortBy: SORT_DISTRICT };
 /** The minimum criteria a non-key search needs, mirroring the backend. */
 const MIN_CRITERIA = 2;
 
+const hasValue = (v: string | undefined) => v !== undefined && v.trim().length > 0;
+
+/** Counts criteria the way the backend does — the O&G checkbox counts, sort does not. */
+const countCriteria = (criteria: HarvestingSearchParams) => {
+  const { sortBy, page: _p, size: _s, searchOnlyOg, ...rest } = criteria;
+  void sortBy;
+  void _p;
+  void _s;
+  let count = Object.values(rest).filter((v) => hasValue(v as string | undefined)).length;
+  if (searchOnlyOg === 'Y') count += 1;
+  return count;
+};
+
+/** Mirrors the backend guards so the user sees the problem before submitting. */
+const validate = (criteria: HarvestingSearchParams): string | null => {
+  const hasFile = hasValue(criteria.forestFileId);
+  const hasCp = hasValue(criteria.cuttingPermitId);
+  const hasHva = hasValue(criteria.hvaId);
+
+  if (!hasFile && (hasCp || hasHva)) {
+    return 'A Cutting Permit or HVA ID can only be used together with a File ID.';
+  }
+  if (hasFile && hasCp && hasHva) {
+    return 'Supply either a Cutting Permit or an HVA ID with the File ID, not both.';
+  }
+  // A key search bypasses the remaining rules, exactly as the backend does.
+  const isKeySearch = hasValue(criteria.timberMark) || (hasFile && (hasCp || hasHva));
+  if (isKeySearch) return null;
+
+  if (countCriteria(criteria) < MIN_CRITERIA) {
+    return `Please enter at least ${MIN_CRITERIA} search criteria.`;
+  }
+  if (!hasValue(criteria.forestDistrict)) {
+    return 'District is required unless you search by a key.';
+  }
+  if (
+    criteria.issueDateFrom &&
+    criteria.issueDateTo &&
+    criteria.issueDateFrom > criteria.issueDateTo
+  ) {
+    return 'Issue date from must be on or before issue date to.';
+  }
+  if (
+    criteria.expiryDateFrom &&
+    criteria.expiryDateTo &&
+    criteria.expiryDateFrom > criteria.expiryDateTo
+  ) {
+    return 'Expiry date from must be on or before expiry date to.';
+  }
+  return null;
+};
+
 /**
  * FTA005 — Harvesting Authority Search.
  *
@@ -120,7 +174,15 @@ const HarvestingAuthoritySearch: FC = () => {
   const navigate = useNavigate();
   const { display } = useNotification();
 
-  const [form, setForm] = useState<HarvestingSearchParams>(EMPTY_FORM);
+  // Criteria and the last search are kept for the browser tab; see TenureSearch.
+  const [form, setForm] = useSessionState<HarvestingSearchParams>(
+    'fta.search.harvestingAuthority.form',
+    EMPTY_FORM,
+  );
+  const [lastSearch, setLastSearch] = useSessionState<LastSearch<HarvestingSearchParams> | null>(
+    'fta.search.harvestingAuthority.last',
+    null,
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
   // The criteria the rows on screen came from. The export must use these, not
   // `form` — the user may have edited a field since searching, and exporting
@@ -196,58 +258,14 @@ const HarvestingAuthoritySearch: FC = () => {
   const set = <K extends keyof HarvestingSearchParams>(key: K, value: HarvestingSearchParams[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const hasValue = (v: string | undefined) => v !== undefined && v.trim().length > 0;
-
-  /** Counts criteria the way the backend does — the O&G checkbox counts, sort does not. */
-  const criteriaCount = useMemo(() => {
-    const { sortBy, page: _p, size: _s, searchOnlyOg, ...rest } = form;
-    void sortBy;
-    void _p;
-    void _s;
-    let count = Object.values(rest).filter((v) => hasValue(v as string | undefined)).length;
-    if (searchOnlyOg === 'Y') count += 1;
-    return count;
-  }, [form]);
-
   const headers = useMemo(
     () => (showOg ? [...BASE_HEADERS, ...OG_HEADERS] : BASE_HEADERS),
     [showOg],
   );
 
-  /** Mirrors the backend guards so the user sees the problem before submitting. */
-  const validate = useCallback((): string | null => {
-    const hasFile = hasValue(form.forestFileId);
-    const hasCp = hasValue(form.cuttingPermitId);
-    const hasHva = hasValue(form.hvaId);
-
-    if (!hasFile && (hasCp || hasHva)) {
-      return 'A Cutting Permit or HVA ID can only be used together with a File ID.';
-    }
-    if (hasFile && hasCp && hasHva) {
-      return 'Supply either a Cutting Permit or an HVA ID with the File ID, not both.';
-    }
-    // A key search bypasses the remaining rules, exactly as the backend does.
-    const isKeySearch = hasValue(form.timberMark) || (hasFile && (hasCp || hasHva));
-    if (isKeySearch) return null;
-
-    if (criteriaCount < MIN_CRITERIA) {
-      return `Please enter at least ${MIN_CRITERIA} search criteria.`;
-    }
-    if (!hasValue(form.forestDistrict)) {
-      return 'District is required unless you search by a key.';
-    }
-    if (form.issueDateFrom && form.issueDateTo && form.issueDateFrom > form.issueDateTo) {
-      return 'Issue date from must be on or before issue date to.';
-    }
-    if (form.expiryDateFrom && form.expiryDateTo && form.expiryDateFrom > form.expiryDateTo) {
-      return 'Expiry date from must be on or before expiry date to.';
-    }
-    return null;
-  }, [form, criteriaCount]);
-
   const runSearch = useCallback(
-    async (nextPage: number, nextSize: number) => {
-      const problem = validate();
+    async (nextPage: number, nextSize: number, criteria: HarvestingSearchParams = form) => {
+      const problem = validate(criteria);
       if (problem) {
         setError(problem);
         return;
@@ -256,14 +274,15 @@ const HarvestingAuthoritySearch: FC = () => {
       setError(null);
       // Decided before the request, from the submitted criteria, so the columns
       // match the search that produced the rows.
-      const og = showOilAndGasColumns(form);
+      const og = showOilAndGasColumns(criteria);
       try {
         const data = await searchHarvestingAuthorities({
-          ...form,
+          ...criteria,
           page: nextPage,
           size: nextSize,
         });
-        setSearched({ ...form });
+        setSearched({ ...criteria });
+        setLastSearch({ criteria, page: data.page.number, size: data.page.size });
         setRows(
           data.content.map((r, i) => ({
             ...r,
@@ -284,7 +303,7 @@ const HarvestingAuthoritySearch: FC = () => {
         setLoading(false);
       }
     },
-    [form, validate],
+    [form, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -304,12 +323,24 @@ const HarvestingAuthoritySearch: FC = () => {
 
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
+    setLastSearch(null);
     setRows(null);
     setShowOg(false);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, []);
+  }, [setForm, setLastSearch]);
+
+  // Back on the page with a search from earlier in this tab: run it again (fresh
+  // results, same page), once the code lists — and so the form — are ready.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (codeListsLoading || restored) return;
+    setRestored(true);
+    if (lastSearch && rows === null) {
+      void runSearch(lastSearch.page, lastSearch.size, lastSearch.criteria);
+    }
+  }, [codeListsLoading, restored, lastSearch, rows, runSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
 
@@ -475,7 +506,15 @@ const HarvestingAuthoritySearch: FC = () => {
                 id="ha-issue-from"
                 labelText="Issue date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('issueDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('issueDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -491,7 +530,15 @@ const HarvestingAuthoritySearch: FC = () => {
                 id="ha-issue-to"
                 labelText="Issue date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('issueDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('issueDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -507,7 +554,15 @@ const HarvestingAuthoritySearch: FC = () => {
                 id="ha-expiry-from"
                 labelText="Expiry date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('expiryDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('expiryDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -523,7 +578,15 @@ const HarvestingAuthoritySearch: FC = () => {
                 id="ha-expiry-to"
                 labelText="Expiry date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('expiryDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('expiryDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 

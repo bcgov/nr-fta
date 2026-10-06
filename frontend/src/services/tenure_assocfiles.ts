@@ -16,6 +16,8 @@ export interface TenureAssociatedFile {
   revisionCount: number | null;
   /** Whether the associated file is an FTA file (source F) — linkable. */
   tenure: boolean;
+  /** The private mark certificate, when the associated FTA file is a private mark. */
+  markCertificate: string | null;
 }
 
 export interface TenureAssociatedFiles {

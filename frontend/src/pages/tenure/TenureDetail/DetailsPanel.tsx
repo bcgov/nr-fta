@@ -25,6 +25,7 @@ import {
   type TenureDetails,
 } from '@/services/tenure_details';
 import { formatDate } from '@/utils/formatDate';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 import type { TenurePanelProps } from './panelProps';
 
@@ -283,8 +284,14 @@ const DetailsView: FC<{ details: TenureDetails; canEdit: boolean; onSaved: () =>
           placeholder="yyyy-mm-dd"
           invalidText={errors[key]}
           disabled={saving}
+          pattern={TYPED_DATE_PATTERN}
           onChange={(e) => {
-            if (e.target.value.trim() === '') set(key, '');
+            const text = e.target.value;
+            if (text.trim() === '') set(key, '');
+            else {
+              const typed = parseTypedDate(text);
+              if (typed) set(key, typed);
+            }
           }}
         />
       </DatePicker>

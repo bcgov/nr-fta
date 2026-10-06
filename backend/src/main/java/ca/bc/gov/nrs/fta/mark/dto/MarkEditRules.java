@@ -11,7 +11,8 @@ import java.util.Set;
  *
  * <p>Legacy decides by organization level (Headquarters, District, Region). This app has
  * no organization levels, so every user who may edit private marks ({@code FTA_ADMIN} and
- * both timber mark roles, district included) gets the Headquarters rules. The record is
+ * both timber mark roles, district included) gets the Headquarters rules, except where a
+ * district role is held to less (Status, the marking codes, Submit to HQ). The record is
  * computed once, here, and serves both the detail page (which fields open for editing) and the update
  * endpoint (which fields it accepts), so the two cannot disagree.
  *
@@ -121,6 +122,8 @@ public record MarkEditRules(
    * The rules for {@code mark} and a user who may ({@code userCanEdit}) or may not edit
    * private marks; {@code districtUser} is the {@code FTA_TIMBER_MARK_DISTRICT_ADMIN} role,
    * legacy's district organization level, which alone submits applications to Headquarters.
+   * Every other editor is Headquarters, which may always change the status, and the marking
+   * codes once the mark has them.
    */
   public static MarkEditRules of(MarkDetailDto mark, boolean userCanEdit, boolean districtUser) {
     String status = mark.markStatusCode();
@@ -185,14 +188,31 @@ public record MarkEditRules(
           amendmentsReason,
           submitReason);
     }
-    if (status == null || !SAVEABLE_STATUSES.contains(status)) {
-      // No reason: the status is on screen, and a note saying so isn't wanted.
-      return none(null, landIndex, landIndexReason, clients, clientsReason, amendments,
-          amendmentsReason, submitReason);
-    }
     if (viewOnlyType) {
       return none(null, landIndex, landIndexReason, clients, clientsReason, amendments,
           amendmentsReason, submitReason);
+    }
+    // Headquarters: the timber mark roles other than the district's (and FTA_ADMIN).
+    boolean headquarters = !districtUser;
+    // The marking codes live on HAULING_AUTHORITY, which exists once the mark is issued
+    // (HN on). Headquarters may change them at any status from then; a district only until
+    // the certificate is printed and the mark is issued (HN).
+    boolean markingOpen = mark.timberMark() != null
+        && (headquarters || "HN".equals(status));
+    if (status == null || !SAVEABLE_STATUSES.contains(status)) {
+      if (!headquarters || status == null) {
+        // No reason: the status is on screen, and a note saying so isn't wanted.
+        return none(null, landIndex, landIndexReason, clients, clientsReason, amendments,
+            amendmentsReason, submitReason);
+      }
+      // Headquarters keeps the marking codes and Status at a status legacy can't save.
+      List<String> options = STATUS_TRANSITIONS.getOrDefault(status, List.of(status));
+      boolean open = options.size() > 1;
+      return new MarkEditRules(
+          markingOpen || open, null, false, false, false, markingOpen, false, false, open,
+          open ? options : List.of(status), false, List.of(), landIndex, landIndexReason,
+          clients, clientsReason, amendments, amendmentsReason, submitReason == null,
+          submitReason);
     }
 
     // setProtectionStates, Headquarters, existing record, opened from the FTA500 list:
@@ -213,7 +233,10 @@ public record MarkEditRules(
         && mark.fileTypeCode() == null
         && mark.timberMark() == null
         && ("PI".equals(status) || "PA".equals(status));
-    boolean statusOpen = hasClient && !amendmentOutstanding && statusOptions.size() > 1;
+    // Headquarters may always change the status, cancelled (HX) included: the client and
+    // outstanding-amendment holds are a district's.
+    boolean statusOpen = statusOptions.size() > 1
+        && (headquarters || (hasClient && !amendmentOutstanding));
 
     return new MarkEditRules(
         true,
@@ -221,11 +244,8 @@ public record MarkEditRules(
         !hasClient,
         !amendmentOutstanding,
         true,
-        // The marking codes live on HAULING_AUTHORITY, created when the mark is issued, so a
-        // save keeps them from HN on. Legacy wrote them only at HI, which left Branch and the
-        // district waiting for the certificate print (HN to HI) to change them; the marking
-        // decision is the district's, so both HN and HI are open here, by design.
-        ("HN".equals(status) || "HI".equals(status)) && mark.timberMark() != null,
+        // Legacy wrote the marking codes only at HI; see markingOpen for who may now.
+        markingOpen,
         markTypeOpen,
         hasClient,
         statusOpen,
