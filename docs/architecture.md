@@ -260,7 +260,16 @@ tab, where `localStorage` would leave them readable to any script on the origin
 for longer than the session needs. The access token lives five minutes and is
 renewed once 60 seconds remain, on user activity; there is deliberately no
 background poll, so an idle user times out rather than being kept alive by a
-timer. Redirect URIs are derived from the runtime origin
+timer.
+
+**Inactivity logout** (`components/SessionTimeout`, the same policy as FSP):
+after 25 minutes with no mouse, keyboard, scroll or touch, a dialog counts down
+the last 5 minutes (red for the final 30 seconds) and then signs the user out;
+the landing page explains why. "Stay logged in" renews the tokens and restarts
+the clock. The refresh token lives only 30 minutes, so while the user is active
+the tokens are renewed every few minutes, and once more as the dialog opens.
+
+Redirect URIs are derived from the runtime origin
 (`<origin><base path>/authCallback`, post-logout `<origin><base path>`) so one
 built image is promotable across PR previews, TEST and PROD — each of those URIs
 has to be registered on the CSS integration.

@@ -69,12 +69,15 @@ public class CodeListService {
   }
 
 
+  // Three-character codes only, as legacy's org unit lists filter them
+  // (FTA_CODE_LISTS: LENGTH(ORG_UNIT_CODE) = 3).
   private static final String ORG_UNITS_SQL =
       """
       SELECT TO_CHAR(org_unit_no)                   AS code,
              org_unit_code || ' - ' || org_unit_name AS description
         FROM the.org_unit
        WHERE SYSDATE BETWEEN effective_date AND expiry_date
+         AND LENGTH(org_unit_code) = 3
        ORDER BY org_unit_code
       """;
 
