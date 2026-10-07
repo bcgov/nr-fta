@@ -104,7 +104,7 @@ public class MarkSnapshotReport {
           kv("Application Date", date(mark.markApplicationDate())),
           kv("Geographic Location", mark.permitBlockLocn()),
           kv("LTO PID", mark.bcaaFolioNumber()),
-          kv("Area", area(mark.permitBlockArea())),
+          kv("Area (Hectares)", area(mark.permitBlockArea())),
           kv("Management Unit", managementUnit(mark)),
           kv("Cascade", desc(mark.cascadeSplitCode(), mark.cascadeSplitDesc())),
           kv("Reg / Comp", regComp(mark.mapReferenceReg(), mark.mapReferenceComp())),
@@ -269,7 +269,7 @@ public class MarkSnapshotReport {
   }
 
   private static String area(BigDecimal a) {
-    return a == null ? null : number(a) + " ha";
+    return a == null ? null : number(a); // the label carries the unit
   }
 
   private static String clientNumber(String number, String locn) {

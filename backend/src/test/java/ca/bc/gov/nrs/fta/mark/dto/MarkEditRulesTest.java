@@ -226,6 +226,43 @@ class MarkEditRulesTest {
   }
 
   @Nested
+  @DisplayName("updating land index and clients")
+  class Updates {
+
+    private static final List<String> ALL =
+        List.of("PA", "PI", "HN", "HI", "HX", "DV", "DD", "EE");
+
+    @Test
+    void headquartersUpdatesAtEveryStatus() {
+      for (String status : ALL) {
+        MarkEditRules rules = hq(mark(status, "B08", "E12345", "00001", null));
+        assertThat(rules.landIndexUpdate()).as(status).isTrue();
+        assertThat(rules.clientsUpdate()).as(status).isTrue();
+      }
+    }
+
+    @Test
+    void aDistrictUpdatesOnlyWhereItMayAdd() {
+      for (String status : ALL) {
+        MarkEditRules rules =
+            MarkEditRules.of(mark(status, "B08", "E12345", "00001", null), true, true);
+        assertThat(rules.landIndexUpdate()).as(status).isEqualTo(rules.landIndex());
+        assertThat(rules.clientsUpdate()).as(status).isEqualTo(rules.clients());
+      }
+    }
+
+    @Test
+    void notForViewOnlyTypesOrViewers() {
+      MarkEditRules viewOnly = hq(mark("HI", "B15", "E12345", "00001", null));
+      assertThat(viewOnly.landIndexUpdate()).isFalse();
+      assertThat(viewOnly.clientsUpdate()).isFalse();
+      MarkEditRules viewer = MarkEditRules.of(mark("HI", "B08", "E12345", "00001", null), false);
+      assertThat(viewer.landIndexUpdate()).isFalse();
+      assertThat(viewer.clientsUpdate()).isFalse();
+    }
+  }
+
+  @Nested
   @DisplayName("associated clients")
   class Clients {
 

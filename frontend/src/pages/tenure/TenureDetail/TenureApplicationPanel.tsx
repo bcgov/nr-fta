@@ -213,7 +213,7 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
       ...(cols.pointOfCommencement ? ['PofC'] : []),
       ...(cols.chart ? ['Chart volume (m³)'] : []),
       ...(cols.length ? ['Length (km)'] : []),
-      ...(cols.area ? ['Area (ha)'] : []),
+      ...(cols.area ? ['Area (Hectares)'] : []),
       'Decision date',
       'Issue date',
       'SNC',

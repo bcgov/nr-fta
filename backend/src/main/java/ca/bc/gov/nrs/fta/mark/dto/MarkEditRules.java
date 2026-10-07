@@ -46,6 +46,11 @@ import java.util.Set;
  * @param submit            Submit to HQ (FTA510): a district sends its PA application to
  *                          Headquarters, which makes it PI
  * @param submitReason      why not, when {@code submit} is false
+ * @param landIndexUpdate   updating a land index already on the mark (FTA511's save of an
+ *                          existing row): Headquarters at any status; a district as it may add
+ * @param clientsUpdate     updating an associated client already on the mark (FTA513's
+ *                          save of an existing row): Headquarters at any status; a district
+ *                          as it may add
  */
 public record MarkEditRules(
     boolean editable,
@@ -67,7 +72,9 @@ public record MarkEditRules(
     boolean amendments,
     String amendmentsReason,
     boolean submit,
-    String submitReason) {
+    String submitReason,
+    boolean landIndexUpdate,
+    boolean clientsUpdate) {
 
   /** Legacy Headquarters may save a mark in these statuses ({@code FTA_510.GET}). */
   private static final Set<String> SAVEABLE_STATUSES = Set.of("HI", "HX", "PI", "PA", "HN");
@@ -103,11 +110,13 @@ public record MarkEditRules(
       String clientsReason,
       boolean amendments,
       String amendmentsReason,
-      String submitReason) {
+      String submitReason,
+      boolean landIndexUpdate,
+      boolean clientsUpdate) {
     return new MarkEditRules(
         false, reason, false, false, false, false, false, false, false, List.of(), false,
         List.of(), landIndex, landIndexReason, clients, clientsReason, amendments,
-        amendmentsReason, submitReason == null, submitReason);
+        amendmentsReason, submitReason == null, submitReason, landIndexUpdate, clientsUpdate);
   }
 
   /**
@@ -186,14 +195,20 @@ public record MarkEditRules(
           clientsReason,
           amendments,
           amendmentsReason,
-          submitReason);
+          submitReason,
+          false,
+          false);
     }
     if (viewOnlyType) {
       return none(null, landIndex, landIndexReason, clients, clientsReason, amendments,
-          amendmentsReason, submitReason);
+          amendmentsReason, submitReason, false, false);
     }
     // Headquarters: the timber mark roles other than the district's (and FTA_ADMIN).
     boolean headquarters = !districtUser;
+    // Correcting a land index or client already on the mark: Headquarters at any status
+    // (legacy held updates to the add gates); a district still as it may add.
+    boolean landIndexUpdate = headquarters || landIndex;
+    boolean clientsUpdate = headquarters || clients;
     // The marking codes live on HAULING_AUTHORITY, which exists once the mark is issued
     // (HN on). Headquarters may change them at any status from then; a district only until
     // the certificate is printed and the mark is issued (HN).
@@ -203,7 +218,7 @@ public record MarkEditRules(
       if (!headquarters || status == null) {
         // No reason: the status is on screen, and a note saying so isn't wanted.
         return none(null, landIndex, landIndexReason, clients, clientsReason, amendments,
-            amendmentsReason, submitReason);
+            amendmentsReason, submitReason, landIndexUpdate, clientsUpdate);
       }
       // Headquarters keeps the marking codes and Status at a status legacy can't save.
       List<String> options = STATUS_TRANSITIONS.getOrDefault(status, List.of(status));
@@ -212,7 +227,7 @@ public record MarkEditRules(
           markingOpen || open, null, false, false, false, markingOpen, false, false, open,
           open ? options : List.of(status), false, List.of(), landIndex, landIndexReason,
           clients, clientsReason, amendments, amendmentsReason, submitReason == null,
-          submitReason);
+          submitReason, landIndexUpdate, clientsUpdate);
     }
 
     // setProtectionStates, Headquarters, existing record, opened from the FTA500 list:
@@ -259,6 +274,8 @@ public record MarkEditRules(
         amendments,
         amendmentsReason,
         submitReason == null,
-        submitReason);
+        submitReason,
+        landIndexUpdate,
+        clientsUpdate);
   }
 }

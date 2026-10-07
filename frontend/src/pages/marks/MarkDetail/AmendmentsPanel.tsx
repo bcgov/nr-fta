@@ -159,7 +159,7 @@ const AmendmentsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }
                     <TableHeader>Request Date</TableHeader>
                     <TableHeader>Status</TableHeader>
                     <TableHeader>Requested By</TableHeader>
-                    <TableHeader>Area (ha)</TableHeader>
+                    <TableHeader>Area (Hectares)</TableHeader>
                     <TableHeader>Requested Changes</TableHeader>
                   </TableRow>
                 </TableHead>

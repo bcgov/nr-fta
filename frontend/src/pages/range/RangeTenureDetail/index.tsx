@@ -187,7 +187,7 @@ const RangeTenureDetail: FC = () => {
                           <TableRow>
                             <TableHeader>Parcel</TableHeader>
                             <TableHeader>Description</TableHeader>
-                            <TableHeader>Area (ha)</TableHeader>
+                            <TableHeader>Area (Hectares)</TableHeader>
                             <TableHeader>Tenure Type</TableHeader>
                           </TableRow>
                         </TableHead>

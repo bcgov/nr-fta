@@ -229,6 +229,14 @@
   min-inline-size: 16rem;
 }
 
+// A row's Update button, at the end of the row: snug, and kept on one line.
+.detail-tab__row-action {
+  inline-size: 1%;
+  white-space: nowrap;
+  text-align: end;
+  padding-block: 0;
+}
+
 .detail-tab__empty-action {
   display: flex;
   flex-direction: column;

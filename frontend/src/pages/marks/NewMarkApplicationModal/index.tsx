@@ -374,7 +374,7 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
           }}
         />
         <div className="new-mark__trio">
-          {text('permitBlockArea', 'Area (ha)', 6)}
+          {text('permitBlockArea', 'Area (Hectares)', 6)}
           {/* One label for the pair, as on the detail page — two "(optional)"
               labels wrap in columns this narrow and push their inputs down. */}
           <fieldset className="new-mark__pair">

@@ -238,7 +238,10 @@ const CuttingPermitDetail: FC = () => {
                 },
                 { label: 'Admin Organization', value: dash(cp.adminOrgCode) },
                 { label: 'Status', value: codeDesc(cp.statusCode, cp.statusDesc) },
-                { label: 'Area', value: area },
+                {
+                  label: 'Area (Hectares)',
+                  value: cp.harvestArea != null ? nf.format(cp.harvestArea) : '—',
+                },
                 { label: 'Issued', value: date(cp.issueDate) },
                 { label: 'Expires', value: date(cp.expiryDate) },
               ]}

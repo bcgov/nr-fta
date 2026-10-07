@@ -151,6 +151,7 @@ const MarkDetail: FC = () => {
                         byCertificate={byCertificate}
                         rows={mark.landIndex}
                         canAdd={!!mark.editRules?.landIndex}
+                        canUpdate={!!mark.editRules?.landIndexUpdate}
                         // Quietly: "Add additional" keeps its dialog open over the table.
                         onAdded={refresh}
                       />
@@ -164,6 +165,7 @@ const MarkDetail: FC = () => {
                         byCertificate={byCertificate}
                         rows={mark.clients}
                         canAdd={!!mark.editRules?.clients}
+                        canUpdate={!!mark.editRules?.clientsUpdate}
                         onAdded={reload}
                       />
                     )}
