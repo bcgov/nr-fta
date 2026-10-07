@@ -10,9 +10,12 @@ import {
   Search,
   Settings,
   Tag,
-  Tree,
   UserFollow,
 } from '@carbon/icons-react';
+
+import type { ROLE_TYPE } from '@/context/auth/types';
+
+import { isPathAllowedForRole } from './access';
 
 import type { ComponentType } from 'react';
 
@@ -22,16 +25,21 @@ import type { ComponentType } from 'react';
 // rendered by a DHTML menu engine — not a WebADE or Struts config, and the
 // only place the menu is defined.
 //
-// Legacy declares exactly five top-level menus (`NoOffFirstLineMenus=5`):
-// Search, Tenures, Private Marks, Recreation and Admin. Labels and order below
-// are legacy's verbatim, including where they read oddly.
+// Legacy declares five top-level menus (`NoOffFirstLineMenus=5`): Search,
+// Tenures, Private Marks, Recreation and Admin. Labels and order below are
+// legacy's verbatim, including where they read oddly.
 //
-// Three deliberate departures from legacy, each noted at the point it applies:
+// Four deliberate departures from legacy, each noted at the point it applies:
+//   - Recreation is not here at all: that work moved to a separate internal
+//     forestry application, so its menu and its Recreation Search entry are
+//     dropped rather than left pointing nowhere.
 //   - Legacy nests up to four levels under Admin; Carbon's SideNav supports
 //     two, so Admin is flattened to a single list.
 //   - Legacy's menu is not role-gated at all: every user sees all thirty items
-//     and the server refuses the click. Here the admin screens are hidden from
-//     viewers instead.
+//     and the server refuses the click. Here an entry is shown only when the
+//     user's role may open its page (routes/access.ts): the admin screens are
+//     hidden from viewers, and a Timber Mark Headquarters Administrator sees only Tenure
+//     Search, Timber Mark Search and Private Marks.
 //   - Legacy's `Links` submenu (seven external systems) is omitted: its URLs
 //     come from servlet init-params per environment and have no home in this
 //     app's configuration yet.
@@ -47,6 +55,11 @@ export type MenuLeaf = {
   path: string;
   icon?: ComponentType;
   roles?: string[];
+  /**
+   * Opens a dialog over the current page instead of navigating. `path` still
+   * names the screen for the role check and for a direct link.
+   */
+  modal?: 'new-mark-application';
 };
 
 /** A heading with its destinations. */
@@ -54,16 +67,11 @@ export type MenuSection = {
   id: string;
   label: string;
   /**
-   * Shown in the collapsed rail, which lists the five sections rather than
+   * Shown in the collapsed rail, which lists the sections rather than
    * every destination — clicking one opens the nav on that section.
    */
   icon: ComponentType;
   items: MenuLeaf[];
-  /**
-   * A heading kept for parity with legacy that has nothing to point at yet.
-   * Rendered, but not interactive.
-   */
-  placeholder?: boolean;
   roles?: string[];
 };
 
@@ -92,12 +100,6 @@ const NAV: MenuSection[] = [
         icon: Tag,
       },
       { id: 'search-cut-block', label: 'Cut Block Search', path: '/search/cut-block', icon: Map },
-      {
-        id: 'search-recreation',
-        label: 'Recreation Search',
-        path: '/search/recreation',
-        icon: Tree,
-      },
       {
         id: 'search-range-tenure',
         label: 'Range Tenure Search',
@@ -144,37 +146,21 @@ const NAV: MenuSection[] = [
     label: 'Private Marks',
     icon: Tag,
     items: [
-      { id: 'marks-list', label: 'Application/Amendment List', path: '/marks', icon: Tag },
+      // Legacy labels these "Application/Amendment List" and "Mark Application";
+      // shortened here, as the section heading already says Private Marks.
+      { id: 'marks-list', label: 'Application List', path: '/marks', icon: Tag },
       {
         id: 'marks-application',
-        label: 'Mark Application',
+        label: 'New Application',
         path: '/marks/application',
         icon: DocumentAdd,
-      },
-    ],
-  },
-  {
-    // Legacy's fourth menu. Its one screen, FTA701 Recreation Project, has not
-    // been built here, and neither has FTA007 Recreation Search — so the
-    // heading is kept for parity but has nothing to offer yet.
-    // Legacy's fourth menu. Its single item opens FTA701 for whichever project
-    // the session was last on; there is no such session state here and the
-    // screen needs a file id, so it lands on the search that finds one.
-    id: 'recreation',
-    label: 'Recreation',
-    icon: Tree,
-    items: [
-      {
-        id: 'recreation-project',
-        label: 'Recreation Project',
-        path: '/search/recreation',
-        icon: Tree,
+        modal: 'new-mark-application',
       },
     ],
   },
   {
     id: 'admin',
-    label: 'Admin',
+    label: 'Administration',
     icon: Settings,
     roles: ADMIN_ONLY,
     items: [
@@ -195,7 +181,7 @@ const NAV: MenuSection[] = [
       { id: 'admin-range-zone', label: 'Manage Zone', path: '/admin/range-zone', icon: Map },
       {
         id: 'admin-org-unit',
-        label: 'Org Unit Maintenance',
+        label: 'Organization Unit Maintenance',
         path: '/admin/org-unit',
         icon: Settings,
       },
@@ -252,19 +238,23 @@ const isVisible = (userRoles: string[], required?: string[]) =>
 /**
  * The nav sections visible to the user's effective role.
  *
- * <p>A section may carry a `roles` allow-list, and so may an individual entry;
- * a section whose every entry is filtered out is dropped, except a placeholder,
- * which has no entries by definition and is kept.
+ * <p>An entry is shown only when the role may open its page — the same rule
+ * the route guard applies, so the menu never offers a page that answers
+ * Forbidden. A section or entry may also carry its own `roles` allow-list; a
+ * section whose every entry is filtered out is dropped.
  *
- * @param userRoles  the user's canonical FTA role(s).
+ * @param userRoles  the user's canonical FTA role(s); the first is effective.
  */
 export function getMenuSections(userRoles: string[]): MenuSection[] {
+  const role = userRoles[0] as ROLE_TYPE | undefined;
   return NAV.filter((section) => isVisible(userRoles, section.roles))
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => isVisible(userRoles, item.roles)),
+      items: section.items.filter(
+        (item) => isVisible(userRoles, item.roles) && isPathAllowedForRole(role, item.path),
+      ),
     }))
-    .filter((section) => section.placeholder || section.items.length > 0);
+    .filter((section) => section.items.length > 0);
 }
 
 /** The id of the section containing `path`, or undefined if none does. */

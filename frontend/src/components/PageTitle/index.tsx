@@ -3,7 +3,8 @@ import type { FC, ReactNode } from 'react';
 import './PageTitle.css';
 
 type Props = {
-  title: string;
+  /** Text, or text with markup — e.g. a detail screen's id in a pill. */
+  title: ReactNode;
   subtitle?: string;
   /** Screen-level buttons, laid out level with the title. */
   actions?: ReactNode;

@@ -7,7 +7,12 @@
  * concern, not an authorisation one. So these arrive on the token spelled
  * exactly as written here, and exact matching stays correct.
  */
-export const AVAILABLE_ROLES = ['FTA_ADMIN', 'FTA_VIEWER'] as const;
+export const AVAILABLE_ROLES = [
+  'FTA_ADMIN',
+  'FTA_TIMBER_MARK_HEADQUARTERS_ADMIN',
+  'FTA_TIMBER_MARK_DISTRICT_ADMIN',
+  'FTA_VIEWER',
+] as const;
 
 export type ROLE_TYPE = (typeof AVAILABLE_ROLES)[number];
 

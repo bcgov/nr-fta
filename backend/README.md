@@ -38,12 +38,53 @@ In OpenShift deployments these come from the K8s Secret built by `openshift.depl
 | `DATABASE_PASSWORD` | DB password             | - |
 | `TRUSTSTORE_PATH` | Path to `jssecacerts` JKS | /cert/jssecacerts |
 | `KEYSTORE_SECRET` | Truststore passphrase   | - |
+| `USER_LOOKUP_BASE_URL` | nr-user-lookup-api base URL (IDIR directory) | - |
+| `USER_LOOKUP_TOKEN_URL` | Keycloak token endpoint for `client_credentials` | - |
+| `USER_LOOKUP_CLIENT_ID` | FTA's Keycloak service-account client id | - |
+| `USER_LOOKUP_CLIENT_SECRET` | FTA's Keycloak service-account secret | - |
+| `USER_LOOKUP_SCOPE` | Optional explicit scope request (normally blank) | - |
+| `USER_LOOKUP_CACHE_TTL` | How long a resolved name is cached (ISO-8601) | `PT12H` |
 
 CORS origins are **not** read from an `ALLOWED_ORIGINS` variable. They come from
 `ca.bc.gov.nrs.frontend.url` in `application.yml`, which is `http://localhost:3000`.
 That only matters for local dev: in a deployment Caddy reverse-proxies `/api/*`
 same-origin, and `server.forward-headers-strategy: framework` makes Spring
 reconstruct the browser-facing URL, so the request never looks cross-origin.
+
+### User names (nr-user-lookup-api)
+
+FTA's records name people by IDIR id — every write records `IDIR\USERNAME`, upper-cased, as
+legacy did. Screens show the person's name instead, resolved from
+nr-user-lookup-api (bcgov/nr-user-lookup-api), the shared BC Gov IDIR directory. The setup follows REPT (client, token source, provisioning) and FSP (batch resolve):
+
+- `user/UserLookupClient` calls `GET /api/v1/user-lookup/idir-account-detail`, authenticated
+  with FTA's own Keycloak `client_credentials` token (`user/ClientCredentialsTokenSource`, cached
+  until ~60s before expiry). The caller's token is not forwarded.
+- `POST /api/fta/users/resolve` (`{"userIds": ["IDIR\\JSMITH", ...]}` → `{"IDIR\\JSMITH":
+  "Jane Smith"}`) resolves a screen's ids in one call, open to every role that reads FTA.
+  `user/UserDirectoryService` caches names in memory; ids it can't resolve are left out and
+  the screen shows the id.
+- The frontend's `<UserName userId=…>` (`components/UserName`, `lib/userNameStore`) batches
+  every id on screen into that one request and caches names for the browser session.
+
+Unconfigured (blank `USER_LOOKUP_*`, e.g. PR previews and local runs) is fine: names show as
+their IDIR ids. Set token-url / client-id / client-secret together or none — a partial set fails
+at startup.
+
+**Keycloak provisioning.** `.github/scripts/ensure-keycloak-service-account.sh` idempotently
+creates the `nr-fta-backend` confidential service-account client and assigns the
+`user-lookup:idir:read` scope as a **default** client scope. It runs from
+`reusable-deploy.yml` before the backend deploy and hands the client id/secret to the deploy
+step as masked outputs. The scope itself is owned by nr-user-lookup-api — the script errors if
+it is missing. The step is skipped when `KEYCLOAK_SA_CLIENT_ID` isn't set.
+
+GitHub settings per environment (dev/test/prod):
+- secrets `KEYCLOAK_SA_CLIENT_ID`, `KEYCLOAK_SA_CLIENT_SECRET` (an admin service account with
+  realm-management `manage-clients`) and `USER_LOOKUP_BASE_URL`;
+- variable `KEYCLOAK_SA_ISSUER_URI` — the **`forests`** realm, where nr-user-lookup-api's
+  service accounts live (as for REPT), **not** `KEYCLOAK_ISSUER_URI`, the `standard` realm users
+  sign in through: that environment's loginproxy issuer ending in `/realms/forests`. The token
+  URL is derived from it.
 
 ### Spring Profiles
 
@@ -57,8 +98,12 @@ reconstruct the browser-facing URL, so the request never looks cross-origin.
 Grouped by domain slice; see each `*/controller/` package for full
 request/response shapes. All `/api/fta/**` routes are bearer-token-protected and
 require `FTA_ADMIN` or `FTA_VIEWER`; writes are `FTA_ADMIN` only, and
-`/api/fta/admin/**` is `FTA_ADMIN` for *every* method including GET. The
-authoritative matrix is `security/ApiAuthorizationCustomizer`.
+`/api/fta/admin/**` is `FTA_ADMIN` for *every* method including GET.
+`FTA_TIMBER_MARK_HEADQUARTERS_ADMIN` and `FTA_TIMBER_MARK_DISTRICT_ADMIN` get an allow-list instead
+(the same one; a district user's certificate print also moves the mark from HN to HI): GET on tenure and timber
+mark search, the tenure / cutting-permit / private-mark details, the code lists
+and the client type-ahead, plus `POST /api/fta/marks`. The authoritative matrix
+is `security/ApiAuthorizationCustomizer`.
 
 | Slice | Base paths | Methods |
 |---|---|---|

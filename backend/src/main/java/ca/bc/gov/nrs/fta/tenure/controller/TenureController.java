@@ -1,5 +1,6 @@
 package ca.bc.gov.nrs.fta.tenure.controller;
 
+import ca.bc.gov.nrs.fta.shared.csv.CsvExport;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.tenure.dto.TenureSearchCriteria;
 import ca.bc.gov.nrs.fta.tenure.dto.TenureSummaryDto;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /**
  * Tenure search API — {@code GET /api/fta/tenures}. Parameters mirror the
@@ -50,7 +52,6 @@ public class TenureController {
       @RequestParam(required = false) String mgmtUnitId,
       @RequestParam(required = false) String fileSource,
       @RequestParam(required = false) String assocFileId,
-      @RequestParam(required = false) String fileName,
       @RequestParam(required = false) String issueDateFrom,
       @RequestParam(required = false) String issueDateTo,
       @RequestParam(required = false) String expiryDateFrom,
@@ -64,12 +65,49 @@ public class TenureController {
     TenureSearchCriteria criteria = new TenureSearchCriteria(
         adminOrgUnitNo, forestFileId, fileTypeCode, tenureType, fileStatus,
         clientNumber, clientLocnCode, clientName, fileClientType,
-        mgmtUnitType, mgmtUnitId, fileSource, assocFileId, fileName,
+        mgmtUnitType, mgmtUnitId, fileSource, assocFileId,
         issueDateFrom, issueDateTo, expiryDateFrom, expiryDateTo,
         salvageInd, cashSaleInd, mapNotationTypeCode, sortBy);
 
     int safePage = Math.max(page, 0);
     int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
     return ResponseEntity.ok(tenureService.search(criteria, safePage, safeSize));
+  }
+
+  /**
+   * Every matching tenure as a CSV download — the same criteria as the search,
+   * with no paging, streamed as the rows arrive.
+   */
+  @GetMapping("/export")
+  public ResponseEntity<StreamingResponseBody> exportCsv(
+      @RequestParam(required = false) String adminOrgUnitNo,
+      @RequestParam(required = false) String forestFileId,
+      @RequestParam(required = false) String fileTypeCode,
+      @RequestParam(required = false) String tenureType,
+      @RequestParam(required = false) String fileStatus,
+      @RequestParam(required = false) String clientNumber,
+      @RequestParam(required = false) String clientLocnCode,
+      @RequestParam(required = false) String clientName,
+      @RequestParam(required = false) String fileClientType,
+      @RequestParam(required = false) String mgmtUnitType,
+      @RequestParam(required = false) String mgmtUnitId,
+      @RequestParam(required = false) String fileSource,
+      @RequestParam(required = false) String assocFileId,
+      @RequestParam(required = false) String issueDateFrom,
+      @RequestParam(required = false) String issueDateTo,
+      @RequestParam(required = false) String expiryDateFrom,
+      @RequestParam(required = false) String expiryDateTo,
+      @RequestParam(required = false) String salvageInd,
+      @RequestParam(required = false) String cashSaleInd,
+      @RequestParam(required = false) String mapNotationTypeCode,
+      @RequestParam(required = false) String sortBy) {
+    TenureSearchCriteria criteria = new TenureSearchCriteria(
+        adminOrgUnitNo, forestFileId, fileTypeCode, tenureType, fileStatus,
+        clientNumber, clientLocnCode, clientName, fileClientType,
+        mgmtUnitType, mgmtUnitId, fileSource, assocFileId,
+        issueDateFrom, issueDateTo, expiryDateFrom, expiryDateTo,
+        salvageInd, cashSaleInd, mapNotationTypeCode, sortBy);
+
+    return CsvExport.response("tenures", csv -> tenureService.exportCsv(criteria, csv));
   }
 }

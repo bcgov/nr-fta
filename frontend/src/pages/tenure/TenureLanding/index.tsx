@@ -61,7 +61,7 @@ const TenureLanding: FC = () => {
                   <TableHeader>File Type</TableHeader>
                   <TableHeader>Status</TableHeader>
                   <TableHeader>Licensee</TableHeader>
-                  <TableHeader>Org Unit</TableHeader>
+                  <TableHeader>Organization Unit</TableHeader>
                 </TableRow>
               </TableHead>
               <TableBody>

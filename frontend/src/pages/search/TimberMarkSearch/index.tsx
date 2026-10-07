@@ -22,15 +22,22 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react';
-import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FC, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import ClientComboBox from '@/components/ClientComboBox';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
+import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
+import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
+import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
+import { originState, TIMBER_MARK_SEARCH_ORIGIN } from '@/lib/navOrigin';
 import PageLayout from '@/pages/PageLayout';
 import {
+  getManagementUnits,
   getFileClientTypes,
   getFileTypes,
   getHarvestAuthStatuses,
@@ -40,13 +47,17 @@ import {
   getSalvageTypes,
   type CodeOption,
 } from '@/services/codeLists';
+import type { ManagementUnit } from '@/services/codeLists';
+import { markDetailPath } from '@/services/mark_detail';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 import {
   searchTimbermarks,
+  timbermarkSearchExportPath,
   type TimbermarkSearchParams,
   type TimbermarkSummary,
 } from '@/services/timbermark_search';
 import { formatDate } from '@/utils/formatDate';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 // Column order follows the legacy FTA002 results grid.
 const HEADERS = [
@@ -55,7 +66,7 @@ const HEADERS = [
   { key: 'clientNumber', header: 'Client number' },
   { key: 'fileTypeCode', header: 'File type' },
   { key: 'forestFileId', header: 'File ID' },
-  { key: 'cuttingPermitId', header: 'CP' },
+  { key: 'cuttingPermitId', header: 'Cutting permit' },
   { key: 'timberMark', header: 'Timber mark' },
   { key: 'salvageInd', header: 'Salvage type' },
   { key: 'certificate', header: 'Certificate' },
@@ -93,8 +104,21 @@ const TimberMarkSearch: FC = () => {
   const navigate = useNavigate();
   const { display } = useNotification();
 
-  const [form, setForm] = useState<TimbermarkSearchParams>(EMPTY_FORM);
+  // Criteria and the last search are kept for the browser tab, so coming back
+  // (e.g. via a detail page's back link) shows the same search again.
+  const [form, setForm] = useSessionState<TimbermarkSearchParams>(
+    'fta.search.timberMark.form',
+    EMPTY_FORM,
+  );
+  const [lastSearch, setLastSearch] = useSessionState<LastSearch<TimbermarkSearchParams> | null>(
+    'fta.search.timberMark.last',
+    null,
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<TimbermarkSearchParams | null>(null);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -108,6 +132,7 @@ const TimberMarkSearch: FC = () => {
   const [salvageTypes, setSalvageTypes] = useState<CodeOption[]>([]);
   const [landDistricts, setLandDistricts] = useState<CodeOption[]>([]);
   const [primaryIds, setPrimaryIds] = useState<CodeOption[]>([]);
+  const [mgmtUnits, setMgmtUnits] = useState<ManagementUnit[]>([]);
   const [codeListsLoading, setCodeListsLoading] = useState(true);
 
   useEffect(() => {
@@ -120,6 +145,7 @@ const TimberMarkSearch: FC = () => {
       getSalvageTypes(),
       getLandDistricts(),
       getPrimaryIds(),
+      getManagementUnits(),
     ]).then((settled) => {
       if (cancelled) return;
       const setters = [
@@ -130,6 +156,7 @@ const TimberMarkSearch: FC = () => {
         setSalvageTypes,
         setLandDistricts,
         setPrimaryIds,
+        setMgmtUnits,
       ];
       const names = [
         'districts',
@@ -139,10 +166,13 @@ const TimberMarkSearch: FC = () => {
         'salvage types',
         'land districts',
         'primary IDs',
+        'management units',
       ];
       const failed: string[] = [];
       settled.forEach((r, i) => {
-        if (r.status === 'fulfilled') setters[i](r.value);
+        // Each setter takes the shape its own list returns; the array is
+        // parallel to the promises above, so index i lines them up.
+        if (r.status === 'fulfilled') (setters[i] as (v: unknown) => void)(r.value);
         else failed.push(names[i]);
       });
       if (failed.length > 0) setError(`Could not load ${failed.join(', ')}`);
@@ -162,20 +192,58 @@ const TimberMarkSearch: FC = () => {
   const set = <K extends keyof TimbermarkSearchParams>(key: K, value: TimbermarkSearchParams[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  // Once a search the user ran (or a page change) finishes, bring the table into view.
+  // Not for the search re-run on coming back to the page, which shouldn't jump.
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const scrollPending = useRef(false);
+  useEffect(() => {
+    if (loading || !scrollPending.current) return;
+    scrollPending.current = false;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    resultsRef.current?.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  }, [loading]);
+
   const runSearch = useCallback(
-    async (nextPage: number, nextSize: number) => {
-      if (form.issueDateFrom && form.issueDateTo && form.issueDateFrom > form.issueDateTo) {
+    async (
+      nextPage: number,
+      nextSize: number,
+      criteria: TimbermarkSearchParams = form,
+      scrollToResults = true,
+    ) => {
+      if (
+        criteria.issueDateFrom &&
+        criteria.issueDateTo &&
+        criteria.issueDateFrom > criteria.issueDateTo
+      ) {
         setError('Issue date from must be on or before issue date to.');
         return;
       }
-      if (form.expiryDateFrom && form.expiryDateTo && form.expiryDateFrom > form.expiryDateTo) {
+      if (
+        criteria.expiryDateFrom &&
+        criteria.expiryDateTo &&
+        criteria.expiryDateFrom > criteria.expiryDateTo
+      ) {
         setError('Expiry date from must be on or before expiry date to.');
         return;
       }
+      if (
+        criteria.amendDateFrom &&
+        criteria.amendDateTo &&
+        criteria.amendDateFrom > criteria.amendDateTo
+      ) {
+        setError('Amended date from must be on or before amended date to.');
+        return;
+      }
+      scrollPending.current = scrollToResults;
       setLoading(true);
       setError(null);
       try {
-        const data = await searchTimbermarks({ ...form, page: nextPage, size: nextSize });
+        const data = await searchTimbermarks({ ...criteria, page: nextPage, size: nextSize });
+        setSearched({ ...criteria });
+        setLastSearch({ criteria, page: data.page.number, size: data.page.size });
         setRows(
           data.content.map((r, i) => ({
             ...r,
@@ -193,7 +261,7 @@ const TimberMarkSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form],
+    [form, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -213,13 +281,27 @@ const TimberMarkSearch: FC = () => {
 
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
+    setLastSearch(null);
     setRows(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, []);
+  }, [setForm, setLastSearch]);
+
+  // Back on the page with a search from earlier in this tab: run it again (fresh
+  // results, same page), once the code lists — and so the form — are ready.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (codeListsLoading || restored) return;
+    setRestored(true);
+    if (lastSearch && rows === null) {
+      void runSearch(lastSearch.page, lastSearch.size, lastSearch.criteria, false);
+    }
+  }, [codeListsLoading, restored, lastSearch, rows, runSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
+  // "HI - Issued" in the pill, as the other status columns show it.
+  const markStatusNames = new Map(markStatuses.map((o) => [o.code, o.description]));
 
   const codeItems = (options: CodeOption[]) =>
     options.map((o) => <SelectItem key={o.code} value={o.code} text={o.description || o.code} />);
@@ -250,23 +332,15 @@ const TimberMarkSearch: FC = () => {
               {codeItems(orgUnits)}
             </Select>
 
-            <TextInput
-              id="tm-mgmt-unit-type"
-              labelText="Mgmt unit type"
-              value={form.mgmtUnitType ?? ''}
-              onChange={(e) => set('mgmtUnitType', e.target.value)}
-              maxLength={1}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="tm-mgmt-unit-id"
-              labelText="Mgmt unit ID"
-              value={form.mgmtUnitId ?? ''}
-              onChange={(e) => set('mgmtUnitId', e.target.value)}
-              maxLength={3}
-              autoComplete="off"
-            />
+            <div className="fsp-search__wide-cell">
+              <ManagementUnitComboBox
+                id="tm-mgmt-unit"
+                units={mgmtUnits}
+                typeCode={form.mgmtUnitType}
+                unitId={form.mgmtUnitId}
+                onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
+              />
+            </div>
 
             <TextInput
               id="tm-file"
@@ -280,7 +354,7 @@ const TimberMarkSearch: FC = () => {
 
             <TextInput
               id="tm-cp"
-              labelText="CP"
+              labelText="Cutting permit"
               value={form.cuttingPermitId ?? ''}
               onChange={(e) => set('cuttingPermitId', e.target.value)}
               maxLength={3}
@@ -318,31 +392,12 @@ const TimberMarkSearch: FC = () => {
               {codeItems(markStatuses)}
             </Select>
 
-            <TextInput
-              id="tm-client-number"
-              labelText="Client number"
-              value={form.clientNumber ?? ''}
-              onChange={(e) => set('clientNumber', e.target.value)}
-              maxLength={8}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="tm-client-locn"
-              labelText="Client location"
-              value={form.clientLocnCode ?? ''}
-              onChange={(e) => set('clientLocnCode', e.target.value)}
-              maxLength={2}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="tm-client-name"
-              labelText="Client name"
-              value={form.clientName ?? ''}
-              onChange={(e) => set('clientName', e.target.value)}
-              maxLength={60}
-              autoComplete="off"
+            <ClientComboBox
+              id="tm-client"
+              clientNumber={form.clientNumber}
+              clientLocnCode={form.clientLocnCode}
+              clientName={form.clientName}
+              onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
             />
 
             <Select
@@ -390,7 +445,15 @@ const TimberMarkSearch: FC = () => {
                 id="tm-issue-from"
                 labelText="Issue date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('issueDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('issueDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -406,7 +469,15 @@ const TimberMarkSearch: FC = () => {
                 id="tm-issue-to"
                 labelText="Issue date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('issueDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('issueDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -422,7 +493,15 @@ const TimberMarkSearch: FC = () => {
                 id="tm-expiry-from"
                 labelText="Expiry date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('expiryDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('expiryDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -438,7 +517,15 @@ const TimberMarkSearch: FC = () => {
                 id="tm-expiry-to"
                 labelText="Expiry date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('expiryDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('expiryDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -483,6 +570,57 @@ const TimberMarkSearch: FC = () => {
               autoComplete="off"
             />
 
+            {/* Amended Date is stamped when an amendment such as a renewal is approved, so it
+                finds a mark renewed in a period without knowing when it was first issued. */}
+            <DatePicker
+              datePickerType="single"
+              dateFormat="Y-m-d"
+              className="fsp-search__row-start"
+              value={form.amendDateFrom ? [form.amendDateFrom] : []}
+              onChange={(dates) =>
+                set('amendDateFrom', dates[0] ? dates[0].toISOString().slice(0, 10) : '')
+              }
+            >
+              <DatePickerInput
+                id="tm-amend-from"
+                labelText="Amended date from"
+                placeholder="YYYY-MM-DD"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('amendDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('amendDateFrom', typed);
+                  }
+                }}
+              />
+            </DatePicker>
+
+            <DatePicker
+              datePickerType="single"
+              dateFormat="Y-m-d"
+              value={form.amendDateTo ? [form.amendDateTo] : []}
+              onChange={(dates) =>
+                set('amendDateTo', dates[0] ? dates[0].toISOString().slice(0, 10) : '')
+              }
+            >
+              <DatePickerInput
+                id="tm-amend-to"
+                labelText="Amended date to"
+                placeholder="YYYY-MM-DD"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('amendDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('amendDateTo', typed);
+                  }
+                }}
+              />
+            </DatePicker>
+
             <div className="fsp-search__full-cell">
               <Checkbox
                 id="tm-private-only"
@@ -523,7 +661,7 @@ const TimberMarkSearch: FC = () => {
       </Tile>
 
       {(loading || rows !== null) && (
-        <div className="fsp-search__results-fullbleed">
+        <div className="fsp-search__results-fullbleed" ref={resultsRef}>
           <div className="fsp-search__results">
             {loading ? (
               <>
@@ -550,6 +688,7 @@ const TimberMarkSearch: FC = () => {
                     {totalElements.toLocaleString()}{' '}
                     {totalElements === 1 ? 'timber mark' : 'timber marks'} found
                   </span>
+                  {searched && <ExportCsvButton path={timbermarkSearchExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">
@@ -568,11 +707,24 @@ const TimberMarkSearch: FC = () => {
                           </TableHead>
                           <TableBody>
                             {dtRows.map((row) => {
-                              const cp =
-                                (row.cells.find((c) => c.info.header === 'cuttingPermitId')
-                                  ?.value as string | undefined) ?? '';
+                              const valueOf = (key: string) =>
+                                (row.cells.find((c) => c.info.header === key)?.value as
+                                  string | null | undefined) ?? null;
+                              // A private mark (it has a certificate) opens its application,
+                              // as legacy's Certificate link opened FTA510. Any other mark
+                              // opens its tenure.
+                              const fileId = valueOf('forestFileId');
+                              const target = valueOf('certificate')
+                                ? markDetailPath(valueOf('timberMark'), valueOf('certificate'))
+                                : fileId
+                                  ? `/tenures/${encodeURIComponent(fileId)}`
+                                  : null;
                               const open = () => {
-                                if (cp) navigate(`/harvesting-authority/${encodeURIComponent(cp)}`);
+                                // The detail's back link returns here, not to its usual list.
+                                if (target)
+                                  navigate(target, {
+                                    state: originState(TIMBER_MARK_SEARCH_ORIGIN),
+                                  });
                               };
                               return (
                                 <TableRow
@@ -594,7 +746,14 @@ const TimberMarkSearch: FC = () => {
                                     if (cell.info.header === 'markStatusSt') {
                                       return (
                                         <TableCell key={cell.id}>
-                                          {value ? <StatusTag status={value} /> : '—'}
+                                          {value ? (
+                                            <StatusTag
+                                              status={markStatusNames.get(value) || value}
+                                              variant={statusCodeVariant(value)}
+                                            />
+                                          ) : (
+                                            '—'
+                                          )}
                                         </TableCell>
                                       );
                                     }

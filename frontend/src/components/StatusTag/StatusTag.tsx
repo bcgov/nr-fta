@@ -31,14 +31,28 @@ const statusVariant = (desc: string): string => {
 interface StatusTagProps {
   /** The status description text shown inside the pill. */
   status: string;
+  /**
+   * The colour, when the caller knows it from the status code — for code sets
+   * whose descriptions the matcher below cannot read (e.g. private marks).
+   * Falls back to matching on `status` when absent.
+   */
+  variant?: string;
+  /** Extra classes, e.g. to size the pill for a page title. */
+  className?: string;
 }
 
 /**
  * FSP status pill, shared across every list page so the size, shape, and
  * colour palette are identical everywhere.
  */
-export const StatusTag: FC<StatusTagProps> = ({ status }) => (
-  <span className={`bc-status-tag bc-status-tag--${statusVariant(status)}`}>{status}</span>
+export const StatusTag: FC<StatusTagProps> = ({ status, variant, className }) => (
+  <span
+    className={`bc-status-tag bc-status-tag--${variant ?? statusVariant(status)}${
+      className ? ` ${className}` : ''
+    }`}
+  >
+    {status}
+  </span>
 );
 
 export default StatusTag;

@@ -31,7 +31,7 @@ public class MarkTransferWriteController {
   public ResponseEntity<Map<String, String>> transfer(
       @RequestBody MarkTransferRequest request,
       JwtAuthenticationToken principal) {
-    String userId = JwtPrincipalUtil.getIdpUsername(principal);
+    String userId = JwtPrincipalUtil.getAuditUserId(principal);
     String timberMark = markTransferWriteService.transfer(request, userId);
     return ResponseEntity.ok(Map.of("timberMark", timberMark));
   }

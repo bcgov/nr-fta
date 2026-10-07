@@ -17,28 +17,43 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react';
-import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState, type FC, type FormEvent } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
+import ClientComboBox from '@/components/ClientComboBox';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
+import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
+import UserName from '@/components/UserName';
+import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
+import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
-import { getOrgUnits, getPrivateMarkStatuses, type CodeOption } from '@/services/codeLists';
-import { listMarks, type MarkListParams, type MarkListRow } from '@/services/mark_list';
+import { canEditMarks } from '@/routes/access';
+import { getDistricts, getPrivateMarkStatuses, type CodeOption } from '@/services/codeLists';
+import { markDetailPath } from '@/services/mark_detail';
+import {
+  listMarks,
+  markListExportPath,
+  type MarkListParams,
+  type MarkListRow,
+} from '@/services/mark_list';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 import { formatDate } from '@/utils/formatDate';
+
+import NewMarkApplicationModal from '../NewMarkApplicationModal';
 
 // Column order follows the legacy FTA500 grid.
 const HEADERS = [
   { key: 'certificate', header: 'Certificate' },
   { key: 'timberMark', header: 'Timber mark' },
-  { key: 'markApplDate', header: 'Applied' },
+  { key: 'markApplDate', header: 'Application date' },
   { key: 'orgUnitCode', header: 'District' },
   { key: 'markStatusSt', header: 'Status' },
   { key: 'clientName', header: 'Client' },
-  { key: 'idir', header: 'IDIR' },
+  { key: 'idir', header: 'Last updated by' },
 ];
 
 /** A result row carrying the id Carbon's DataTable requires. */
@@ -64,29 +79,56 @@ const EMPTY_FORM: MarkListParams = {};
  */
 const MarkList: FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { display } = useNotification();
+  const { user } = useAuth();
+  const mayCreate = canEditMarks(user);
 
-  const [form, setForm] = useState<MarkListParams>(EMPTY_FORM);
+  // The New Mark Application modal opens over this list from its button. A
+  // direct link to /marks/application renders this page with it open too; the
+  // menu's "New Application" opens its own copy over whatever page is showing.
+  const onNewRoute = location.pathname === '/marks/application';
+  const [newOpen, setNewOpen] = useState(false);
+  const modalOpen = mayCreate && (newOpen || onNewRoute);
+  const closeNew = () => {
+    setNewOpen(false);
+    if (onNewRoute) navigate('/marks', { replace: true });
+  };
+
+  // Criteria and the last search are kept for the browser tab, so coming back
+  // from a mark shows the same list again.
+  const [form, setForm] = useSessionState<MarkListParams>('fta.marks.list.form', EMPTY_FORM);
+  const [lastSearch, setLastSearch] = useSessionState<LastSearch<MarkListParams> | null>(
+    'fta.marks.list.last',
+    null,
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<MarkListParams | null>(null);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [orgUnits, setOrgUnits] = useState<CodeOption[]>([]);
+  const [districts, setDistricts] = useState<CodeOption[]>([]);
   const [statuses, setStatuses] = useState<CodeOption[]>([]);
   const [codeListsLoading, setCodeListsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled([getOrgUnits(), getPrivateMarkStatuses()]).then((settled) => {
+    Promise.allSettled([getDistricts(), getPrivateMarkStatuses()]).then((settled) => {
       if (cancelled) return;
       const [orgRes, statusRes] = settled;
-      if (orgRes.status === 'fulfilled') setOrgUnits(orgRes.value);
+      // Three-letter district codes only, as legacy's lists show them. The label
+      // reads "CODE - name" (CodeListService), so the code is what's before " - ".
+      if (orgRes.status === 'fulfilled')
+        setDistricts(orgRes.value.filter((o) => o.description.split(' - ')[0].length === 3));
       if (statusRes.status === 'fulfilled') setStatuses(statusRes.value);
       const failed = [
-        orgRes.status === 'rejected' ? 'org units' : null,
+        orgRes.status === 'rejected' ? 'districts' : null,
         statusRes.status === 'rejected' ? 'statuses' : null,
       ].filter(Boolean);
       if (failed.length > 0) setError(`Could not load ${failed.join(', ')}`);
@@ -107,11 +149,13 @@ const MarkList: FC = () => {
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const runSearch = useCallback(
-    async (nextPage: number, nextSize: number) => {
+    async (nextPage: number, nextSize: number, criteria: MarkListParams = form) => {
       setLoading(true);
       setError(null);
       try {
-        const data = await listMarks({ ...form, page: nextPage, size: nextSize });
+        const data = await listMarks({ ...criteria, page: nextPage, size: nextSize });
+        setSearched({ ...criteria });
+        setLastSearch({ criteria, page: data.page.number, size: data.page.size });
         setRows(
           data.content.map((r, i) => ({
             ...r,
@@ -129,8 +173,19 @@ const MarkList: FC = () => {
         setLoading(false);
       }
     },
-    [form],
+    [form, setLastSearch],
   );
+
+  // Open on the last search from this tab, or else the unfiltered list rather
+  // than an empty page. Once only: runSearch changes identity as the form is
+  // edited, and the ref also absorbs StrictMode's double effect run in development.
+  const autoSearched = useRef(false);
+  useEffect(() => {
+    if (autoSearched.current) return;
+    autoSearched.current = true;
+    if (lastSearch) void runSearch(lastSearch.page, lastSearch.size, lastSearch.criteria);
+    else void runSearch(0, pageSize);
+  }, [runSearch, pageSize, lastSearch]);
 
   const onSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
@@ -149,13 +204,17 @@ const MarkList: FC = () => {
 
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
+    setLastSearch(null);
     setRows(null);
+    setSearched(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, []);
+  }, [setForm, setLastSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
+  const rowsById = new Map((rows ?? []).map((r) => [r.id, r]));
+  const statusNames = new Map(statuses.map((o) => [o.code, o.description]));
 
   if (codeListsLoading) {
     return (
@@ -167,19 +226,22 @@ const MarkList: FC = () => {
 
   return (
     <PageLayout
-      title="Private Marks"
+      title="Private Mark Applications"
       subtitle="Search private timber mark applications and amendments, or start a new one"
       actions={
-        <Button
-          size="md"
-          kind="tertiary"
-          renderIcon={DocumentAdd}
-          onClick={() => navigate('/marks/application')}
-        >
-          New Mark Application
-        </Button>
+        mayCreate ? (
+          <Button
+            size="md"
+            kind="tertiary"
+            renderIcon={DocumentAdd}
+            onClick={() => setNewOpen(true)}
+          >
+            New Mark Application
+          </Button>
+        ) : undefined
       }
     >
+      <NewMarkApplicationModal open={modalOpen} onClose={closeNew} />
       <Tile className="fsp-search__tile">
         <form className="fsp-search__form" onSubmit={onSubmit}>
           <div className="fsp-search__field-grid">
@@ -190,7 +252,7 @@ const MarkList: FC = () => {
               onChange={(e) => set('hdrDistrict', e.target.value)}
             >
               <SelectItem value="" text="All districts" />
-              {orgUnits.map((o) => (
+              {districts.map((o) => (
                 <SelectItem key={o.code} value={o.code} text={o.description || o.code} />
               ))}
             </Select>
@@ -205,14 +267,13 @@ const MarkList: FC = () => {
               autoComplete="off"
             />
 
-            <TextInput
+            <ClientComboBox
               id="mk-holder"
-              labelText="Client / holder"
-              placeholder="e.g. Meadow Ranch"
-              value={form.clientName ?? ''}
-              onChange={(e) => set('clientName', e.target.value)}
-              maxLength={60}
-              autoComplete="off"
+              titleText="Client / holder"
+              clientNumber={form.clientNumber}
+              clientLocnCode={form.clientLocnCode}
+              clientName={form.clientName}
+              onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
             />
 
             <Select
@@ -271,6 +332,7 @@ const MarkList: FC = () => {
                   <span className="fsp-search__results-count">
                     {totalElements.toLocaleString()} {totalElements === 1 ? 'mark' : 'marks'} found
                   </span>
+                  {searched && <ExportCsvButton path={markListExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">
@@ -289,14 +351,14 @@ const MarkList: FC = () => {
                           </TableHead>
                           <TableBody>
                             {dtRows.map((row) => {
-                              const mark =
-                                (row.cells.find((c) => c.info.header === 'timberMark')?.value as
-                                  string | undefined) ||
-                                (row.cells.find((c) => c.info.header === 'certificate')?.value as
-                                  string | undefined) ||
-                                '';
+                              // An application not yet issued has no timber
+                              // mark; it opens by its certificate instead.
+                              const source = rowsById.get(row.id);
+                              const path = source
+                                ? markDetailPath(source.timberMark, source.certificate)
+                                : null;
                               const open = () => {
-                                if (mark) navigate(`/marks/${encodeURIComponent(mark)}`);
+                                if (path) navigate(path);
                               };
                               return (
                                 <TableRow
@@ -318,7 +380,21 @@ const MarkList: FC = () => {
                                     if (cell.info.header === 'markStatusSt') {
                                       return (
                                         <TableCell key={cell.id}>
-                                          {value ? <StatusTag status={value} /> : '—'}
+                                          {value ? (
+                                            <StatusTag
+                                              status={statusNames.get(value) || value}
+                                              variant={statusCodeVariant(value)}
+                                            />
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </TableCell>
+                                      );
+                                    }
+                                    if (cell.info.header === 'idir') {
+                                      return (
+                                        <TableCell key={cell.id}>
+                                          <UserName userId={value} />
                                         </TableCell>
                                       );
                                     }

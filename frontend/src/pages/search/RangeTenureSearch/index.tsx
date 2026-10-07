@@ -22,12 +22,17 @@ import {
 import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import ClientComboBox from '@/components/ClientComboBox';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
+import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
+import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
+  getManagementUnits,
   getFileClientTypes,
   getFileStatuses,
   getFileTypes,
@@ -35,17 +40,20 @@ import {
   getRangeZones,
   type CodeOption,
 } from '@/services/codeLists';
+import type { ManagementUnit } from '@/services/codeLists';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 import {
+  rangeTenureExportPath,
   searchRangeTenures,
   type RangeTenureSearchParams,
   type RangeTenureSummary,
 } from '@/services/range_tenure_search';
 import { formatDate } from '@/utils/formatDate';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 // Column order follows the legacy FTA001R results grid.
 const HEADERS = [
-  { key: 'orgUnitCode', header: 'Admin org unit' },
+  { key: 'orgUnitCode', header: 'Administration organization unit' },
   { key: 'clientName', header: 'Client name' },
   { key: 'fileClientTypeDesc', header: 'Client type' },
   { key: 'fileTypeCode', header: 'File type' },
@@ -71,13 +79,13 @@ const MIN_CRITERIA = 2;
 /**
  * FTA001R — Range Tenure Search.
  *
- * <p>Criteria match the legacy screen: org unit, zone, management unit, file,
+ * <p>Criteria match the legacy screen: organization unit, zone, management unit, file,
  * type, status, both date ranges, client (number / location / name / type), and
  * the six range-provision figures — provision year plus From/To pairs for
  * authorized use, temporary increase, billable and non-billable non-use, and
  * total annual use.
  *
- * <p>Zone is a dropdown that reloads when Admin Org Unit changes, as legacy
+ * <p>Zone is a dropdown that reloads when Admin Organization Unit changes, as legacy
  * does; the value is a 4-character zone code matched against
  * `pfu.district_admin_zone`.
  *
@@ -92,8 +100,20 @@ const RangeTenureSearch: FC = () => {
   const navigate = useNavigate();
   const { display } = useNotification();
 
-  const [form, setForm] = useState<RangeTenureSearchParams>(EMPTY_FORM);
+  // Criteria and the last search are kept for the browser tab; see TenureSearch.
+  const [form, setForm] = useSessionState<RangeTenureSearchParams>(
+    'fta.search.rangeTenure.form',
+    EMPTY_FORM,
+  );
+  const [lastSearch, setLastSearch] = useSessionState<LastSearch<RangeTenureSearchParams> | null>(
+    'fta.search.rangeTenure.last',
+    null,
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<RangeTenureSearchParams | null>(null);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -105,6 +125,7 @@ const RangeTenureSearch: FC = () => {
   const [fileStatuses, setFileStatuses] = useState<CodeOption[]>([]);
   const [clientTypes, setClientTypes] = useState<CodeOption[]>([]);
   const [zones, setZones] = useState<CodeOption[]>([]);
+  const [mgmtUnits, setMgmtUnits] = useState<ManagementUnit[]>([]);
   const [codeListsLoading, setCodeListsLoading] = useState(true);
 
   useEffect(() => {
@@ -114,13 +135,22 @@ const RangeTenureSearch: FC = () => {
       getFileTypes(),
       getFileStatuses(),
       getFileClientTypes(),
+      getManagementUnits(),
     ]).then((settled) => {
       if (cancelled) return;
-      const setters = [setOrgUnits, setFileTypes, setFileStatuses, setClientTypes];
-      const names = ['org units', 'file types', 'file statuses', 'client types'];
+      const setters = [setOrgUnits, setFileTypes, setFileStatuses, setClientTypes, setMgmtUnits];
+      const names = [
+        'organization units',
+        'file types',
+        'file statuses',
+        'client types',
+        'management units',
+      ];
       const failed: string[] = [];
       settled.forEach((r, i) => {
-        if (r.status === 'fulfilled') setters[i](r.value);
+        // Each setter takes the shape its own list returns; the array is
+        // parallel to the promises above, so index i lines them up.
+        if (r.status === 'fulfilled') (setters[i] as (v: unknown) => void)(r.value);
         else failed.push(names[i]);
       });
       if (failed.length > 0) setError(`Could not load ${failed.join(', ')}`);
@@ -131,10 +161,10 @@ const RangeTenureSearch: FC = () => {
     };
   }, []);
 
-  // Zones belong to a district, so the list reloads whenever the org unit
+  // Zones belong to a district, so the list reloads whenever the organization unit
   // changes — and any zone already chosen is cleared, since it may not exist
   // under the new district.
-  const orgUnitNo = form.orgUnitCode;
+  const orgUnitNo = form.orgUnitNo;
   useEffect(() => {
     let cancelled = false;
     getRangeZones(orgUnitNo)
@@ -161,26 +191,36 @@ const RangeTenureSearch: FC = () => {
   ) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const runSearch = useCallback(
-    async (nextPage: number, nextSize: number) => {
-      const filled = Object.entries(form).filter(
+    async (nextPage: number, nextSize: number, criteria: RangeTenureSearchParams = form) => {
+      const filled = Object.entries(criteria).filter(
         ([k, v]) => k !== 'page' && k !== 'size' && v !== undefined && v !== '',
       ).length;
       if (filled < MIN_CRITERIA) {
         setError('Enter at least two search criteria.');
         return;
       }
-      if (form.issueDateFrom && form.issueDateTo && form.issueDateFrom > form.issueDateTo) {
+      if (
+        criteria.issueDateFrom &&
+        criteria.issueDateTo &&
+        criteria.issueDateFrom > criteria.issueDateTo
+      ) {
         setError('Start date from must be on or before start date to.');
         return;
       }
-      if (form.expiryDateFrom && form.expiryDateTo && form.expiryDateFrom > form.expiryDateTo) {
+      if (
+        criteria.expiryDateFrom &&
+        criteria.expiryDateTo &&
+        criteria.expiryDateFrom > criteria.expiryDateTo
+      ) {
         setError('Expiry date from must be on or before expiry date to.');
         return;
       }
       setLoading(true);
       setError(null);
       try {
-        const data = await searchRangeTenures({ ...form, page: nextPage, size: nextSize });
+        const data = await searchRangeTenures({ ...criteria, page: nextPage, size: nextSize });
+        setSearched({ ...criteria });
+        setLastSearch({ criteria, page: data.page.number, size: data.page.size });
         setRows(data.content.map((r, i) => ({ ...r, id: `${r.forestFileId}-${i}` })));
         setTotalElements(data.page.totalElements);
         setPage(data.page.number);
@@ -193,7 +233,7 @@ const RangeTenureSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form],
+    [form, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -213,11 +253,23 @@ const RangeTenureSearch: FC = () => {
 
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
+    setLastSearch(null);
     setRows(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, []);
+  }, [setForm, setLastSearch]);
+
+  // Back on the page with a search from earlier in this tab: run it again (fresh
+  // results, same page), once the code lists — and so the form — are ready.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (codeListsLoading || restored) return;
+    setRestored(true);
+    if (lastSearch && rows === null) {
+      void runSearch(lastSearch.page, lastSearch.size, lastSearch.criteria);
+    }
+  }, [codeListsLoading, restored, lastSearch, rows, runSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
 
@@ -252,24 +304,26 @@ const RangeTenureSearch: FC = () => {
   return (
     <PageLayout
       title="Range Tenure Search"
-      subtitle="Find a range agreement by org unit, zone, client, status or annual use"
+      subtitle="Find a range agreement by organization unit, zone, client, status or annual use"
     >
       <Tile className="fsp-search__tile">
         <form className="fsp-search__form" onSubmit={onSubmit}>
           <div className="fsp-search__field-grid">
-            <Select
-              id="rt-org-unit"
-              labelText="Admin org unit"
-              value={form.orgUnitCode ?? ''}
-              onChange={(e) => {
-                set('orgUnitCode', e.target.value);
-                // The zone list is about to reload for a different district.
-                set('zone', '');
-              }}
-            >
-              <SelectItem value="" text="All org units" />
-              {codeItems(orgUnits)}
-            </Select>
+            <div className="fsp-search__wide-cell">
+              <Select
+                id="rt-org-unit"
+                labelText="Administration organization unit"
+                value={form.orgUnitNo ?? ''}
+                onChange={(e) => {
+                  set('orgUnitNo', e.target.value);
+                  // The zone list is about to reload for a different district.
+                  set('zone', '');
+                }}
+              >
+                <SelectItem value="" text="All organization units" />
+                {codeItems(orgUnits)}
+              </Select>
+            </div>
 
             <Select
               id="rt-zone"
@@ -281,23 +335,15 @@ const RangeTenureSearch: FC = () => {
               {codeItems(zones)}
             </Select>
 
-            <TextInput
-              id="rt-mgmt-unit-type"
-              labelText="Mgmt unit type"
-              value={form.mgmtUnitType ?? ''}
-              onChange={(e) => set('mgmtUnitType', e.target.value)}
-              maxLength={1}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="rt-mgmt-unit-id"
-              labelText="Mgmt unit ID"
-              value={form.mgmtUnitId ?? ''}
-              onChange={(e) => set('mgmtUnitId', e.target.value)}
-              maxLength={3}
-              autoComplete="off"
-            />
+            <div className="fsp-search__wide-cell">
+              <ManagementUnitComboBox
+                id="rt-mgmt-unit"
+                units={mgmtUnits}
+                typeCode={form.mgmtUnitType}
+                unitId={form.mgmtUnitId}
+                onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
+              />
+            </div>
 
             <TextInput
               id="rt-file"
@@ -329,32 +375,12 @@ const RangeTenureSearch: FC = () => {
               {codeItems(fileStatuses)}
             </Select>
 
-            <TextInput
-              id="rt-client-number"
-              labelText="Client number"
-              value={form.clientNumber ?? ''}
-              onChange={(e) => set('clientNumber', e.target.value)}
-              maxLength={8}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="rt-client-locn"
-              labelText="Client location"
-              value={form.clientLocnCode ?? ''}
-              onChange={(e) => set('clientLocnCode', e.target.value)}
-              maxLength={2}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="rt-client-name"
-              labelText="Client name"
-              placeholder="e.g. Meadow Ranch"
-              value={form.clientName ?? ''}
-              onChange={(e) => set('clientName', e.target.value)}
-              maxLength={60}
-              autoComplete="off"
+            <ClientComboBox
+              id="rt-client"
+              clientNumber={form.clientNumber}
+              clientLocnCode={form.clientLocnCode}
+              clientName={form.clientName}
+              onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
             />
 
             <Select
@@ -382,7 +408,15 @@ const RangeTenureSearch: FC = () => {
                 id="rt-start-from"
                 labelText="Start date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('issueDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('issueDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -398,7 +432,15 @@ const RangeTenureSearch: FC = () => {
                 id="rt-start-to"
                 labelText="Start date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('issueDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('issueDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -414,7 +456,15 @@ const RangeTenureSearch: FC = () => {
                 id="rt-expiry-from"
                 labelText="Expiry date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('expiryDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('expiryDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -430,7 +480,15 @@ const RangeTenureSearch: FC = () => {
                 id="rt-expiry-to"
                 labelText="Expiry date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('expiryDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('expiryDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -516,6 +574,7 @@ const RangeTenureSearch: FC = () => {
                     {totalElements.toLocaleString()}{' '}
                     {totalElements === 1 ? 'agreement' : 'agreements'} found
                   </span>
+                  {searched && <ExportCsvButton path={rangeTenureExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">

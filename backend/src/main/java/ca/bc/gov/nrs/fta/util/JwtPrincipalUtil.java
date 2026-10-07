@@ -73,6 +73,23 @@ public class JwtPrincipalUtil {
   }
 
   /**
+   * The user as every write records them: {@code IDIR\\USERNAME}, upper-cased (or
+   * {@code IDIR\\USERGUID} when the username claim is absent) — the WebADE user id legacy
+   * wrote to the {@code CREATE_USER} / {@code UPDATE_USER} / {@code ENTRY_USERID} columns and
+   * passed to its PL/SQL. FTA authenticates IDIR only, so the prefix is always {@code IDIR}.
+   *
+   * @param principal the caller's token
+   * @return {@code IDIR\\} plus the IDP username, or an empty string when the token has neither
+   *     username nor GUID
+   */
+  public static String getAuditUserId(JwtAuthenticationToken principal) {
+    String username = getIdpUsername(principal);
+    return StringUtils.isBlank(username)
+        ? StringUtils.EMPTY
+        : PROVIDER_IDIR + "\\" + username.toUpperCase(Locale.ROOT);
+  }
+
+  /**
    * Retrieves the value of a specified claim from the claims map. If the claim is not present,
    * returns an empty string.
    *

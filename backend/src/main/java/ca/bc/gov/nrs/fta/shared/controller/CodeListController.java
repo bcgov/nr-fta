@@ -1,6 +1,7 @@
 package ca.bc.gov.nrs.fta.shared.controller;
 
 import ca.bc.gov.nrs.fta.shared.dto.CodeOptionDto;
+import ca.bc.gov.nrs.fta.shared.dto.ManagementUnitDto;
 import ca.bc.gov.nrs.fta.shared.service.CodeListService;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -26,9 +27,54 @@ public class CodeListController {
     this.codeListService = codeListService;
   }
 
+  /**
+   * Management units for the tenure search's autocomplete — the list legacy
+   * SIL004 showed in its own popup screen.
+   */
+  @GetMapping("/management-units")
+  public ResponseEntity<List<ManagementUnitDto>> managementUnits() {
+    return ResponseEntity.ok(codeListService.managementUnits());
+  }
+
   @GetMapping("/org-units")
   public ResponseEntity<List<CodeOptionDto>> orgUnits() {
     return ResponseEntity.ok(codeListService.orgUnits());
+  }
+
+  @GetMapping("/districts")
+  public ResponseEntity<List<CodeOptionDto>> districts() {
+    return ResponseEntity.ok(codeListService.districts());
+  }
+
+  /** District number to its default cascade split code. */
+  @GetMapping("/district-default-cascades")
+  public ResponseEntity<List<CodeOptionDto>> districtDefaultCascades() {
+    return ResponseEntity.ok(codeListService.districtDefaultCascades());
+  }
+
+  @GetMapping("/marking-methods")
+  public ResponseEntity<List<CodeOptionDto>> markingMethods() {
+    return ResponseEntity.ok(codeListService.markingMethods());
+  }
+
+  @GetMapping("/marking-instruments")
+  public ResponseEntity<List<CodeOptionDto>> markingInstruments() {
+    return ResponseEntity.ok(codeListService.markingInstruments());
+  }
+
+  @GetMapping("/cascade-splits")
+  public ResponseEntity<List<CodeOptionDto>> cascadeSplits() {
+    return ResponseEntity.ok(codeListService.cascadeSplits());
+  }
+
+  @GetMapping("/private-mark-types")
+  public ResponseEntity<List<CodeOptionDto>> privateMarkTypes() {
+    return ResponseEntity.ok(codeListService.privateMarkTypes());
+  }
+
+  @GetMapping("/private-mark-amend-statuses")
+  public ResponseEntity<List<CodeOptionDto>> privateMarkAmendStatuses() {
+    return ResponseEntity.ok(codeListService.privateMarkAmendStatuses());
   }
 
   @GetMapping("/file-types")
@@ -112,33 +158,5 @@ public class CodeListController {
     return ResponseEntity.ok(codeListService.harvestAuthClientTypes());
   }
 
-  @GetMapping("/recreation-file-statuses")
-  public ResponseEntity<List<CodeOptionDto>> recreationFileStatuses() {
-    return ResponseEntity.ok(codeListService.recreationFileStatuses());
-  }
 
-  @GetMapping("/recreation-project-types")
-  public ResponseEntity<List<CodeOptionDto>> recreationProjectTypes() {
-    return ResponseEntity.ok(codeListService.recreationProjectTypes());
-  }
-
-  @GetMapping("/recreation-risk-ratings")
-  public ResponseEntity<List<CodeOptionDto>> recreationRiskRatings() {
-    return ResponseEntity.ok(codeListService.recreationRiskRatings());
-  }
-
-  @GetMapping("/recreation-control-access-types")
-  public ResponseEntity<List<CodeOptionDto>> recreationControlAccessTypes() {
-    return ResponseEntity.ok(codeListService.recreationControlAccessTypes());
-  }
-
-  @GetMapping("/recreation-maintain-standards")
-  public ResponseEntity<List<CodeOptionDto>> recreationMaintainStandards() {
-    return ResponseEntity.ok(codeListService.recreationMaintainStandards());
-  }
-
-  @GetMapping("/recreation-districts")
-  public ResponseEntity<List<CodeOptionDto>> recreationDistricts() {
-    return ResponseEntity.ok(codeListService.recreationDistricts());
-  }
 }

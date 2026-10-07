@@ -21,15 +21,21 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react';
-import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FC, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import ClientComboBox from '@/components/ClientComboBox';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
+import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
+import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
+import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
+  getManagementUnits,
   getFileClientTypes,
   getFileSources,
   getFileStatuses,
@@ -38,12 +44,19 @@ import {
   getOrgUnits,
   type CodeOption,
 } from '@/services/codeLists';
-import { searchTenures, type TenureSearchParams, type TenureSummary } from '@/services/tenure';
+import type { ManagementUnit } from '@/services/codeLists';
+import {
+  searchTenures,
+  tenureSearchExportPath,
+  type TenureSearchParams,
+  type TenureSummary,
+} from '@/services/tenure';
 import { formatDate } from '@/utils/formatDate';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 // Column order follows the legacy FTA001 results grid.
 const HEADERS = [
-  { key: 'orgUnitCode', header: 'Admin org unit' },
+  { key: 'orgUnitCode', header: 'Administration organization unit' },
   { key: 'clientName', header: 'Client name' },
   { key: 'fileClientTypeDesc', header: 'Client type' },
   { key: 'fileTypeCode', header: 'File type' },
@@ -63,7 +76,6 @@ const TENURE_TYPES = [
   { value: '', label: 'Any' },
   { value: 'T', label: 'Timber' },
   { value: 'R', label: 'Range' },
-  { value: 'F', label: 'Recreation' },
 ];
 
 /** Salvage and Cash Sale are the same yes/no/any triple. */
@@ -85,10 +97,11 @@ const EMPTY_FORM: TenureSearchParams = { sortBy: 'org' };
 /**
  * FTA001 — Tenure Search.
  *
- * <p>Criteria match the legacy screen one for one, which is also the parameter
- * list of `THE.FTA_001_TENR_SRCH.MAINLINE`: org unit, file, client, management
- * unit, associated file, project name, both date ranges, salvage, cash sale,
- * map notation, and the sort choice.
+ * <p>Criteria match the legacy screen, which is also the parameter list of
+ * `THE.FTA_001_TENR_SRCH.MAINLINE`: organization unit, file, client, management unit,
+ * associated file, both date ranges, salvage, cash sale, map notation, and the
+ * sort choice. Legacy's recreation criteria — the Recreation tenure type and the
+ * project-name field — are left out: that work moved to a separate application.
  *
  * <p>Layout follows nr-fsp-new's FSP Search — criteria in a white tile over a
  * responsive grid, then a full-bleed grey results panel. The `fsp-search__*`
@@ -100,8 +113,18 @@ const TenureSearch: FC = () => {
   const navigate = useNavigate();
   const { display } = useNotification();
 
-  const [form, setForm] = useState<TenureSearchParams>(EMPTY_FORM);
+  // Criteria and the last search are kept for the browser tab, so coming back
+  // (e.g. via a detail page's back link) shows the same search again.
+  const [form, setForm] = useSessionState<TenureSearchParams>('fta.search.tenure.form', EMPTY_FORM);
+  const [lastSearch, setLastSearch] = useSessionState<LastSearch<TenureSearchParams> | null>(
+    'fta.search.tenure.last',
+    null,
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<TenureSearchParams | null>(null);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -115,6 +138,7 @@ const TenureSearch: FC = () => {
   const [clientTypes, setClientTypes] = useState<CodeOption[]>([]);
   const [fileSources, setFileSources] = useState<CodeOption[]>([]);
   const [mapNotationTypes, setMapNotationTypes] = useState<CodeOption[]>([]);
+  const [mgmtUnits, setMgmtUnits] = useState<ManagementUnit[]>([]);
   const [codeListsLoading, setCodeListsLoading] = useState(true);
 
   useEffect(() => {
@@ -128,6 +152,7 @@ const TenureSearch: FC = () => {
       getFileClientTypes(),
       getFileSources(),
       getMapNotationTypes(),
+      getManagementUnits(),
     ]).then((settled) => {
       if (cancelled) return;
       const setters = [
@@ -137,18 +162,22 @@ const TenureSearch: FC = () => {
         setClientTypes,
         setFileSources,
         setMapNotationTypes,
+        setMgmtUnits,
       ];
       const names = [
-        'org units',
+        'organization units',
         'file types',
         'file statuses',
         'client types',
         'file sources',
         'map notation types',
+        'management units',
       ];
       const failed: string[] = [];
       settled.forEach((r, i) => {
-        if (r.status === 'fulfilled') setters[i](r.value);
+        // Each setter takes the shape its own list returns; the array is
+        // parallel to the promises above, so index i lines them up.
+        if (r.status === 'fulfilled') (setters[i] as (v: unknown) => void)(r.value);
         else failed.push(names[i]);
       });
       if (failed.length > 0) setError(`Could not load ${failed.join(', ')}`);
@@ -170,22 +199,52 @@ const TenureSearch: FC = () => {
   const set = <K extends keyof TenureSearchParams>(key: K, value: TenureSearchParams[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  // Once a search the user ran (or a page change) finishes, bring the table into view.
+  // Not for the search re-run on coming back to the page, which shouldn't jump.
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const scrollPending = useRef(false);
+  useEffect(() => {
+    if (loading || !scrollPending.current) return;
+    scrollPending.current = false;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    resultsRef.current?.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  }, [loading]);
+
   const runSearch = useCallback(
-    async (nextPage: number, nextSize: number) => {
+    async (
+      nextPage: number,
+      nextSize: number,
+      criteria: TenureSearchParams = form,
+      scrollToResults = true,
+    ) => {
       // The package rejects a date range that runs backwards with a message the
       // user can't act on; catch it here instead of spending the round-trip.
-      if (form.issueDateFrom && form.issueDateTo && form.issueDateFrom > form.issueDateTo) {
+      if (
+        criteria.issueDateFrom &&
+        criteria.issueDateTo &&
+        criteria.issueDateFrom > criteria.issueDateTo
+      ) {
         setError('Issue Date From must be on or before Issue Date To.');
         return;
       }
-      if (form.expiryDateFrom && form.expiryDateTo && form.expiryDateFrom > form.expiryDateTo) {
+      if (
+        criteria.expiryDateFrom &&
+        criteria.expiryDateTo &&
+        criteria.expiryDateFrom > criteria.expiryDateTo
+      ) {
         setError('Expiry Date From must be on or before Expiry Date To.');
         return;
       }
+      scrollPending.current = scrollToResults;
       setLoading(true);
       setError(null);
       try {
-        const data = await searchTenures({ ...form, page: nextPage, size: nextSize });
+        const data = await searchTenures({ ...criteria, page: nextPage, size: nextSize });
+        setSearched({ ...criteria });
+        setLastSearch({ criteria, page: data.page.number, size: data.page.size });
         // The file id is unique within a page but can recur across pages as the
         // user moves back and forth, so the row key carries the index too.
         setRows(data.content.map((r, i) => ({ ...r, id: `${r.forestFileId}-${i}` })));
@@ -200,7 +259,7 @@ const TenureSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form],
+    [form, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -221,11 +280,23 @@ const TenureSearch: FC = () => {
 
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
+    setLastSearch(null);
     setRows(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, []);
+  }, [setForm, setLastSearch]);
+
+  // Back on the page with a search from earlier in this tab: run it again (fresh
+  // results, same page), once the code lists — and so the form — are ready.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (codeListsLoading || restored) return;
+    setRestored(true);
+    if (lastSearch && rows === null) {
+      void runSearch(lastSearch.page, lastSearch.size, lastSearch.criteria, false);
+    }
+  }, [codeListsLoading, restored, lastSearch, rows, runSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
   // Legacy only offers map notation for map-notation files.
@@ -250,33 +321,27 @@ const TenureSearch: FC = () => {
       <Tile className="fsp-search__tile">
         <form className="fsp-search__form" onSubmit={onSubmit}>
           <div className="fsp-search__field-grid">
-            <Select
-              id="ts-org-unit"
-              labelText="Admin org unit"
-              value={form.adminOrgUnitNo ?? ''}
-              onChange={(e) => set('adminOrgUnitNo', e.target.value)}
-            >
-              <SelectItem value="" text="All org units" />
-              {codeItems(orgUnits)}
-            </Select>
+            <div className="fsp-search__wide-cell">
+              <Select
+                id="ts-org-unit"
+                labelText="Administration organization unit"
+                value={form.adminOrgUnitNo ?? ''}
+                onChange={(e) => set('adminOrgUnitNo', e.target.value)}
+              >
+                <SelectItem value="" text="All organization units" />
+                {codeItems(orgUnits)}
+              </Select>
+            </div>
 
-            <TextInput
-              id="ts-mgmt-unit-type"
-              labelText="Mgmt unit type"
-              value={form.mgmtUnitType ?? ''}
-              onChange={(e) => set('mgmtUnitType', e.target.value)}
-              maxLength={1}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ts-mgmt-unit-id"
-              labelText="Mgmt unit ID"
-              value={form.mgmtUnitId ?? ''}
-              onChange={(e) => set('mgmtUnitId', e.target.value)}
-              maxLength={4}
-              autoComplete="off"
-            />
+            <div className="fsp-search__wide-cell">
+              <ManagementUnitComboBox
+                id="ts-mgmt-unit"
+                units={mgmtUnits}
+                typeCode={form.mgmtUnitType}
+                unitId={form.mgmtUnitId}
+                onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
+              />
+            </div>
 
             <TextInput
               id="ts-file-id"
@@ -319,32 +384,12 @@ const TenureSearch: FC = () => {
               {codeItems(fileStatuses)}
             </Select>
 
-            <TextInput
-              id="ts-client-number"
-              labelText="Client number"
-              value={form.clientNumber ?? ''}
-              onChange={(e) => set('clientNumber', e.target.value)}
-              maxLength={8}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ts-client-locn"
-              labelText="Client location"
-              value={form.clientLocnCode ?? ''}
-              onChange={(e) => set('clientLocnCode', e.target.value)}
-              maxLength={2}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ts-client-name"
-              labelText="Client name"
-              placeholder="e.g. West Fraser"
-              value={form.clientName ?? ''}
-              onChange={(e) => set('clientName', e.target.value)}
-              maxLength={60}
-              autoComplete="off"
+            <ClientComboBox
+              id="ts-client"
+              clientNumber={form.clientNumber}
+              clientLocnCode={form.clientLocnCode}
+              clientName={form.clientName}
+              onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
             />
 
             <Select
@@ -371,7 +416,7 @@ const TenureSearch: FC = () => {
 
             <Select
               id="ts-file-source"
-              labelText="Assoc. file source"
+              labelText="Associated file source"
               value={form.fileSource ?? ''}
               onChange={(e) => set('fileSource', e.target.value)}
             >
@@ -381,19 +426,10 @@ const TenureSearch: FC = () => {
 
             <TextInput
               id="ts-assoc-file-id"
-              labelText="Assoc. file ID"
+              labelText="Associated file ID"
               value={form.assocFileId ?? ''}
               onChange={(e) => set('assocFileId', e.target.value)}
               maxLength={10}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ts-file-name"
-              labelText="File / project name"
-              value={form.fileName ?? ''}
-              onChange={(e) => set('fileName', e.target.value)}
-              maxLength={30}
               autoComplete="off"
             />
 
@@ -435,7 +471,15 @@ const TenureSearch: FC = () => {
                 id="ts-issue-from"
                 labelText="Issue date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('issueDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('issueDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -451,7 +495,15 @@ const TenureSearch: FC = () => {
                 id="ts-issue-to"
                 labelText="Issue date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('issueDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('issueDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -467,7 +519,15 @@ const TenureSearch: FC = () => {
                 id="ts-expiry-from"
                 labelText="Expiry date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('expiryDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('expiryDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -483,7 +543,15 @@ const TenureSearch: FC = () => {
                 id="ts-expiry-to"
                 labelText="Expiry date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('expiryDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('expiryDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -494,7 +562,7 @@ const TenureSearch: FC = () => {
                 valueSelected={form.sortBy ?? 'org'}
                 onChange={(value) => set('sortBy', String(value))}
               >
-                <RadioButton labelText="Admin org" value="org" id="ts-sort-org" />
+                <RadioButton labelText="Administration organization" value="org" id="ts-sort-org" />
                 <RadioButton labelText="Client name" value="client" id="ts-sort-client" />
                 <RadioButton labelText="File type" value="fileType" id="ts-sort-filetype" />
               </RadioButtonGroup>
@@ -520,7 +588,7 @@ const TenureSearch: FC = () => {
       {/* Nothing is shown until a search has run, so the page opens on the
           criteria rather than on an empty table. */}
       {(loading || rows !== null) && (
-        <div className="fsp-search__results-fullbleed">
+        <div className="fsp-search__results-fullbleed" ref={resultsRef}>
           <div className="fsp-search__results">
             {loading ? (
               <>
@@ -547,6 +615,7 @@ const TenureSearch: FC = () => {
                     {totalElements.toLocaleString()} {totalElements === 1 ? 'tenure' : 'tenures'}{' '}
                     found
                   </span>
+                  {searched && <ExportCsvButton path={tenureSearchExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">
@@ -565,6 +634,9 @@ const TenureSearch: FC = () => {
                           </TableHead>
                           <TableBody>
                             {dtRows.map((row) => {
+                              // The status column shows the description; its
+                              // colour comes from the code on the same row.
+                              const statusCode = rows?.find((r) => r.id === row.id)?.fileStatusCode;
                               // Navigate from the file id cell, not row.id —
                               // that carries the disambiguating index suffix.
                               const forestFileId =
@@ -591,7 +663,14 @@ const TenureSearch: FC = () => {
                                     if (cell.info.header === 'fileStatusDesc') {
                                       return (
                                         <TableCell key={cell.id}>
-                                          {value ? <StatusTag status={value} /> : '—'}
+                                          {value ? (
+                                            <StatusTag
+                                              status={value}
+                                              variant={statusCodeVariant(statusCode)}
+                                            />
+                                          ) : (
+                                            '—'
+                                          )}
                                         </TableCell>
                                       );
                                     }

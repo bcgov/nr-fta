@@ -1,0 +1,11 @@
+// Notes tab (NotesPanel) — the notes list.
+
+.mark-notes__when {
+  white-space: nowrap;
+}
+
+// Notes are free text typed into a textarea; keep the author's line breaks.
+.mark-notes__text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}

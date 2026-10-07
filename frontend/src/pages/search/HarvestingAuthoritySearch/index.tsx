@@ -25,12 +25,17 @@ import {
 import { useCallback, useEffect, useMemo, useState, type FC, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import ClientComboBox from '@/components/ClientComboBox';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
+import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { useNotification } from '@/context/notification/useNotification';
+import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
   getFileTypes,
+  getManagementUnits,
   getHarvestAuthClientTypes,
   getHarvestAuthStatuses,
   getLicenceToCutCodes,
@@ -38,7 +43,9 @@ import {
   getSalvageTypes,
   type CodeOption,
 } from '@/services/codeLists';
+import type { ManagementUnit } from '@/services/codeLists';
 import {
+  harvestingSearchExportPath,
   searchHarvestingAuthorities,
   showOilAndGasColumns,
   SORT_CLIENT,
@@ -48,6 +55,7 @@ import {
   type HarvestingSearchResult,
 } from '@/services/harvesting_search';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 /** The seven columns always shown, in legacy result-grid order. */
 const BASE_HEADERS = [
@@ -56,7 +64,7 @@ const BASE_HEADERS = [
   { key: 'clientNumber', header: 'Client number' },
   { key: 'fileTypeCode', header: 'File type' },
   { key: 'forestFileId', header: 'File ID' },
-  { key: 'cuttingPermitId', header: 'CP' },
+  { key: 'cuttingPermitId', header: 'Cutting permit' },
   { key: 'timberMark', header: 'Timber mark' },
 ];
 
@@ -92,6 +100,58 @@ const EMPTY_FORM: HarvestingSearchParams = { sortBy: SORT_DISTRICT };
 /** The minimum criteria a non-key search needs, mirroring the backend. */
 const MIN_CRITERIA = 2;
 
+const hasValue = (v: string | undefined) => v !== undefined && v.trim().length > 0;
+
+/** Counts criteria the way the backend does — the O&G checkbox counts, sort does not. */
+const countCriteria = (criteria: HarvestingSearchParams) => {
+  const { sortBy, page: _p, size: _s, searchOnlyOg, ...rest } = criteria;
+  void sortBy;
+  void _p;
+  void _s;
+  let count = Object.values(rest).filter((v) => hasValue(v as string | undefined)).length;
+  if (searchOnlyOg === 'Y') count += 1;
+  return count;
+};
+
+/** Mirrors the backend guards so the user sees the problem before submitting. */
+const validate = (criteria: HarvestingSearchParams): string | null => {
+  const hasFile = hasValue(criteria.forestFileId);
+  const hasCp = hasValue(criteria.cuttingPermitId);
+  const hasHva = hasValue(criteria.hvaId);
+
+  if (!hasFile && (hasCp || hasHva)) {
+    return 'A Cutting Permit or HVA ID can only be used together with a File ID.';
+  }
+  if (hasFile && hasCp && hasHva) {
+    return 'Supply either a Cutting Permit or an HVA ID with the File ID, not both.';
+  }
+  // A key search bypasses the remaining rules, exactly as the backend does.
+  const isKeySearch = hasValue(criteria.timberMark) || (hasFile && (hasCp || hasHva));
+  if (isKeySearch) return null;
+
+  if (countCriteria(criteria) < MIN_CRITERIA) {
+    return `Please enter at least ${MIN_CRITERIA} search criteria.`;
+  }
+  if (!hasValue(criteria.forestDistrict)) {
+    return 'District is required unless you search by a key.';
+  }
+  if (
+    criteria.issueDateFrom &&
+    criteria.issueDateTo &&
+    criteria.issueDateFrom > criteria.issueDateTo
+  ) {
+    return 'Issue date from must be on or before issue date to.';
+  }
+  if (
+    criteria.expiryDateFrom &&
+    criteria.expiryDateTo &&
+    criteria.expiryDateFrom > criteria.expiryDateTo
+  ) {
+    return 'Expiry date from must be on or before expiry date to.';
+  }
+  return null;
+};
+
 /**
  * FTA005 — Harvesting Authority Search.
  *
@@ -114,8 +174,20 @@ const HarvestingAuthoritySearch: FC = () => {
   const navigate = useNavigate();
   const { display } = useNotification();
 
-  const [form, setForm] = useState<HarvestingSearchParams>(EMPTY_FORM);
+  // Criteria and the last search are kept for the browser tab; see TenureSearch.
+  const [form, setForm] = useSessionState<HarvestingSearchParams>(
+    'fta.search.harvestingAuthority.form',
+    EMPTY_FORM,
+  );
+  const [lastSearch, setLastSearch] = useSessionState<LastSearch<HarvestingSearchParams> | null>(
+    'fta.search.harvestingAuthority.last',
+    null,
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<HarvestingSearchParams | null>(null);
   const [showOg, setShowOg] = useState(false);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
@@ -129,6 +201,7 @@ const HarvestingAuthoritySearch: FC = () => {
   const [clientTypes, setClientTypes] = useState<CodeOption[]>([]);
   const [salvageTypes, setSalvageTypes] = useState<CodeOption[]>([]);
   const [purposes, setPurposes] = useState<CodeOption[]>([]);
+  const [mgmtUnits, setMgmtUnits] = useState<ManagementUnit[]>([]);
   const [codeListsLoading, setCodeListsLoading] = useState(true);
 
   useEffect(() => {
@@ -140,6 +213,7 @@ const HarvestingAuthoritySearch: FC = () => {
       getHarvestAuthClientTypes(),
       getSalvageTypes(),
       getLicenceToCutCodes(),
+      getManagementUnits(),
     ]).then((settled) => {
       if (cancelled) return;
       const setters = [
@@ -149,18 +223,22 @@ const HarvestingAuthoritySearch: FC = () => {
         setClientTypes,
         setSalvageTypes,
         setPurposes,
+        setMgmtUnits,
       ];
       const names = [
         'districts',
         'file types',
-        'CP statuses',
+        'cutting permit statuses',
         'client types',
         'salvage types',
         'purposes',
+        'management units',
       ];
       const failed: string[] = [];
       settled.forEach((r, i) => {
-        if (r.status === 'fulfilled') setters[i](r.value);
+        // Each setter takes the shape its own list returns; the array is
+        // parallel to the promises above, so index i lines them up.
+        if (r.status === 'fulfilled') (setters[i] as (v: unknown) => void)(r.value);
         else failed.push(names[i]);
       });
       if (failed.length > 0) setError(`Could not load ${failed.join(', ')}`);
@@ -180,58 +258,14 @@ const HarvestingAuthoritySearch: FC = () => {
   const set = <K extends keyof HarvestingSearchParams>(key: K, value: HarvestingSearchParams[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const hasValue = (v: string | undefined) => v !== undefined && v.trim().length > 0;
-
-  /** Counts criteria the way the backend does — the O&G checkbox counts, sort does not. */
-  const criteriaCount = useMemo(() => {
-    const { sortBy, page: _p, size: _s, searchOnlyOg, ...rest } = form;
-    void sortBy;
-    void _p;
-    void _s;
-    let count = Object.values(rest).filter((v) => hasValue(v as string | undefined)).length;
-    if (searchOnlyOg === 'Y') count += 1;
-    return count;
-  }, [form]);
-
   const headers = useMemo(
     () => (showOg ? [...BASE_HEADERS, ...OG_HEADERS] : BASE_HEADERS),
     [showOg],
   );
 
-  /** Mirrors the backend guards so the user sees the problem before submitting. */
-  const validate = useCallback((): string | null => {
-    const hasFile = hasValue(form.forestFileId);
-    const hasCp = hasValue(form.cuttingPermitId);
-    const hasHva = hasValue(form.hvaId);
-
-    if (!hasFile && (hasCp || hasHva)) {
-      return 'A Cutting Permit or HVA ID can only be used together with a File ID.';
-    }
-    if (hasFile && hasCp && hasHva) {
-      return 'Supply either a Cutting Permit or an HVA ID with the File ID, not both.';
-    }
-    // A key search bypasses the remaining rules, exactly as the backend does.
-    const isKeySearch = hasValue(form.timberMark) || (hasFile && (hasCp || hasHva));
-    if (isKeySearch) return null;
-
-    if (criteriaCount < MIN_CRITERIA) {
-      return `Please enter at least ${MIN_CRITERIA} search criteria.`;
-    }
-    if (!hasValue(form.forestDistrict)) {
-      return 'District is required unless you search by a key.';
-    }
-    if (form.issueDateFrom && form.issueDateTo && form.issueDateFrom > form.issueDateTo) {
-      return 'Issue date from must be on or before issue date to.';
-    }
-    if (form.expiryDateFrom && form.expiryDateTo && form.expiryDateFrom > form.expiryDateTo) {
-      return 'Expiry date from must be on or before expiry date to.';
-    }
-    return null;
-  }, [form, criteriaCount]);
-
   const runSearch = useCallback(
-    async (nextPage: number, nextSize: number) => {
-      const problem = validate();
+    async (nextPage: number, nextSize: number, criteria: HarvestingSearchParams = form) => {
+      const problem = validate(criteria);
       if (problem) {
         setError(problem);
         return;
@@ -240,13 +274,15 @@ const HarvestingAuthoritySearch: FC = () => {
       setError(null);
       // Decided before the request, from the submitted criteria, so the columns
       // match the search that produced the rows.
-      const og = showOilAndGasColumns(form);
+      const og = showOilAndGasColumns(criteria);
       try {
         const data = await searchHarvestingAuthorities({
-          ...form,
+          ...criteria,
           page: nextPage,
           size: nextSize,
         });
+        setSearched({ ...criteria });
+        setLastSearch({ criteria, page: data.page.number, size: data.page.size });
         setRows(
           data.content.map((r, i) => ({
             ...r,
@@ -267,7 +303,7 @@ const HarvestingAuthoritySearch: FC = () => {
         setLoading(false);
       }
     },
-    [form, validate],
+    [form, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -287,12 +323,24 @@ const HarvestingAuthoritySearch: FC = () => {
 
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
+    setLastSearch(null);
     setRows(null);
     setShowOg(false);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, []);
+  }, [setForm, setLastSearch]);
+
+  // Back on the page with a search from earlier in this tab: run it again (fresh
+  // results, same page), once the code lists — and so the form — are ready.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (codeListsLoading || restored) return;
+    setRestored(true);
+    if (lastSearch && rows === null) {
+      void runSearch(lastSearch.page, lastSearch.size, lastSearch.criteria);
+    }
+  }, [codeListsLoading, restored, lastSearch, rows, runSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
 
@@ -325,23 +373,15 @@ const HarvestingAuthoritySearch: FC = () => {
               {codeItems(orgUnits)}
             </Select>
 
-            <TextInput
-              id="ha-mgmt-unit-type"
-              labelText="Mgmt unit type"
-              value={form.mgmtUnitType ?? ''}
-              onChange={(e) => set('mgmtUnitType', e.target.value)}
-              maxLength={1}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ha-mgmt-unit-id"
-              labelText="Mgmt unit ID"
-              value={form.mgmtUnitId ?? ''}
-              onChange={(e) => set('mgmtUnitId', e.target.value)}
-              maxLength={4}
-              autoComplete="off"
-            />
+            <div className="fsp-search__wide-cell">
+              <ManagementUnitComboBox
+                id="ha-mgmt-unit"
+                units={mgmtUnits}
+                typeCode={form.mgmtUnitType}
+                unitId={form.mgmtUnitId}
+                onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
+              />
+            </div>
 
             <TextInput
               id="ha-file"
@@ -355,7 +395,7 @@ const HarvestingAuthoritySearch: FC = () => {
 
             <TextInput
               id="ha-cp"
-              labelText="CP"
+              labelText="Cutting permit"
               helperText="Requires a File ID"
               value={form.cuttingPermitId ?? ''}
               onChange={(e) => set('cuttingPermitId', e.target.value)}
@@ -396,7 +436,7 @@ const HarvestingAuthoritySearch: FC = () => {
 
             <Select
               id="ha-cp-status"
-              labelText="CP status"
+              labelText="Cutting permit status"
               value={form.harvestAuthStatusCode ?? ''}
               onChange={(e) => set('harvestAuthStatusCode', e.target.value)}
             >
@@ -404,37 +444,27 @@ const HarvestingAuthoritySearch: FC = () => {
               {codeItems(cpStatuses)}
             </Select>
 
-            <TextInput
-              id="ha-client-number"
-              labelText="Client number"
-              value={form.clientNumber ?? ''}
-              onChange={(e) => set('clientNumber', e.target.value)}
-              maxLength={8}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ha-client-locn"
-              labelText="Client location"
-              value={form.clientLocationCode ?? ''}
-              onChange={(e) => set('clientLocationCode', e.target.value)}
-              maxLength={2}
-              autoComplete="off"
-            />
-
-            <TextInput
-              id="ha-client-name"
-              labelText="Client name"
-              value={form.clientName ?? ''}
-              onChange={(e) => set('clientName', e.target.value)}
-              maxLength={60}
-              autoComplete="off"
+            <ClientComboBox
+              id="ha-client"
+              clientNumber={form.clientNumber}
+              clientLocnCode={form.clientLocationCode}
+              clientName={form.clientName}
+              helperText="Pick a client, or type a name. Defaults to the cutting permit licensee."
+              onChange={(next) =>
+                setForm((prev) => ({
+                  ...prev,
+                  clientNumber: next.clientNumber,
+                  // This screen's criterion is clientLocationCode, not clientLocnCode.
+                  clientLocationCode: next.clientLocnCode,
+                  clientName: next.clientName,
+                }))
+              }
             />
 
             <Select
               id="ha-client-type"
               labelText="Client type"
-              helperText="Defaults to the CP licensee"
+              helperText="Defaults to the cutting permit licensee"
               value={form.clientTypeCode ?? ''}
               onChange={(e) => set('clientTypeCode', e.target.value)}
             >
@@ -476,7 +506,15 @@ const HarvestingAuthoritySearch: FC = () => {
                 id="ha-issue-from"
                 labelText="Issue date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('issueDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('issueDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -492,7 +530,15 @@ const HarvestingAuthoritySearch: FC = () => {
                 id="ha-issue-to"
                 labelText="Issue date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('issueDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('issueDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -508,7 +554,15 @@ const HarvestingAuthoritySearch: FC = () => {
                 id="ha-expiry-from"
                 labelText="Expiry date from"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('expiryDateFrom', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('expiryDateFrom', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -524,7 +578,15 @@ const HarvestingAuthoritySearch: FC = () => {
                 id="ha-expiry-to"
                 labelText="Expiry date to"
                 placeholder="YYYY-MM-DD"
-                pattern="\d{4}-\d{2}-\d{2}"
+                pattern={TYPED_DATE_PATTERN}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') set('expiryDateTo', '');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) set('expiryDateTo', typed);
+                  }
+                }}
               />
             </DatePicker>
 
@@ -689,6 +751,7 @@ const HarvestingAuthoritySearch: FC = () => {
                     {totalElements.toLocaleString()}{' '}
                     {totalElements === 1 ? 'harvesting authority' : 'harvesting authorities'} found
                   </span>
+                  {searched && <ExportCsvButton path={harvestingSearchExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">

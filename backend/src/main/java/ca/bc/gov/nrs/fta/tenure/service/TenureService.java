@@ -1,5 +1,6 @@
 package ca.bc.gov.nrs.fta.tenure.service;
 
+import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.tenure.dto.TenureSearchCriteria;
 import ca.bc.gov.nrs.fta.tenure.dto.TenureSummaryDto;
@@ -9,20 +10,15 @@ import org.springframework.stereotype.Service;
  * Tenure search business logic.
  *
  * <p>Ports the legacy Oracle package {@code THE.FTA_001_TENR_SRCH} (the common
- * tenure search). The rows themselves come from a {@link TenureSearchSource},
- * of which there are two — one calling the legacy package, one querying the
- * {@code THE} tables directly — selected by {@code fta.data-access.mode}. See
- * that interface for why both exist and which is expected to survive.
- *
- * <p>This class keeps the signature the controller has always called, so the
- * choice of source is invisible above this line.
+ * tenure search) as SQL against the {@code THE} tables; see
+ * {@link TenureSearchTableSource}. The package itself is not called.
  */
 @Service
 public class TenureService {
 
-  private final TenureSearchSource source;
+  private final TenureSearchTableSource source;
 
-  public TenureService(TenureSearchSource source) {
+  public TenureService(TenureSearchTableSource source) {
     this.source = source;
   }
 
@@ -36,5 +32,16 @@ public class TenureService {
   public PagedResponse<TenureSummaryDto> search(
       TenureSearchCriteria criteria, int page, int size) {
     return source.search(criteria, page, size);
+  }
+
+  /**
+   * Every matching tenure as CSV rows — the same criteria and order as
+   * {@link #search}, with no paging.
+   *
+   * @param criteria the screen's criteria; any field may be null or blank
+   * @param csv      the writer the rows are streamed to
+   */
+  public void exportCsv(TenureSearchCriteria criteria, CsvWriter csv) {
+    source.exportCsv(criteria, csv);
   }
 }

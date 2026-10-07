@@ -42,6 +42,12 @@ export interface TimbermarkSearchParams {
   issueDateTo?: string;
   expiryDateFrom?: string;
   expiryDateTo?: string;
+  /**
+   * The private mark's Amended Date (PRIVATE_MARK_AMEND_DATE), set when an
+   * amendment such as a renewal is approved. Not in legacy FTA002.
+   */
+  amendDateFrom?: string;
+  amendDateTo?: string;
   /** A salvage type code, or the literal 'ALL' for "has any salvage type". */
   salvageTypeCode?: string;
   // ── Private mark panel ──
@@ -67,4 +73,13 @@ export function searchTimbermarks(
   return apiGet<PageableResponse<TimbermarkSummary>>(
     `/api/fta/timber-marks${toQuery({ ...params })}`,
   );
+}
+
+/**
+ * GET /api/fta/timber-marks/export — every matching mark as a CSV download.
+ *
+ * Paging is dropped: the export covers the whole result set, not a page of it.
+ */
+export function timbermarkSearchExportPath(params: TimbermarkSearchParams): string {
+  return `/api/fta/timber-marks/export${toQuery({ ...params, page: undefined, size: undefined })}`;
 }

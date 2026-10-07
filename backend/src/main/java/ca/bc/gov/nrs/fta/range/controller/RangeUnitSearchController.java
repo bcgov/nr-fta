@@ -2,12 +2,14 @@ package ca.bc.gov.nrs.fta.range.controller;
 
 import ca.bc.gov.nrs.fta.range.dto.RangeUnitSearchDto;
 import ca.bc.gov.nrs.fta.range.service.RangeUnitSearchService;
+import ca.bc.gov.nrs.fta.shared.csv.CsvExport;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /**
  * Range unit / pasture search API — {@code GET /api/fta/range-units}. Parameters
@@ -41,5 +43,25 @@ public class RangeUnitSearchController {
     int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
     return ResponseEntity.ok(rangeUnitSearchService.search(
         orgUnitNo, rangeUnitName, pastureName, rangeStatus, safePage, safeSize));
+  }
+
+  /**
+   * Every matching range unit / pasture as a CSV download — the same criteria as
+   * the search, with no paging, streamed as the rows arrive.
+   *
+   * <p>{@code RangeUnitDetailController} maps {@code /{unitId}} on this same base
+   * path; the literal {@code /export} wins over a path variable in Spring's
+   * pattern ordering, so a request here is never read as a unit id of "export".
+   */
+  @GetMapping("/export")
+  public ResponseEntity<StreamingResponseBody> exportCsv(
+      @RequestParam(required = false) String orgUnitNo,
+      @RequestParam(required = false) String rangeUnitName,
+      @RequestParam(required = false) String pastureName,
+      @RequestParam(required = false) String rangeStatus) {
+    return CsvExport.response(
+        "range-units",
+        csv -> rangeUnitSearchService.exportCsv(
+            orgUnitNo, rangeUnitName, pastureName, rangeStatus, csv));
   }
 }

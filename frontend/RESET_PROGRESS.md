@@ -117,7 +117,7 @@ Remaining (deferred, low value): niche detail screens FTA909 (Oil & Gas CP),
 FTA302/305/306/313 (extra Exhibit-A variants), FTA990/901/903/980 (covered by tabs).
 
 ## Phase 3 — Other lines (deferred until Tenure line done)
-- [ ] Search screens: Timber Mark (FTA002), Range Tenure (FTA001R), Range Unit (FTA006), Recreation (FTA007), Metrics (FTA008), Client (SIL21), Mgmt Unit (SIL004)
+- [ ] Search screens: Timber Mark (FTA002), Range Tenure (FTA001R), Range Unit (FTA006), Metrics (FTA008), Client (SIL21), Mgmt Unit (SIL004)
 - [ ] Tenure detail tabs (FTA100/910/920/930/940/970/…)
 - [ ] Cutting Permits / Harvesting Authority (FTA901/902/908/909/912/990)
 - [ ] Cut Blocks / Roads (FTA903/904/905/914/231/980/140/131/133/906/907)
@@ -126,7 +126,7 @@ FTA302/305/306/313 (extra Exhibit-A variants), FTA990/901/903/980 (covered by ta
 - [ ] Tenure Applications / Smart Forms (FTA950/952/953)
 - [ ] Private Marks (FTA500/510/511/512/513)
 - [ ] Range (FTA611/612/613/615/616/630/631)
-- [ ] Recreation (FTA701–708)
+- ~~Recreation (FTA007, FTA701–708)~~ — out of scope: moved to a separate internal forestry application
 - [ ] Oil & Gas (FTA945/977)
 - [ ] Admin / Billing / Reports (FTA670/675/680/685/686/690/695/699, SIL99)
 

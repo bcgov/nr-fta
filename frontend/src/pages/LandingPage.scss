@@ -117,3 +117,27 @@
     }
   }
 }
+
+// Groups the action button with the note beneath it, so the wrapper's large
+// inter-section gap sits above the pair rather than between them. Mirrors
+// nr-fsp-new, where the same wrapper holds the login buttons and its
+// "Request access" block.
+.landing-actions {
+  display: flex;
+  flex-direction: column;
+}
+
+// Supporting line under the action — e.g. how to get a role on the
+// Unauthorized page. A token, not a literal, so it stays legible in g100.
+.landing-note {
+  margin: 1rem 0 0;
+  max-width: 34rem;
+  color: var(--cds-text-primary, #131315);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+// Bold the "You've been logged out" title in the session-expired banner.
+.landing-session-expired .cds--inline-notification__title {
+  font-weight: 700;
+}

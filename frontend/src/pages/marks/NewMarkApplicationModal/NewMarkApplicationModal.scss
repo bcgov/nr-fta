@@ -1,0 +1,93 @@
+// New Mark Application modal — a two-column form; the client and the legal
+// description take the full width. Dialog treatment from nr-fsp-new's
+// .fsp-species-modal: actions in the body, bottom-right.
+
+.new-mark {
+  // The action row is the content's last child, so Carbon's 3rem bottom
+  // padding leaves dead space under the buttons.
+  .cds--modal-content {
+    padding-block-end: 1rem;
+  }
+
+  // Carbon fades the bottom of scrolling content to hint at more; with the
+  // buttons in the content, that fade would shade them.
+  .cds--modal-scroll-content {
+    mask-image: none;
+  }
+}
+
+.new-mark__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-block-start: 1.5rem;
+}
+
+.new-mark__strap {
+  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+}
+
+.new-mark__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem 2rem;
+  align-items: start;
+
+  @media (min-width: 672px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.new-mark__full {
+  grid-column: 1 / -1;
+}
+
+// Area beside the Reg / Comp pair, sharing one column: all three are short.
+.new-mark__trio {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.new-mark__pair {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.new-mark__pair-inputs {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+
+  > span {
+    line-height: 2.5rem;
+  }
+
+  // Reg holds two digits, Comp three.
+  > :first-child {
+    flex: 2 1 0;
+  }
+
+  > :last-child {
+    flex: 3 1 0;
+  }
+}
+
+// Carbon fixes the single date picker's input at 18rem with a (0,3,0) rule
+// loaded after this file (see MarkDetail.scss); a wrapper and a stronger
+// selector let it fill its column like the other fields.
+.new-mark__grid .new-mark__date {
+  .cds--date-picker.cds--date-picker--single .cds--date-picker__input,
+  .cds--date-picker,
+  .cds--date-picker-container,
+  .cds--date-picker-input__wrapper,
+  .cds--date-picker-input__wrapper > span {
+    inline-size: 100%;
+  }
+}

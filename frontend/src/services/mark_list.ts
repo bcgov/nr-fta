@@ -27,9 +27,21 @@ export interface MarkListParams {
   markStatusSt?: string;
   orgUnitCode?: string;
   clientName?: string;
+  /** A picked client: matched exactly, with its location. */
+  clientNumber?: string;
+  clientLocnCode?: string;
   /** 0-indexed, following the backend. Carbon's Pagination is 1-indexed. */
   page?: number;
   size?: number;
+}
+
+/**
+ * GET /api/fta/marks/export — every matching row as a CSV download.
+ *
+ * Paging is dropped: the export covers the whole list, not a page of it.
+ */
+export function markListExportPath(params: MarkListParams): string {
+  return `/api/fta/marks/export${toQuery({ ...params, page: undefined, size: undefined })}`;
 }
 
 /** GET /api/fta/marks — private mark application/amendment list (FTA_500_MARK_LIST). */

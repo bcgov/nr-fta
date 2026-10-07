@@ -23,7 +23,8 @@ export interface RangeTenureSummary {
 export interface RangeTenureSearchParams {
   forestFileId?: string;
   fileTypeCode?: string;
-  orgUnitCode?: string;
+  /** Administration organization unit number — a region or a district; legacy filters by its level. */
+  orgUnitNo?: string;
   zone?: string;
   clientName?: string;
   clientNumber?: string;
@@ -59,4 +60,14 @@ export function searchRangeTenures(
   return apiGet<PageableResponse<RangeTenureSummary>>(
     `/api/fta/range-tenures${toQuery({ ...params })}`,
   );
+}
+
+/**
+ * GET /api/fta/range-tenures/export — every matching range tenure as a CSV
+ * download.
+ *
+ * Paging is dropped: the export covers the whole result set, not a page of it.
+ */
+export function rangeTenureExportPath(params: RangeTenureSearchParams): string {
+  return `/api/fta/range-tenures/export${toQuery({ ...params, page: undefined, size: undefined })}`;
 }

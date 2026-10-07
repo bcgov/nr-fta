@@ -1,67 +1,149 @@
-import { ArrowLeft, Document, Edit } from '@carbon/icons-react';
 import {
-  Button,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Tabs,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Tag,
-} from '@carbon/react';
+  ArrowLeft,
+  Copy,
+  DocumentTasks,
+  Grid,
+  RecentlyViewed,
+  ChartColumn,
+  Currency,
+  Folders,
+  Notebook,
+  Stamp,
+  TableOfContents,
+  Tree,
+  UserMultiple,
+} from '@carbon/icons-react';
+import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import { Link, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
-import DefinitionGrid from '@/components/DefinitionGrid';
-import SectionTile from '@/components/SectionTile';
+import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
+import { useLazyTabs, type LazyTabs } from '@/hooks/useLazyTabs';
+import { useNavOrigin } from '@/lib/navOrigin';
 import PageLayout from '@/pages/PageLayout';
 import { canEdit } from '@/routes/access';
 import { getTenureDetail } from '@/services/tenure_detail';
+import { formatDate } from '@/utils/formatDate';
 
-import type { FC } from 'react';
+import AacPanel from './AacPanel';
+import AssociatedClientsPanel from './AssociatedClientsPanel';
+import AssociatedFilesPanel from './AssociatedFilesPanel';
+import CopyRotationPanel from './CopyRotationPanel';
+import CpCbAmendmentsPanel from './CpCbAmendmentsPanel';
+import CutBlocksPanel from './CutBlocksPanel';
+import CuttingPermitsPanel from './CuttingPermitsPanel';
+import DetailsPanel from './DetailsPanel';
+import SaleInfoPanel from './SaleInfoPanel';
+import TenureApplicationPanel from './TenureApplicationPanel';
+import TenureNotesPanel from './TenureNotesPanel';
+import TlBlocksPanel from './TlBlocksPanel';
 
-const nf = new Intl.NumberFormat('en-CA');
+import type { TenurePanelProps } from './panelProps';
+import type { CarbonIconType } from '@carbon/icons-react';
+import type { FC, ReactNode } from 'react';
 
-// Sub-collection tabs (CP/Mark, Cut Block, Roads, Assoc Files, Assoc Clients,
-// Notes) are served by separate endpoints not yet ported in this vertical
-// slice; the columns/cross-links are kept intact, driven by empty lists for now.
-type CuttingPermit = {
-  cpId: string;
-  timberMark: string;
-  status: string;
-  issueDate: string;
-  volume: number;
-};
-type CutBlock = { blockId: string; cpId: string; status: string; areaHa: number };
-type Road = { roadId: string; name: string; status: string; lengthKm: number; tenureType: string };
-type AssociatedFile = { fileId: string; relationship: string; fileType: string; status: string };
-type AssociatedClient = {
-  clientNumber: string;
-  name: string;
-  relationship: string;
-  location: string;
-};
-type Note = { date: string; author: string; text: string };
+interface TenureTab {
+  label: string;
+  icon: CarbonIconType;
+  render: (props: TenurePanelProps, canEditCp: boolean) => ReactNode;
+  /** Only for these file types; every tenure when absent. */
+  fileTypes?: readonly string[];
+}
 
 /**
- * FTA100 — Tenure detail. Persistent "tombstone" header (key identifiers) +
- * Carbon Tabs across the tenure's sub-entities (CP/Mark, Cut Block, Assoc
- * Clients, AAC, Notes) — the tabbed-detail pattern the other FTA record
- * screens follow. Backed by the backend {@code GET /api/fta/tenures/{id}}
- * endpoint, which ports THE.FTA_100_TENURE (+ FTA_930_AAC, FTA_940_SALE_INFO).
+ * Timber licence file types: A06 Timber Licence and A30 Consolidated Timber
+ * Licence — the pair legacy's TIMBER_LICENCE_SVW selects. TL blocks
+ * (FTA980) are blocks within a timber licence's area.
+ */
+const TIMBER_LICENCE_TYPES = ['A06', 'A30'];
+
+const TABS: TenureTab[] = [
+  { label: 'Details', icon: TableOfContents, render: (p) => <DetailsPanel {...p} /> },
+  {
+    label: 'Cutting permit / mark',
+    icon: Stamp,
+    render: (p, canEditCp) => (
+      <CuttingPermitsPanel
+        forestFileId={p.tenure.forestFileId}
+        fileTypeCode={p.tenure.fileTypeCode}
+        orgUnitCode={p.tenure.orgUnitCode}
+        canEdit={canEditCp}
+      />
+    ),
+  },
+  { label: 'Cut block', icon: Tree, render: (p) => <CutBlocksPanel {...p} /> },
+  { label: 'Associated files', icon: Folders, render: (p) => <AssociatedFilesPanel {...p} /> },
+  {
+    label: 'Associated clients',
+    icon: UserMultiple,
+    render: (p) => <AssociatedClientsPanel {...p} />,
+  },
+  { label: 'AAC', icon: ChartColumn, render: (p) => <AacPanel {...p} /> },
+  { label: 'Sale info', icon: Currency, render: (p) => <SaleInfoPanel {...p} /> },
+  {
+    label: 'Tenure application',
+    icon: DocumentTasks,
+    render: (p) => <TenureApplicationPanel {...p} />,
+  },
+  { label: 'Notes', icon: Notebook, render: (p) => <TenureNotesPanel {...p} /> },
+  { label: 'Copy rotation', icon: Copy, render: (p) => <CopyRotationPanel {...p} /> },
+  {
+    label: 'TL blocks',
+    icon: Grid,
+    render: (p) => <TlBlocksPanel {...p} />,
+    fileTypes: TIMBER_LICENCE_TYPES,
+  },
+  {
+    label: 'CP/CB amendments',
+    icon: RecentlyViewed,
+    render: (p) => <CpCbAmendmentsPanel {...p} />,
+  },
+];
+
+/** The tenure's tabs — each panel fetches its own data when first opened (useLazyTabs). */
+const TenureTabs: FC<{
+  panelProps: TenurePanelProps;
+  canEditCp: boolean;
+  tabs: LazyTabs;
+}> = ({ panelProps, canEditCp, tabs }) => {
+  // Fixed for the tenure (its file type isn't editable), so tab indices are stable.
+  const shown = TABS.filter(
+    (t) => !t.fileTypes || t.fileTypes.includes(panelProps.tenure.fileTypeCode ?? ''),
+  );
+  return (
+    <Tabs selectedIndex={tabs.selected} onChange={tabs.onChange}>
+      <TabList aria-label="Tenure sections" contained>
+        {shown.map((t) => (
+          <Tab key={t.label} renderIcon={t.icon}>
+            {t.label}
+          </Tab>
+        ))}
+      </TabList>
+      <TabPanels>
+        {shown.map((t, i) => (
+          <TabPanel key={t.label}>{tabs.isOpened(i) && t.render(panelProps, canEditCp)}</TabPanel>
+        ))}
+      </TabPanels>
+    </Tabs>
+  );
+};
+
+/**
+ * FTA100 — Tenure detail, laid out as the private-mark detail: a back link
+ * above the title, a status-coloured tombstone of the file's key facts, then Carbon
+ * contained Tabs over a full-bleed grey pane — Details first (summary and term
+ * side by side), then the tenure's sub-entities. Backed by the backend
+ * {@code GET /api/fta/tenures/{id}} endpoint, which ports THE.FTA_100_TENURE
+ * (+ FTA_930_AAC, FTA_940_SALE_INFO).
  */
 const TenureDetail: FC = () => {
   const { fileId = '' } = useParams();
   const { user } = useAuth();
+  // Opened from Timber Mark Search: go back there.
+  const back = useNavOrigin() ?? { path: '/search/tenure', label: 'Tenure Search' };
   const {
     data: tenure,
     loading,
@@ -69,312 +151,60 @@ const TenureDetail: FC = () => {
     reload,
   } = useApiResource(() => getTenureDetail(fileId), [fileId]);
 
-  const cuttingPermits: CuttingPermit[] = [];
-  const cutBlocks: CutBlock[] = [];
-  const roads: Road[] = [];
-  const associatedFiles: AssociatedFile[] = [];
-  const associatedClients: AssociatedClient[] = [];
-  const notes: Note[] = [];
+  const tabs = useLazyTabs(fileId);
+
+  // What every tab panel gets (panelProps.ts).
+  const panelProps: TenurePanelProps | null = tenure
+    ? { tenure, canEdit: canEdit(user), onTenureChanged: reload }
+    : null;
+
+  const title = 'Tenure';
 
   return (
     <PageLayout
-      title={`Tenure ${fileId}`}
-      subtitle="Tenure record: cutting permits, cut blocks, roads, associated files and clients, AAC and sale details."
-      actions={
-        tenure && canEdit(user) ? (
-          <Button size="md" kind="tertiary" renderIcon={Edit}>
-            Edit tenure
-          </Button>
-        ) : undefined
+      title={title}
+      subtitle="Tenure record: cutting permits, cut blocks, associated files and clients, AAC and sale details."
+      backLink={
+        <Link to={back.path} className="back-link">
+          <ArrowLeft size={16} /> Back to {back.label}
+        </Link>
       }
     >
-      <Link to="/search/tenure" className="back-link">
-        <ArrowLeft size={16} /> Back to Tenure Search
-      </Link>
-
       <AsyncBoundary loading={loading} error={error} onRetry={reload} loadingText="Loading tenure…">
-        {tenure && (
+        {tenure && panelProps && (
           <>
-            <SectionTile title="Tenure summary" icon={Document}>
-              <Tombstone
-                ariaLabel="Tenure summary"
-                items={[
-                  { label: 'File ID', value: tenure.forestFileId },
-                  { label: 'File Type', value: tenure.fileTypeCode ?? '—' },
-                  {
-                    label: 'Status',
-                    value:
-                      (tenure.fileStatusDesc ?? tenure.fileStatusCode) ? (
-                        <Tag type="green">{tenure.fileStatusDesc ?? tenure.fileStatusCode}</Tag>
-                      ) : (
-                        '—'
-                      ),
-                  },
-                  { label: 'Org Unit', value: tenure.orgUnitCode ?? '—' },
-                  { label: 'Licensee', value: tenure.licensee ?? '—' },
-                  { label: 'Client #', value: tenure.clientNumber ?? '—' },
-                  { label: 'Issued', value: tenure.awardDate ?? '—' },
-                  { label: 'Expires', value: tenure.expiryDate ?? '—' },
-                ]}
-              />
-            </SectionTile>
-
-            <Tabs>
-              <TabList aria-label="Tenure sections" contained>
-                <Tab>Tenure</Tab>
-                <Tab>CP / Mark</Tab>
-                <Tab>Cut Block</Tab>
-                <Tab>Roads</Tab>
-                <Tab>Assoc Files</Tab>
-                <Tab>Assoc Clients</Tab>
-                <Tab>AAC</Tab>
-                <Tab>Sale Info</Tab>
-                <Tab>Notes</Tab>
-              </TabList>
-              <TabPanels>
-                <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      { label: 'Management Unit', value: tenure.managementUnit ?? '—' },
-                      {
-                        label: 'Allowable Annual Cut',
-                        value:
-                          tenure.allowableAnnualCut != null
-                            ? `${nf.format(tenure.allowableAnnualCut)} m³/yr`
-                            : '—',
-                      },
-                      { label: 'Issue Date', value: tenure.awardDate ?? '—' },
-                      { label: 'Expiry Date', value: tenure.expiryDate ?? '—' },
-                    ]}
-                  />
-                </TabPanel>
-
-                <TabPanel>
-                  <div className="bordered-table">
-                    <TableContainer title="Cutting Permits & Timber Marks">
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>CP</TableHeader>
-                            <TableHeader>Timber Mark</TableHeader>
-                            <TableHeader>Status</TableHeader>
-                            <TableHeader>Issue Date</TableHeader>
-                            <TableHeader>Volume (m³)</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {cuttingPermits.map((cp) => (
-                            <TableRow key={cp.cpId}>
-                              <TableCell>
-                                <Link to={`/harvesting-authority/${cp.cpId}`}>{cp.cpId}</Link>
-                              </TableCell>
-                              <TableCell>{cp.timberMark}</TableCell>
-                              <TableCell>{cp.status}</TableCell>
-                              <TableCell>{cp.issueDate}</TableCell>
-                              <TableCell>{nf.format(cp.volume)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
-                </TabPanel>
-
-                <TabPanel>
-                  <div className="bordered-table">
-                    <TableContainer title="Cut Blocks">
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Block</TableHeader>
-                            <TableHeader>CP</TableHeader>
-                            <TableHeader>Status</TableHeader>
-                            <TableHeader>Area (ha)</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {cutBlocks.map((b) => (
-                            <TableRow key={b.blockId}>
-                              <TableCell>
-                                <Link to={`/cut-block/${b.blockId}`}>{b.blockId}</Link>
-                              </TableCell>
-                              <TableCell>
-                                <Link to={`/harvesting-authority/${b.cpId}`}>{b.cpId}</Link>
-                              </TableCell>
-                              <TableCell>{b.status}</TableCell>
-                              <TableCell>{b.areaHa.toFixed(1)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
-                </TabPanel>
-
-                <TabPanel>
-                  <div className="bordered-table">
-                    <TableContainer title="Road Sections">
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Road</TableHeader>
-                            <TableHeader>Name</TableHeader>
-                            <TableHeader>Status</TableHeader>
-                            <TableHeader>Length (km)</TableHeader>
-                            <TableHeader>Tenure Type</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {roads.map((r) => (
-                            <TableRow key={r.roadId}>
-                              <TableCell>
-                                <Link to={`/road/${r.roadId}`}>{r.roadId}</Link>
-                              </TableCell>
-                              <TableCell>{r.name}</TableCell>
-                              <TableCell>{r.status}</TableCell>
-                              <TableCell>{r.lengthKm.toFixed(1)}</TableCell>
-                              <TableCell>{r.tenureType}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
-                </TabPanel>
-
-                <TabPanel>
-                  <div className="bordered-table">
-                    <TableContainer title="Associated Files">
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>File ID</TableHeader>
-                            <TableHeader>Relationship</TableHeader>
-                            <TableHeader>File Type</TableHeader>
-                            <TableHeader>Status</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {associatedFiles.map((f) => (
-                            <TableRow key={f.fileId}>
-                              <TableCell>
-                                <Link to={`/tenures/${f.fileId}`}>{f.fileId}</Link>
-                              </TableCell>
-                              <TableCell>{f.relationship}</TableCell>
-                              <TableCell>{f.fileType}</TableCell>
-                              <TableCell>{f.status}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
-                </TabPanel>
-
-                <TabPanel>
-                  <div className="bordered-table">
-                    <TableContainer title="Associated Clients">
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Client #</TableHeader>
-                            <TableHeader>Name</TableHeader>
-                            <TableHeader>Relationship</TableHeader>
-                            <TableHeader>Location</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {associatedClients.map((c) => (
-                            <TableRow key={c.clientNumber + c.location}>
-                              <TableCell>{c.clientNumber}</TableCell>
-                              <TableCell>{c.name}</TableCell>
-                              <TableCell>{c.relationship}</TableCell>
-                              <TableCell>{c.location}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
-                </TabPanel>
-
-                <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      {
-                        label: 'Allowable Annual Cut',
-                        value:
-                          tenure.allowableAnnualCut != null
-                            ? `${nf.format(tenure.allowableAnnualCut)} m³/yr`
-                            : '—',
-                      },
-                      {
-                        label: 'Schedule A Area',
-                        value:
-                          tenure.scheduleAArea != null
-                            ? `${nf.format(tenure.scheduleAArea)} ha`
-                            : '—',
-                      },
-                      {
-                        label: 'Schedule B Area',
-                        value:
-                          tenure.scheduleBArea != null
-                            ? `${nf.format(tenure.scheduleBArea)} ha`
-                            : '—',
-                      },
-                      { label: 'Management Unit', value: tenure.managementUnit ?? '—' },
-                    ]}
-                  />
-                </TabPanel>
-
-                <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      { label: 'Sale Method', value: tenure.saleMethodCode ?? '—' },
-                      { label: 'Sale Type', value: tenure.saleTypeCode ?? '—' },
-                      { label: 'Payment Method', value: tenure.paymentMethodCode ?? '—' },
-                      {
-                        label: 'Bonus Bid',
-                        value:
-                          tenure.ftaBonusBid != null ? `$${nf.format(tenure.ftaBonusBid)}` : '—',
-                      },
-                      {
-                        label: 'Cash Sale Total',
-                        value:
-                          tenure.cashSaleTotDol != null
-                            ? `$${nf.format(tenure.cashSaleTotDol)}`
-                            : '—',
-                      },
-                    ]}
-                  />
-                </TabPanel>
-
-                <TabPanel>
-                  <div className="bordered-table">
-                    <TableContainer title="Forest / Range Notes">
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Date</TableHeader>
-                            <TableHeader>Author</TableHeader>
-                            <TableHeader>Note</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {notes.map((n, i) => (
-                            <TableRow key={i}>
-                              <TableCell>{n.date}</TableCell>
-                              <TableCell>{n.author}</TableCell>
-                              <TableCell>{n.text}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
+            <Tombstone
+              ariaLabel="Tenure summary"
+              // The left bar takes the status's colour, as on the private mark.
+              className={`bc-status-accent--${statusCodeVariant(tenure.fileStatusCode) ?? 'default'}`}
+              items={[
+                { label: 'File ID', value: tenure.forestFileId },
+                { label: 'Type', value: tenure.fileTypeDesc || tenure.fileTypeCode || '—' },
+                {
+                  label: 'Admin Organization',
+                  value: tenure.orgUnitDesc || tenure.orgUnitCode || '—',
+                },
+                {
+                  label: 'Status',
+                  value: tenure.fileStatusCode
+                    ? [tenure.fileStatusCode, tenure.fileStatusDesc].filter(Boolean).join(' - ')
+                    : '—',
+                },
+                { label: 'As of', value: formatDate(tenure.fileStatusDate) || '—' },
+                { label: 'Effective Date', value: formatDate(tenure.awardDate) || '—' },
+                {
+                  // Legacy's tombstone: the current expiry once extended, else the initial one.
+                  label: 'Expiry Date',
+                  value: formatDate(tenure.expiryDate ?? tenure.initialExpiryDate) || '—',
+                },
+                { label: 'Licensee', value: tenure.licensee || '—' },
+              ]}
+            />
+            {/* Carbon's <Tabs> renders no DOM of its own, so the grey full-bleed
+                pane is styled through this wrapper (styles/_detail.scss). */}
+            <div className="fsp-info__page-tabs">
+              <TenureTabs panelProps={panelProps} canEditCp={canEdit(user)} tabs={tabs} />
+            </div>
           </>
         )}
       </AsyncBoundary>

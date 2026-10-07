@@ -34,7 +34,7 @@ public class ArchiveTenuresWriteController {
   public ResponseEntity<Map<String, Integer>> archive(
       @RequestBody ArchiveTenuresRequest request,
       JwtAuthenticationToken principal) {
-    String userId = JwtPrincipalUtil.getIdpUsername(principal);
+    String userId = JwtPrincipalUtil.getAuditUserId(principal);
     int updated = archiveTenuresWriteService.archive(request, userId);
     return ResponseEntity.ok(Map.of("updated", updated));
   }

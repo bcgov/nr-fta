@@ -12,8 +12,8 @@ import { gotoProtected } from '../utils';
  * which is the entry's `id` — not its label — in `src/routes/routePaths.ts`.
  * `heading` is the page's `<h1>` text, used as the "page rendered" signal, and
  * is the title passed to `PageLayout`. Several of these differ from the nav
- * label (the Private Marks screen is listed as "Application/Amendment List"
- * but titled "Private Marks"), so take the heading from the page, not the menu.
+ * label (the Private Marks list is listed as "Application List" but
+ * titled "Private Mark Applications"), so take the heading from the page, not the menu.
  *
  * Kept in one place so specs agree on paths + headings, and so a renamed route
  * or heading fails in exactly one spot. Mirrors `NAV` in
@@ -85,7 +85,7 @@ export const PAGES = {
   // Private Marks — nav label and page title differ; this is the title.
   markList: {
     path: '/marks',
-    heading: /Private Marks/i,
+    heading: /Private Mark Applications/i,
     navId: 'marks-list',
   },
   markApplication: {
@@ -121,7 +121,7 @@ export const PAGES = {
   },
   orgUnit: {
     path: '/admin/org-unit',
-    heading: /Org Unit Maintenance/i,
+    heading: /Organization Unit Maintenance/i,
     navId: 'admin-org-unit',
     role: 'FTA_ADMIN',
   },

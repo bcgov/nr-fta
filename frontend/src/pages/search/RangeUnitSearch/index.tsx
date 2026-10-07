@@ -21,13 +21,16 @@ import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react
 import { useNavigate } from 'react-router-dom';
 
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
+import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import { getOrgUnits, getRangeUnitStatuses, type CodeOption } from '@/services/codeLists';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 import {
+  rangeUnitSearchExportPath,
   searchRangeUnits,
   type RangeUnitSearchParams,
   type RangeUnitSummary,
@@ -55,9 +58,9 @@ const EMPTY_FORM: RangeUnitSearchParams = {};
 /**
  * FTA006 — Range Unit / Pasture Search.
  *
- * <p>Criteria match the legacy screen: Admin Org Unit (mandatory), Pasture Name,
+ * <p>Criteria match the legacy screen: Admin Organization Unit (mandatory), Pasture Name,
  * Range Unit Name and Status. Picking a region returns every district beneath
- * it — the backend expands the org unit through its rollup, as the legacy
+ * it — the backend expands the organization unit through its rollup, as the legacy
  * package does.
  *
  * <p>Layout and class names are the shared search-screen treatment in
@@ -67,8 +70,20 @@ const RangeUnitSearch: FC = () => {
   const navigate = useNavigate();
   const { display } = useNotification();
 
-  const [form, setForm] = useState<RangeUnitSearchParams>(EMPTY_FORM);
+  // Criteria and the last search are kept for the browser tab; see TenureSearch.
+  const [form, setForm] = useSessionState<RangeUnitSearchParams>(
+    'fta.search.rangeUnit.form',
+    EMPTY_FORM,
+  );
+  const [lastSearch, setLastSearch] = useSessionState<LastSearch<RangeUnitSearchParams> | null>(
+    'fta.search.rangeUnit.last',
+    null,
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<RangeUnitSearchParams | null>(null);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -87,7 +102,7 @@ const RangeUnitSearch: FC = () => {
       if (orgRes.status === 'fulfilled') setOrgUnits(orgRes.value);
       if (statusRes.status === 'fulfilled') setStatuses(statusRes.value);
       const failed = [
-        orgRes.status === 'rejected' ? 'org units' : null,
+        orgRes.status === 'rejected' ? 'organization units' : null,
         statusRes.status === 'rejected' ? 'statuses' : null,
       ].filter(Boolean);
       if (failed.length > 0) setError(`Could not load ${failed.join(', ')}`);
@@ -108,17 +123,19 @@ const RangeUnitSearch: FC = () => {
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const runSearch = useCallback(
-    async (nextPage: number, nextSize: number) => {
-      // Legacy marks Admin Org Unit mandatory. Without it the query spans every
+    async (nextPage: number, nextSize: number, criteria: RangeUnitSearchParams = form) => {
+      // Legacy marks Admin Organization Unit mandatory. Without it the query spans every
       // district in the province, so it's refused here rather than run.
-      if (!form.orgUnitNo) {
-        setError('Admin org unit is required.');
+      if (!criteria.orgUnitNo) {
+        setError('Administration organization unit is required.');
         return;
       }
       setLoading(true);
       setError(null);
       try {
-        const data = await searchRangeUnits({ ...form, page: nextPage, size: nextSize });
+        const data = await searchRangeUnits({ ...criteria, page: nextPage, size: nextSize });
+        setSearched({ ...criteria });
+        setLastSearch({ criteria, page: data.page.number, size: data.page.size });
         setRows(data.content.map((r, i) => ({ ...r, id: `${r.rangeUnitId}-${r.pastureId ?? i}` })));
         setTotalElements(data.page.totalElements);
         setPage(data.page.number);
@@ -131,7 +148,7 @@ const RangeUnitSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form],
+    [form, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -151,11 +168,23 @@ const RangeUnitSearch: FC = () => {
 
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
+    setLastSearch(null);
     setRows(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, []);
+  }, [setForm, setLastSearch]);
+
+  // Back on the page with a search from earlier in this tab: run it again (fresh
+  // results, same page), once the code lists — and so the form — are ready.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (codeListsLoading || restored) return;
+    setRestored(true);
+    if (lastSearch && rows === null) {
+      void runSearch(lastSearch.page, lastSearch.size, lastSearch.criteria);
+    }
+  }, [codeListsLoading, restored, lastSearch, rows, runSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
 
@@ -170,22 +199,24 @@ const RangeUnitSearch: FC = () => {
   return (
     <PageLayout
       title="Range Unit / Pasture Search"
-      subtitle="Find a range unit or pasture by name, org unit or status"
+      subtitle="Find a range unit or pasture by name, organization unit or status"
     >
       <Tile className="fsp-search__tile">
         <form className="fsp-search__form" onSubmit={onSubmit}>
           <div className="fsp-search__field-grid">
-            <Select
-              id="ru-org-unit"
-              labelText="Admin org unit (required)"
-              value={form.orgUnitNo ?? ''}
-              onChange={(e) => set('orgUnitNo', e.target.value)}
-            >
-              <SelectItem value="" text="Select an org unit" />
-              {orgUnits.map((o) => (
-                <SelectItem key={o.code} value={o.code} text={o.description || o.code} />
-              ))}
-            </Select>
+            <div className="fsp-search__wide-cell">
+              <Select
+                id="ru-org-unit"
+                labelText="Administration organization unit (required)"
+                value={form.orgUnitNo ?? ''}
+                onChange={(e) => set('orgUnitNo', e.target.value)}
+              >
+                <SelectItem value="" text="Select an organization unit" />
+                {orgUnits.map((o) => (
+                  <SelectItem key={o.code} value={o.code} text={o.description || o.code} />
+                ))}
+              </Select>
+            </div>
 
             <TextInput
               id="ru-name"
@@ -264,6 +295,7 @@ const RangeUnitSearch: FC = () => {
                     {totalElements.toLocaleString()}{' '}
                     {totalElements === 1 ? 'range unit' : 'range units'} found
                   </span>
+                  {searched && <ExportCsvButton path={rangeUnitSearchExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">

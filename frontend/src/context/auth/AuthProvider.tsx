@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode } from 'react';
 
-import { KC_IDP_HINT, ensureFreshUser, getUserManager, loadStoredUser } from '@/services/keycloak';
+import {
+  KC_IDP_HINT,
+  ensureFreshUser,
+  forceRenewUser,
+  getUserManager,
+  loadStoredUser,
+  noteSignIn,
+} from '@/services/keycloak';
 
 import { AuthContext, type AuthContextType } from './AuthContext';
 import { parseToken, type KeycloakProfile } from './authUtils';
 import { type FamLoginUser } from './types';
+
+/** Set on logout so the next sign-in in this tab re-prompts for credentials. */
+const SIGNED_OUT_FLAG = 'fta.signedOut';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<FamLoginUser | undefined>(undefined);
@@ -58,8 +68,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // ── Auth actions ───────────────────────────────────────────────────
 
+  /**
+   * After a logout in this tab, the next sign-in asks for credentials again (`prompt=login`,
+   * which Keycloak passes on to Microsoft). Logging out of Keycloak reaches Microsoft only
+   * while the realm session is alive — an inactivity logout often finds it already expired —
+   * and without this the Microsoft session signs the user straight back in.
+   */
   const login = useCallback(() => {
-    void getUserManager().signinRedirect({ extraQueryParams: { kc_idp_hint: KC_IDP_HINT } });
+    let reauth = false;
+    try {
+      reauth = sessionStorage.getItem(SIGNED_OUT_FLAG) === '1';
+      sessionStorage.removeItem(SIGNED_OUT_FLAG);
+    } catch {
+      /* storage unavailable — sign in as usual */
+    }
+    void getUserManager().signinRedirect({
+      extraQueryParams: { kc_idp_hint: KC_IDP_HINT },
+      ...(reauth ? { prompt: 'login' } : {}),
+    });
   }, []);
 
   /**
@@ -81,6 +107,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    * steam instead.
    */
   const logout = useCallback(async () => {
+    try {
+      sessionStorage.setItem(SIGNED_OUT_FLAG, '1');
+    } catch {
+      /* storage unavailable — the next sign-in may reuse the Microsoft session */
+    }
     try {
       await getUserManager().signoutRedirect();
     } catch (error) {
@@ -133,9 +164,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return attempt;
   }, [applyUser, logout]);
 
+  /** Renews unconditionally — the session timeout's "Stay logged in". */
+  const forceRefreshSession = useCallback(async (): Promise<void> => {
+    const fresh = await forceRenewUser(getUserManager());
+    if (!applyUser(fresh)) throw new Error('No session to renew');
+  }, [applyUser]);
+
   /** Completes the redirect back from Keycloak. Used only by AuthCallback. */
   const completeLogin = useCallback(async (): Promise<void> => {
     const signedIn = await getUserManager().signinRedirectCallback();
+    noteSignIn();
     applyUser(signedIn);
   }, [applyUser]);
 
@@ -148,9 +186,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logout,
       userToken,
       ensureFreshToken,
+      forceRefreshSession,
       completeLogin,
     }),
-    [user, isLoading, login, logout, userToken, ensureFreshToken, completeLogin],
+    [
+      user,
+      isLoading,
+      login,
+      logout,
+      userToken,
+      ensureFreshToken,
+      forceRefreshSession,
+      completeLogin,
+    ],
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

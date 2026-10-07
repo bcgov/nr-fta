@@ -183,7 +183,7 @@ sequenceDiagram
     C->>A: reverse_proxy, X-Real-IP / X-Forwarded-*
     A->>K: fetch JWKS (Nimbus, refresh-ahead cache + retry)
     K-->>A: signing keys
-    Note over A: validate issuer + signature + exp<br/>require azp == KEYCLOAK_CLIENT_ID<br/>read client_roles → FTA_ADMIN / FTA_VIEWER
+    Note over A: validate issuer + signature + exp<br/>require azp == KEYCLOAK_CLIENT_ID<br/>read client_roles → FTA_ADMIN / FTA_TIMBER_MARK_HEADQUARTERS_ADMIN / FTA_VIEWER
     A->>O: native SQL over TCPS 1543
     O-->>A: rows
     A-->>B: JSON, + XSRF-TOKEN cookie (HttpOnly=false)
@@ -204,7 +204,13 @@ sequenceDiagram
 
 Role codes are unchanged: **`FTA_ADMIN`** (full CRUD) and **`FTA_VIEWER`**
 (read-only), matched verbatim. Writes are admin-only at the endpoint level, and
-sign-in remains IDIR only.
+sign-in remains IDIR only. A third role, **`FTA_TIMBER_MARK_HEADQUARTERS_ADMIN`**, was added
+after the migration: tenure and timber mark search, their detail screens and
+Private Marks, with private-mark writes (`POST /api/fta/marks`) and nothing else.
+`FTA_TIMBER_MARK_DISTRICT_ADMIN` has the same access and acts as legacy FTA510's district
+level: its new applications start PA and it sends them to Headquarters with Submit to HQ
+(PA → PI), and its certificate print marks an issued mark issued (HN → HI).
+Both must be created as roles on FTA's CSS integration in each environment.
 
 ### Three things that are easy to get wrong
 
@@ -254,7 +260,22 @@ tab, where `localStorage` would leave them readable to any script on the origin
 for longer than the session needs. The access token lives five minutes and is
 renewed once 60 seconds remain, on user activity; there is deliberately no
 background poll, so an idle user times out rather than being kept alive by a
-timer. Redirect URIs are derived from the runtime origin
+timer.
+
+**Inactivity logout** (`components/SessionTimeout`, the same policy as FSP):
+after 25 minutes with no mouse, keyboard, scroll or touch, a dialog counts down
+the last 5 minutes (red for the final 30 seconds) and then signs the user out;
+the landing page explains why. "Stay logged in" renews the tokens and restarts
+the clock. The refresh token lives only 30 minutes, so while the user is active
+the tokens are renewed every few minutes, and once more as the dialog opens.
+
+**Signing in again after a logout.** Keycloak's logout reaches Microsoft only while
+the realm session is alive, and an inactivity logout often finds it expired. So
+after any logout the next sign-in in that tab sends `prompt=login`, which Keycloak
+passes on to Microsoft, and the user must enter their credentials again rather
+than being signed straight back in.
+
+Redirect URIs are derived from the runtime origin
 (`<origin><base path>/authCallback`, post-logout `<origin><base path>`) so one
 built image is promotable across PR previews, TEST and PROD — each of those URIs
 has to be registered on the CSS integration.

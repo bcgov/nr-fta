@@ -15,13 +15,16 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react';
-import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FC, type FormEvent } from 'react';
 
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
 import { useNotification } from '@/context/notification/useNotification';
+import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
+  mgmtUnitSearchExportPath,
   searchManagementUnits,
   type MgmtUnitSearch,
   type MgmtUnitSearchParams,
@@ -59,8 +62,20 @@ const EMPTY_FORM: MgmtUnitSearchParams = {};
 const ManagementUnitSearch: FC = () => {
   const { display } = useNotification();
 
-  const [form, setForm] = useState<MgmtUnitSearchParams>(EMPTY_FORM);
+  // Criteria and the last search are kept for the browser tab; see TenureSearch.
+  const [form, setForm] = useSessionState<MgmtUnitSearchParams>(
+    'fta.search.mgmtUnit.form',
+    EMPTY_FORM,
+  );
+  const [lastSearch, setLastSearch] = useSessionState<LastSearch<MgmtUnitSearchParams> | null>(
+    'fta.search.mgmtUnit.last',
+    null,
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<MgmtUnitSearchParams | null>(null);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -77,11 +92,13 @@ const ManagementUnitSearch: FC = () => {
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const runSearch = useCallback(
-    async (nextPage: number, nextSize: number) => {
+    async (nextPage: number, nextSize: number, criteria: MgmtUnitSearchParams = form) => {
       setLoading(true);
       setError(null);
       try {
-        const data = await searchManagementUnits({ ...form, page: nextPage, size: nextSize });
+        const data = await searchManagementUnits({ ...criteria, page: nextPage, size: nextSize });
+        setSearched({ ...criteria });
+        setLastSearch({ criteria, page: data.page.number, size: data.page.size });
         setRows(data.content.map((r) => ({ ...r, id: r.mgmtUnitTypeCode })));
         setTotalElements(data.page.totalElements);
         setPage(data.page.number);
@@ -94,7 +111,7 @@ const ManagementUnitSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form],
+    [form, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -114,11 +131,24 @@ const ManagementUnitSearch: FC = () => {
 
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
+    setLastSearch(null);
     setRows(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, []);
+  }, [setForm, setLastSearch]);
+
+  // Back on the page with a search from earlier in this tab: run it again (fresh
+  // results, same page). No code lists to wait for, so once on mount; a ref
+  // rather than state, so StrictMode's second mount pass doesn't run it twice.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    if (lastSearch && rows === null) {
+      void runSearch(lastSearch.page, lastSearch.size, lastSearch.criteria);
+    }
+  }, [lastSearch, rows, runSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
 
@@ -195,6 +225,7 @@ const ManagementUnitSearch: FC = () => {
                     {totalElements.toLocaleString()}{' '}
                     {totalElements === 1 ? 'management unit type' : 'management unit types'} found
                   </span>
+                  {searched && <ExportCsvButton path={mgmtUnitSearchExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">

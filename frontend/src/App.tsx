@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import Layout from './components/Layout';
+import SessionTimeout from './components/SessionTimeout';
 import { useAuth } from './context/auth/useAuth';
 import ArchiveTenures from './pages/admin/ArchiveTenures';
 import AuditReport from './pages/admin/AuditReport';
@@ -23,8 +24,6 @@ import TenureSearch from './pages/search/TenureSearch';
 import TenureDetail from './pages/tenure/TenureDetail';
 import HarvestingAuthoritySearch from './pages/search/HarvestingAuthoritySearch';
 import CutBlockSearch from './pages/search/CutBlockSearch';
-import RecreationSearch from './pages/search/RecreationSearch';
-import RecreationProject from './pages/recreation/RecreationProject';
 import CuttingPermitDetail from './pages/harvesting/CuttingPermitDetail';
 import CutBlockDetail from './pages/harvesting/CutBlockDetail';
 import SuspendBlocks from './pages/harvesting/SuspendBlocks';
@@ -32,10 +31,8 @@ import AssignMarks from './pages/harvesting/AssignMarks';
 import CutBlockAction from './pages/harvesting/CutBlockAction';
 import TenureLanding from './pages/tenure/TenureLanding';
 import AddTenure from './pages/tenure/AddTenure';
-import RoadDetail from './pages/tenure/RoadDetail';
 import MarkList from './pages/marks/MarkList';
 import MarkDetail from './pages/marks/MarkDetail';
-import MarkApplication from './pages/marks/MarkApplication';
 import RangeTenureSearch from './pages/search/RangeTenureSearch';
 import RangeUnitSearch from './pages/search/RangeUnitSearch';
 import RangeTenureDetail from './pages/range/RangeTenureDetail';
@@ -86,6 +83,10 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      {/* Inactivity guard — mounted for every authenticated state (including
+          the no-role gate) so the warning modal + auto-logout apply everywhere
+          a session is live. Renders nothing until it fires. */}
+      {isLoggedIn && <SessionTimeout />}
       {isLoggedIn && !hasFtaRole ? (
         <Routes>
           <Route path="/authCallback" element={<AuthCallback />} />
@@ -114,7 +115,6 @@ export default function App() {
           />
           <Route path="/search/timber-mark" element={guarded(withLayout(<TimberMarkSearch />))} />
           <Route path="/search/cut-block" element={guarded(withLayout(<CutBlockSearch />))} />
-          <Route path="/search/recreation" element={guarded(withLayout(<RecreationSearch />))} />
           <Route path="/search/range-tenure" element={guarded(withLayout(<RangeTenureSearch />))} />
           <Route path="/search/range-unit" element={guarded(withLayout(<RangeUnitSearch />))} />
           <Route path="/search/metrics" element={guarded(withLayout(<ApplicationMetrics />))} />
@@ -147,17 +147,16 @@ export default function App() {
             path="/cut-block/:blockId/:action"
             element={guarded(withLayout(<CutBlockAction />))}
           />
-          <Route path="/road/:roadId" element={guarded(withLayout(<RoadDetail />))} />
 
           {/* ── Private Marks ──────────────────────────────────────── */}
           <Route path="/marks" element={guarded(withLayout(<MarkList />))} />
-          <Route path="/marks/application" element={guarded(withLayout(<MarkApplication />))} />
+          {/* The list, with the New Mark Application modal open over it. */}
+          <Route path="/marks/application" element={guarded(withLayout(<MarkList />))} />
           <Route path="/marks/:markNumber" element={guarded(withLayout(<MarkDetail />))} />
 
           {/* ── Range ──────────────────────────────────────────────── */}
           <Route path="/range/:agreementId" element={guarded(withLayout(<RangeTenureDetail />))} />
           <Route path="/range-unit/:unitId" element={guarded(withLayout(<RangeUnitDetail />))} />
-          <Route path="/recreation/:fileId" element={guarded(withLayout(<RecreationProject />))} />
 
           {/* ── Admin (FTA_ADMIN only) ─────────────────────────────── */}
           <Route path="/admin/audit" element={guarded(withLayout(<AuditReport />))} />

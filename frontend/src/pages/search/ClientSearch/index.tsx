@@ -15,14 +15,17 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react';
-import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FC, type FormEvent } from 'react';
 
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
+import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
+  clientSearchExportPath,
   searchClients,
   type ClientSearchParams,
   type ClientSearchResult,
@@ -67,8 +70,17 @@ const EMPTY_FORM: ClientSearchParams = {};
 const ClientSearch: FC = () => {
   const { display } = useNotification();
 
-  const [form, setForm] = useState<ClientSearchParams>(EMPTY_FORM);
+  // Criteria and the last search are kept for the browser tab; see TenureSearch.
+  const [form, setForm] = useSessionState<ClientSearchParams>('fta.search.client.form', EMPTY_FORM);
+  const [lastSearch, setLastSearch] = useSessionState<LastSearch<ClientSearchParams> | null>(
+    'fta.search.client.last',
+    null,
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
+  // The criteria the rows on screen came from. The export must use these, not
+  // `form` — the user may have edited a field since searching, and exporting
+  // criteria that were never searched would hand back a different result set.
+  const [searched, setSearched] = useState<ClientSearchParams | null>(null);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -85,15 +97,15 @@ const ClientSearch: FC = () => {
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const runSearch = useCallback(
-    async (nextPage: number, nextSize: number) => {
+    async (nextPage: number, nextSize: number, criteria: ClientSearchParams = form) => {
       // Legacy requires at least one criterion; an unfiltered search would scan
       // every forest client in the province.
       const hasCriterion = Boolean(
-        form.clientNumber ||
-        form.clientAcronym ||
-        form.clientName ||
-        form.legalFirstName ||
-        form.legalMiddleName,
+        criteria.clientNumber ||
+        criteria.clientAcronym ||
+        criteria.clientName ||
+        criteria.legalFirstName ||
+        criteria.legalMiddleName,
       );
       if (!hasCriterion) {
         setError('Enter at least one search criterion.');
@@ -102,7 +114,9 @@ const ClientSearch: FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const data = await searchClients({ ...form, page: nextPage, size: nextSize });
+        const data = await searchClients({ ...criteria, page: nextPage, size: nextSize });
+        setSearched({ ...criteria });
+        setLastSearch({ criteria, page: data.page.number, size: data.page.size });
         // A client appears once per location, so the client number alone is not
         // unique across rows — the location code and index disambiguate.
         setRows(
@@ -122,7 +136,7 @@ const ClientSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form],
+    [form, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -142,11 +156,24 @@ const ClientSearch: FC = () => {
 
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
+    setLastSearch(null);
     setRows(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, []);
+  }, [setForm, setLastSearch]);
+
+  // Back on the page with a search from earlier in this tab: run it again (fresh
+  // results, same page). No code lists to wait for, so once on mount; a ref
+  // rather than state, so StrictMode's second mount pass doesn't run it twice.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    if (lastSearch && rows === null) {
+      void runSearch(lastSearch.page, lastSearch.size, lastSearch.criteria);
+    }
+  }, [lastSearch, rows, runSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
 
@@ -248,6 +275,7 @@ const ClientSearch: FC = () => {
                     {totalElements.toLocaleString()} {totalElements === 1 ? 'client' : 'clients'}{' '}
                     found
                   </span>
+                  {searched && <ExportCsvButton path={clientSearchExportPath(searched)} />}
                 </div>
 
                 <div className="fsp-search__table">

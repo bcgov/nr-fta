@@ -1,8 +1,11 @@
 package ca.bc.gov.nrs.fta.range.service;
 
 import ca.bc.gov.nrs.fta.range.dto.RangeUnitSearchDto;
+import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
+import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import java.util.List;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -33,8 +36,11 @@ public class RangeUnitSearchService {
 
   private final NamedParameterJdbcTemplate jdbc;
 
-  public RangeUnitSearchService(NamedParameterJdbcTemplate jdbc) {
+  private final CsvStreamingJdbc streamingJdbc;
+
+  public RangeUnitSearchService(NamedParameterJdbcTemplate jdbc, CsvStreamingJdbc streamingJdbc) {
     this.jdbc = jdbc;
+    this.streamingJdbc = streamingJdbc;
   }
 
   private static final String SELECT_COLUMNS =
@@ -103,11 +109,7 @@ public class RangeUnitSearchService {
       String rangeStatus,
       int page,
       int size) {
-    MapSqlParameterSource params = new MapSqlParameterSource()
-        .addValue("orgUnitNo", blankToNull(orgUnitNo))
-        .addValue("rangeUnitName", blankToNull(rangeUnitName))
-        .addValue("pastureName", blankToNull(pastureName))
-        .addValue("rangeStatus", blankToNull(rangeStatus));
+    MapSqlParameterSource params = criteria(orgUnitNo, rangeUnitName, pastureName, rangeStatus);
 
     Long total = jdbc.queryForObject("SELECT COUNT(*)\n" + FROM_WHERE, params, Long.class);
     long totalElements = total == null ? 0L : total;
@@ -124,6 +126,46 @@ public class RangeUnitSearchService {
         ROW_MAPPER);
 
     return PagedResponse.ofPage(rows, page, size, totalElements);
+  }
+
+  /**
+   * Streams every matching range unit / pasture to a CSV, the same criteria and
+   * order as {@link #search} with no paging.
+   *
+   * <p>Columns match the Range Unit / Pasture Search table on screen (see the
+   * frontend page's {@code HEADERS}); keep the two in step. Status is the joined
+   * {@code range_unit_status_code} description, which is what the grid's status
+   * tag shows — not the raw code.
+   */
+  public void exportCsv(
+      String orgUnitNo,
+      String rangeUnitName,
+      String pastureName,
+      String rangeStatus,
+      CsvWriter csv) {
+
+    csv.writeRow("Range unit", "Pasture ID", "Range unit name", "Pasture name", "Status");
+
+    streamingJdbc.jdbc().query(
+        SELECT_COLUMNS + FROM_WHERE + ORDER_BY,
+        criteria(orgUnitNo, rangeUnitName, pastureName, rangeStatus),
+        // Cast required: a void lambda body matches both the RowCallbackHandler
+        // and ResultSetExtractor overloads, so the compiler cannot choose.
+        (RowCallbackHandler) rs -> csv.writeRow(
+            rs.getString("range_unit_id"),
+            rs.getString("pasture_id"),
+            rs.getString("range_unit_name"),
+            rs.getString("pasture_name"),
+            rs.getString("range_unit_status_desc")));
+  }
+
+  private static MapSqlParameterSource criteria(
+      String orgUnitNo, String rangeUnitName, String pastureName, String rangeStatus) {
+    return new MapSqlParameterSource()
+        .addValue("orgUnitNo", blankToNull(orgUnitNo))
+        .addValue("rangeUnitName", blankToNull(rangeUnitName))
+        .addValue("pastureName", blankToNull(pastureName))
+        .addValue("rangeStatus", blankToNull(rangeStatus));
   }
 
   private static String blankToNull(String s) {

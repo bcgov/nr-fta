@@ -33,7 +33,7 @@ export interface TenureSearchParams {
   forestFileId?: string;
   /** One code, or several comma-separated. */
   fileTypeCode?: string;
-  /** T (timber), R (range) or F (recreation). */
+  /** T (timber) or R (range). */
   tenureType?: string;
   fileStatus?: string;
   clientNumber?: string;
@@ -45,8 +45,6 @@ export interface TenureSearchParams {
   mgmtUnitId?: string;
   fileSource?: string;
   assocFileId?: string;
-  /** Recreation project name. */
-  fileName?: string;
   issueDateFrom?: string;
   issueDateTo?: string;
   expiryDateFrom?: string;
@@ -67,4 +65,13 @@ export function searchTenures(
   params: TenureSearchParams,
 ): Promise<PageableResponse<TenureSummary>> {
   return apiGet<PageableResponse<TenureSummary>>(`/api/fta/tenures${toQuery({ ...params })}`);
+}
+
+/**
+ * GET /api/fta/tenures/export — every matching tenure as a CSV download.
+ *
+ * Paging is dropped: the export covers the whole result set, not a page of it.
+ */
+export function tenureSearchExportPath(params: TenureSearchParams): string {
+  return `/api/fta/tenures/export${toQuery({ ...params, page: undefined, size: undefined })}`;
 }

@@ -33,7 +33,7 @@ public class ManageZoneAddWriteController {
   public ResponseEntity<Map<String, Object>> save(
       @RequestBody ManageZoneAddRequest request,
       JwtAuthenticationToken principal) {
-    String userId = JwtPrincipalUtil.getIdpUsername(principal);
+    String userId = JwtPrincipalUtil.getAuditUserId(principal);
     int updated = manageZoneAddWriteService.save(request, userId);
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(Map.of("rangeZoneCode", request.rangeZoneCode(), "updated", updated));

@@ -49,3 +49,13 @@ export function searchCutBlocks(
     `/api/fta/cut-blocks${toQuery({ ...params })}`,
   );
 }
+
+/**
+ * GET /api/fta/cut-blocks/export — every matching cut block as a CSV download.
+ *
+ * Paging is dropped: the export covers the whole result set, not a page of it.
+ * `sortBy` stays, so the file is ordered the way the table is.
+ */
+export function cutblockSearchExportPath(params: CutblockSearchParams): string {
+  return `/api/fta/cut-blocks/export${toQuery({ ...params, page: undefined, size: undefined })}`;
+}

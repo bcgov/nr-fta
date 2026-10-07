@@ -28,3 +28,13 @@ export function searchManagementUnits(
     `/api/fta/management-units${toQuery({ ...params })}`,
   );
 }
+
+/**
+ * GET /api/fta/management-units/export — every matching management-unit type as
+ * a CSV download.
+ *
+ * Paging is dropped: the export covers the whole result set, not a page of it.
+ */
+export function mgmtUnitSearchExportPath(params: MgmtUnitSearchParams): string {
+  return `/api/fta/management-units/export${toQuery({ ...params, page: undefined, size: undefined })}`;
+}

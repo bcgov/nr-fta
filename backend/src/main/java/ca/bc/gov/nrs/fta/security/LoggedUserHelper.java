@@ -8,6 +8,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -60,54 +61,57 @@ public class LoggedUserHelper {
   }
 
   /**
-   * Returns {@code true} if the user holds the {@code FTA_ADMIN} authority.
+   * Returns {@code true} if the user is an administrator, in any scope.
    *
-   * <p>Matches the bare authority only. A <em>district-scoped</em> grant reaches
-   * the token as {@code FTA_ADMIN_DISTRICT-DCC} and will not satisfy this — use
-   * {@link #isAdminAnywhere()} where a scoped grant should also count, and
-   * {@link #adminDistricts()} where it matters which districts.
+   * <p>A district-scoped grant ({@code FTA_ADMIN_DISTRICT-DCC}) counts: the authority converter
+   * derives the base {@code FTA_ADMIN} authority from it, which is also what lets such a user
+   * past the URL rules. Use {@link #administersDistrict} where it matters which districts.
    */
   public boolean isAdmin() {
     return getAuthorities().contains(RoleConstants.ADMIN_AUTHORITY);
   }
 
   /**
-   * Whether the user administers at least one district, or holds the role
-   * unscoped.
+   * Whether the user holds {@code FTA_ADMIN} with no scope at all — an administrator of every
+   * district.
    *
-   * <p>FAM puts the scope in the role name and nowhere else, so a scoped holder
-   * never carries the bare code. Anything that asks "may this user edit
-   * <em>something</em>" has to accept both spellings.
+   * <p>Read from the token's role names rather than the authorities, which carry
+   * {@code FTA_ADMIN} for scoped administrators too.
    */
-  public boolean isAdminAnywhere() {
-    return isAdmin() || !adminDistricts().isEmpty();
+  public boolean isUnscopedAdmin() {
+    return RoleScope.hasUnscoped(tokenRoles(), RoleConstants.ADMIN_AUTHORITY);
   }
 
   /**
-   * The district org-unit codes the user administers.
+   * The district org-unit codes the user administers under a district-scoped grant.
    *
-   * <p>One role per scope value, so three districts arrive as three role names.
-   * Empty for an unscoped administrator — that is not "no districts" but "not
-   * narrowed", which {@link #isAdmin()} distinguishes.
+   * <p>One role per scope value, so three districts arrive as three role names. Empty for an
+   * unscoped administrator — that is not "no districts" but "not narrowed", which
+   * {@link #isUnscopedAdmin()} distinguishes.
    */
-  public java.util.List<String> adminDistricts() {
-    return RoleScope.districtsFor(getAuthorities(), RoleConstants.ADMIN_AUTHORITY);
+  public List<String> adminDistricts() {
+    return RoleScope.districtsFor(tokenRoles(), RoleConstants.ADMIN_AUTHORITY);
   }
 
   /**
-   * Whether the user may act on a file administered by the given district.
+   * Whether the user may administer a file whose administering district is the given one.
    *
-   * <p>An unscoped administrator may act anywhere; a scoped one only within the
-   * districts granted.
+   * <p>An unscoped administrator may act anywhere; a scoped one only within the districts
+   * granted.
    */
   public boolean administersDistrict(String orgUnitCode) {
-    if (isAdmin()) {
+    if (isUnscopedAdmin()) {
       return true;
     }
     return orgUnitCode != null && adminDistricts().contains(orgUnitCode);
   }
 
   // ─── Internal helpers ─────────────────────────────────────────────
+
+  /** The role names on the caller's token, scope suffixes intact. */
+  private List<String> tokenRoles() {
+    return TokenRoles.rolesFrom(getPrincipal());
+  }
 
   /**
    * Returns the raw {@link Jwt} principal from the security context.

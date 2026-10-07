@@ -171,4 +171,43 @@ class JwtPrincipalUtilTest {
       assertThat(JwtPrincipalUtil.getIdpUsername(tokenOf(Map.of("sub", "x")))).isEmpty();
     }
   }
+
+  @Nested
+  @DisplayName("the audit user id every write records")
+  class AuditUserId {
+
+    /** Legacy wrote WebADE's {@code IDIR\\USERNAME}; a bare username would not join up. */
+    @Test
+    void prefixesTheUsernameWithIdir() {
+      assertThat(JwtPrincipalUtil.getAuditUserId(tokenOf(idirClaims("azureidir"))))
+          .isEqualTo("IDIR\\" + USERNAME);
+    }
+
+    @Test
+    void upperCasesTheUsernameAsLegacyRowsAre() {
+      Map<String, Object> claims = idirClaims("azureidir");
+      claims.put("idir_username", "jSmith");
+      assertThat(JwtPrincipalUtil.getAuditUserId(tokenOf(claims))).isEqualTo("IDIR\\JSMITH");
+    }
+
+    @Test
+    void isIdirEvenWhenTheTokenNamesNoProvider() {
+      Map<String, Object> claims = idirClaims(null);
+      claims.remove("preferred_username");
+      assertThat(JwtPrincipalUtil.getAuditUserId(tokenOf(claims))).isEqualTo("IDIR\\" + USERNAME);
+    }
+
+    @Test
+    void prefixesTheUpperCasedGuidWhenTheUsernameIsAbsent() {
+      Map<String, Object> claims = idirClaims("azureidir");
+      claims.remove("idir_username");
+      claims.put("idir_user_guid", GUID_LOWER);
+      assertThat(JwtPrincipalUtil.getAuditUserId(tokenOf(claims))).isEqualTo("IDIR\\" + GUID_UPPER);
+    }
+
+    @Test
+    void isEmptyWhenTheTokenCarriesNeither() {
+      assertThat(JwtPrincipalUtil.getAuditUserId(tokenOf(Map.of("sub", "x")))).isEmpty();
+    }
+  }
 }

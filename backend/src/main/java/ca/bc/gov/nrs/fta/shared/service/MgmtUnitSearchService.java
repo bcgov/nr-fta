@@ -1,8 +1,12 @@
 package ca.bc.gov.nrs.fta.shared.service;
 
+import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
+import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.MgmtUnitSearchDto;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
+import java.time.LocalDate;
 import java.util.List;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -29,8 +33,11 @@ public class MgmtUnitSearchService {
 
   private final NamedParameterJdbcTemplate jdbc;
 
-  public MgmtUnitSearchService(NamedParameterJdbcTemplate jdbc) {
+  private final CsvStreamingJdbc streamingJdbc;
+
+  public MgmtUnitSearchService(NamedParameterJdbcTemplate jdbc, CsvStreamingJdbc streamingJdbc) {
     this.jdbc = jdbc;
+    this.streamingJdbc = streamingJdbc;
   }
 
   private static final String SELECT_COLUMNS =
@@ -60,8 +67,8 @@ public class MgmtUnitSearchService {
       (rs, rowNum) -> new MgmtUnitSearchDto(
           rs.getString("mgmt_unit_type_code"),
           rs.getString("description"),
-          rs.getObject("effective_date", java.time.LocalDate.class),
-          rs.getObject("expiry_date", java.time.LocalDate.class));
+          rs.getObject("effective_date", LocalDate.class),
+          rs.getObject("expiry_date", LocalDate.class));
 
   /**
    * Management-unit-type code-list search — mirrors
@@ -74,9 +81,7 @@ public class MgmtUnitSearchService {
    */
   public PagedResponse<MgmtUnitSearchDto> search(
       String mgmtUnitTypeCode, String description, int page, int size) {
-    MapSqlParameterSource params = new MapSqlParameterSource()
-        .addValue("mgmtUnitTypeCode", blankToNull(mgmtUnitTypeCode))
-        .addValue("description", blankToNull(description));
+    MapSqlParameterSource params = criteria(mgmtUnitTypeCode, description);
 
     Long total = jdbc.queryForObject("SELECT COUNT(*)\n" + FROM_WHERE, params, Long.class);
     long totalElements = total == null ? 0L : total;
@@ -93,6 +98,41 @@ public class MgmtUnitSearchService {
         ROW_MAPPER);
 
     return PagedResponse.ofPage(rows, page, size, totalElements);
+  }
+
+  /**
+   * Streams every matching management-unit type to a CSV, the same criteria and
+   * order as {@link #search} with no paging.
+   *
+   * <p>Columns match the Management Unit Search table on screen (see the frontend
+   * page's {@code HEADERS}); keep the two in step. The description column is the
+   * {@code code - description} form the grid shows, not the raw description, so
+   * the file reads the way the page does.
+   *
+   * <p>Dates go out ISO rather than the page's "Mon D, YYYY": that is
+   * {@link CsvWriter}'s convention for every export, and it is what a spreadsheet
+   * can sort and filter as a date.
+   */
+  public void exportCsv(String mgmtUnitTypeCode, String description, CsvWriter csv) {
+
+    csv.writeRow("MU type", "Description", "Effective date", "Expiry date");
+
+    streamingJdbc.jdbc().query(
+        SELECT_COLUMNS + FROM_WHERE + ORDER_BY,
+        criteria(mgmtUnitTypeCode, description),
+        // Cast required: a void lambda body matches both the RowCallbackHandler
+        // and ResultSetExtractor overloads, so the compiler cannot choose.
+        (RowCallbackHandler) rs -> csv.writeRow(
+            rs.getString("mgmt_unit_type_code"),
+            rs.getString("description"),
+            rs.getObject("effective_date", LocalDate.class),
+            rs.getObject("expiry_date", LocalDate.class)));
+  }
+
+  private static MapSqlParameterSource criteria(String mgmtUnitTypeCode, String description) {
+    return new MapSqlParameterSource()
+        .addValue("mgmtUnitTypeCode", blankToNull(mgmtUnitTypeCode))
+        .addValue("description", blankToNull(description));
   }
 
   private static String blankToNull(String s) {

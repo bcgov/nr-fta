@@ -1,8 +1,11 @@
 package ca.bc.gov.nrs.fta.mark.service;
 
 import ca.bc.gov.nrs.fta.mark.dto.MarkListDto;
+import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
+import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import java.util.List;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -21,7 +24,8 @@ import org.springframework.stereotype.Service;
  * <p>The legacy {@code Sil_Get_Client_Name(client_number)} PL/SQL lookup is
  * replaced with a join to {@code THE.client} (matching the tenure exemplar).
  * Each filter is applied only when its bind value is supplied (NVL-style),
- * matching the legacy {@code LIKE NVL(...,'%')} behaviour.
+ * matching the legacy {@code LIKE NVL(...,'%')} behaviour — except the district,
+ * which is matched exactly (see {@link #list}).
  *
  * <p>The SQL runs against the BC Gov shared Oracle ({@code THE}) via the
  * configured {@code DataSource}; there is no local database, so it is exercised
@@ -31,9 +35,11 @@ import org.springframework.stereotype.Service;
 public class MarkListService {
 
   private final NamedParameterJdbcTemplate jdbc;
+  private final CsvStreamingJdbc streamingJdbc;
 
-  public MarkListService(NamedParameterJdbcTemplate jdbc) {
+  public MarkListService(NamedParameterJdbcTemplate jdbc, CsvStreamingJdbc streamingJdbc) {
     this.jdbc = jdbc;
+    this.streamingJdbc = streamingJdbc;
   }
 
   private static final String SELECT_COLUMNS =
@@ -68,6 +74,9 @@ public class MarkListService {
                      ou.org_unit_no                                       AS org_unit_no,
                      pmc.private_mark_status_code                         AS mark_status_st,
                      NVL(cli.client_name, 'Client not specified at present') AS client_name,
+                     cli.client_number                                    AS client_number,
+                     CASE WHEN fcl.client_number IS NOT NULL
+                          THEN fcl.client_locn_code ELSE ffc.client_locn_code END AS client_locn_code,
                      CASE WHEN pmc.private_mark_status_code = 'HN' THEN 'N' ELSE 'Y' END AS disable_print_ind,
                      CASE WHEN pmc.private_mark_status_code = 'DV' THEN 'N' ELSE 'Y' END AS disable_ack_ind,
                      pmc.revision_count                                   AS tm_revision_count,
@@ -98,11 +107,15 @@ public class MarkListService {
                      ou.org_unit_no                                       AS org_unit_no,
                      amd.prv_mrk_amd_sts_st                               AS mark_status_st,
                      cli.client_name                                      AS client_name,
+                     cli.client_number                                    AS client_number,
+                     fcl.client_locn_code                                 AS client_locn_code,
                      CASE WHEN amd.prv_mrk_amd_sts_st = 'HN' THEN 'N' ELSE 'Y' END AS disable_print_ind,
                      CASE WHEN amd.prv_mrk_amd_sts_st = 'DV' THEN 'N' ELSE 'Y' END AS disable_ack_ind,
                      pmc.revision_count                                   AS tm_revision_count,
                      amd.revision_count                                   AS amend_revision_count,
-                     pmc.update_userid                                    AS idir
+                     -- Whoever touched the row last: the amendment or the mark.
+                     CASE WHEN amd.update_timestamp >= pmc.update_timestamp
+                          THEN amd.update_userid ELSE pmc.update_userid END AS idir
                 FROM the.private_mark_certificate pmc
                 JOIN the.prov_forest_use pfu      ON pfu.forest_file_id = pmc.forest_file_id
                 JOIN the.org_unit ou              ON ou.org_unit_no = pmc.forest_district
@@ -116,26 +129,35 @@ public class MarkListService {
                  AND pmc.private_mark_status_code IN ('HI','HX')
                  AND amd.prv_mrk_amd_sts_st IN ('PI','HN','DV')
              ) m
-       WHERE (:hdrDistrict  IS NULL OR TO_CHAR(m.org_unit_no) LIKE :hdrDistrict || '%')
+       WHERE (:hdrDistrict  IS NULL OR TO_CHAR(m.org_unit_no) = :hdrDistrict)
          AND (:timberMark   IS NULL OR m.timber_mark LIKE :timberMark || '%')
          AND (:markStatusSt IS NULL OR m.mark_status_st = :markStatusSt)
          AND (:orgUnitCode  IS NULL OR m.org_unit_code = :orgUnitCode)
          AND (:clientName   IS NULL OR UPPER(m.client_name) LIKE UPPER(:clientName) || '%')
+         AND (:clientNumber IS NULL OR m.client_number = :clientNumber)
+         AND (:clientLocnCode IS NULL OR m.client_locn_code = :clientLocnCode)
       """;
 
-  // The legacy list's order. Deterministic, so a row cannot appear on two
-  // different pages once OFFSET is applied.
-  private static final String ORDER_BY = " ORDER BY m.certificate\n";
+  // Newest application first; undated rows last rather than Oracle's default
+  // of first for DESC. Certificate and process type break ties so the order is
+  // deterministic and a row cannot appear on two pages once OFFSET is applied —
+  // an application and its amendment share a certificate.
+  private static final String ORDER_BY =
+      " ORDER BY m.mark_appl_date DESC NULLS LAST, m.certificate, m.process_type\n";
 
   /**
    * Private mark application/amendment list — mirrors
    * {@code FTA_500_MARK_LIST.mainline} with {@code p_action = 'GET'}.
    *
-   * @param hdrDistrict  administrative district org-unit number (prefix match), or null
+   * @param hdrDistrict  administrative district org-unit number, or null. Exact:
+   *                     the value comes from a picker, and a prefix match would
+   *                     let district 18 also return 1867's marks
    * @param timberMark   partial timber mark (prefix match), or null
    * @param markStatusSt exact mark/amendment status code, or null
    * @param orgUnitCode  exact org-unit code, or null
    * @param clientName   client/holder name (prefix match), or null
+   * @param clientNumber exact client number (a picked client), or null
+   * @param clientLocnCode exact client location, with a picked client, or null
    * @param page         0-indexed page number
    * @param size         rows per page
    */
@@ -145,14 +167,13 @@ public class MarkListService {
       String markStatusSt,
       String orgUnitCode,
       String clientName,
+      String clientNumber,
+      String clientLocnCode,
       int page,
       int size) {
-    MapSqlParameterSource params = new MapSqlParameterSource()
-        .addValue("hdrDistrict", blankToNull(hdrDistrict))
-        .addValue("timberMark", blankToNull(timberMark))
-        .addValue("markStatusSt", blankToNull(markStatusSt))
-        .addValue("orgUnitCode", blankToNull(orgUnitCode))
-        .addValue("clientName", blankToNull(clientName));
+    MapSqlParameterSource params =
+        filters(hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName,
+            clientNumber, clientLocnCode);
 
     Long total = jdbc.queryForObject("SELECT COUNT(*)\n" + FROM_WHERE, params, Long.class);
     long totalElements = total == null ? 0L : total;
@@ -181,6 +202,61 @@ public class MarkListService {
             rs.getString("idir")));
 
     return PagedResponse.ofPage(rows, page, size, totalElements);
+  }
+
+  /**
+   * Streams every matching row to a CSV: the rows the list shows, in the same
+   * order, with neither a row cap nor paging.
+   *
+   * <p>Columns track the Private Mark Applications table on screen (the
+   * frontend MarkList page's {@code HEADERS}); keep the two in step.
+   */
+  public void exportCsv(
+      String hdrDistrict,
+      String timberMark,
+      String markStatusSt,
+      String orgUnitCode,
+      String clientName,
+      String clientNumber,
+      String clientLocnCode,
+      CsvWriter csv) {
+    csv.writeRow(
+        "Certificate", "Timber mark", "Application date", "District", "Status", "Client",
+        "Last updated by");
+
+    streamingJdbc.jdbc().query(
+        SELECT_COLUMNS + FROM_WHERE + ORDER_BY,
+        filters(hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName,
+            clientNumber, clientLocnCode),
+        // Cast required: a void lambda body matches both the RowCallbackHandler
+        // and ResultSetExtractor overloads, so the compiler cannot choose.
+        (RowCallbackHandler) rs -> csv.writeRow(
+            rs.getString("certificate"),
+            rs.getString("timber_mark"),
+            rs.getObject("mark_appl_date", java.time.LocalDate.class),
+            rs.getString("org_unit_code"),
+            rs.getString("mark_status_st"),
+            rs.getString("client_name"),
+            rs.getString("idir")));
+  }
+
+  /** The filter binds, shared by the page query, the count and the export. */
+  private static MapSqlParameterSource filters(
+      String hdrDistrict,
+      String timberMark,
+      String markStatusSt,
+      String orgUnitCode,
+      String clientName,
+      String clientNumber,
+      String clientLocnCode) {
+    return new MapSqlParameterSource()
+        .addValue("hdrDistrict", blankToNull(hdrDistrict))
+        .addValue("timberMark", blankToNull(timberMark))
+        .addValue("markStatusSt", blankToNull(markStatusSt))
+        .addValue("orgUnitCode", blankToNull(orgUnitCode))
+        .addValue("clientName", blankToNull(clientName))
+        .addValue("clientNumber", blankToNull(clientNumber))
+        .addValue("clientLocnCode", blankToNull(clientLocnCode));
   }
 
   private static String blankToNull(String s) {

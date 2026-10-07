@@ -10,7 +10,42 @@ export interface CodeOption {
   description: string;
 }
 
-const list = (name: string) => apiGet<CodeOption[]>(`/api/fta/code-lists/${name}`);
+/**
+ * How long a fetched code list is reused before it is requested again.
+ *
+ * The backend caches these lists too and clears its cache hourly, so a code-table edit can take
+ * up to that long plus this to reach an open browser. Code tables change rarely enough that the
+ * saving — no requests at all when moving between search screens — is worth it.
+ */
+const CODE_LIST_TTL_MS = 15 * 60 * 1000;
+
+const cache = new Map<string, { expires: number; request: Promise<unknown> }>();
+
+/**
+ * Fetches a code list once and shares it until it expires.
+ *
+ * The promise itself is cached, not just the result, so screens that ask for the same list at
+ * the same moment — as several search screens do on mount — share one request. A failed request
+ * is dropped from the cache straight away, so the next caller retries rather than inheriting the
+ * failure for the rest of the interval.
+ */
+function cached<T = CodeOption[]>(path: string): Promise<T> {
+  const hit = cache.get(path);
+  if (hit && hit.expires > Date.now()) {
+    // Safe: a path always returns the same shape, and every caller of a given
+    // path asks for that shape. The cache is keyed by path, so the only way to
+    // get the type wrong is to ask for two shapes from one endpoint.
+    return hit.request as Promise<T>;
+  }
+  const request = apiGet<T>(path);
+  cache.set(path, { expires: Date.now() + CODE_LIST_TTL_MS, request });
+  request.catch(() => {
+    if (cache.get(path)?.request === request) cache.delete(path);
+  });
+  return request;
+}
+
+const list = (name: string) => cached(`/api/fta/code-lists/${name}`);
 
 /**
  * Administrative org units. The `code` is the numeric `ORG_UNIT_NO`, which is
@@ -19,7 +54,49 @@ const list = (name: string) => apiGet<CodeOption[]>(`/api/fta/code-lists/${name}
  */
 export const getOrgUnits = () => list('org-units');
 
+/** District-level org units (code = ORG_UNIT_NO), for the FTA510 District dropdown. */
+export const getDistricts = () => list('districts');
+
+/** Marking requirements (MARKING_METHOD_CODE), for the FTA510 edit form. */
+export const getMarkingMethods = () => list('marking-methods');
+
+/** Marking instruments (MARKING_INSTRUMENT_CODE), for the FTA510 edit form. */
+export const getMarkingInstruments = () => list('marking-instruments');
+
+/** Cascade split codes, for the FTA510 edit form. */
+export const getCascadeSplits = () => list('cascade-splits');
+
+/** District number (as in getDistricts) to its default cascade split code, in the description. */
+export const getDistrictDefaultCascades = () => list('district-default-cascades');
+
+/** Private mark types (B08, B09, B14…), for the FTA510 Mark Type dropdown. */
+export const getPrivateMarkTypes = () => list('private-mark-types');
+
+/** Private mark amendment statuses (PRIVATE_MARK_AMEND_STATUS_CODE). */
+export const getPrivateMarkAmendStatuses = () => list('private-mark-amend-statuses');
+
 export const getFileTypes = () => list('file-types');
+
+/**
+ * One management unit — a Timber Supply Area, Tree Farm Licence and so on.
+ * Mirrors the backend `ManagementUnitDto`.
+ */
+export interface ManagementUnit {
+  mgmtUnitTypeCode: string;
+  mgmtUnitId: string;
+  /** The type spelled out, e.g. "T - Timber Supply Area". */
+  typeDescription: string;
+  /** The unit's name, e.g. "Arrow TSA". */
+  description: string;
+}
+
+/**
+ * Management units for the tenure search's autocomplete — the list legacy
+ * showed in its own SIL004 popup. Fetched whole and filtered in the browser:
+ * the list is small and stable, so a request per keystroke would buy nothing.
+ */
+export const getManagementUnits = () =>
+  cached<ManagementUnit[]>('/api/fta/code-lists/management-units');
 
 /** Tenure file statuses — `TENURE_FILE_STATUS_CODE`, not `FILE_STATUS_CODE`. */
 export const getFileStatuses = () => list('file-statuses');
@@ -42,10 +119,10 @@ export const getBlockStatuses = () => list('block-statuses');
 /**
  * Range zones, for the FTA001R range tenure search. The only code list that
  * takes a filter — pass a district org-unit number to narrow it, as the legacy
- * screen does when Admin Org Unit changes.
+ * screen does when Admin Organization Unit changes.
  */
 export const getRangeZones = (adminDistrictNo?: string) =>
-  apiGet<CodeOption[]>(
+  cached(
     `/api/fta/code-lists/range-zones${adminDistrictNo ? `?adminDistrictNo=${encodeURIComponent(adminDistrictNo)}` : ''}`,
   );
 
@@ -79,24 +156,3 @@ export const getLicenceToCutCodes = () => list('licence-to-cut-codes');
  * search fall back to the file's `A` client instead.
  */
 export const getHarvestAuthClientTypes = () => list('harvest-auth-client-types');
-
-/** Recreation file statuses, for the FTA007 search. */
-export const getRecreationFileStatuses = () => list('recreation-file-statuses');
-
-/**
- * Recreation project types. Narrowed from `FTA_MAP_FEATURE_CODE` to the eight
- * recreation codes the legacy lookup allows, and ordered by description.
- */
-export const getRecreationProjectTypes = () => list('recreation-project-types');
-
-/** Recreation risk ratings. */
-export const getRecreationRiskRatings = () => list('recreation-risk-ratings');
-
-/** Recreation controlled-access types. */
-export const getRecreationControlAccessTypes = () => list('recreation-control-access-types');
-
-/** Recreation maintenance standards. */
-export const getRecreationMaintainStandards = () => list('recreation-maintain-standards');
-
-/** Recreation districts — distinct from the administrative org units. */
-export const getRecreationDistricts = () => list('recreation-districts');

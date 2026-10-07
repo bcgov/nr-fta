@@ -106,7 +106,7 @@ const RangeTenureDetail: FC = () => {
                     ),
                   },
                   { label: 'Holder', value: dash(data.licensee) },
-                  { label: 'Org Unit', value: dash(data.adminOrgUnitNo) },
+                  { label: 'Organization Unit', value: dash(data.adminOrgUnitNo) },
                   {
                     label: 'Authorized AUMs',
                     value: num(data.rangeUsage[0]?.authorizedUse ?? null),

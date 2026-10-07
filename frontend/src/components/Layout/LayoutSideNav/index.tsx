@@ -1,9 +1,11 @@
 import { SideNav, SideNavItems, SideNavLink, SideNavMenu, SideNavMenuItem } from '@carbon/react';
-import { useEffect, useState, type FC } from 'react';
+import { useEffect, useState, type FC, type MouseEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { useAuth } from '@/context/auth/useAuth';
 import { useLayout } from '@/context/layout/useLayout';
+import NewMarkApplicationModal from '@/pages/marks/NewMarkApplicationModal';
+import { canEditMarks } from '@/routes/access';
 import {
   getMenuSections,
   sectionIdForPath,
@@ -18,11 +20,10 @@ import './LayoutSideNav.css';
  * <p>Two shapes, one source of truth:
  *
  * <ul>
- *   <li><b>Expanded</b> — the legacy FTA menu's five headings, each a
+ *   <li><b>Expanded</b> — the legacy FTA menu's headings, each a
  *       collapsible {@code SideNavMenu} holding its destinations. The section
  *       containing the current route opens on load; the rest stay closed.
- *   <li><b>Collapsed</b> — a 48px icon rail showing one icon per section, five
- *       in all. The icons do not navigate: clicking one expands the nav and
+ *   <li><b>Collapsed</b> — a 48px icon rail showing one icon per section. The icons do not navigate: clicking one expands the nav and
  *       opens that section, so the rail is a way back into the menu rather
  *       than a shortcut past it. Hovering names the section.
  * </ul>
@@ -38,6 +39,9 @@ export const LayoutSideNav: FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const roles = user?.roles ?? [];
+  const mayCreateMark = canEditMarks(user);
+  // "New Application" pops its dialog over whatever page is open.
+  const [newMarkOpen, setNewMarkOpen] = useState(false);
 
   // Note: the drawer no longer auto-closes on link click or outside
   // pointer-down. The only way to dismiss it is the header X button,
@@ -58,7 +62,7 @@ export const LayoutSideNav: FC = () => {
   }, [isSideNavExpanded]);
 
   /**
-   * A section in the collapsed rail: one icon per heading, five in all.
+   * A section in the collapsed rail: one icon per heading.
    *
    * <p>Rendered as a {@code SideNavLink} with a button element rather than a
    * router link — the rail's job here is to open the nav, not to navigate. The
@@ -95,13 +99,26 @@ export const LayoutSideNav: FC = () => {
    */
   const renderItem = (route: MenuLeaf) => {
     const Icon = route.icon;
+    // Only for a role that can use the dialog.
+    if (route.modal === 'new-mark-application' && !mayCreateMark) return null;
     return (
       <SideNavMenuItem
         data-testid={`side-nav-link-${route.id}`}
         key={route.id}
         as={Link}
         to={route.path}
-        isActive={route.path === location.pathname}
+        isActive={!route.modal && route.path === location.pathname}
+        // A dialog item keeps the link (and its look) but opens the dialog in place;
+        // a new-tab click still follows the link.
+        onClick={
+          route.modal
+            ? (e: MouseEvent) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                e.preventDefault();
+                setNewMarkOpen(true);
+              }
+            : undefined
+        }
       >
         <span className="side-nav-item">
           {Icon ? (
@@ -116,30 +133,6 @@ export const LayoutSideNav: FC = () => {
   };
 
   const renderSection = (section: MenuSection) => {
-    // A heading kept for parity with legacy that has nothing to point at yet
-    // (Recreation: FTA007 and FTA701 were never built here). Shown so the menu
-    // matches legacy's five, but it opens onto nothing, so it is inert.
-    if (section.placeholder) {
-      return (
-        <SideNavMenu
-          key={section.id}
-          title={section.label}
-          // No renderIcon: headings carry no icon, so the placeholder looks
-          // like its siblings rather than the odd one out.
-          //
-          // No data-testid either: SideNavMenu destructures a fixed prop list
-          // with no rest spread, so arbitrary attributes never reach the DOM.
-          // className is the only hook that lands. (SideNavMenuItem does
-          // spread, so the per-destination testids below work.)
-          className={`side-nav-section side-nav-section--placeholder side-nav-section--${section.id}`}
-        >
-          <SideNavMenuItem as="span" className="side-nav-section__empty">
-            No screens yet
-          </SideNavMenuItem>
-        </SideNavMenu>
-      );
-    }
-
     return (
       <SideNavMenu
         key={section.id}
@@ -153,19 +146,23 @@ export const LayoutSideNav: FC = () => {
   };
 
   return (
-    <SideNav
-      expanded
-      isPersistent={false}
-      isChildOfHeader
-      className={`side-nav-drawer${isSideNavExpanded ? ' side-nav-drawer--open' : ''}`}
-      aria-label="Main navigation"
-    >
-      <SideNavItems>
-        {isSideNavExpanded
-          ? getMenuSections(roles).map(renderSection)
-          : getMenuSections(roles).map(renderRailSection)}
-      </SideNavItems>
-    </SideNav>
+    <>
+      <SideNav
+        expanded
+        isPersistent={false}
+        isChildOfHeader
+        className={`side-nav-drawer${isSideNavExpanded ? ' side-nav-drawer--open' : ''}`}
+        aria-label="Main navigation"
+      >
+        <SideNavItems>
+          {isSideNavExpanded
+            ? getMenuSections(roles).map(renderSection)
+            : getMenuSections(roles).map(renderRailSection)}
+        </SideNavItems>
+      </SideNav>
+      {/* Outside the nav, whose drawer styles would clip a fixed dialog. */}
+      <NewMarkApplicationModal open={newMarkOpen} onClose={() => setNewMarkOpen(false)} />
+    </>
   );
 };
 
