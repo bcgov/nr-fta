@@ -28,6 +28,10 @@ export interface TenureDetail {
   extensionCount: number | null;
   secLicenseeInd: string | null;
   notesLabel: string | null;
+  /** The private mark whose forest file this is (its timber mark), or null. */
+  privateMark: string | null;
+  /** That private mark's certificate. */
+  privateMarkCertificate: string | null;
   // AAC summary (FTA_930_AAC)
   scheduleAArea: number | null;
   scheduleBArea: number | null;

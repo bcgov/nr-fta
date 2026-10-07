@@ -179,13 +179,15 @@ export function validate(
     }
 
     // B08 marks are crown granted before the cut-over, B09 on or after it; they
-    // take a date or a description (a year), not both.
-    const type = mark.fileTypeCode;
+    // take a date or a description (a year), exactly one. The type being assigned
+    // counts too: legacy checked these on the Save that issued the mark.
+    const type = form.fileTypeCode || mark.fileTypeCode;
     if (type === 'B08' || type === 'B09') {
       const hasDate = !blank(form.grantedAcqrdDate);
       const hasDesc = !blank(form.crownGrantedAcqDesc);
       if (hasDate === hasDesc) {
-        e.grantedAcqrdDate = 'Enter either a Crown Granted Date or a Description, not both.';
+        e.grantedAcqrdDate =
+          'Enter exactly one of Crown Granted Date or Crown Granted Description.';
       } else if (hasDate) {
         if (type === 'B08' && form.grantedAcqrdDate >= CROWN_GRANT_CUTOVER)
           e.grantedAcqrdDate = 'Must be before 1906-03-12 for mark type B08.';

@@ -88,42 +88,120 @@ GitHub settings per environment (dev/test/prod):
 
 ### Certificate signatures (FTA402)
 
-The Registered Timber Mark Certificate is signed by the official who issued the mark, as legacy
-signed it: their scanned signature, name and title, chosen by matching their IDIR within the
-mark's `PRIVATE_MARK_ACTIVATED_USERID`. The scanned signatures are **not in this repository** —
-it is public, and they would let anyone forge a certificate. They live in GitHub secrets and
-every TEST/PROD deploy puts them in OpenShift; there is no manual step.
+The Registered Timber Mark Certificate (Print on a private mark) is signed by the official who
+issued the mark, as legacy signed it: their scanned signature, with their name and title under
+it. The scanned signatures are **never committed to this repository** — it is public, and they
+would let anyone forge a certificate. They are kept in GitHub secrets, and every TEST/PROD
+deploy puts them into OpenShift. Nothing is done by hand in OpenShift.
 
-They start as a local folder (kept out of any git checkout) holding the images and a
-`signatories.properties`:
+#### How a certificate picks its signature
+
+- The mark's `PRIVATE_MARK_ACTIVATED_USERID` (`IDIR\USERNAME`) is the official who issued it —
+  in this app, whoever saved the mark type that issued the mark (legacy: Assign Mark).
+- Each signatory has a key, an IDIR username. A signatory matches when its key appears
+  **anywhere** in that id, ignoring case — legacy's rule, so `JSMITH` matches `IDIR\JSMITH`.
+  When several match, the longest key wins.
+- No match (or no signatures deployed): the certificate prints a blank signature line over
+  "Registrar of Timber Marks".
+- Code: `mark/service/CertificateSignatories` (loading and matching),
+  `MarkCertificateReport` (passes `SIGNATURE`, `SIGNATORY_NAME`, `SIGNATORY_TITLE` to
+  `reports/FTA402_PrivateMark.jrxml`).
+
+#### 1. Build the signatures folder
+
+Keep it somewhere private, **outside any git checkout**. It holds the images and a
+`signatories.properties`, one block per official:
 
 ```properties
-# key: an IDIR username, found anywhere in the issuing user's id
+# key: an IDIR username, matched anywhere in the issuing user's id
 JSMITH.name=Jane Smith
 JSMITH.title=Registrar of Timber Marks
 JSMITH.image=js_signature.png
+
+SLEE.name=Sam Lee
+SLEE.title=Deputy Registrar of Timber Marks
+SLEE.image=sl_signature.png
 ```
 
-The legacy images are in fta-archive, `JCRS/FTA/Images/*_signature.png.data` (plain PNGs —
-rename each to `.png`); the legacy names and titles are in the FTA402 report there.
+- **Images:** PNG (or JPEG/GIF), ideally on a transparent or white background. They print in a
+  156 × 45 point box, scaled to fit with their shape kept, right-aligned above the name.
+- **From legacy:** fta-archive holds legacy's twelve, exported from its report server —
+  `fta/source/jasper-server/src/main/resources/resources/JCRS/FTA/Images/*_signature.png.data`
+  are plain PNGs (copy each, dropping `.data`). The keys, names and titles are the
+  `v_signatory_name` / `v_signatory_title` chains in
+  `…/JCRS/FTA/Reports/FTA/FTA402-002dPrivateMark.rpt_files/FTA402_PrivateMark.rpt_jrxml.data`.
+  That list dates from about 2017: have the business confirm who should sign today.
+- **Adding someone:** add their three lines and drop their image in. **Removing someone:**
+  delete their lines (and image).
 
-To set or change them, from the repo root with `gh` logged in as a repo admin:
+#### 2. Load it into GitHub
+
+From the repo root, with `gh` logged in as a repo admin, and `zip` installed:
 
 ```sh
-.github/scripts/set-certificate-signatures.sh <folder>
+.github/scripts/set-certificate-signatures.sh /path/to/signatures-folder
 ```
 
-It zips the folder, base64-encodes it and splits it into the repo secrets
-`CERTIFICATE_SIGNATURES_1..4` (GitHub caps a secret at 48 KB). The next TEST/PROD deploy
-(`merge.yml` → `reusable-deploy.yml`) joins them, checks they unzip, and passes them to this
-template, which keeps them in the Secret `nr-fta-certificate-signatures-<zone>`, mounted at
-`/signatures` (`CERTIFICATE_SIGNATURES_DIR`). A hash of them sits on the pod template, so a
-change restarts the backend, which logs `Certificate signatures: N signatories loaded.` at the
-first print.
+The script zips the properties file and the images it names, base64-encodes the zip and splits
+it into the repo secrets `CERTIFICATE_SIGNATURES_1` … `_4` — GitHub caps a secret at 48 KB, so
+a dozen signatures take two. It deletes any chunk it didn't write, so an old tail can't be
+joined onto a new head. It refuses a bundle over 120,000 characters encoded (the deploy passes
+it as one argument, which Linux caps at 128 KB); shrink the images if you hit that.
 
-PR previews are deployed without signatures, as is any environment while the secrets are unset:
-certificates then print a blank signature line over "Registrar of Timber Marks". The font is
-legacy's Arial, as embedded Liberation Sans (metric-compatible; `src/main/resources/fonts`).
+Run it again whenever the list changes — it replaces the whole set.
+
+#### 3. Deploy
+
+Nothing to do by hand: the next TEST and PROD deploys (`merge.yml` → `reusable-deploy.yml`)
+pick the secrets up. To apply a change without a code change, re-run the **most recent**
+**Merge** run from the Actions tab (an older run would also redeploy its older build). The
+deploy:
+
+1. joins the chunks and checks they are a zip containing `signatories.properties` — a broken
+   set fails the deploy rather than printing unsigned certificates;
+2. passes them to `openshift.deploy.yml`, which keeps them in the Secret
+   `nr-fta-certificate-signatures-<zone>`, mounted read-only at `/signatures`
+   (`CERTIFICATE_SIGNATURES_DIR` → `fta.certificate.signatures-dir`);
+3. sets a hash of them on the backend's pod template (`fta/certificate-signatures-hash`), so a
+   change restarts the backend.
+
+PR previews are deployed **without** signatures (`pr-open.yml` doesn't pass them), so their
+certificates print unsigned.
+
+#### 4. Check it
+
+Print a certificate for a mark issued by someone on the list. The backend reads the signatures
+at its first print after starting and logs one line:
+
+| Log line | Meaning |
+|---|---|
+| `Certificate signatures: N signatories loaded.` | Working. N should match your list. |
+| `Certificate signatures: no signatories.properties in /signatures; …` | Deployed without signatures — the secrets are unset or empty. |
+| `Certificate signatures: x.png not found; KEY skipped.` | The properties name an image that isn't in the folder. |
+| `Certificate signatures: x.png is not an image; skipped.` | The file isn't a readable PNG/JPEG/GIF. |
+
+A certificate with a blank line for a listed official usually means the mark was issued by
+someone else: check its `PRIVATE_MARK_ACTIVATED_USERID`.
+
+#### Locally
+
+Point the backend at the folder itself — no zip needed:
+
+```sh
+CERTIFICATE_SIGNATURES_DIR=/path/to/signatures-folder mvn spring-boot:run
+```
+
+Unset (the default), certificates print unsigned.
+
+#### Removing them altogether
+
+Delete the secrets (`gh secret delete CERTIFICATE_SIGNATURES_1`, and `_2` … `_4` if set) and
+re-run the deploy: the Secret is emptied and certificates print unsigned.
+
+#### Font
+
+Legacy's Arial, as embedded Liberation Sans — metric-compatible, so the legacy layout fits — in
+`src/main/resources/fonts` (registered as "Arial" in `fonts/arial.xml`).
 
 ### Spring Profiles
 

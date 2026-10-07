@@ -379,6 +379,13 @@ unused duplicate that no workflow references — don't edit it expecting a
 deploy to change.) `merge.yml` re-resolves the PR
 number for the merge commit so PROD ships the exact image tag that was tested.
 
+**Certificate signatures.** The private mark certificate (FTA402) is signed with scanned
+signatures that must never be in this public repo. They live in GitHub secrets
+(`CERTIFICATE_SIGNATURES_n`, set by `.github/scripts/set-certificate-signatures.sh`); the
+TEST/PROD backend deploy joins them into the Secret `nr-fta-certificate-signatures-<zone>`, and a
+hash on the pod template restarts the backend when they change. PR previews deploy without them.
+Runbook: [backend README → Certificate signatures](../backend/README.md#certificate-signatures-fta402).
+
 **Redirect-URI slots.** Every redirect URI has to be pre-registered on the CSS
 integration, which does not fit ephemeral PR hostnames. The workflow buckets
 each PR into one of 50 pre-registered slots (`PR # mod 50`) and uses the slot in

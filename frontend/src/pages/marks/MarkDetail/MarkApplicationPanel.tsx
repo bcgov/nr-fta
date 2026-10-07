@@ -1,4 +1,4 @@
-import { Calendar, Camera, Edit, Printer, Report, SendAlt } from '@carbon/icons-react';
+import { Calendar, Camera, Edit, Printer, Renew, Report, SendAlt } from '@carbon/icons-react';
 import {
   Button,
   DatePicker,
@@ -30,6 +30,8 @@ import {
 } from '@/services/codeLists';
 import {
   getMarkSnapshot,
+  getNextTimberMark,
+  skipTimberMark,
   printMarkCertificate,
   submitMark,
   updateMark,
@@ -347,6 +349,10 @@ const MarkApplicationPanel: FC<Props> = ({
     }
   };
 
+  // A save that issues the mark first shows the timber mark it will be given, to
+  // confirm: issuing can't be undone. `mark` is null when it couldn't be previewed.
+  const [issueConfirm, setIssueConfirm] = useState<{ mark: string | null } | null>(null);
+
   const onSave = async () => {
     if (!rules) return;
     const found = validate(form, mark, rules);
@@ -359,11 +365,60 @@ const MarkApplicationPanel: FC<Props> = ({
       });
       return;
     }
+    if (willIssue) {
+      setSaving(true);
+      const next = await getNextTimberMark(form.fileTypeCode);
+      setSaving(false);
+      setIssueConfirm({ mark: next });
+      return;
+    }
+    await save(null);
+  };
+
+  // "Generate another": the shown mark is passed over for good and the next one shown —
+  // for a mark that spells something it shouldn't.
+  const [skipping, setSkipping] = useState(false);
+  const onSkip = async () => {
+    setSkipping(true);
+    try {
+      const next = await skipTimberMark(form.fileTypeCode);
+      setIssueConfirm({ mark: next });
+    } catch (err) {
+      display({
+        kind: 'error',
+        title: 'Could not generate another mark',
+        subtitle: err instanceof Error ? err.message : 'Request failed',
+        timeout: 9000,
+      });
+    } finally {
+      setSkipping(false);
+    }
+  };
+
+  /** The save itself; `expected` is the timber mark the user confirmed, when issuing. */
+  const save = async (expected: string | null) => {
+    if (!rules) return;
     setSaving(true);
     try {
-      await updateMark(id, toRequest(form, mark), byCertificate);
+      const saved = await updateMark(id, toRequest(form, mark), byCertificate);
       setEditing(false);
-      display({ kind: 'success', title: 'Private mark saved', timeout: 5000 });
+      setIssueConfirm(null);
+      if (expected && saved.timberMark && saved.timberMark !== expected) {
+        // Another issue took the previewed number between the preview and the save.
+        display({
+          kind: 'warning',
+          title: `Mark issued as ${saved.timberMark}`,
+          subtitle: `${expected} was issued to another mark in the meantime.`,
+          timeout: 12000,
+        });
+      } else {
+        display({
+          kind: 'success',
+          title:
+            saved.timberMark && expected ? `Mark ${saved.timberMark} issued` : 'Private mark saved',
+          timeout: 5000,
+        });
+      }
       onSaved();
     } catch (err) {
       display({
@@ -833,6 +888,58 @@ const MarkApplicationPanel: FC<Props> = ({
           </Button>
         </div>
       )}
+
+      {/* Issuing confirmation: the timber mark the save will give, and its type. */}
+      <Modal
+        open={issueConfirm !== null}
+        passiveModal
+        size="sm"
+        className="detail-dialog"
+        modalHeading="Issue timber mark"
+        onRequestClose={() => {
+          if (!saving && !skipping) setIssueConfirm(null);
+        }}
+        preventCloseOnClickOutside
+      >
+        <dl className="issue-confirm">
+          <dt className="issue-confirm__label">Timber Mark</dt>
+          <dd className="issue-confirm__mark">{issueConfirm?.mark ?? 'Assigned on save'}</dd>
+          <dt className="issue-confirm__label">Mark Type</dt>
+          <dd className="issue-confirm__type">
+            {codes.markTypes.find((o) => o.code === form.fileTypeCode)?.description ??
+              form.fileTypeCode}
+          </dd>
+        </dl>
+        <p className="detail-dialog__subtitle">
+          Saving issues this mark to certificate {mark.certificate}. This can&apos;t be undone.
+        </p>
+        <div className="detail-dialog__actions">
+          <Button
+            kind="tertiary"
+            disabled={saving || skipping}
+            onClick={() => setIssueConfirm(null)}
+          >
+            Cancel
+          </Button>
+          {issueConfirm?.mark && (
+            <Button
+              kind="secondary"
+              renderIcon={Renew}
+              disabled={saving || skipping}
+              onClick={() => void onSkip()}
+            >
+              {skipping ? 'Generating…' : 'Generate another'}
+            </Button>
+          )}
+          <Button
+            kind="primary"
+            disabled={saving || skipping}
+            onClick={() => void save(issueConfirm?.mark ?? null)}
+          >
+            {saving ? 'Issuing…' : 'Issue mark'}
+          </Button>
+        </div>
+      </Modal>
 
       {/* Submit to HQ confirmation — the tabs' small dialog shape. */}
       <Modal

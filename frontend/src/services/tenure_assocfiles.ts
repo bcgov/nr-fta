@@ -14,10 +14,8 @@ export interface TenureAssociatedFile {
   fileAssociationTypeDesc: string | null;
   associationEndDate: string | null; // ISO date
   revisionCount: number | null;
-  /** Whether the associated file is an FTA file (source F) — linkable. */
+  /** Whether the associated file is an FTA file (source F) — opens its tenure. */
   tenure: boolean;
-  /** The private mark certificate, when the associated FTA file is a private mark. */
-  markCertificate: string | null;
 }
 
 export interface TenureAssociatedFiles {
