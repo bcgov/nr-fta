@@ -34,8 +34,10 @@ import org.springframework.stereotype.Component;
  *       index ({@code POST /api/fta/marks/{id}/land-index}), a client
  *       ({@code POST /api/fta/marks/{id}/clients}) or an amendment
  *       ({@code POST /api/fta/marks/{id}/amendments}), submitting it to Headquarters
- *       ({@code POST /api/fta/marks/{id}/submit}), and saving it
- *       ({@code PUT /api/fta/marks/{id}}), and resolving display names
+ *       ({@code POST /api/fta/marks/{id}/submit}), saving it
+ *       ({@code PUT /api/fta/marks/{id}}) or one of its land indexes or clients
+ *       ({@code PUT /api/fta/marks/{id}/land-index/{skey}},
+ *       {@code PUT /api/fta/marks/{id}/clients/{skey}}), and resolving display names
  *       ({@code POST /api/fta/users/resolve}). Every other endpoint is 403. Mirrors the page
  *       allow-list in the frontend's {@code routes/access.ts}.</li>
  *   <li><strong>No recognized role</strong> — rejected (403) for any {@code /api/**} endpoint</li>
@@ -115,7 +117,10 @@ public class ApiAuthorizationCustomizer implements
     // Saving a private mark (FTA510) — FTA_ADMIN or either timber mark role; which fields the
     // save accepts is MarkEditRules. Must appear BEFORE the generic PUT /api/** rule.
     authorize
-        .requestMatchers(HttpMethod.PUT, "/api/fta/marks/*")
+        .requestMatchers(HttpMethod.PUT,
+            "/api/fta/marks/*",
+            "/api/fta/marks/*/land-index/*",
+            "/api/fta/marks/*/clients/*")
         .hasAnyAuthority(
             RoleConstants.ADMIN_AUTHORITY, RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY);

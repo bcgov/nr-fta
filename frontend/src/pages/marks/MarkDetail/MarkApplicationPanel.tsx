@@ -111,7 +111,7 @@ const MARK_SUMMARY_ORDER = [
   'Application Date',
   'Geographic Location',
   'LTO PID',
-  'Area',
+  'Area (Hectares)',
   'Management Unit',
   'Cascade',
   'Reg / Comp',
@@ -734,10 +734,10 @@ const MarkApplicationPanel: FC<Props> = ({
       text('permitBlockLocn', 'Geographic Location', MAX.permitBlockLocn),
     ),
     field(
-      'Area',
-      mark.permitBlockArea != null ? `${nf.format(mark.permitBlockArea)} ha` : '—',
+      'Area (Hectares)',
+      mark.permitBlockArea != null ? nf.format(mark.permitBlockArea) : '—',
       locationOpen,
-      () => text('permitBlockArea', 'Area (ha)', 6, 'sm'),
+      () => text('permitBlockArea', 'Area (Hectares)', 6, 'sm'),
     ),
     field('LTO PID', dash(mark.bcaaFolioNumber), locationOpen, () =>
       text('bcaaFolioNumber', 'LTO PID', MAX.bcaaFolioNumber),

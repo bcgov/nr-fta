@@ -1,6 +1,8 @@
-import { Add, DocumentAdd } from '@carbon/icons-react';
+import { Add, DocumentAdd, Edit } from '@carbon/icons-react';
 import {
   Button,
+  DatePicker,
+  DatePickerInput,
   Select,
   SelectItem,
   Stack,
@@ -19,14 +21,19 @@ import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
 import { getLandDistricts, getPrimaryIds, type CodeOption } from '@/services/codeLists';
-import { addLandIndex, type MarkLandIndex } from '@/services/mark_detail';
+import { addLandIndex, updateLandIndex, type MarkLandIndex } from '@/services/mark_detail';
 import { formatDate } from '@/utils/formatDate';
+import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 const dash = (v: string | number | null | undefined) =>
   v === null || v === undefined || v === '' ? '—' : v;
 
 /** The legacy add row's description maxlength. */
 const MAX_DESC = 40;
+
+/** yyyy-mm-dd in local time. */
+const toIsoDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 interface Props {
   /** The detail route's id: a timber mark, or a certificate with `byCertificate`. */
@@ -35,7 +42,9 @@ interface Props {
   rows: MarkLandIndex[];
   /** Whether the user may add (the mark's `editRules.landIndex`). */
   canAdd: boolean;
-  /** Called after an add, to re-read the mark. */
+  /** Whether the user may update a row (the mark's `editRules.landIndexUpdate`). */
+  canUpdate: boolean;
+  /** Called after an add or update, to re-read the mark. */
   onAdded: () => void;
 }
 
@@ -46,13 +55,18 @@ interface Props {
  *
  * Who may add, and when, is the backend's `editRules.landIndex` (FTA_511: not at
  * HX, DV or DD, not for B15/B16, Headquarters only); the backend enforces it too.
+ * Each row's Update reopens the dialog on that row, with its Deactivate Date —
+ * `editRules.landIndexUpdate`, which Headquarters has at any status.
  */
-const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }) => {
+const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate, onAdded }) => {
   const { display } = useNotification();
   const [open, setOpen] = useState(false);
   const [primary, setPrimary] = useState('');
   const [secondary, setSecondary] = useState('');
   const [description, setDescription] = useState('');
+  const [deactivate, setDeactivate] = useState('');
+  /** The row being updated; null while adding. */
+  const [editing, setEditing] = useState<MarkLandIndex | null>(null);
   const [showValidation, setShowValidation] = useState(false);
   const [saving, setSaving] = useState(false);
   const [districts, setDistricts] = useState<CodeOption[]>([]);
@@ -111,11 +125,24 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded })
     setPrimary('');
     setSecondary('');
     setDescription('');
+    setDeactivate('');
     setShowValidation(false);
   };
 
   const openDialog = () => {
     resetForm();
+    setEditing(null);
+    setFocusPrimary(true);
+    setOpen(true);
+  };
+
+  const openUpdate = (row: MarkLandIndex) => {
+    setPrimary(row.primaryLandIndexCode ?? '');
+    setSecondary(row.secondaryLandIndexCode ?? '');
+    setDescription(row.markLandIndexDesc ?? '');
+    setDeactivate(row.indexDeactivateDate ?? '');
+    setShowValidation(false);
+    setEditing(row);
     setFocusPrimary(true);
     setOpen(true);
   };
@@ -131,6 +158,35 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded })
       return;
     }
     setSaving(true);
+    if (editing?.markLandIndexSkey != null) {
+      try {
+        await updateLandIndex(
+          id,
+          editing.markLandIndexSkey,
+          {
+            primaryLandIndexCode: primary,
+            secondaryLandIndexCode: secondary || null,
+            markLandIndexDesc: description.trim() || null,
+            indexDeactivateDate: deactivate || null,
+            revisionCount: editing.revisionCount,
+          },
+          byCertificate,
+        );
+        display({ kind: 'success', title: 'Land index updated', timeout: 5000 });
+        setOpen(false);
+        onAdded();
+      } catch (err) {
+        display({
+          kind: 'error',
+          title: 'Could not update the land index',
+          subtitle: err instanceof Error ? err.message : 'Request failed',
+          timeout: 9000,
+        });
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     try {
       await addLandIndex(
         id,
@@ -197,6 +253,7 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded })
                     <TableHeader>Primary ID</TableHeader>
                     <TableHeader>Description</TableHeader>
                     <TableHeader>Deactivate Date</TableHeader>
+                    <TableHeader aria-label="Actions" />
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -218,6 +275,17 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded })
                       </TableCell>
                       <TableCell>{dash(r.markLandIndexDesc)}</TableCell>
                       <TableCell>{dash(formatDate(r.indexDeactivateDate))}</TableCell>
+                      <TableCell className="detail-tab__row-action">
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          renderIcon={Edit}
+                          disabled={!canUpdate || r.markLandIndexSkey == null}
+                          onClick={() => openUpdate(r)}
+                        >
+                          Update
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -234,7 +302,7 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded })
         passiveModal
         size="sm"
         className="detail-dialog"
-        modalHeading="Add land index"
+        modalHeading={editing ? 'Update land index' : 'Add land index'}
         onRequestClose={closeDialog}
         preventCloseOnClickOutside
       >
@@ -251,6 +319,14 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded })
             onChange={(e) => setPrimary(e.target.value)}
           >
             <SelectItem value="" text={listsLoading ? 'Loading…' : '— Select land district —'} />
+            {/* A row's code that has since expired isn't in the list; keep it pickable. */}
+            {editing?.primaryLandIndexCode &&
+              !districts.some((o) => o.code === editing.primaryLandIndexCode) && (
+                <SelectItem
+                  value={editing.primaryLandIndexCode}
+                  text={editing.primaryLandIndexCodeDesc ?? editing.primaryLandIndexCode}
+                />
+              )}
             {districts.map((o) => (
               <SelectItem key={o.code} value={o.code} text={o.description || o.code} />
             ))}
@@ -263,6 +339,13 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded })
             onChange={(e) => setSecondary(e.target.value)}
           >
             <SelectItem value="" text={listsLoading ? 'Loading…' : '— None —'} />
+            {editing?.secondaryLandIndexCode &&
+              !primaryIds.some((o) => o.code === editing.secondaryLandIndexCode) && (
+                <SelectItem
+                  value={editing.secondaryLandIndexCode}
+                  text={editing.secondaryLandIndexCodeDesc ?? editing.secondaryLandIndexCode}
+                />
+              )}
             {primaryIds.map((o) => (
               <SelectItem key={o.code} value={o.code} text={o.description || o.code} />
             ))}
@@ -276,17 +359,50 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded })
             disabled={saving}
             onChange={(e) => setDescription(e.target.value)}
           />
+          {editing && (
+            <DatePicker
+              datePickerType="single"
+              dateFormat="Y-m-d"
+              className="detail-dialog__date"
+              value={deactivate}
+              onChange={(dates: Date[]) => setDeactivate(dates[0] ? toIsoDate(dates[0]) : '')}
+            >
+              <DatePickerInput
+                id="land-index-deactivate"
+                labelText="Deactivate date (optional)"
+                placeholder="yyyy-mm-dd"
+                pattern={TYPED_DATE_PATTERN}
+                disabled={saving}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.trim() === '') setDeactivate('');
+                  else {
+                    const typed = parseTypedDate(text);
+                    if (typed) setDeactivate(typed);
+                  }
+                }}
+              />
+            </DatePicker>
+          )}
         </Stack>
         <div className="detail-dialog__actions">
           <Button kind="tertiary" disabled={saving} onClick={closeDialog}>
             Cancel
           </Button>
-          <Button kind="secondary" disabled={saving} onClick={() => void submit(true)}>
-            Add additional
-          </Button>
-          <Button kind="primary" disabled={saving} onClick={() => void submit(false)}>
-            {saving ? 'Adding…' : 'Add land index'}
-          </Button>
+          {editing ? (
+            <Button kind="primary" disabled={saving} onClick={() => void submit(false)}>
+              {saving ? 'Updating…' : 'Update land index'}
+            </Button>
+          ) : (
+            <>
+              <Button kind="secondary" disabled={saving} onClick={() => void submit(true)}>
+                Add additional
+              </Button>
+              <Button kind="primary" disabled={saving} onClick={() => void submit(false)}>
+                {saving ? 'Adding…' : 'Add land index'}
+              </Button>
+            </>
+          )}
         </div>
       </Modal>
     </div>

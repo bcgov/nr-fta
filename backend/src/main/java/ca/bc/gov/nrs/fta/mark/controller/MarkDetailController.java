@@ -6,6 +6,8 @@ import ca.bc.gov.nrs.fta.mark.dto.MarkDetailDto;
 import ca.bc.gov.nrs.fta.mark.dto.MarkEditRules;
 import ca.bc.gov.nrs.fta.mark.dto.MarkLandIndexRequest;
 import ca.bc.gov.nrs.fta.mark.dto.MarkUpdateRequest;
+import ca.bc.gov.nrs.fta.mark.dto.MarkClientUpdateRequest;
+import ca.bc.gov.nrs.fta.mark.dto.MarkLandIndexUpdateRequest;
 import ca.bc.gov.nrs.fta.mark.service.MarkAmendmentWriteService;
 import ca.bc.gov.nrs.fta.mark.service.MarkClientWriteService;
 import ca.bc.gov.nrs.fta.mark.service.MarkDetailService;
@@ -139,6 +141,23 @@ public class MarkDetailController {
   }
 
   /**
+   * {@code PUT /api/fta/marks/{id}/clients/{skey}} — FTA513's save of an existing client.
+   * Returns {@code {"note": …}} when making it the main licensee demoted the current one.
+   */
+  @PutMapping("/{markNumber}/clients/{skey}")
+  public ResponseEntity<Map<String, String>> updateClient(
+      @PathVariable String markNumber,
+      @PathVariable long skey,
+      @RequestParam(required = false) String by,
+      @RequestBody MarkClientUpdateRequest request,
+      JwtAuthenticationToken principal) {
+    String note = markClientWriteService.update(
+        markNumber, isCertificate(by), skey, request, isDistrictUser(principal),
+        JwtPrincipalUtil.getAuditUserId(principal));
+    return ResponseEntity.ok(note == null ? Map.of() : Map.of("note", note));
+  }
+
+  /**
    * {@code POST /api/fta/marks/{id}/land-index} — FTA511's add row: a land index on the mark.
    * Returns nothing; the client re-reads the mark for the new row.
    */
@@ -151,6 +170,23 @@ public class MarkDetailController {
     markLandIndexWriteService.add(
         markNumber, isCertificate(by), request, JwtPrincipalUtil.getAuditUserId(principal));
     // 204, not 201: there is no body, and the client re-reads the mark.
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * {@code PUT /api/fta/marks/{id}/land-index/{skey}} — FTA511's save of an existing land
+   * index. Returns nothing; the client re-reads the mark.
+   */
+  @PutMapping("/{markNumber}/land-index/{skey}")
+  public ResponseEntity<Void> updateLandIndex(
+      @PathVariable String markNumber,
+      @PathVariable long skey,
+      @RequestParam(required = false) String by,
+      @RequestBody MarkLandIndexUpdateRequest request,
+      JwtAuthenticationToken principal) {
+    markLandIndexWriteService.update(
+        markNumber, isCertificate(by), skey, request, isDistrictUser(principal),
+        JwtPrincipalUtil.getAuditUserId(principal));
     return ResponseEntity.noContent().build();
   }
 

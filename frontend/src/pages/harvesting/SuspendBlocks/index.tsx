@@ -129,7 +129,7 @@ const SuspendBlocks: FC = () => {
                   <TableHeader>Suspend</TableHeader>
                   <TableHeader>Block</TableHeader>
                   <TableHeader>Status</TableHeader>
-                  <TableHeader>Area (ha)</TableHeader>
+                  <TableHeader>Area (Hectares)</TableHeader>
                 </TableRow>
               </TableHead>
               <TableBody>

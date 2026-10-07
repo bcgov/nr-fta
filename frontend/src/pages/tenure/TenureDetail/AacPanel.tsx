@@ -590,7 +590,7 @@ const AacPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
             <div className={editingAreas ? 'detail-edit' : undefined}>
               <div className="fsp-info__tile-row">
                 <DetailTile title="Current AAC" icon={ChartColumn} fields={currentFields} />
-                <DetailTile title="Area (ha)" icon={Area} fields={areaFields} />
+                <DetailTile title="Area (Hectares)" icon={Area} fields={areaFields} />
               </div>
               {editingAreas && (
                 <div className="detail-edit__actions">

@@ -146,6 +146,10 @@ export interface MarkEditRules {
   submit: boolean;
   /** Why not, when `submit` is false. */
   submitReason: string | null;
+  /** Updating a land index on the mark — Headquarters at any status, a district as it may add. */
+  landIndexUpdate: boolean;
+  /** Updating an associated client — Headquarters at any status, a district as it may add. */
+  clientsUpdate: boolean;
 }
 
 /** Mirrors the backend MarkClientRequest — the FTA513 add row. Dates are ISO yyyy-mm-dd. */
@@ -174,6 +178,23 @@ export function addClient(
   );
 }
 
+/**
+ * PUT /api/fta/marks/{id}/clients/{skey} — update an associated client (FTA513).
+ * `note` as for {@link addClient}, when making it the main licensee demoted another.
+ */
+export function updateClient(
+  id: string,
+  skey: number,
+  request: MarkClientRequest & { revisionCount: number | null },
+  byCertificate = false,
+): Promise<{ note?: string }> {
+  const query = byCertificate ? '?by=certificate' : '';
+  return apiPut<{ note?: string }>(
+    `/api/fta/marks/${encodeURIComponent(id)}/clients/${skey}${query}`,
+    request,
+  );
+}
+
 /** Mirrors the backend MarkLandIndexRequest — the FTA511 add row. */
 export interface MarkLandIndexRequest {
   /** Land District/Island (PRIMARY_LAND_INDEX_CODE); required. */
@@ -192,6 +213,27 @@ export function addLandIndex(
 ): Promise<void> {
   const query = byCertificate ? '?by=certificate' : '';
   return apiPost<void>(`/api/fta/marks/${encodeURIComponent(id)}/land-index${query}`, request);
+}
+
+/** Mirrors the backend MarkLandIndexUpdateRequest — FTA511's save of an existing row. */
+export interface MarkLandIndexUpdateRequest extends MarkLandIndexRequest {
+  /** ISO yyyy-mm-dd; optional. */
+  indexDeactivateDate: string | null;
+  revisionCount: number | null;
+}
+
+/** PUT /api/fta/marks/{id}/land-index/{skey} — update a land index on the mark (FTA511). */
+export function updateLandIndex(
+  id: string,
+  skey: number,
+  request: MarkLandIndexUpdateRequest,
+  byCertificate = false,
+): Promise<void> {
+  const query = byCertificate ? '?by=certificate' : '';
+  return apiPut<void>(
+    `/api/fta/marks/${encodeURIComponent(id)}/land-index/${skey}${query}`,
+    request,
+  );
 }
 
 /** Mirrors the backend MarkAmendmentRequest — the FTA512 form. */

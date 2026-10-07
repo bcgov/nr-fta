@@ -123,10 +123,14 @@ const ClientComboBox: FC<ClientComboBoxProps> = ({
         id: `${clientNumber}|${clientLocnCode ?? ''}`,
         clientNumber,
         clientLocnCode: clientLocnCode ?? '',
-        label: `${clientNumber} ${clientLocnCode ?? ''}`.trim(),
+        // A pick clears the name, so a name alongside a pinned client is one a
+        // form preset (updating a row) and is worth showing.
+        label: `${`${clientNumber} ${clientLocnCode ?? ''}`.trim()}${
+          clientName ? ` — ${clientName}` : ''
+        }`,
       }
     );
-  }, [options, clientNumber, clientLocnCode]);
+  }, [options, clientNumber, clientLocnCode, clientName]);
 
   // Carbon owns the input's text (its ComboBox takes no value prop), so the box
   // cannot be emptied by passing empty criteria in. Remounting it does empty it.

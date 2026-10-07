@@ -380,7 +380,7 @@ const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCod
             />
             <TextInput
               id="cp-area"
-              labelText="Area (ha) (optional)"
+              labelText="Area (Hectares) (optional)"
               inputMode="decimal"
               value={form.area}
               invalid={!!errors.area}
