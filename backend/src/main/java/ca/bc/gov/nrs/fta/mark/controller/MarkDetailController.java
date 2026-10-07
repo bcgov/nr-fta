@@ -11,10 +11,12 @@ import ca.bc.gov.nrs.fta.mark.service.MarkClientWriteService;
 import ca.bc.gov.nrs.fta.mark.service.MarkDetailService;
 import ca.bc.gov.nrs.fta.mark.service.MarkLandIndexWriteService;
 import ca.bc.gov.nrs.fta.mark.service.MarkPrintService;
+import ca.bc.gov.nrs.fta.mark.service.MarkSnapshotService;
 import ca.bc.gov.nrs.fta.mark.service.MarkSubmitService;
 import ca.bc.gov.nrs.fta.mark.service.MarkUpdateService;
 import ca.bc.gov.nrs.fta.security.RoleConstants;
 import ca.bc.gov.nrs.fta.util.JwtPrincipalUtil;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.http.ContentDisposition;
@@ -56,6 +58,7 @@ public class MarkDetailController {
   private final MarkDetailService markDetailService;
   private final MarkUpdateService markUpdateService;
   private final MarkPrintService markPrintService;
+  private final MarkSnapshotService markSnapshotService;
   private final MarkLandIndexWriteService markLandIndexWriteService;
   private final MarkClientWriteService markClientWriteService;
   private final MarkAmendmentWriteService markAmendmentWriteService;
@@ -65,6 +68,7 @@ public class MarkDetailController {
       MarkDetailService markDetailService,
       MarkUpdateService markUpdateService,
       MarkPrintService markPrintService,
+      MarkSnapshotService markSnapshotService,
       MarkLandIndexWriteService markLandIndexWriteService,
       MarkClientWriteService markClientWriteService,
       MarkAmendmentWriteService markAmendmentWriteService,
@@ -72,6 +76,7 @@ public class MarkDetailController {
     this.markDetailService = markDetailService;
     this.markUpdateService = markUpdateService;
     this.markPrintService = markPrintService;
+    this.markSnapshotService = markSnapshotService;
     this.markLandIndexWriteService = markLandIndexWriteService;
     this.markClientWriteService = markClientWriteService;
     this.markAmendmentWriteService = markAmendmentWriteService;
@@ -165,6 +170,32 @@ public class MarkDetailController {
         .build());
     headers.setCacheControl("no-store");
     return ResponseEntity.ok().headers(headers).body(pdf);
+  }
+
+  /**
+   * {@code GET /api/fta/marks/{id}/snapshot} — the mark as it stands now, as a PDF stamped with
+   * the time and the caller: a point-in-time record (see {@code MarkSnapshotReport}). Read-only,
+   * for anyone who may view the mark.
+   */
+  @GetMapping("/{markNumber}/snapshot")
+  public ResponseEntity<byte[]> snapshot(
+      @PathVariable String markNumber,
+      @RequestParam(required = false) String by,
+      JwtAuthenticationToken principal) {
+    return markSnapshotService
+        .snapshot(markNumber, isCertificate(by), JwtPrincipalUtil.getAuditUserId(principal))
+        .map(s -> {
+          HttpHeaders headers = new HttpHeaders();
+          headers.setContentType(MediaType.APPLICATION_PDF);
+          headers.setContentDisposition(ContentDisposition.attachment()
+              .filename("mark-" + markNumber + "-snapshot-"
+                  + s.generatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmm"))
+                  + ".pdf")
+              .build());
+          headers.setCacheControl("no-store");
+          return ResponseEntity.ok().headers(headers).body(s.pdf());
+        })
+        .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
   @GetMapping("/{markNumber}")

@@ -57,6 +57,17 @@ export const getOrgUnits = () => list('org-units');
 /** District-level org units (code = ORG_UNIT_NO), for the FTA510 District dropdown. */
 export const getDistricts = () => list('districts');
 
+/**
+ * An org unit option's ORG_UNIT_CODE ("DKM"). The option's code is the
+ * ORG_UNIT_NO, but its label reads "CODE - name" (CodeListService), so the code
+ * is what comes before " - ".
+ */
+export const orgUnitCodeOf = (o: CodeOption) => o.description.split(' - ')[0];
+
+/** Districts with three-letter codes only, as legacy's private mark lists show them. */
+export const getThreeLetterDistricts = () =>
+  getDistricts().then((all) => all.filter((o) => orgUnitCodeOf(o).length === 3));
+
 /** Marking requirements (MARKING_METHOD_CODE), for the FTA510 edit form. */
 export const getMarkingMethods = () => list('marking-methods');
 

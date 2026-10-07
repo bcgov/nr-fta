@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPostForBlob, apiPut } from './http';
+import { apiGet, apiGetForBlob, apiPost, apiPostForBlob, apiPut } from './http';
 
 // Mirrors the backend MarkDetailDto (ca.bc.gov.nrs.fta.mark.dto), which ports
 // the legacy THE.FTA_510_PRIVATE_MARK.GET record enriched with the land index
@@ -250,6 +250,15 @@ export interface MarkUpdateRequest {
 export function printMarkCertificate(id: string, byCertificate = false): Promise<Blob> {
   const query = byCertificate ? '?by=certificate' : '';
   return apiPostForBlob(`/api/fta/marks/${encodeURIComponent(id)}/print${query}`);
+}
+
+/**
+ * GET /api/fta/marks/{id}/snapshot — the mark as it stands now, as a PDF stamped
+ * with the time and the user: a point-in-time record. Changes nothing.
+ */
+export function getMarkSnapshot(id: string, byCertificate = false): Promise<Blob> {
+  const query = byCertificate ? '?by=certificate' : '';
+  return apiGetForBlob(`/api/fta/marks/${encodeURIComponent(id)}/snapshot${query}`);
 }
 
 /**

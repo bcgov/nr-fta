@@ -2,6 +2,10 @@ package ca.bc.gov.nrs.fta.mark.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ca.bc.gov.nrs.fta.mark.service.CertificateSignatories.Signatory;
+import com.lowagie.text.pdf.PdfReader;
+import com.lowagie.text.pdf.parser.PdfTextExtractor;
+import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -19,8 +23,7 @@ import org.junit.jupiter.api.Test;
 @DisplayName("Unit Test | MarkCertificateReport")
 class MarkCertificateReportTest {
 
-  @Test
-  void rendersAPdfFromSampleRows() throws Exception {
+  private static Map<String, Object> sampleRow() {
     Map<String, Object> row = new HashMap<>();
     row.put("timber_mark", "E12345");
     row.put("mark_issue_date", MarkCertificateReport.longDate(LocalDate.of(2026, 4, 10)));
@@ -36,15 +39,52 @@ class MarkCertificateReportTest {
     row.put("p_of_c_or_legal", "PARCEL A, PLAN 8941, DL325, RANGE 5, COAST LAND DISTRICT");
     row.put("map_reference_id", "68071");
     row.put("secondary_client_count", "1");
+    return row;
+  }
 
-    byte[] pdf = new MarkCertificateReport(null).fill(
+  private static String text(byte[] pdf) throws Exception {
+    PdfReader reader = new PdfReader(pdf);
+    return new PdfTextExtractor(reader).getTextFromPage(1);
+  }
+
+  @Test
+  void rendersAPdfFromSampleRows() throws Exception {
+    byte[] pdf = new MarkCertificateReport(null, null).fill(
         "152409",
-        List.of(row),
-        List.of(Map.of("TIMBER_MARK", "E12345", "SECONDARY_LICENSEE", "Jane Smith")));
+        List.of(sampleRow()),
+        List.of(Map.of("TIMBER_MARK", "E12345", "SECONDARY_LICENSEE", "Jane Smith")),
+        null);
 
     assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
     Path out = Path.of("target", "FTA402-sample.pdf");
     Files.write(out, pdf);
+    // Unsigned: the blank line's title only.
+    assertThat(text(pdf)).contains("Registrar of Timber Marks");
+  }
+
+  @Test
+  void embedsArialAsLiberationSans() throws Exception {
+    byte[] pdf = new MarkCertificateReport(null, null).fill(
+        "152409", List.of(sampleRow()), List.of(), null);
+
+    // Legacy's Arial, not a serif and not a viewer-substituted font: embedded Liberation Sans.
+    String raw = new String(pdf, java.nio.charset.StandardCharsets.ISO_8859_1);
+    assertThat(raw).contains("LiberationSans").doesNotContain("LiberationSerif");
+  }
+
+  @Test
+  void printsTheSignatorysSignatureNameAndTitle() throws Exception {
+    BufferedImage signature = new BufferedImage(156, 45, BufferedImage.TYPE_INT_ARGB);
+    Signatory signatory =
+        new Signatory("JSMITH", "Jane Smith", "Deputy Registrar of Timber Marks", signature);
+
+    byte[] pdf = new MarkCertificateReport(null, null).fill(
+        "152409", List.of(sampleRow()), List.of(), signatory);
+
+    assertThat(text(pdf))
+        .contains("Jane Smith")
+        .contains("Deputy Registrar of Timber Marks");
+    Files.write(Path.of("target", "FTA402-signed-sample.pdf"), pdf);
   }
 
   @Test

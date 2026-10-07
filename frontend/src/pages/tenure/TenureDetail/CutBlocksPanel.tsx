@@ -31,6 +31,7 @@ import { useApiResource } from '@/hooks/useApiResource';
 import type { CodeOption } from '@/services/codeLists';
 import {
   addTenureCutBlock,
+  blockLink,
   deleteTenureCutBlock,
   getFireHarvestingReasons,
   getTenureCutBlocks,
@@ -60,15 +61,6 @@ const MAX_DESCRIPTION = 120;
 const MAX_COMMENT = 200;
 const MAX_AREA = 9999999.9999;
 const AREA_PATTERN = /^\d+(\.\d+)?$/;
-
-/** The cut block detail page, keyed as it looks a block up (block id + its file and CP). */
-const blockLink = (b: TenureCutBlock) => {
-  const qs = new URLSearchParams();
-  if (b.blockForestFileId) qs.set('forestFileId', b.blockForestFileId);
-  if (b.blockCuttingPermitId) qs.set('cuttingPermitId', b.blockCuttingPermitId);
-  const q = qs.toString();
-  return `/cut-block/${encodeURIComponent(b.cutBlockId)}${q ? `?${q}` : ''}`;
-};
 
 const permitLabel = (p: TenureCutBlockPermit) =>
   `${p.cuttingPermitId ?? 'Single mark'}${p.timberMark ? ` — ${p.timberMark}` : ''}${

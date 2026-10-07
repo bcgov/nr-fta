@@ -17,8 +17,9 @@ import { useNotification } from '@/context/notification/useNotification';
 import {
   getCascadeSplits,
   getDistrictDefaultCascades,
-  getDistricts,
   getManagementUnits,
+  getThreeLetterDistricts,
+  orgUnitCodeOf,
   type CodeOption,
   type ManagementUnit,
 } from '@/services/codeLists';
@@ -103,6 +104,13 @@ const validate = (f: Form): Errors => {
   return e;
 };
 
+/**
+ * New applications in these districts default to this cascade, whatever the
+ * district's tenure default (DIST_TENR_DEFLT) says: W is West of the Cascades.
+ * Keyed by ORG_UNIT_CODE.
+ */
+const CASCADE_OVERRIDES: Record<string, string> = { DKM: 'W', DCK: 'W' };
+
 const orNull = (v: string) => (v.trim() === '' ? null : v.trim());
 
 interface Props {
@@ -145,7 +153,7 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    Promise.all([getDistricts(), getCascadeSplits(), getManagementUnits()])
+    Promise.all([getThreeLetterDistricts(), getCascadeSplits(), getManagementUnits()])
       .then(([d, c, m]) => {
         if (cancelled) return;
         setDistricts(d);
@@ -318,8 +326,11 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
         )}
 
         {select('forestDistrict', 'District', districts, (district) => {
-          // The district's default cascade, as legacy defaults a new tenure's.
-          const cascade = defaultCascades.get(district);
+          // The district's default cascade, as legacy defaults a new tenure's —
+          // except where the private mark default differs (CASCADE_OVERRIDES).
+          const option = districts.find((d) => d.code === district);
+          const cascade =
+            (option && CASCADE_OVERRIDES[orgUnitCodeOf(option)]) ?? defaultCascades.get(district);
           if (cascade && cascades.some((c) => c.code === cascade)) set('cascadeSplitCode', cascade);
         })}
         {select('cascadeSplitCode', 'Cascade', cascades)}
