@@ -95,6 +95,29 @@ jobs:
       backend_replicas: "3"
       frontend_replicas: "3"
 
+  # Vanity TLS for fta.nrs.gov.bc.ca on the PROD frontend Service.
+  # Always runs (empty PEMs must fail). Sibling of promote/monitor-prod so an
+  # expired cert fails Merge after containers have already rolled.
+  route-tls:
+    name: Route TLS (PROD)
+    needs: [deploy-prod]
+    runs-on: ubuntu-24.04
+    environment: prod
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: bcgov/actions-openshift/route-tls@50414269295ed040baf0d05cb4c7f4d76c7bcd8c # v0.2.0
+        with:
+          hostname: fta.nrs.gov.bc.ca
+          target_service: nr-fta-frontend-prod
+          tls_certificate: ${{ secrets.TLS_CERTIFICATE }}
+          tls_private_key: ${{ secrets.TLS_PRIVATE_KEY }}
+          tls_ca_certificate: ${{ secrets.TLS_CA_CERTIFICATE }}
+          oc_namespace: ${{ secrets.OC_NAMESPACE }}
+          oc_server: ${{ vars.OC_SERVER }}
+          oc_token: ${{ secrets.OC_TOKEN }}
+
   # Sync Sysdig email alerts for PROD. No-ops cleanly if SYSDIG_API_TOKEN is
   # unset — adoption is gradual. Alert templates live in monitoring/alerts/.
   monitor-prod:
