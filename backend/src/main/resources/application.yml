@@ -40,6 +40,12 @@ fta:
     read-timeout: 10s
     # How long a resolved name is kept in memory (ISO-8601 duration).
     cache-ttl: ${USER_LOOKUP_CACHE_TTL:PT12H}
+  # The FTA402 certificate's signatures (see mark/service/CertificateSignatories): a folder
+  # holding signatures.zip (as deployed, from GitHub secrets; see the README) or, locally, the
+  # signatories.properties and images themselves. Never kept in git (this repo is public).
+  # Unset, or a missing folder, prints the certificate with a blank signature line.
+  certificate:
+    signatures-dir: ${CERTIFICATE_SIGNATURES_DIR:}
 
 spring:
   application:

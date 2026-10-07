@@ -32,7 +32,11 @@ import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import { canEditMarks } from '@/routes/access';
-import { getDistricts, getPrivateMarkStatuses, type CodeOption } from '@/services/codeLists';
+import {
+  getPrivateMarkStatuses,
+  getThreeLetterDistricts,
+  type CodeOption,
+} from '@/services/codeLists';
 import { markDetailPath } from '@/services/mark_detail';
 import {
   listMarks,
@@ -119,13 +123,10 @@ const MarkList: FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled([getDistricts(), getPrivateMarkStatuses()]).then((settled) => {
+    Promise.allSettled([getThreeLetterDistricts(), getPrivateMarkStatuses()]).then((settled) => {
       if (cancelled) return;
       const [orgRes, statusRes] = settled;
-      // Three-letter district codes only, as legacy's lists show them. The label
-      // reads "CODE - name" (CodeListService), so the code is what's before " - ".
-      if (orgRes.status === 'fulfilled')
-        setDistricts(orgRes.value.filter((o) => o.description.split(' - ')[0].length === 3));
+      if (orgRes.status === 'fulfilled') setDistricts(orgRes.value);
       if (statusRes.status === 'fulfilled') setStatuses(statusRes.value);
       const failed = [
         orgRes.status === 'rejected' ? 'districts' : null,

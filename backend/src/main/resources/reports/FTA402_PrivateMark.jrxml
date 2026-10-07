@@ -3,18 +3,26 @@
   FTA402 Registered Timber Mark Certificate — ported from the legacy Jasper Server report
   (fta-archive: JCRS/FTA/Reports/FTA/FTA402-PrivateMark). Changes from legacy:
    - no query: the backend supplies the rows (MarkCertificateReport ports FTAR402P's SELECT);
-   - no scanned signatures: legacy printed one of 12 named officials' signatures chosen by
-     the activating user's IDIR; this prints a blank signature line over
-     "Registrar of Timber Marks" instead;
+   - signatures: legacy chose one of 12 named officials' scanned signatures, names and titles
+     by the activating user's IDIR, hard-coded here. They now come in as parameters
+     (SIGNATURE, SIGNATORY_NAME, SIGNATORY_TITLE) from CertificateSignatories, which reads
+     them from a mounted folder, never from git. With no signatory set up, a blank signature
+     line prints over "Registrar of Timber Marks";
    - images from the classpath (under_mark converted from BMP to PNG);
-   - Arial mapped to the registered "Times New Roman" family (Liberation Serif).
+   - Arial is the registered "Arial" family (fonts/arial.xml: Liberation Sans, metric-compatible
+     with Arial).
 -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="FTA402_PrivateMark" pageWidth="612" pageHeight="792" whenNoDataType="AllSectionsNoDetail" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="448fdae2-358a-4118-8192-d75a3dbd5ee8">
 	<property name="ireport.zoom" value="1.4641000000000015"/>
 	<property name="ireport.x" value="0"/>
 	<property name="ireport.y" value="0"/>
+	<!-- Anything without its own font is Arial too, not Jasper's unembedded default. -->
+	<style name="Default" isDefault="true" fontName="Arial"/>
 	<parameter name="CLIENTS" class="net.sf.jasperreports.engine.JRDataSource" isForPrompting="false"/>
 	<parameter name="CLIENT_SUBREPORT" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+	<parameter name="SIGNATURE" class="java.awt.Image" isForPrompting="false"/>
+	<parameter name="SIGNATORY_NAME" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="SIGNATORY_TITLE" class="java.lang.String" isForPrompting="false"/>
 	<parameter name="LoggedInUser" class="com.jaspersoft.jasperserver.api.metadata.user.domain.User" isForPrompting="false"/>
 	<parameter name="p_userid" class="java.lang.String" isForPrompting="false">
 		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
@@ -127,7 +135,7 @@
 					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
 				</reportElement>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="12" isBold="true"/>
+					<font fontName="Arial" size="12" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Ministry of Forests]]></text>
 			</staticText>
@@ -137,7 +145,7 @@
 			<textField>
 				<reportElement uuid="ab06688b-b357-4e25-9b4f-0210e16c9e0f" x="39" y="53" width="436" height="12"/>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[msg("Issued at Victoria, British Columbia this {0}", $F{mark_issue_date})]]></textFieldExpression>
 			</textField>
@@ -147,7 +155,7 @@
 					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
 				</reportElement>
 				<textElement textAlignment="Right">
-					<font fontName="Times New Roman" isBold="true"/>
+					<font fontName="Arial" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Registered Timber Mark Certificate]]></text>
 			</staticText>
@@ -157,7 +165,7 @@
 					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
 				</reportElement>
 				<textElement textAlignment="Right">
-					<font fontName="Times New Roman" size="11" isBold="true"/>
+					<font fontName="Arial" size="11" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$P{p_certificate}]]></textFieldExpression>
 			</textField>
@@ -174,7 +182,7 @@
 					<printWhenExpression><![CDATA[$F{mark_amend_date} != null && $F{mark_amend_date} != "" && $V{PAGE_NUMBER} == 1]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[msg("Amended at Victoria, British Columbia this {0}", $F{mark_amend_date})]]></textFieldExpression>
 			</textField>
@@ -183,7 +191,7 @@
 					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<text><![CDATA[Issued to:]]></text>
 			</staticText>
@@ -192,7 +200,7 @@
 					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{main_licensee} != null ? $F{main_licensee}.toUpperCase() : $F{main_licensee}]]></textFieldExpression>
 			</textField>
@@ -217,7 +225,7 @@
 					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{address_1} != null ? $F{address_1}.toUpperCase() : $F{address_1}]]></textFieldExpression>
 			</textField>
@@ -226,7 +234,7 @@
 					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{address_2} != null ? $F{address_2}.toUpperCase() : $F{address_2}]]></textFieldExpression>
 			</textField>
@@ -235,7 +243,7 @@
 					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{address_3} != null ? $F{address_3}.toUpperCase() : $F{address_3}]]></textFieldExpression>
 			</textField>
@@ -244,7 +252,7 @@
 					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{city}]]></textFieldExpression>
 			</textField>
@@ -253,7 +261,7 @@
 					<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
 				</reportElement>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<text><![CDATA[Timber Mark as shown below, is issued under the provisions of Part 5 of the Forest Act and may be used on timber cut only on the land identified as:
 ]]></text>
@@ -274,7 +282,7 @@
 						<printWhenExpression><![CDATA[$V{PAGE_NUMBER} == 1]]></printWhenExpression>
 					</reportElement>
 					<textElement>
-						<font fontName="Times New Roman" size="9"/>
+						<font fontName="Arial" size="9"/>
 					</textElement>
 					<textFieldExpression><![CDATA[$F{p_of_c_or_legal}]]></textFieldExpression>
 				</textField>
@@ -289,14 +297,14 @@
 			<staticText>
 				<reportElement uuid="86125080-821d-462f-a5fb-15d9bea48bec" x="39" y="9" width="68" height="14"/>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<text><![CDATA[Crown Granted:]]></text>
 			</staticText>
 			<textField>
 				<reportElement uuid="a45f70b0-598f-40dd-9c4f-205d2d1576ef" x="107" y="9" width="108" height="14"/>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{granted_acqrd_date}]]></textFieldExpression>
 			</textField>
@@ -306,14 +314,14 @@
 					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
 				</reportElement>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{region}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement uuid="2e7bc128-b511-4f3d-a475-993b82e82fb7" x="39" y="23" width="176" height="14"/>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<text><![CDATA[Inventory Region/Compartment/Letter:]]></text>
 			</staticText>
@@ -323,7 +331,7 @@
 					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
 				</reportElement>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{v_reference}]]></textFieldExpression>
 			</textField>
@@ -333,7 +341,7 @@
 					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
 				</reportElement>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{district}]]></textFieldExpression>
 			</textField>
@@ -343,14 +351,14 @@
 			<staticText>
 				<reportElement uuid="d36daccb-7d78-438d-a4b6-145471626877" x="108" y="47" width="360" height="22"/>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="12" isBold="true"/>
+					<font fontName="Arial" size="12" isBold="true"/>
 				</textElement>
 				<text><![CDATA[TIMBER MARK DESIGNATION]]></text>
 			</staticText>
 			<textField>
 				<reportElement uuid="d59bb599-ff8a-470b-adf7-caf55932e252" x="108" y="69" width="360" height="14"/>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="9" isItalic="true"/>
+					<font fontName="Arial" size="9" isItalic="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{description}]]></textFieldExpression>
 			</textField>
@@ -359,7 +367,7 @@
 					<printWhenExpression><![CDATA[$V{v_first_line_length} == 4]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="80"/>
+					<font fontName="Arial" size="80"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{tm_1}]]></textFieldExpression>
 			</textField>
@@ -368,7 +376,7 @@
 					<printWhenExpression><![CDATA[$V{v_first_line_length} == 4]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="80"/>
+					<font fontName="Arial" size="80"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{tm_2}]]></textFieldExpression>
 			</textField>
@@ -377,7 +385,7 @@
 					<printWhenExpression><![CDATA[$V{v_first_line_length} == 4]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="80"/>
+					<font fontName="Arial" size="80"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{tm_3}]]></textFieldExpression>
 			</textField>
@@ -386,7 +394,7 @@
 					<printWhenExpression><![CDATA[$V{v_first_line_length} == 4]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="80"/>
+					<font fontName="Arial" size="80"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{tm_4}]]></textFieldExpression>
 			</textField>
@@ -395,7 +403,7 @@
 					<printWhenExpression><![CDATA[$V{v_first_line_length} == 3]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="80"/>
+					<font fontName="Arial" size="80"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{tm_1}]]></textFieldExpression>
 			</textField>
@@ -404,7 +412,7 @@
 					<printWhenExpression><![CDATA[$V{v_first_line_length} == 3]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="80"/>
+					<font fontName="Arial" size="80"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{tm_2}]]></textFieldExpression>
 			</textField>
@@ -413,7 +421,7 @@
 					<printWhenExpression><![CDATA[$V{v_first_line_length} == 3]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="80"/>
+					<font fontName="Arial" size="80"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{tm_3}]]></textFieldExpression>
 			</textField>
@@ -422,7 +430,7 @@
 					<printWhenExpression><![CDATA[$V{v_first_line_length} == 2]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="80"/>
+					<font fontName="Arial" size="80"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{tm_1}]]></textFieldExpression>
 			</textField>
@@ -431,7 +439,7 @@
 					<printWhenExpression><![CDATA[$V{v_first_line_length} == 2]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="80"/>
+					<font fontName="Arial" size="80"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$V{tm_2}]]></textFieldExpression>
 			</textField>
@@ -446,7 +454,7 @@
 					<printWhenExpression><![CDATA[$F{timber_mark}.length() == 6 || ($F{timber_mark}.length() == 5 && $F{timber_mark}.indexOf( "'" ) != 4)]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="80"/>
+					<font fontName="Arial" size="80"/>
 				</textElement>
 				<textFieldExpression><![CDATA[($F{timber_mark}.length() == 6 ? $V{tm_4} : $V{tm_3} )]]></textFieldExpression>
 			</textField>
@@ -455,7 +463,7 @@
 					<printWhenExpression><![CDATA[$F{timber_mark}.length() == 6 || ($F{timber_mark}.length() == 5 && $F{timber_mark}.indexOf( "'" ) != 4)]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="80"/>
+					<font fontName="Arial" size="80"/>
 				</textElement>
 				<textFieldExpression><![CDATA[($F{timber_mark}.length() == 6 ? $V{tm_5} : $V{tm_4} )]]></textFieldExpression>
 			</textField>
@@ -464,41 +472,60 @@
 					<printWhenExpression><![CDATA[$F{timber_mark}.length() == 6 || ($F{timber_mark}.length() == 5 && $F{timber_mark}.indexOf( "'" ) != 4)]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
-					<font fontName="Times New Roman" size="80"/>
+					<font fontName="Arial" size="80"/>
 				</textElement>
 				<textFieldExpression><![CDATA[($F{timber_mark}.length() == 6 ? $V{tm_6} : $V{tm_5} )]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement uuid="23458695-daff-4cbc-a22e-227f4d4093dc" x="39" y="339" width="480" height="18"/>
 				<textElement>
-					<font fontName="Times New Roman"/>
+					<font fontName="Arial"/>
 				</textElement>
 				<textFieldExpression><![CDATA["This Timber Mark expires on " + $F{mark_expiry_date}]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement uuid="f65b97d1-ff34-4a27-8964-47f696251b33" x="39" y="357" width="480" height="18"/>
 				<textElement>
-					<font fontName="Times New Roman"/>
+					<font fontName="Arial"/>
 				</textElement>
 				<text><![CDATA[A Timber Mark issued under Section 85 of the Forest Act is not transferable.]]></text>
 			</staticText>
 			<staticText>
 				<reportElement uuid="5ce33c90-14cc-46ec-9439-102a4d56da25" x="39" y="375" width="480" height="18"/>
 				<textElement>
-					<font fontName="Times New Roman"/>
+					<font fontName="Arial"/>
 				</textElement>
 				<text><![CDATA[This Timber Mark certificate and the Timber Mark may be cancelled as per Section 85(5).]]></text>
 			</staticText>
-				<line>
-					<reportElement uuid="bbc8b5c7-f0c1-4ec5-80d3-c5ad6fb5287a" x="265" y="444" width="253" height="1"/>
-				</line>
-				<staticText>
+			<!-- Legacy's signature block: the issuing official's scanned signature over their name
+			     and title. Without a signatory, a blank line to sign on. -->
+			<image scaleImage="RetainShape" hAlign="Right">
+				<reportElement uuid="277fab40-a557-44dc-b4b2-3d38028413bb" x="362" y="403" width="156" height="45">
+					<printWhenExpression><![CDATA[$P{SIGNATURE} != null]]></printWhenExpression>
+				</reportElement>
+				<imageExpression><![CDATA[$P{SIGNATURE}]]></imageExpression>
+			</image>
+			<textField>
+				<reportElement uuid="0d6d1f2e-6f0b-4c31-9a63-2b2b9a1d5e10" x="265" y="444" width="253" height="18">
+					<printWhenExpression><![CDATA[$P{SIGNATORY_NAME} != null && !$P{SIGNATORY_NAME}.isEmpty()]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{SIGNATORY_NAME}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement uuid="bbc8b5c7-f0c1-4ec5-80d3-c5ad6fb5287a" x="265" y="444" width="253" height="1">
+					<printWhenExpression><![CDATA[$P{SIGNATURE} == null]]></printWhenExpression>
+				</reportElement>
+			</line>
+			<textField>
 				<reportElement uuid="0380e47c-5315-45a3-92e2-95d6de896023" x="265" y="459" width="253" height="18"/>
 				<textElement textAlignment="Right">
-					<font fontName="Times New Roman" isItalic="true"/>
+					<font fontName="Arial" isItalic="true"/>
 				</textElement>
-				<text><![CDATA[Registrar of Timber Marks]]></text>
-			</staticText>
+				<textFieldExpression><![CDATA[$P{SIGNATORY_TITLE} != null && !$P{SIGNATORY_TITLE}.isEmpty() ? $P{SIGNATORY_TITLE} : "Registrar of Timber Marks"]]></textFieldExpression>
+			</textField>
 		</band>
 	</detail>
 </jasperReport>

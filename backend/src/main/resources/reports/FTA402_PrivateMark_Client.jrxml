@@ -4,6 +4,8 @@
 	<property name="ireport.zoom" value="1.0"/>
 	<property name="ireport.x" value="0"/>
 	<property name="ireport.y" value="0"/>
+	<!-- Anything without its own font is Arial too, not Jasper's unembedded default. -->
+	<style name="Default" isDefault="true" fontName="Arial"/>
 	<parameter name="p_certificate" class="java.lang.String">
 		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
 	</parameter>
@@ -23,7 +25,7 @@
 					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
 				</reportElement>
 				<textElement>
-					<font fontName="Times New Roman" size="9"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{SECONDARY_LICENSEE} != null ? $F{SECONDARY_LICENSEE}.toUpperCase() : $F{SECONDARY_LICENSEE}]]></textFieldExpression>
 			</textField>

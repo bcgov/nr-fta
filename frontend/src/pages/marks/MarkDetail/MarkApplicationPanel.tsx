@@ -1,4 +1,4 @@
-import { Calendar, Edit, Location, Printer, Report, SendAlt } from '@carbon/icons-react';
+import { Calendar, Camera, Edit, Printer, Report, SendAlt } from '@carbon/icons-react';
 import {
   Button,
   DatePicker,
@@ -29,11 +29,13 @@ import {
   type ManagementUnit,
 } from '@/services/codeLists';
 import {
+  getMarkSnapshot,
   printMarkCertificate,
   submitMark,
   updateMark,
   type MarkDetail,
 } from '@/services/mark_detail';
+import { triggerBrowserDownload } from '@/utils/download';
 import { formatDate } from '@/utils/formatDate';
 import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
@@ -91,6 +93,41 @@ const withCurrent = (options: CodeOption[], code: string, label?: string | null)
 const toIsoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+/**
+ * The Mark summary card's fields, in pairs: two to a row, left then right. Reg /
+ * Comp has a row of its own, and Legal spans the card.
+ */
+const MARK_SUMMARY_ORDER = [
+  'Timber Mark',
+  'File / Certificate',
+  'Client Number',
+  'Mark Holder',
+  'District',
+  'Region',
+  'Marking Requirements',
+  'Marking Instrument',
+  'Application Date',
+  'Geographic Location',
+  'LTO PID',
+  'Area',
+  'Management Unit',
+  'Cascade',
+  'Reg / Comp',
+  'Legal',
+];
+
+/**
+ * `fields` sorted by their label's place in `order`; unlisted ones go last.
+ * Edit mode adds " (optional)" to some labels, which the match ignores.
+ */
+const inOrder = (fields: DetailField[], order: string[]) => {
+  const rank = (f: DetailField) => {
+    const i = order.indexOf(f.label.replace(/ \(optional\)$/, ''));
+    return i === -1 ? order.length : i;
+  };
+  return [...fields].sort((a, b) => rank(a) - rank(b));
+};
+
 interface Props {
   mark: MarkDetail;
   /** The detail route's id: a timber mark, or a certificate with `byCertificate`. */
@@ -105,8 +142,8 @@ interface Props {
 }
 
 /**
- * The Mark application tab of the private-mark detail (FTA510): Mark summary and
- * Administration side by side, Location beneath. One Edit button above them opens
+ * The Mark application tab of the private-mark detail (FTA510): Mark summary
+ * (location fields included) and Administration side by side. One Edit button above them opens
  * every field the user may change in place — the nr-fsp-new FSP Information
  * pattern: inputs replace values inside the same sections, Cancel and Save
  * changes close it, and nothing else on the page can be used meanwhile.
@@ -254,6 +291,31 @@ const MarkApplicationPanel: FC<Props> = ({
       setPrinting(false);
     }
   };
+  // Snapshot — the whole mark as a PDF stamped with now and the user, for the
+  // record. Read-only, so it's there for anyone who can see the mark.
+  const [snapping, setSnapping] = useState(false);
+  const onSnapshot = async () => {
+    setSnapping(true);
+    try {
+      const pdf = await getMarkSnapshot(id, byCertificate);
+      const d = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(
+        d.getHours(),
+      )}${pad(d.getMinutes())}`;
+      triggerBrowserDownload(pdf, `mark-${mark.timberMark ?? id}-snapshot-${stamp}.pdf`);
+    } catch (err) {
+      display({
+        kind: 'error',
+        title: 'Could not take the snapshot',
+        subtitle: err instanceof Error ? err.message : 'Request failed',
+        timeout: 9000,
+      });
+    } finally {
+      setSnapping(false);
+    }
+  };
+
   // Legacy offered Print once the status began with H (HN, HI, HX…).
   const printable = (mark.markStatusCode ?? '').startsWith('H');
 
@@ -516,7 +578,7 @@ const MarkApplicationPanel: FC<Props> = ({
     )),
     willIssue
       ? {
-          label: 'Status',
+          label: 'Timber Mark Status',
           value: (
             <span>
               <StatusTag
@@ -528,10 +590,10 @@ const MarkApplicationPanel: FC<Props> = ({
           ),
         }
       : field(
-          'Status',
+          'Timber Mark Status',
           statusTag(mark.markStatusCode, mark.markStatusDesc),
           open(rules?.status),
-          () => select('markStatusCode', 'Status', statusOptions, false),
+          () => select('markStatusCode', 'Timber Mark Status', statusOptions, false),
         ),
     field(
       'Initial Term',
@@ -595,7 +657,8 @@ const MarkApplicationPanel: FC<Props> = ({
 
   const locationOpen = open(rules?.location);
   const locationFields: DetailField[] = [
-    { label: 'Region', value: dash(mark.regionDesc) },
+    // Full width beside a full-width District, so the pairs below stay paired.
+    { label: 'Region', value: dash(mark.regionDesc), span2: editing },
     {
       ...field(
         'District',
@@ -621,13 +684,9 @@ const MarkApplicationPanel: FC<Props> = ({
       locationOpen,
       () => text('permitBlockArea', 'Area (ha)', 6, 'sm'),
     ),
-    {
-      ...field('LTO PID', dash(mark.bcaaFolioNumber), locationOpen, () =>
-        text('bcaaFolioNumber', 'LTO PID', MAX.bcaaFolioNumber),
-      ),
-      // In edit mode LTO PID leads the second row, under Region.
-      rowStart: editing,
-    },
+    field('LTO PID', dash(mark.bcaaFolioNumber), locationOpen, () =>
+      text('bcaaFolioNumber', 'LTO PID', MAX.bcaaFolioNumber),
+    ),
     {
       ...field('Management Unit', managementUnit, locationOpen, () => (
         <div className="detail-edit__input detail-edit__input--cell">
@@ -653,13 +712,17 @@ const MarkApplicationPanel: FC<Props> = ({
       // Unit names run long ("U 24 — Prince George TSA"), as District's do.
       span2: editing,
     },
-    field('Cascade', dash(mark.cascadeSplitDesc ?? mark.cascadeSplitCode), locationOpen, () =>
-      select(
-        'cascadeSplitCode',
-        'Cascade',
-        withCurrent(codes.cascades, mark.cascadeSplitCode ?? '', mark.cascadeSplitDesc),
+    {
+      ...field('Cascade', dash(mark.cascadeSplitDesc ?? mark.cascadeSplitCode), locationOpen, () =>
+        select(
+          'cascadeSplitCode',
+          'Cascade',
+          withCurrent(codes.cascades, mark.cascadeSplitCode ?? '', mark.cascadeSplitDesc),
+        ),
       ),
-    ),
+      // Full width beside a full-width Management Unit, as Region is beside District.
+      span2: editing,
+    },
     field(
       'Reg / Comp',
       regComp,
@@ -699,51 +762,66 @@ const MarkApplicationPanel: FC<Props> = ({
 
   return (
     <div className={editing ? 'fsp-info__tab-panel detail-edit' : 'fsp-info__tab-panel'}>
-      {canEdit && rules && (
-        <div className="detail-edit__toolbar">
-          {editing ? (
-            <p className="detail-edit__strap">All fields are required unless marked optional.</p>
-          ) : (
-            <>
-              <Button
-                kind="tertiary"
-                size="sm"
-                renderIcon={SendAlt}
-                disabled={!rules.submit || printing || submitting}
-                onClick={() => setConfirmSubmit(true)}
-              >
-                Submit to Headquarters
-              </Button>
-              <Button
-                kind="tertiary"
-                size="sm"
-                renderIcon={Printer}
-                disabled={!printable || printing || submitting}
-                onClick={() => void onPrint()}
-              >
-                {printing ? 'Printing…' : 'Print'}
-              </Button>
-              <Button
-                kind="tertiary"
-                size="sm"
-                renderIcon={Edit}
-                disabled={!rules.editable || printing || submitting}
-                onClick={onEdit}
-              >
-                Edit
-              </Button>
-            </>
-          )}
-        </div>
-      )}
+      <div className="detail-edit__toolbar">
+        {editing ? (
+          <p className="detail-edit__strap">All fields are required unless marked optional.</p>
+        ) : (
+          <>
+            <Button
+              kind="tertiary"
+              size="sm"
+              renderIcon={Camera}
+              disabled={snapping}
+              onClick={() => void onSnapshot()}
+            >
+              {snapping ? 'Taking snapshot…' : 'Snapshot'}
+            </Button>
+            {canEdit && rules && (
+              <>
+                <Button
+                  kind="tertiary"
+                  size="sm"
+                  renderIcon={SendAlt}
+                  disabled={!rules.submit || printing || submitting}
+                  onClick={() => setConfirmSubmit(true)}
+                >
+                  Submit to Headquarters
+                </Button>
+                <Button
+                  kind="tertiary"
+                  size="sm"
+                  renderIcon={Printer}
+                  disabled={!printable || printing || submitting}
+                  onClick={() => void onPrint()}
+                >
+                  {printing ? 'Printing…' : 'Print'}
+                </Button>
+                <Button
+                  kind="tertiary"
+                  size="sm"
+                  renderIcon={Edit}
+                  disabled={!rules.editable || printing || submitting}
+                  onClick={onEdit}
+                >
+                  Edit
+                </Button>
+              </>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Side by side, each as wide as its fields need; they wrap onto
           separate rows when the pane is too narrow. */}
       <div className="fsp-info__tile-row">
-        <DetailTile title="Mark summary" icon={Report} fields={summaryFields} />
+        {/* The summary and location fields together, in MARK_SUMMARY_ORDER. */}
+        <DetailTile
+          title="Mark summary"
+          icon={Report}
+          fields={inOrder([...summaryFields, ...locationFields], MARK_SUMMARY_ORDER)}
+        />
         <DetailTile title="Administration" icon={Calendar} fields={administrationFields} />
       </div>
-      <DetailTile title="Location" icon={Location} fields={locationFields} />
 
       {editing && (
         <div className="detail-edit__actions">

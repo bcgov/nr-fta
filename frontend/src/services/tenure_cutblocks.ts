@@ -34,6 +34,15 @@ export interface TenureCutBlock {
   deleteReason: string | null;
 }
 
+/** The cut block detail page, keyed as it looks a block up (block id + its file and CP). */
+export const blockLink = (b: TenureCutBlock) => {
+  const qs = new URLSearchParams();
+  if (b.blockForestFileId) qs.set('forestFileId', b.blockForestFileId);
+  if (b.blockCuttingPermitId) qs.set('cuttingPermitId', b.blockCuttingPermitId);
+  const q = qs.toString();
+  return `/cut-block/${encodeURIComponent(b.cutBlockId)}${q ? `?${q}` : ''}`;
+};
+
 /** One suspension of one of the tenure's blocks (FTA_903_CB_SUSP_LIST.GET). */
 export interface TenureCutBlockSuspension {
   cuttingPermitId: string | null;

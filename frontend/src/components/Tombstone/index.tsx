@@ -1,6 +1,9 @@
 import { Column, Grid } from '@carbon/react';
 
 import type { FC, ReactNode } from 'react';
+// The status colours behind a `bc-status-accent--*` class, which a page may use
+// without rendering a status pill (the pill's import is what loads them).
+import '../StatusTag/StatusTag.css';
 import './Tombstone.css';
 
 export interface TombstoneItem {

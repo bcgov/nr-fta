@@ -82,6 +82,16 @@ parameters:
   - name: USER_LOOKUP_CLIENT_SECRET
     required: false
     value: ""
+  - name: CERTIFICATE_SIGNATURES
+    required: false
+    description: |
+      The FTA402 certificate's signatures: a zip of signatories.properties and the images,
+      base64-encoded (see the backend README). Empty deploys unsigned certificates.
+    value: ""
+  - name: CERTIFICATE_SIGNATURES_HASH
+    required: false
+    description: A hash of CERTIFICATE_SIGNATURES, so new signatures restart the backend.
+    value: ""
 
 objects:
   # ── Deployment ────────────────────────────────────────────
@@ -111,6 +121,8 @@ objects:
             app: ${NAME}-backend-${ZONE}
             app.kubernetes.io/instance: ${ZONE}
           annotations:
+            # Changes when the signatures do, so the pods restart and read the new ones.
+            fta/certificate-signatures-hash: "${CERTIFICATE_SIGNATURES_HASH}"
             prometheus.io/path: /actuator/prometheus
             prometheus.io/port: '8080'
             prometheus.io/scrape: 'true'
@@ -208,6 +220,9 @@ objects:
                     secretKeyRef:
                       name: ${NAME}-backend-secret-${ZONE}
                       key: USER_LOOKUP_CLIENT_SECRET
+                # The certificate signatures (CertificateSignatories), from the Secret mounted below.
+                - name: CERTIFICATE_SIGNATURES_DIR
+                  value: /signatures
               resources:
                 requests:
                   cpu: ${MIN_CPU}
@@ -246,6 +261,9 @@ objects:
                   mountPath: /temp
                 - name: tmp-storage
                   mountPath: /tmp
+                - name: certificate-signatures
+                  mountPath: /signatures
+                  readOnly: true
               securityContext:
                 allowPrivilegeEscalation: false
                 runAsNonRoot: true
@@ -267,6 +285,10 @@ objects:
             - name: api-cert
               persistentVolumeClaim:
                 claimName: ${NAME}-backend-api-cert-${ZONE}
+            # Scanned signatures for the FTA402 certificate, from the Secret below — never in git.
+            - name: certificate-signatures
+              secret:
+                secretName: ${NAME}-certificate-signatures-${ZONE}
 
   # ── Service ───────────────────────────────────────────────
   - apiVersion: v1
@@ -339,6 +361,21 @@ objects:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       KEYSTORE_SECRET: ${KEYSTORE_SECRET}
       USER_LOOKUP_CLIENT_SECRET: ${USER_LOOKUP_CLIENT_SECRET}
+
+  # ── Secret: certificate signatures ─────────────────────────
+  # signatures.zip, as the deploy passes it (GitHub secrets CERTIFICATE_SIGNATURES_n, joined).
+  # Empty when it passes none: the backend then prints certificates unsigned.
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: ${NAME}-certificate-signatures-${ZONE}
+      labels:
+        app: ${NAME}-backend-${ZONE}
+        app.kubernetes.io/instance: ${ZONE}
+    type: Opaque
+    data:
+      # Quoted: an empty parameter must stay an empty string, not YAML null.
+      signatures.zip: "${CERTIFICATE_SIGNATURES}"
 
   # ── NetworkPolicy: ingress from same-zone frontend + cluster monitoring ──
   - apiVersion: networking.k8s.io/v1

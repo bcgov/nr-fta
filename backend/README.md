@@ -86,6 +86,45 @@ GitHub settings per environment (dev/test/prod):
   sign in through: that environment's loginproxy issuer ending in `/realms/forests`. The token
   URL is derived from it.
 
+### Certificate signatures (FTA402)
+
+The Registered Timber Mark Certificate is signed by the official who issued the mark, as legacy
+signed it: their scanned signature, name and title, chosen by matching their IDIR within the
+mark's `PRIVATE_MARK_ACTIVATED_USERID`. The scanned signatures are **not in this repository** —
+it is public, and they would let anyone forge a certificate. They live in GitHub secrets and
+every TEST/PROD deploy puts them in OpenShift; there is no manual step.
+
+They start as a local folder (kept out of any git checkout) holding the images and a
+`signatories.properties`:
+
+```properties
+# key: an IDIR username, found anywhere in the issuing user's id
+JSMITH.name=Jane Smith
+JSMITH.title=Registrar of Timber Marks
+JSMITH.image=js_signature.png
+```
+
+The legacy images are in fta-archive, `JCRS/FTA/Images/*_signature.png.data` (plain PNGs —
+rename each to `.png`); the legacy names and titles are in the FTA402 report there.
+
+To set or change them, from the repo root with `gh` logged in as a repo admin:
+
+```sh
+.github/scripts/set-certificate-signatures.sh <folder>
+```
+
+It zips the folder, base64-encodes it and splits it into the repo secrets
+`CERTIFICATE_SIGNATURES_1..4` (GitHub caps a secret at 48 KB). The next TEST/PROD deploy
+(`merge.yml` → `reusable-deploy.yml`) joins them, checks they unzip, and passes them to this
+template, which keeps them in the Secret `nr-fta-certificate-signatures-<zone>`, mounted at
+`/signatures` (`CERTIFICATE_SIGNATURES_DIR`). A hash of them sits on the pod template, so a
+change restarts the backend, which logs `Certificate signatures: N signatories loaded.` at the
+first print.
+
+PR previews are deployed without signatures, as is any environment while the secrets are unset:
+certificates then print a blank signature line over "Registrar of Timber Marks". The font is
+legacy's Arial, as embedded Liberation Sans (metric-compatible; `src/main/resources/fonts`).
+
 ### Spring Profiles
 
 | Profile | Description |

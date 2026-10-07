@@ -1,5 +1,6 @@
 package ca.bc.gov.nrs.fta.mark.service;
 
+import ca.bc.gov.nrs.fta.mark.service.CertificateSignatories.Signatory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
@@ -28,6 +29,9 @@ import org.springframework.stereotype.Component;
  * {@code FTAR402P_Client} procedures; their SELECTs are ported here, so the report needs only
  * read access, and the dates are formatted as the procedure did ("10th day of April, 2021.").
  *
+ * <p>It is signed by the official who issued the mark ({@link CertificateSignatories}), or
+ * prints a blank signature line when they have no signature set up.
+ *
  * <p>A certificate exists only once the mark is issued: it reads the mark's forest file and
  * its main ('A') client, as FTAR402P's inner joins do.
  */
@@ -41,6 +45,7 @@ public class MarkCertificateReport {
              pmc.private_mark_issue_date                    AS issue_date,
              NVL(pmc.private_mark_extend_date, pmc.private_mark_expiry_date) AS expiry_date,
              pmc.private_mark_amend_date                    AS amend_date,
+             pmc.private_mark_activated_userid              AS activated_userid,
              ft.description                                 AS description,
              NVL(TO_CHAR(pmc.granted_acqrd_date, 'YYYY-MM-DD'), pmc.crown_granted_acq_desc)
                                                             AS granted_acqrd_date,
@@ -96,11 +101,14 @@ public class MarkCertificateReport {
       """;
 
   private final NamedParameterJdbcTemplate jdbc;
+  private final CertificateSignatories signatories;
   private volatile JasperReport main;
   private volatile JasperReport clients;
 
-  public MarkCertificateReport(NamedParameterJdbcTemplate jdbc) {
+  public MarkCertificateReport(
+      NamedParameterJdbcTemplate jdbc, CertificateSignatories signatories) {
     this.jdbc = jdbc;
+    this.signatories = signatories;
   }
 
   /**
@@ -115,7 +123,8 @@ public class MarkCertificateReport {
       row.put("mark_issue_date", longDate(rs.getObject("issue_date", LocalDate.class)));
       row.put("mark_expiry_date", longDate(rs.getObject("expiry_date", LocalDate.class)));
       row.put("mark_amend_date", longDate(rs.getObject("amend_date", LocalDate.class)));
-      for (String f : List.of("description", "granted_acqrd_date", "crown_granted_acq_desc",
+      for (String f : List.of("activated_userid", "description", "granted_acqrd_date",
+          "crown_granted_acq_desc",
           "district", "region", "main_licensee", "address_1", "address_2", "address_3", "city",
           "province", "country", "postal_code", "p_of_c_or_legal", "map_reference_id",
           "secondary_client_count")) {
@@ -129,14 +138,27 @@ public class MarkCertificateReport {
     List<Map<String, ?>> secondary = jdbc.query(CLIENTS_SQL, p, (rs, n) -> Map.of(
         "TIMBER_MARK", String.valueOf(rs.getString("timber_mark")),
         "SECONDARY_LICENSEE", String.valueOf(rs.getString("secondary_licensee"))));
-    return fill(certificate, rows, secondary);
+    // Signed by the official who issued the mark, as legacy signed it.
+    Signatory signatory = signatories
+        .forUser((String) rows.get(0).get("activated_userid"))
+        .orElse(null);
+    return fill(certificate, rows, secondary, signatory);
   }
 
-  /** Fills the compiled report with the rows and exports it. Package-visible for tests. */
-  byte[] fill(String certificate, List<Map<String, ?>> rows, List<Map<String, ?>> secondary) {
+  /**
+   * Fills the compiled report with the rows and exports it; {@code signatory} null prints a
+   * blank signature line. Package-visible for tests.
+   */
+  byte[] fill(String certificate, List<Map<String, ?>> rows, List<Map<String, ?>> secondary,
+      Signatory signatory) {
     try {
       Map<String, Object> params = new HashMap<>();
       params.put("p_certificate", certificate);
+      if (signatory != null) {
+        params.put("SIGNATURE", signatory.signature());
+        params.put("SIGNATORY_NAME", signatory.name());
+        params.put("SIGNATORY_TITLE", signatory.title());
+      }
       params.put("CLIENTS", new JRMapCollectionDataSource(secondary));
       params.put("CLIENT_SUBREPORT", clientsReport());
       JasperPrint print =

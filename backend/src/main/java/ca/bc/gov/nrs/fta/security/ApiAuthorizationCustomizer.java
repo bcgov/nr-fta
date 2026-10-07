@@ -147,7 +147,8 @@ public class ApiAuthorizationCustomizer implements
             "/api/fta/timber-marks/export",
             "/api/fta/cutting-permits/*",  // the detail Timber Mark Search opens
             "/api/fta/marks",              // Application/Amendment List
-            "/api/fta/marks/*")            // private mark detail
+            "/api/fta/marks/*",            // private mark detail
+            "/api/fta/marks/*/snapshot")   // its point-in-time PDF
         .hasAnyAuthority(
             RoleConstants.ADMIN_AUTHORITY,
             RoleConstants.VIEWER_AUTHORITY,

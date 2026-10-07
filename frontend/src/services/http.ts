@@ -57,6 +57,16 @@ export const apiPost = <T>(path: string, body?: unknown) => writeJson<T>('POST',
 export const apiPut = <T>(path: string, body?: unknown) => writeJson<T>('PUT', path, body);
 export const apiDelete = <T>(path: string, body?: unknown) => writeJson<T>('DELETE', path, body);
 
+/** A GET whose response is a file (a generated PDF, say) rather than JSON. */
+export async function apiGetForBlob(path: string): Promise<Blob> {
+  const res = await apiFetch(path, { method: 'GET' });
+  if (!res.ok) {
+    const msg = await readErrorMessage(res);
+    throw new Error(msg || `Request failed (${res.status})`);
+  }
+  return res.blob();
+}
+
 /**
  * A POST whose response is a file (a generated PDF, say) rather than JSON — sent
  * with the CSRF header every write needs. Errors are read like any other call's.

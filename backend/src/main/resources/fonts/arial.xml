@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  "Arial", the legacy FTA402 certificate's font, as Liberation Sans: open (SIL OFL, see
+  LICENSE.LiberationFonts) and metric-compatible with Arial, so the legacy layout's text fits
+  where it did. Embedded, so the PDF looks the same wherever it is opened or printed.
+-->
+<fontFamilies>
+  <fontFamily name="Arial">
+    <normal>fonts/LiberationSans-Regular.ttf</normal>
+    <bold>fonts/LiberationSans-Bold.ttf</bold>
+    <italic>fonts/LiberationSans-Italic.ttf</italic>
+    <boldItalic>fonts/LiberationSans-BoldItalic.ttf</boldItalic>
+    <pdfEncoding>Identity-H</pdfEncoding>
+    <pdfEmbedded>true</pdfEmbedded>
+  </fontFamily>
+</fontFamilies>
