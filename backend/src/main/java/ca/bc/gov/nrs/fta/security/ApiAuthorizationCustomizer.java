@@ -106,7 +106,8 @@ public class ApiAuthorizationCustomizer implements
             "/api/fta/marks/*/land-index",
             "/api/fta/marks/*/clients",
             "/api/fta/marks/*/amendments",
-            "/api/fta/marks/*/submit")
+            "/api/fta/marks/*/submit",
+            "/api/fta/marks/skip-timber-mark")
         .hasAnyAuthority(
             RoleConstants.ADMIN_AUTHORITY, RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY);

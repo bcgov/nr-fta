@@ -243,7 +243,8 @@ public class MarkUpdateService {
       if (v.grantedDesc() != null && v.grantedDesc().length() > 10) {
         e.add("Crown Granted Description can be at most 10 characters.");
       }
-      validateCrownGrant(e, c.fileTypeCode(), v);
+      // The type being assigned counts: legacy checked these on the Save that issued the mark.
+      validateCrownGrant(e, issuing ? trim(q.fileTypeCode()) : c.fileTypeCode(), v);
     }
 
     if (r.status()) {
@@ -267,7 +268,9 @@ public class MarkUpdateService {
       return;
     }
     if ((v.grantedDate() == null) == blank(v.grantedDesc())) {
-      e.add("Enter either a Crown Granted Date or a Crown Granted Description, not both.");
+      // Legacy: "One and only one of Crown Granted Date or Crown Granted Description must be
+      // entered."
+      e.add("Enter exactly one of Crown Granted Date or Crown Granted Description.");
       return;
     }
     boolean b08 = "B08".equals(fileType);

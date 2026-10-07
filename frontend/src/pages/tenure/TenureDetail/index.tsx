@@ -25,6 +25,7 @@ import { useLazyTabs, type LazyTabs } from '@/hooks/useLazyTabs';
 import { useNavOrigin } from '@/lib/navOrigin';
 import PageLayout from '@/pages/PageLayout';
 import { canEdit } from '@/routes/access';
+import { markDetailPath } from '@/services/mark_detail';
 import { getTenureDetail } from '@/services/tenure_detail';
 import { formatDate } from '@/utils/formatDate';
 
@@ -179,6 +180,24 @@ const TenureDetail: FC = () => {
               className={`bc-status-accent--${statusCodeVariant(tenure.fileStatusCode) ?? 'default'}`}
               items={[
                 { label: 'File ID', value: tenure.forestFileId },
+                // A private mark's forest file links back to the mark.
+                ...(tenure.privateMark || tenure.privateMarkCertificate
+                  ? [
+                      {
+                        label: 'Private Mark',
+                        value: (
+                          <Link
+                            to={
+                              markDetailPath(tenure.privateMark, tenure.privateMarkCertificate) ??
+                              '/marks'
+                            }
+                          >
+                            {tenure.privateMark ?? tenure.privateMarkCertificate}
+                          </Link>
+                        ),
+                      },
+                    ]
+                  : []),
                 { label: 'Type', value: tenure.fileTypeDesc || tenure.fileTypeCode || '—' },
                 {
                   label: 'Admin Organization',

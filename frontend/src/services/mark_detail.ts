@@ -253,6 +253,35 @@ export function printMarkCertificate(id: string, byCertificate = false): Promise
 }
 
 /**
+ * GET /api/fta/marks/next-timber-mark — the timber mark that issuing a mark of this
+ * type would be given now, without taking it; null when it can't be previewed (a
+ * type that isn't issued here, or the lookup failed). The save takes the number, and
+ * another issue in between can take this one first.
+ */
+export async function getNextTimberMark(fileTypeCode: string): Promise<string | null> {
+  try {
+    const { timberMark } = await apiGet<{ timberMark: string }>(
+      `/api/fta/marks/next-timber-mark?fileType=${encodeURIComponent(fileTypeCode)}`,
+    );
+    return timberMark || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * POST /api/fta/marks/skip-timber-mark — passes over the next timber mark (the user
+ * won't issue it) and returns the one after. Takes that number for good, as legacy's
+ * repeated Assign Mark did.
+ */
+export async function skipTimberMark(fileTypeCode: string): Promise<string> {
+  const { timberMark } = await apiPost<{ timberMark: string }>(
+    `/api/fta/marks/skip-timber-mark?fileType=${encodeURIComponent(fileTypeCode)}`,
+  );
+  return timberMark;
+}
+
+/**
  * GET /api/fta/marks/{id}/snapshot — the mark as it stands now, as a PDF stamped
  * with the time and the user: a point-in-time record. Changes nothing.
  */

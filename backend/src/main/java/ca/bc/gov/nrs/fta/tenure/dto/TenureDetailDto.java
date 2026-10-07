@@ -43,6 +43,10 @@ public record TenureDetailDto(
     Integer extensionCount,
     String secLicenseeInd,
     String notesLabel,
+    /** The private mark this file belongs to (its timber mark), or null when it isn't one. */
+    String privateMark,
+    /** That private mark's certificate — the key when it has no timber mark yet. */
+    String privateMarkCertificate,
     // AAC summary (FTA_930_AAC)
     BigDecimal scheduleAArea,
     BigDecimal scheduleBArea,

@@ -9,3 +9,26 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+// The issuing confirmation (MarkApplicationPanel): the timber mark to be given, large,
+// as the certificate shows it, over its mark type.
+.issue-confirm {
+  margin: 0 0 1rem;
+}
+
+.issue-confirm__label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+}
+
+.issue-confirm__mark {
+  margin: 0.25rem 0 1rem;
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.issue-confirm__type {
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+}

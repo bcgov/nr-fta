@@ -52,13 +52,7 @@ public class AssocFilesService {
    */
   private static final String LIST_SQL =
       """
-      SELECT a.*,
-             -- An FTA file that is a private mark opens on the mark instead.
-             CASE WHEN a.file_source_code = 'F' THEN
-                  (SELECT MAX(pmc.certificate)
-                     FROM the.private_mark_certificate pmc
-                    WHERE pmc.forest_file_id = a.associated_file_id)
-             END                                             AS mark_certificate
+      SELECT a.*
         FROM (
       SELECT au.associated_file_id                           AS associated_file_id,
              au.file_source_code                             AS file_source_code,
@@ -223,8 +217,7 @@ public class AssocFilesService {
             rs.getString("type_desc"),
             rs.getObject("association_end_date", LocalDate.class),
             rs.getObject("revision_count", Long.class),
-            AssocFilesRules.SOURCE_FTAS.equals(rs.getString("file_source_code")),
-            rs.getString("mark_certificate")));
+            AssocFilesRules.SOURCE_FTAS.equals(rs.getString("file_source_code"))));
     return new AssocFilesListDto(rows, rules.canAdd(), rules.addReason());
   }
 

@@ -50,6 +50,12 @@ public class TenureDetailsService {
   private static final String NO_SPATIAL = "This file does not contain an approved spatial"
       + " submission";
 
+  /**
+   * GET's notice on a private mark's file. Not shown: edit mode already opens only those two
+   * fields, so the banner told users nothing.
+   */
+  private static final String PRIVATE_MARK_NOTICE = "Only Zone and quota type may be updated";
+
   /** Coded values: parameter, option list (for descriptions and the expiry check), label. */
   private record Coded(String param, String list, String label) {}
 
@@ -362,7 +368,9 @@ public class TenureDetailsService {
       throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
           String.join(" ", messages.errors()));
     }
-    List<String> warnings = messages.warnings();
+    List<String> warnings = messages.warnings().stream()
+        .filter(w -> !w.startsWith(PRIVATE_MARK_NOTICE))
+        .toList();
     if (warnings.stream().anyMatch(w -> w.contains(NO_SPATIAL))) {
       out.put("p_disable_save_ind", "Y");
     }

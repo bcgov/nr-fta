@@ -8,6 +8,15 @@
   border-left: 4px solid var(--bc-status-bg, var(--cds-border-interactive));
 }
 
+/* The narrow grid leaves almost no gap between columns, so a long value
+   ("RSK - Skeena Natural Resource Region") would run into the next one; the
+   end padding keeps them apart, and a single long word still wraps. */
+.fta-tombstone__label,
+.fta-tombstone__value {
+  padding-inline-end: 1rem;
+  overflow-wrap: anywhere;
+}
+
 .fta-tombstone__label {
   font-size: 0.75rem;
   color: var(--cds-text-secondary);

@@ -55,15 +55,21 @@ public class TenureDetailService {
              pfu.mgmt_unit_type            AS mgmt_unit_type,
              pfu.mgmt_unit_id              AS mgmt_unit_id,
              pfu.mgmt_unit_type || '-' || pfu.mgmt_unit_id AS management_unit,
-             tt.legal_effective_dt         AS award_date,
-             tt.current_expiry_dt          AS expiry_date,
-             tt.initial_expiry_dt          AS initial_expiry_date,
+             -- A private mark's file shows the mark's own dates, as legacy FTA100's GET does
+             -- ("both sets should be the same"): TENURE_TERM only catches up once it is HI.
+             COALESCE(pm.issue_date, tt.legal_effective_dt)        AS award_date,
+             CASE WHEN pm.forest_file_id IS NOT NULL
+                  THEN pm.extend_date ELSE tt.current_expiry_dt END AS expiry_date,
+             COALESCE(pm.expiry_date, tt.initial_expiry_dt)        AS initial_expiry_date,
              tt.tenure_term                AS tenure_term_months,
              tt.tenure_extend_cnt          AS extension_count,
              (SELECT DECODE(COUNT(*), 0, 'N', 'Y')
                 FROM the.forest_file_client sec
                WHERE sec.forest_file_id = pfu.forest_file_id
                  AND sec.forest_file_client_type_code = 'B') AS sec_licensee_ind,
+             -- The private mark whose forest file this is, if it is one (for the link to it).
+             pm.timber_mark                AS private_mark,
+             pm.certificate                AS private_mark_certificate,
              (SELECT DECODE(COUNT(*), 0, ' ', 'Note(s) Attached')
                 FROM the.provforest_note pn
                WHERE pn.forest_file_id = pfu.forest_file_id) AS notes_label,
@@ -93,6 +99,15 @@ public class TenureDetailService {
         FROM the.prov_forest_use pfu
         JOIN the.org_unit org              ON org.org_unit_no = pfu.forest_region
         LEFT JOIN the.tenure_term tt        ON tt.forest_file_id = pfu.forest_file_id
+        -- One row per file: a forest file holds at most one private mark.
+        LEFT JOIN (SELECT forest_file_id,
+                          MAX(timber_mark)              AS timber_mark,
+                          MAX(certificate)              AS certificate,
+                          MAX(private_mark_issue_date)  AS issue_date,
+                          MAX(private_mark_expiry_date) AS expiry_date,
+                          MAX(private_mark_extend_date) AS extend_date
+                     FROM the.private_mark_certificate
+                    GROUP BY forest_file_id) pm     ON pm.forest_file_id = pfu.forest_file_id
         LEFT JOIN the.timber_tenure ttn     ON ttn.forest_file_id = pfu.forest_file_id
         LEFT JOIN the.file_type_code ftc    ON ftc.file_type_code = pfu.file_type_code
         LEFT JOIN the.tenure_file_status_code fsc
@@ -128,6 +143,8 @@ public class TenureDetailService {
       rs.getObject("extension_count", Integer.class),
       rs.getString("sec_licensee_ind"),
       rs.getString("notes_label"),
+      rs.getString("private_mark"),
+      rs.getString("private_mark_certificate"),
       rs.getBigDecimal("schedule_a_area"),
       rs.getBigDecimal("schedule_b_area"),
       rs.getBigDecimal("allowable_annual_cut"),

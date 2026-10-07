@@ -17,8 +17,8 @@ import {
   TableRow,
   TextInput,
 } from '@carbon/react';
-import { useCallback, useEffect, useState, type FC } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useState, type FC, type KeyboardEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
@@ -26,7 +26,6 @@ import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
 import { getFileSources, type CodeOption } from '@/services/codeLists';
-import { markDetailPath } from '@/services/mark_detail';
 import {
   addTenureAssociatedFile,
   deleteTenureAssociatedFile,
@@ -103,6 +102,7 @@ const AssociatedFilesPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
   const { display } = useNotification();
   const fetcher = useCallback(() => getTenureAssociatedFiles(forestFileId), [forestFileId]);
   const { data, loading, error, reload } = useApiResource(fetcher, [forestFileId]);
+  const navigate = useNavigate();
 
   const allowed = canEdit && !!data?.canAdd;
 
@@ -265,41 +265,53 @@ const AssociatedFilesPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {rows.map((r) => (
-                        <TableRow key={`${r.associatedFileId}-${r.fileSourceCode}`}>
-                          <TableCell>
-                            {r.tenure ? (
-                              <Link
-                                to={
-                                  (r.markCertificate && markDetailPath(null, r.markCertificate)) ||
-                                  `/tenures/${encodeURIComponent(r.associatedFileId)}`
+                      {rows.map((r) => {
+                        // An FTA file (source F) opens its tenure; another system's id has
+                        // nowhere to go, so its row is plain.
+                        const open = r.tenure
+                          ? () => navigate(`/tenures/${encodeURIComponent(r.associatedFileId)}`)
+                          : undefined;
+                        return (
+                          <TableRow
+                            key={`${r.associatedFileId}-${r.fileSourceCode}`}
+                            {...(open && {
+                              className: 'app-table__row--selectable',
+                              role: 'link',
+                              tabIndex: 0,
+                              onClick: open,
+                              onKeyDown: (e: KeyboardEvent) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  open();
                                 }
-                              >
-                                {r.associatedFileId}
-                              </Link>
-                            ) : (
-                              r.associatedFileId
-                            )}
-                          </TableCell>
-                          <TableCell>{dash(r.fileSourceDesc ?? r.fileSourceCode)}</TableCell>
-                          <TableCell>{dash(r.fileAssociationTypeDesc)}</TableCell>
-                          <TableCell>{dash(formatDate(r.associationEndDate))}</TableCell>
-                          <TableCell>
-                            <OverflowMenu
-                              size="sm"
-                              flipped
-                              iconDescription={`Association with ${r.associatedFileId} actions`}
+                              },
+                            })}
+                          >
+                            <TableCell>{r.associatedFileId}</TableCell>
+                            <TableCell>{dash(r.fileSourceDesc ?? r.fileSourceCode)}</TableCell>
+                            <TableCell>{dash(r.fileAssociationTypeDesc)}</TableCell>
+                            <TableCell>{dash(formatDate(r.associationEndDate))}</TableCell>
+                            {/* The menu's clicks and keys are its own, not the row's. */}
+                            <TableCell
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
                             >
-                              <OverflowMenuItem
-                                itemText="Delete"
-                                isDelete
-                                disabled={!canEdit}
-                                onClick={() => setPendingDelete(r)}
-                              />
-                            </OverflowMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                              <OverflowMenu
+                                size="sm"
+                                flipped
+                                iconDescription={`Association with ${r.associatedFileId} actions`}
+                              >
+                                <OverflowMenuItem
+                                  itemText="Delete"
+                                  isDelete
+                                  disabled={!canEdit}
+                                  onClick={() => setPendingDelete(r)}
+                                />
+                              </OverflowMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </TableContainer>

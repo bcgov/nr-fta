@@ -14,6 +14,7 @@ import ca.bc.gov.nrs.fta.mark.service.MarkPrintService;
 import ca.bc.gov.nrs.fta.mark.service.MarkSnapshotService;
 import ca.bc.gov.nrs.fta.mark.service.MarkSubmitService;
 import ca.bc.gov.nrs.fta.mark.service.MarkUpdateService;
+import ca.bc.gov.nrs.fta.mark.service.TimberMarkPreview;
 import ca.bc.gov.nrs.fta.security.RoleConstants;
 import ca.bc.gov.nrs.fta.util.JwtPrincipalUtil;
 import java.time.format.DateTimeFormatter;
@@ -59,6 +60,7 @@ public class MarkDetailController {
   private final MarkUpdateService markUpdateService;
   private final MarkPrintService markPrintService;
   private final MarkSnapshotService markSnapshotService;
+  private final TimberMarkPreview timberMarkPreview;
   private final MarkLandIndexWriteService markLandIndexWriteService;
   private final MarkClientWriteService markClientWriteService;
   private final MarkAmendmentWriteService markAmendmentWriteService;
@@ -69,6 +71,7 @@ public class MarkDetailController {
       MarkUpdateService markUpdateService,
       MarkPrintService markPrintService,
       MarkSnapshotService markSnapshotService,
+      TimberMarkPreview timberMarkPreview,
       MarkLandIndexWriteService markLandIndexWriteService,
       MarkClientWriteService markClientWriteService,
       MarkAmendmentWriteService markAmendmentWriteService,
@@ -77,6 +80,7 @@ public class MarkDetailController {
     this.markUpdateService = markUpdateService;
     this.markPrintService = markPrintService;
     this.markSnapshotService = markSnapshotService;
+    this.timberMarkPreview = timberMarkPreview;
     this.markLandIndexWriteService = markLandIndexWriteService;
     this.markClientWriteService = markClientWriteService;
     this.markAmendmentWriteService = markAmendmentWriteService;
@@ -170,6 +174,32 @@ public class MarkDetailController {
         .build());
     headers.setCacheControl("no-store");
     return ResponseEntity.ok().headers(headers).body(pdf);
+  }
+
+  /**
+   * {@code GET /api/fta/marks/next-timber-mark?fileType=B08} — the timber mark that issuing a
+   * mark of that type would be given now, without taking it, for the page to show before the
+   * save that issues it: {@code {"timberMark": "ECHYG"}}, or 404 for a type that isn't issued
+   * here. A literal path, so it wins over {@code /{markNumber}}.
+   */
+  @GetMapping("/next-timber-mark")
+  public ResponseEntity<Map<String, String>> nextTimberMark(@RequestParam String fileType) {
+    return timberMarkPreview.nextFor(fileType.trim().toUpperCase(java.util.Locale.ROOT))
+        .map(mark -> ResponseEntity.ok(Map.of("timberMark", mark)))
+        .orElseGet(() -> ResponseEntity.notFound().build());
+  }
+
+  /**
+   * {@code POST /api/fta/marks/skip-timber-mark?fileType=B08} — passes over the next timber
+   * mark (the user won't issue it) and returns the one after: {@code {"timberMark": …}}, or
+   * 404 for a type that isn't issued here. Takes the number for good, as legacy's repeated
+   * Assign Mark did.
+   */
+  @PostMapping("/skip-timber-mark")
+  public ResponseEntity<Map<String, String>> skipTimberMark(@RequestParam String fileType) {
+    return timberMarkPreview.skipFor(fileType.trim().toUpperCase(java.util.Locale.ROOT))
+        .map(mark -> ResponseEntity.ok(Map.of("timberMark", mark)))
+        .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
   /**
