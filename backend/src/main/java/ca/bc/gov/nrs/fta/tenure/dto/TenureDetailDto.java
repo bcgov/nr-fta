@@ -21,10 +21,15 @@ public record TenureDetailDto(
     // file-level header / common tenure (FTA_100_TENURE)
     String forestFileId,
     String fileTypeCode,
+    /** "CODE - description"; null when the code doesn't resolve. */
+    String fileTypeDesc,
     String fileStatusCode,
     String fileStatusDesc,
     LocalDate fileStatusDate,
+    /** The administration org unit (PROV_FOREST_USE.FOREST_REGION), as legacy's Admin Org. */
     String orgUnitCode,
+    /** "CODE - name". */
+    String orgUnitDesc,
     String clientNumber,
     String clientLocnCode,
     String licensee,

@@ -18,7 +18,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
-import StatusTag from '@/components/StatusTag/StatusTag';
+import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import { useLazyTabs, type LazyTabs } from '@/hooks/useLazyTabs';
@@ -26,6 +26,7 @@ import { useNavOrigin } from '@/lib/navOrigin';
 import PageLayout from '@/pages/PageLayout';
 import { canEdit } from '@/routes/access';
 import { getTenureDetail } from '@/services/tenure_detail';
+import { formatDate } from '@/utils/formatDate';
 
 import AacPanel from './AacPanel';
 import AssociatedClientsPanel from './AssociatedClientsPanel';
@@ -132,7 +133,7 @@ const TenureTabs: FC<{
 
 /**
  * FTA100 — Tenure detail, laid out as the private-mark detail: a back link
- * above the title, the file id in a status-coloured pill, then Carbon
+ * above the title, a status-coloured tombstone of the file's key facts, then Carbon
  * contained Tabs over a full-bleed grey pane — Details first (summary and term
  * side by side), then the tenure's sub-entities. Backed by the backend
  * {@code GET /api/fta/tenures/{id}} endpoint, which ports THE.FTA_100_TENURE
@@ -152,25 +153,12 @@ const TenureDetail: FC = () => {
 
   const tabs = useLazyTabs(fileId);
 
-  const statusVariant = statusCodeVariant(tenure?.fileStatusCode);
-
   // What every tab panel gets (panelProps.ts).
   const panelProps: TenurePanelProps | null = tenure
     ? { tenure, canEdit: canEdit(user), onTenureChanged: reload }
     : null;
 
-  // The file id in a large pill beside the words, coloured as its status is in
-  // Tenure Search (grey until the tenure has loaded).
-  const title = (
-    <span className="detail-title">
-      Tenure
-      <StatusTag
-        status={fileId}
-        variant={statusVariant ?? 'default'}
-        className="detail-title__pill"
-      />
-    </span>
-  );
+  const title = 'Tenure';
 
   return (
     <PageLayout
@@ -184,11 +172,40 @@ const TenureDetail: FC = () => {
     >
       <AsyncBoundary loading={loading} error={error} onRetry={reload} loadingText="Loading tenure…">
         {tenure && panelProps && (
-          // Carbon's <Tabs> renders no DOM of its own, so the grey full-bleed
-          // pane is styled through this wrapper (styles/_detail.scss).
-          <div className="fsp-info__page-tabs">
-            <TenureTabs panelProps={panelProps} canEditCp={canEdit(user)} tabs={tabs} />
-          </div>
+          <>
+            <Tombstone
+              ariaLabel="Tenure summary"
+              // The left bar takes the status's colour, as on the private mark.
+              className={`bc-status-accent--${statusCodeVariant(tenure.fileStatusCode) ?? 'default'}`}
+              items={[
+                { label: 'File ID', value: tenure.forestFileId },
+                { label: 'Type', value: tenure.fileTypeDesc || tenure.fileTypeCode || '—' },
+                {
+                  label: 'Admin Organization',
+                  value: tenure.orgUnitDesc || tenure.orgUnitCode || '—',
+                },
+                {
+                  label: 'Status',
+                  value: tenure.fileStatusCode
+                    ? [tenure.fileStatusCode, tenure.fileStatusDesc].filter(Boolean).join(' - ')
+                    : '—',
+                },
+                { label: 'As of', value: formatDate(tenure.fileStatusDate) || '—' },
+                { label: 'Effective Date', value: formatDate(tenure.awardDate) || '—' },
+                {
+                  // Legacy's tombstone: the current expiry once extended, else the initial one.
+                  label: 'Expiry Date',
+                  value: formatDate(tenure.expiryDate ?? tenure.initialExpiryDate) || '—',
+                },
+                { label: 'Licensee', value: tenure.licensee || '—' },
+              ]}
+            />
+            {/* Carbon's <Tabs> renders no DOM of its own, so the grey full-bleed
+                pane is styled through this wrapper (styles/_detail.scss). */}
+            <div className="fsp-info__page-tabs">
+              <TenureTabs panelProps={panelProps} canEditCp={canEdit(user)} tabs={tabs} />
+            </div>
+          </>
         )}
       </AsyncBoundary>
     </PageLayout>

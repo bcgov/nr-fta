@@ -15,6 +15,8 @@ interface TombstoneProps {
   action?: ReactNode;
   /** Accessible label for the summary region. */
   ariaLabel?: string;
+  /** Extra classes, e.g. a `bc-status-accent--*` to colour the left bar by status. */
+  className?: string;
 }
 
 /**
@@ -22,8 +24,13 @@ interface TombstoneProps {
  * screens (mirrors the legacy ftaTombstone.jsp include). Renders key
  * identifiers as a responsive grid of label/value pairs.
  */
-const Tombstone: FC<TombstoneProps> = ({ items, action, ariaLabel = 'Record summary' }) => (
-  <section className="fta-tombstone" aria-label={ariaLabel}>
+const Tombstone: FC<TombstoneProps> = ({
+  items,
+  action,
+  ariaLabel = 'Record summary',
+  className,
+}) => (
+  <section className={`fta-tombstone${className ? ` ${className}` : ''}`} aria-label={ariaLabel}>
     <Grid narrow>
       {items.map((item) => (
         <Column key={item.label} sm={2} md={2} lg={3}>

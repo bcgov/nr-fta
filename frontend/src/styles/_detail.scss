@@ -32,6 +32,12 @@
   }
 }
 
+// A tombstone right above the tabs: the page layout's gap already spaces them,
+// so its own bottom margin would double it.
+.fta-tombstone:has(+ .fsp-info__page-tabs) {
+  margin-block-end: 0;
+}
+
 // The page's bottom padding would otherwise leave a band of page background
 // under the grey pane.
 .page-layout:has(.fsp-info__page-tabs) {
@@ -177,29 +183,6 @@
 .fsp-info__empty-cell {
   color: var(--cds-text-secondary);
   text-align: center;
-}
-
-// A detail page's title: the record type in words, then its id in a large
-// status-coloured pill — "Private Mark [ECHUT]", "Tenure [A12345]".
-.detail-title {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-// The shared status pill (StatusTag) is 24px with 14px text, sized for table
-// rows; beside a 2rem heading it is enlarged, keeping its status colours.
-.detail-title .detail-title__pill {
-  margin: 0;
-  block-size: auto;
-  min-block-size: 2.5rem;
-  padding-inline: 1.25rem;
-  border-radius: 1.25rem;
-  font-size: 1.5rem;
-  line-height: 1;
-  font-weight: 600;
-  letter-spacing: 0.02em;
 }
 
 // Record-level actions above a detail tab's tiles (Edit, Print…), right-aligned,

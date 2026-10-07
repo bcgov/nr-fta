@@ -13,50 +13,68 @@
   font-weight: 400;
   letter-spacing: 0.16px;
   white-space: nowrap;
+  background: var(--bc-status-bg);
+  color: var(--bc-status-fg);
 }
 
+/* Each status's colours are custom properties, so other elements can take the
+   same colour: `bc-status-accent--<variant>` sets them without the pill styling
+   (e.g. a status-coloured tombstone bar). */
+
 .bc-status-tag--approved,
-.bc-status-tag--in-effect {
-  background: #cce5cc;
-  color: #005500;
+.bc-status-accent--approved,
+.bc-status-tag--in-effect,
+.bc-status-accent--in-effect {
+  --bc-status-bg: #cce5cc;
+  --bc-status-fg: #005500;
 }
-.bc-status-tag--submitted {
-  background: #c2e0ff;
-  color: #00478f;
+.bc-status-tag--submitted,
+.bc-status-accent--submitted {
+  --bc-status-bg: #c2e0ff;
+  --bc-status-fg: #00478f;
 }
-.bc-status-tag--draft {
-  background: #e2ccf8;
-  color: #5702af;
+.bc-status-tag--draft,
+.bc-status-accent--draft {
+  --bc-status-bg: #e2ccf8;
+  --bc-status-fg: #5702af;
 }
-.bc-status-tag--cancelled {
-  background: #ffc0b3;
-  color: #801701;
+.bc-status-tag--cancelled,
+.bc-status-accent--cancelled {
+  --bc-status-bg: #ffc0b3;
+  --bc-status-fg: #801701;
 }
-.bc-status-tag--rejected {
-  background: #ffe5f2;
-  color: #800241;
+.bc-status-tag--rejected,
+.bc-status-accent--rejected {
+  --bc-status-bg: #ffe5f2;
+  --bc-status-fg: #800241;
 }
-.bc-status-tag--expired {
-  background: #ebdacb;
-  color: #492708;
+.bc-status-tag--expired,
+.bc-status-accent--expired {
+  --bc-status-bg: #ebdacb;
+  --bc-status-fg: #492708;
 }
-.bc-status-tag--opportunity {
-  background: #f2e8b5;
-  color: #443904;
+.bc-status-tag--opportunity,
+.bc-status-accent--opportunity {
+  --bc-status-bg: #f2e8b5;
+  --bc-status-fg: #443904;
 }
-.bc-status-tag--update {
-  background: #b3fef1;
-  color: #004c3f;
+.bc-status-tag--update,
+.bc-status-accent--update {
+  --bc-status-bg: #b3fef1;
+  --bc-status-fg: #004c3f;
 }
-.bc-status-tag--retired {
-  background: #a6afdd;
-  color: #071140;
+.bc-status-tag--retired,
+.bc-status-accent--retired {
+  --bc-status-bg: #a6afdd;
+  --bc-status-fg: #071140;
 }
-.bc-status-tag--deleted {
-  background: #dfcddf;
-  color: #3f123f;
+.bc-status-tag--deleted,
+.bc-status-accent--deleted {
+  --bc-status-bg: #dfcddf;
+  --bc-status-fg: #3f123f;
 }
-.bc-status-tag--default {
-  background: #e0e0e0;
-  color: #393939;
+.bc-status-tag--default,
+.bc-status-accent--default {
+  --bc-status-bg: #e0e0e0;
+  --bc-status-fg: #393939;
 }
