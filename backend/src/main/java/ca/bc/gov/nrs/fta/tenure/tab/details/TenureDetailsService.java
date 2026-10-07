@@ -55,7 +55,7 @@ public class TenureDetailsService {
 
   private static final List<Coded> CODED = List.of(
       new Coded("p_file_type_code", "fileTypes", "Type"),
-      new Coded("p_admin_org_unit_no", "orgUnits", "Admin Org"),
+      new Coded("p_admin_org_unit_no", "orgUnits", "Admin Organization"),
       new Coded("p_forest_district_no", "districts", "District"),
       new Coded("p_extension_reason", "extendReasons", "Reason"),
       new Coded("p_security_deposit_code", "depositTypes", "Security Deposit Type"),

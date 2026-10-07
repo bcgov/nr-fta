@@ -300,6 +300,8 @@ const TimberMarkSearch: FC = () => {
   }, [codeListsLoading, restored, lastSearch, rows, runSearch]);
 
   const hasResults = rows !== null && rows.length > 0;
+  // "HI - Issued" in the pill, as the other status columns show it.
+  const markStatusNames = new Map(markStatuses.map((o) => [o.code, o.description]));
 
   const codeItems = (options: CodeOption[]) =>
     options.map((o) => <SelectItem key={o.code} value={o.code} text={o.description || o.code} />);
@@ -746,7 +748,7 @@ const TimberMarkSearch: FC = () => {
                                         <TableCell key={cell.id}>
                                           {value ? (
                                             <StatusTag
-                                              status={value}
+                                              status={markStatusNames.get(value) || value}
                                               variant={statusCodeVariant(value)}
                                             />
                                           ) : (

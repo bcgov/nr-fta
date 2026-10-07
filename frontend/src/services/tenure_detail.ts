@@ -7,10 +7,14 @@ export interface TenureDetail {
   // file-level header / common tenure (FTA_100_TENURE)
   forestFileId: string;
   fileTypeCode: string | null;
+  /** "CODE - description". */
+  fileTypeDesc: string | null;
   fileStatusCode: string | null;
   fileStatusDesc: string | null;
   fileStatusDate: string | null; // ISO date
   orgUnitCode: string | null;
+  /** "CODE - name" of the administration org unit. */
+  orgUnitDesc: string | null;
   clientNumber: string | null;
   clientLocnCode: string | null;
   licensee: string | null;

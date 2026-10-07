@@ -42,10 +42,13 @@ public class TenureDetailService {
       """
       SELECT pfu.forest_file_id            AS forest_file_id,
              pfu.file_type_code            AS file_type_code,
+             CASE WHEN ftc.description IS NOT NULL
+                  THEN pfu.file_type_code || ' - ' || ftc.description END AS file_type_desc,
              pfu.file_status_st            AS file_status_code,
              fsc.description               AS file_status_desc,
              pfu.file_status_date          AS file_status_date,
              org.org_unit_code             AS org_unit_code,
+             org.org_unit_code || ' - ' || org.org_unit_name AS org_unit_desc,
              ffc.client_number             AS client_number,
              ffc.client_locn_code          AS client_locn_code,
              cli.client_name               AS licensee,
@@ -91,6 +94,7 @@ public class TenureDetailService {
         JOIN the.org_unit org              ON org.org_unit_no = pfu.forest_region
         LEFT JOIN the.tenure_term tt        ON tt.forest_file_id = pfu.forest_file_id
         LEFT JOIN the.timber_tenure ttn     ON ttn.forest_file_id = pfu.forest_file_id
+        LEFT JOIN the.file_type_code ftc    ON ftc.file_type_code = pfu.file_type_code
         LEFT JOIN the.tenure_file_status_code fsc
                ON fsc.tenure_file_status_code = pfu.file_status_st
         LEFT JOIN the.forest_file_client ffc
@@ -105,10 +109,12 @@ public class TenureDetailService {
   private static final RowMapper<TenureDetailDto> ROW_MAPPER = (rs, rowNum) -> new TenureDetailDto(
       rs.getString("forest_file_id"),
       rs.getString("file_type_code"),
+      rs.getString("file_type_desc"),
       rs.getString("file_status_code"),
       rs.getString("file_status_desc"),
       rs.getObject("file_status_date", LocalDate.class),
       rs.getString("org_unit_code"),
+      rs.getString("org_unit_desc"),
       rs.getString("client_number"),
       rs.getString("client_locn_code"),
       rs.getString("licensee"),

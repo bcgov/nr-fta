@@ -1,9 +1,11 @@
 .fta-tombstone {
   position: relative;
-  padding: 1rem 1.25rem;
+  /* Less at the bottom: the last row's values already carry their 0.75rem
+     margin, so the text sits as far from the bottom edge as from the top. */
+  padding: 1rem 1.25rem 0.25rem;
   margin-bottom: 1.5rem;
   background: var(--cds-layer);
-  border-left: 4px solid var(--cds-border-interactive);
+  border-left: 4px solid var(--bc-status-bg, var(--cds-border-interactive));
 }
 
 .fta-tombstone__label {

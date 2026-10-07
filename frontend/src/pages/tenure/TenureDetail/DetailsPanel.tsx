@@ -374,7 +374,7 @@ const DetailsView: FC<{ details: TenureDetails; canEdit: boolean; onSaved: () =>
       codes('fileStatusSt', 'Status', rules.statusList, false),
     ),
     dateField('As of', 'fileStatusDate', false),
-    show('Admin Org', dash(desc('adminOrgUnitNo'))),
+    show('Admin Organization', dash(desc('adminOrgUnitNo'))),
     layout.showDistrict &&
       codeField('District', 'forestDistrictNo', 'districts', { optional: false }),
     !layout.recreation && show(layout.licenseeLabel, dash(v('licensee'))),

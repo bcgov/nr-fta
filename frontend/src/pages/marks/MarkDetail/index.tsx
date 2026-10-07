@@ -12,7 +12,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
-import StatusTag from '@/components/StatusTag/StatusTag';
+import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import { useLazyTabs } from '@/hooks/useLazyTabs';
@@ -72,16 +72,7 @@ const MarkDetail: FC = () => {
 
   // The mark (or an application's certificate) in a large pill beside the words,
   // coloured as its status is everywhere else (grey until the mark has loaded).
-  const title = (
-    <span className="detail-title">
-      {byCertificate ? 'Private Mark Application' : 'Private Mark'}
-      <StatusTag
-        status={markNumber}
-        variant={statusCodeVariant(mark?.markStatusCode) ?? 'default'}
-        className="detail-title__pill"
-      />
-    </span>
-  );
+  const title = byCertificate ? 'Private Mark Application' : 'Private Mark';
 
   return (
     <PageLayout
@@ -102,90 +93,109 @@ const MarkDetail: FC = () => {
     >
       <AsyncBoundary loading={loading} error={error} onRetry={reload} loadingText="Loading mark…">
         {mark && (
-          // Carbon's <Tabs> renders no DOM of its own, so the grey full-bleed
-          // pane is styled through this wrapper (styles/_detail.scss).
-          <div className="fsp-info__page-tabs">
-            <Tabs selectedIndex={tabs.selected} onChange={tabs.onChange}>
-              <TabList aria-label="Private mark sections" contained>
-                <Tab renderIcon={Document}>Mark application</Tab>
-                <Tab renderIcon={MapIcon} disabled={editing}>
-                  Land index
-                </Tab>
-                <Tab renderIcon={UserMultiple} disabled={editing}>
-                  Associated clients
-                </Tab>
-                <Tab renderIcon={RecentlyViewed} disabled={editing}>
-                  Amendments
-                </Tab>
-                <Tab renderIcon={Notebook} disabled={editing}>
-                  Notes
-                </Tab>
-              </TabList>
-              <TabPanels>
-                <TabPanel>
-                  {tabs.isOpened(0) && (
-                    <MarkApplicationPanel
-                      mark={mark}
-                      id={markNumber}
-                      byCertificate={byCertificate}
-                      canEdit={canEditMarks(user)}
-                      onEditingChange={setEditing}
-                      onSaved={reload}
-                    />
-                  )}
-                </TabPanel>
+          <>
+            <Tombstone
+              ariaLabel="Private mark summary"
+              // The left bar takes the status's colour, as its pill has elsewhere.
+              className={`bc-status-accent--${statusCodeVariant(mark.markStatusCode) ?? 'default'}`}
+              items={[
+                { label: 'Timber Mark', value: mark.timberMark || '—' },
+                { label: 'File / Certificate', value: mark.certificate || '—' },
+                { label: 'Mark Holder', value: mark.clientName || '—' },
+                {
+                  label: 'Client Number',
+                  value: mark.clientNumber
+                    ? `${mark.clientNumber}${mark.clientLocnCode ? ` / ${mark.clientLocnCode}` : ''}`
+                    : '—',
+                },
+                { label: 'Status', value: mark.markStatusDesc || mark.markStatusCode || '—' },
+              ]}
+            />
+            {/* Carbon's <Tabs> renders no DOM of its own, so the grey full-bleed
+              pane is styled through this wrapper (styles/_detail.scss). */}
+            <div className="fsp-info__page-tabs">
+              <Tabs selectedIndex={tabs.selected} onChange={tabs.onChange}>
+                <TabList aria-label="Private mark sections" contained>
+                  <Tab renderIcon={Document}>Mark application</Tab>
+                  <Tab renderIcon={MapIcon} disabled={editing}>
+                    Land index
+                  </Tab>
+                  <Tab renderIcon={UserMultiple} disabled={editing}>
+                    Associated clients
+                  </Tab>
+                  <Tab renderIcon={RecentlyViewed} disabled={editing}>
+                    Amendments
+                  </Tab>
+                  <Tab renderIcon={Notebook} disabled={editing}>
+                    Notes
+                  </Tab>
+                </TabList>
+                <TabPanels>
+                  <TabPanel>
+                    {tabs.isOpened(0) && (
+                      <MarkApplicationPanel
+                        mark={mark}
+                        id={markNumber}
+                        byCertificate={byCertificate}
+                        canEdit={canEditMarks(user)}
+                        onEditingChange={setEditing}
+                        onSaved={reload}
+                      />
+                    )}
+                  </TabPanel>
 
-                <TabPanel>
-                  {tabs.isOpened(1) && (
-                    <LandIndexPanel
-                      id={markNumber}
-                      byCertificate={byCertificate}
-                      rows={mark.landIndex}
-                      canAdd={!!mark.editRules?.landIndex}
-                      // Quietly: "Add additional" keeps its dialog open over the table.
-                      onAdded={refresh}
-                    />
-                  )}
-                </TabPanel>
+                  <TabPanel>
+                    {tabs.isOpened(1) && (
+                      <LandIndexPanel
+                        id={markNumber}
+                        byCertificate={byCertificate}
+                        rows={mark.landIndex}
+                        canAdd={!!mark.editRules?.landIndex}
+                        // Quietly: "Add additional" keeps its dialog open over the table.
+                        onAdded={refresh}
+                      />
+                    )}
+                  </TabPanel>
 
-                <TabPanel>
-                  {tabs.isOpened(2) && (
-                    <ClientsPanel
-                      id={markNumber}
-                      byCertificate={byCertificate}
-                      rows={mark.clients}
-                      canAdd={!!mark.editRules?.clients}
-                      onAdded={reload}
-                    />
-                  )}
-                </TabPanel>
+                  <TabPanel>
+                    {tabs.isOpened(2) && (
+                      <ClientsPanel
+                        id={markNumber}
+                        byCertificate={byCertificate}
+                        rows={mark.clients}
+                        canAdd={!!mark.editRules?.clients}
+                        onAdded={reload}
+                      />
+                    )}
+                  </TabPanel>
 
-                <TabPanel>
-                  {tabs.isOpened(3) && (
-                    <AmendmentsPanel
-                      id={markNumber}
-                      byCertificate={byCertificate}
-                      rows={mark.amendments}
-                      canAdd={!!mark.editRules?.amendments}
-                      onAdded={reload}
-                    />
-                  )}
-                </TabPanel>
-                <TabPanel>
-                  {tabs.isOpened(4) && (
-                    <NotesPanel
-                      id={markNumber}
-                      byCertificate={byCertificate}
-                      forestFileId={mark.forestFileId}
-                      notes={mark.notes}
-                      canAdd={canEditMarks(user)}
-                      onAdded={reload}
-                    />
-                  )}
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
-          </div>
+                  <TabPanel>
+                    {tabs.isOpened(3) && (
+                      <AmendmentsPanel
+                        id={markNumber}
+                        byCertificate={byCertificate}
+                        rows={mark.amendments}
+                        canAdd={!!mark.editRules?.amendments}
+                        onAdded={reload}
+                      />
+                    )}
+                  </TabPanel>
+                  <TabPanel>
+                    {tabs.isOpened(4) && (
+                      <NotesPanel
+                        id={markNumber}
+                        byCertificate={byCertificate}
+                        forestFileId={mark.forestFileId}
+                        notes={mark.notes}
+                        canAdd={canEditMarks(user)}
+                        onAdded={reload}
+                      />
+                    )}
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            </div>
+          </>
         )}
       </AsyncBoundary>
     </PageLayout>

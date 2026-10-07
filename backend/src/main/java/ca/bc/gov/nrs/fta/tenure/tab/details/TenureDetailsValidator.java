@@ -421,7 +421,7 @@ final class TenureDetailsValidator {
     }
 
     // Admin Org; Effective Date once held
-    required("p_admin_org_unit_no", "Admin Org");
+    required("p_admin_org_unit_no", "Admin Organization");
     if (showTerm && termsOpen && status.startsWith("H") && !"HN".equals(status)) {
       required("p_award_date", "Effective Date");
     }
