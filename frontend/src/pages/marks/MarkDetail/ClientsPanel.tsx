@@ -1,4 +1,4 @@
-import { Add, UserFollow } from '@carbon/icons-react';
+import { Add, Edit, UserFollow } from '@carbon/icons-react';
 import {
   Button,
   DatePicker,
