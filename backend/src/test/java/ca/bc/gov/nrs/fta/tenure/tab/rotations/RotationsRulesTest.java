@@ -2,7 +2,6 @@ package ca.bc.gov.nrs.fta.tenure.tab.rotations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import ca.bc.gov.nrs.fta.tenure.tab.rotations.RotationsRules.RotationKind;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,18 +15,17 @@ import org.junit.jupiter.api.Test;
 class RotationsRulesTest {
 
   private static RotationsTenure tenure(
-      String type, String status, boolean grazing, boolean hay, boolean range, boolean inbox,
-      boolean term) {
+      String type, String status, boolean grazing, boolean hay, boolean inbox, boolean term) {
     return new RotationsTenure(
-        type, status, 3L, term ? 2020 : null, term ? 2029 : null, grazing, hay, range, inbox);
+        type, status, term ? 2020 : null, term ? 2029 : null, grazing, hay, inbox);
   }
 
   private static RotationsTenure grazingFile(String status, boolean inbox) {
-    return tenure("E01", status, true, false, true, inbox, true);
+    return tenure("E01", status, true, false, inbox, true);
   }
 
   private static RotationsTenure hayFile(String status) {
-    return tenure("H01", status, false, true, true, false, true);
+    return tenure("H01", status, false, true, false, true);
   }
 
   @Nested
@@ -71,7 +69,7 @@ class RotationsRulesTest {
     @DisplayName("no term means no year to save to")
     void noTerm() {
       RotationsRules r =
-          RotationsRules.grazing(tenure("E01", "HI", true, false, true, false, false));
+          RotationsRules.grazing(tenure("E01", "HI", true, false, false, false));
       assertThat(r.edit()).isFalse();
       assertThat(r.reason()).isEqualTo(RotationsRules.NO_TERM);
     }
@@ -96,7 +94,7 @@ class RotationsRulesTest {
     @Test
     @DisplayName("legacy FTA612 does not check for an application in the Inbox")
     void inboxIgnored() {
-      RotationsTenure t = new RotationsTenure("H02", "HI", 1L, 2020, 2029, false, true, true, true);
+      RotationsTenure t = new RotationsTenure("H02", "HI", 2020, 2029, false, true, true);
       assertThat(RotationsRules.hayCutting(t).edit()).isTrue();
     }
 
@@ -111,47 +109,9 @@ class RotationsRulesTest {
     @DisplayName("a hay type that does not start with H shows but cannot be saved")
     void notH() {
       RotationsRules r =
-          RotationsRules.hayCutting(tenure("X01", "HI", false, true, true, false, true));
+          RotationsRules.hayCutting(tenure("X01", "HI", false, true, false, true));
       assertThat(r.applies()).isTrue();
       assertThat(r.edit()).isFalse();
-    }
-  }
-
-  @Nested
-  @DisplayName("Copy (FTA613)")
-  class Copy {
-
-    @Test
-    @DisplayName("E01–E03 copy livestock rotations, H01–H03 meadow rotations")
-    void kinds() {
-      assertThat(RotationsRules.kind("E02")).isEqualTo(RotationKind.GRAZING);
-      assertThat(RotationsRules.kind("H03")).isEqualTo(RotationKind.HAY);
-      assertThat(RotationsRules.kind("A01")).isNull();
-      assertThat(RotationsRules.kind(null)).isNull();
-    }
-
-    @Test
-    @DisplayName("a range file of another type cannot be copied to")
-    void otherRangeType() {
-      RotationsRules r =
-          RotationsRules.copy(tenure("E04", "HI", true, false, true, false, true));
-      assertThat(r.applies()).isFalse();
-      assertThat(r.reason()).contains("E04");
-    }
-
-    @Test
-    @DisplayName("a type not in RANGE_FILE_TYPE_CODE cannot be copied to")
-    void notRange() {
-      assertThat(RotationsRules.copy(tenure("E01", "HI", true, false, false, false, true))
-          .applies()).isFalse();
-    }
-
-    @Test
-    @DisplayName("open for an issued grazing or hay file; PE closes it")
-    void status() {
-      assertThat(RotationsRules.copy(grazingFile("HI", true)).edit()).isTrue();
-      assertThat(RotationsRules.copy(hayFile("HI")).edit()).isTrue();
-      assertThat(RotationsRules.copy(hayFile("PE")).reason()).isEqualTo(RotationsRules.STATUS_PE);
     }
   }
 }

@@ -13,9 +13,10 @@ import java.util.Set;
  * no organization levels, so {@code FTA_ADMIN} and the Headquarters timber mark role get
  * the Headquarters rules. The district role ({@code FTA_TIMBER_MARK_DISTRICT_ADMIN}) may
  * change only the marking codes, and the status of a cancelled (HX) mark back to issued
- * (HI) — nothing else on the page, by the business's rule rather than legacy's. The record is
- * computed once, here, and serves both the detail page (which fields open for editing) and the update
- * endpoint (which fields it accepts), so the two cannot disagree.
+ * (HI), submit its PA application to Headquarters and request an amendment on an issued
+ * mark — nothing else on the page, by the business's rule rather than legacy's. The record
+ * is computed once, here, and serves both the detail page (which fields open for editing) and
+ * the update endpoint (which fields it accepts), so the two cannot disagree.
  *
  * @param editable          whether the mark can be saved at all
  * @param reason            why not, when {@code editable} is false — null for a status that
@@ -101,7 +102,8 @@ public record MarkEditRules(
 
   /** Why a district can't make a change other than its own two; for the API's refusals. */
   static final String DISTRICT_REASON = "A district can change only the marking requirements"
-      + " and instrument, and a cancelled (HX) mark's status to HI.";
+      + " and instrument and a cancelled (HX) mark's status to HI, submit a PA application"
+      + " to Headquarters, and request an amendment on an issued (HI) mark.";
 
   /** The values an outstanding amendment may take ({@code amendStatusCertainValues}). */
   private static final List<String> AMENDMENT_STATUSES = List.of("PI", "HN", "DV");
@@ -134,17 +136,22 @@ public record MarkEditRules(
   /**
    * A district's rules: the marking codes once the mark has them (they live on
    * HAULING_AUTHORITY, which exists from HN on), and HX back to HI — neither for a view-only
-   * mark type. Nothing else: no land index, client, amendment, note or Submit to HQ.
+   * mark type — and, on the terms legacy gave them, Submit to HQ ({@code submitReason}) and
+   * requesting an amendment on an issued mark ({@code amendments}; FTA_512 let a district
+   * too). Nothing else: no land index, client or note.
    */
-  private static MarkEditRules district(MarkDetailDto mark, boolean viewOnlyType) {
+  private static MarkEditRules district(
+      MarkDetailDto mark, boolean viewOnlyType, String submitReason, boolean amendments,
+      String amendmentsReason) {
     String status = mark.markStatusCode();
     boolean marking = !viewOnlyType && mark.timberMark() != null;
     boolean reinstate = !viewOnlyType && "HX".equals(status);
     return new MarkEditRules(
         marking || reinstate, null, false, false, false, marking, false, false, reinstate,
         reinstate ? DISTRICT_HX_OPTIONS : status == null ? List.of() : List.of(status), false,
-        List.of(), false, DISTRICT_REASON, false, DISTRICT_REASON, false, DISTRICT_REASON,
-        false, DISTRICT_REASON, false, false, false);
+        List.of(), false, DISTRICT_REASON, false, DISTRICT_REASON, amendments, amendmentsReason,
+        !viewOnlyType && submitReason == null, viewOnlyType ? null : submitReason, false, false,
+        false);
   }
 
   /**
@@ -229,7 +236,7 @@ public record MarkEditRules(
           false);
     }
     if (districtUser) {
-      return district(mark, viewOnlyType);
+      return district(mark, viewOnlyType, submitReason, amendments, amendmentsReason);
     }
     if (viewOnlyType) {
       return none(null, landIndex, landIndexReason, clients, clientsReason, amendments,
