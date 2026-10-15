@@ -29,6 +29,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -121,7 +122,8 @@ public class MarkDetailController {
       @RequestBody MarkAmendmentRequest request,
       JwtAuthenticationToken principal) {
     markAmendmentWriteService.add(
-        markNumber, isCertificate(by), request, JwtPrincipalUtil.getAuditUserId(principal));
+        markNumber, isCertificate(by), request, isDistrictUser(principal),
+        JwtPrincipalUtil.getAuditUserId(principal));
     return ResponseEntity.noContent().build();
   }
 
@@ -136,7 +138,8 @@ public class MarkDetailController {
       @RequestBody MarkClientRequest request,
       JwtAuthenticationToken principal) {
     String note = markClientWriteService.add(
-        markNumber, isCertificate(by), request, JwtPrincipalUtil.getAuditUserId(principal));
+        markNumber, isCertificate(by), request, isDistrictUser(principal),
+        JwtPrincipalUtil.getAuditUserId(principal));
     return ResponseEntity.ok(note == null ? Map.of() : Map.of("note", note));
   }
 
@@ -158,6 +161,22 @@ public class MarkDetailController {
   }
 
   /**
+   * {@code DELETE /api/fta/marks/{id}/clients/{skey}?revisionCount=} — FTA513's Delete: a
+   * previous licensee (C) off the mark. Returns nothing; the client re-reads the mark.
+   */
+  @DeleteMapping("/{markNumber}/clients/{skey}")
+  public ResponseEntity<Void> deleteClient(
+      @PathVariable String markNumber,
+      @PathVariable long skey,
+      @RequestParam(required = false) String by,
+      @RequestParam(required = false) Long revisionCount,
+      JwtAuthenticationToken principal) {
+    markClientWriteService.delete(
+        markNumber, isCertificate(by), skey, revisionCount, isDistrictUser(principal));
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
    * {@code POST /api/fta/marks/{id}/land-index} — FTA511's add row: a land index on the mark.
    * Returns nothing; the client re-reads the mark for the new row.
    */
@@ -168,7 +187,8 @@ public class MarkDetailController {
       @RequestBody MarkLandIndexRequest request,
       JwtAuthenticationToken principal) {
     markLandIndexWriteService.add(
-        markNumber, isCertificate(by), request, JwtPrincipalUtil.getAuditUserId(principal));
+        markNumber, isCertificate(by), request, isDistrictUser(principal),
+        JwtPrincipalUtil.getAuditUserId(principal));
     // 204, not 201: there is no body, and the client re-reads the mark.
     return ResponseEntity.noContent().build();
   }

@@ -124,8 +124,9 @@ public class MarkSnapshotReport {
           kv("Cancelled", date(mark.markCancelDate())),
           kv("Crown Granted Date", date(mark.grantedAcqrdDate())),
           kv("Crown Granted Description", mark.crownGrantedAcqDesc()),
-          kv("Amendment Status",
-              desc(mark.outstandingAmendStatus(), mark.outstandingAmendStatusDesc())),
+          kv("Amendment Status", mark.shownAmendment() == null ? null
+              : desc(mark.shownAmendment().prvMrkAmdStsSt(),
+                  mark.shownAmendment().prvMrkAmdStsDesc())),
           kv("Amended Date", date(mark.markAmendDate())),
           kv("Amendment Count",
               String.valueOf(mark.amendments() == null ? 0 : mark.amendments().size())))));

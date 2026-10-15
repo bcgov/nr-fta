@@ -90,13 +90,14 @@ public class MarkAmendmentWriteService {
    */
   @Transactional
   public void add(
-      String id, boolean byCertificate, MarkAmendmentRequest request, String userId) {
+      String id, boolean byCertificate, MarkAmendmentRequest request, boolean districtUser,
+      String userId) {
     MarkDetailDto mark = (byCertificate
             ? markDetailService.findByCertificate(id)
             : markDetailService.findByMarkNumber(id))
         .orElseThrow(() -> new ResponseStatusException(
             HttpStatus.NOT_FOUND, "Private mark not found."));
-    MarkEditRules rules = MarkEditRules.of(mark, true);
+    MarkEditRules rules = MarkEditRules.of(mark, true, districtUser);
     if (!rules.amendments()) {
       if (rules.amendmentsReason() == null) {
         throw alreadyOutstanding();

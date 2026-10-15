@@ -37,7 +37,8 @@ import org.springframework.stereotype.Component;
  *       ({@code POST /api/fta/marks/{id}/submit}), saving it
  *       ({@code PUT /api/fta/marks/{id}}) or one of its land indexes or clients
  *       ({@code PUT /api/fta/marks/{id}/land-index/{skey}},
- *       {@code PUT /api/fta/marks/{id}/clients/{skey}}), and resolving display names
+ *       {@code PUT /api/fta/marks/{id}/clients/{skey}}), deleting a previous licensee
+ *       ({@code DELETE /api/fta/marks/{id}/clients/{skey}}), and resolving display names
  *       ({@code POST /api/fta/users/resolve}). Every other endpoint is 403. Mirrors the page
  *       allow-list in the frontend's {@code routes/access.ts}.</li>
  *   <li><strong>No recognized role</strong> — rejected (403) for any {@code /api/**} endpoint</li>
@@ -121,6 +122,14 @@ public class ApiAuthorizationCustomizer implements
             "/api/fta/marks/*",
             "/api/fta/marks/*/land-index/*",
             "/api/fta/marks/*/clients/*")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
+            RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY);
+
+    // Deleting a previous licensee off a private mark (FTA513's Delete) — as the client save;
+    // when it is allowed is MarkEditRules. Must appear BEFORE the generic DELETE /api/** rule.
+    authorize
+        .requestMatchers(HttpMethod.DELETE, "/api/fta/marks/*/clients/*")
         .hasAnyAuthority(
             RoleConstants.ADMIN_AUTHORITY, RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY);

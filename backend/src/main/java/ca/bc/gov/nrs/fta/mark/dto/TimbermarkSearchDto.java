@@ -21,6 +21,8 @@ public record TimbermarkSearchDto(
     String timberMark,
     String certificate,
     String markStatusSt,
+    /** The outstanding amendment's status, else the newest's; null when the mark has none. */
+    String amendStatusSt,
     LocalDate markIssueDate,
     LocalDate markExpiryDate,
     String salvageInd,

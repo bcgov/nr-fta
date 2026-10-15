@@ -63,10 +63,10 @@ export function canAddTenureNotes(user: FamLoginUser | null | undefined): boolea
 
 /**
  * The two timber mark roles. FTA_TIMBER_MARK_DISTRICT_ADMIN has exactly
- * FTA_TIMBER_MARK_HEADQUARTERS_ADMIN's pages and rights; they differ only where legacy
- * FTA510 told a district from Headquarters, which the backend decides: a district's
- * new application starts PA and it submits it to Headquarters (Submit to HQ), and
- * its certificate print marks the mark issued (HN → HI).
+ * FTA_TIMBER_MARK_HEADQUARTERS_ADMIN's pages; on a private mark it may change only the
+ * marking requirements and instrument, and a cancelled (HX) mark's status to HI — the
+ * backend's MarkEditRules decides. A district's new application starts PA, and its
+ * certificate print marks the mark issued (HN → HI).
  */
 function isTimberMarkRole(role: ROLE_TYPE | undefined): boolean {
   return role === 'FTA_TIMBER_MARK_HEADQUARTERS_ADMIN' || role === 'FTA_TIMBER_MARK_DISTRICT_ADMIN';

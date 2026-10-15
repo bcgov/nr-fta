@@ -1,8 +1,10 @@
-import { Add, Edit, UserFollow } from '@carbon/icons-react';
+import { Add, UserFollow } from '@carbon/icons-react';
 import {
   Button,
   DatePicker,
   DatePickerInput,
+  OverflowMenu,
+  OverflowMenuItem,
   Select,
   SelectItem,
   Stack,
@@ -21,7 +23,12 @@ import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
 import { getFileClientTypes, type CodeOption } from '@/services/codeLists';
-import { addClient, updateClient, type MarkAssociatedClient } from '@/services/mark_detail';
+import {
+  addClient,
+  deleteClient,
+  updateClient,
+  type MarkAssociatedClient,
+} from '@/services/mark_detail';
 import { formatDate } from '@/utils/formatDate';
 import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
@@ -91,11 +98,14 @@ interface Props {
   id: string;
   byCertificate: boolean;
   rows: MarkAssociatedClient[];
-  /** Whether the user may add (the mark's `editRules.clients`). */
+  /**
+   * Whether the user may add (the mark's `editRules.clients`) — and, as legacy's
+   * Delete, remove a previous licensee (C).
+   */
   canAdd: boolean;
   /** Whether the user may update a row (the mark's `editRules.clientsUpdate`). */
   canUpdate: boolean;
-  /** Called after an add or update, to re-read the mark. */
+  /** Called after an add, update or delete, to re-read the mark. */
   onAdded: () => void;
 }
 
@@ -108,7 +118,9 @@ interface Props {
  * or PA only, not B15/B16); the backend enforces it and the field rules too.
  * Each row's Update reopens the dialog on that row — `editRules.clientsUpdate`,
  * which Headquarters has at any status. As in legacy, a Main or Previous
- * Licensee (A or C) keeps its client and type; only its dates change.
+ * Licensee (A or C) keeps its client and type; only its dates change. Delete
+ * is legacy's: only a Previous Licensee (C), and only where clients can be
+ * added.
  */
 const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate, onAdded }) => {
   const { display } = useNotification();
@@ -120,6 +132,8 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate, o
   const [typesLoading, setTypesLoading] = useState(false);
   /** The row being updated; null while adding. */
   const [editing, setEditing] = useState<MarkAssociatedClient | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<MarkAssociatedClient | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const hasMainLicensee = rows.some((r) => r.fileClientType === 'A');
   /** Legacy: a Main or Previous Licensee's client and type are fixed. */
   const lockedLicensee = editing?.fileClientType === 'A' || editing?.fileClientType === 'C';
@@ -231,6 +245,35 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate, o
     }
   };
 
+  const confirmDelete = async () => {
+    if (pendingDelete?.forClientLinkSkey == null) return;
+    setDeleting(true);
+    try {
+      await deleteClient(
+        id,
+        pendingDelete.forClientLinkSkey,
+        pendingDelete.revisionCount,
+        byCertificate,
+      );
+      display({
+        kind: 'success',
+        title: `Client ${pendingDelete.clientNumber ?? ''} deleted`,
+        timeout: 6000,
+      });
+      setPendingDelete(null);
+      onAdded();
+    } catch (err) {
+      display({
+        kind: 'error',
+        title: 'Could not delete the client',
+        subtitle: err instanceof Error ? err.message : 'Request failed',
+        timeout: 9000,
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const type = form.fileClientType;
   const dateInput = (key: 'start' | 'end', label: string, disabled = false) => (
     <DatePicker
@@ -317,16 +360,27 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate, o
                       <TableCell>{dash(typeLabel(c))}</TableCell>
                       <TableCell>{dash(formatDate(c.licenseeStartDt))}</TableCell>
                       <TableCell>{dash(formatDate(c.licenseeEndDate))}</TableCell>
-                      <TableCell className="detail-tab__row-action">
-                        <Button
-                          kind="ghost"
+                      <TableCell>
+                        <OverflowMenu
                           size="sm"
-                          renderIcon={Edit}
-                          disabled={!canUpdate || c.forClientLinkSkey == null}
-                          onClick={() => openUpdate(c)}
+                          flipped
+                          iconDescription={`Client ${c.clientNumber ?? ''} actions`}
                         >
-                          Update
-                        </Button>
+                          <OverflowMenuItem
+                            itemText="Update"
+                            disabled={!canUpdate || c.forClientLinkSkey == null}
+                            onClick={() => openUpdate(c)}
+                          />
+                          <OverflowMenuItem
+                            itemText="Delete"
+                            isDelete
+                            hasDivider
+                            disabled={
+                              !canAdd || c.fileClientType !== 'C' || c.forClientLinkSkey == null
+                            }
+                            onClick={() => setPendingDelete(c)}
+                          />
+                        </OverflowMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -424,6 +478,35 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate, o
           </Button>
           <Button kind="primary" disabled={saving} onClick={() => void submit()}>
             {editing ? (saving ? 'Updating…' : 'Update client') : saving ? 'Adding…' : 'Add client'}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Delete confirmation — the tenure clients tab's. */}
+      <Modal
+        open={!!pendingDelete}
+        passiveModal
+        size="sm"
+        className="detail-dialog"
+        modalHeading="Delete client?"
+        onRequestClose={() => {
+          if (!deleting) setPendingDelete(null);
+        }}
+        preventCloseOnClickOutside
+      >
+        {pendingDelete && (
+          <p className="detail-dialog__subtitle">
+            {`This removes ${pendingDelete.clientNumber ?? ''} ${pendingDelete.clientLocnCode ?? ''}${
+              pendingDelete.clientName ? ` (${pendingDelete.clientName})` : ''
+            }, ${typeLabel(pendingDelete) ?? ''}, from this mark.`}
+          </p>
+        )}
+        <div className="detail-dialog__actions">
+          <Button kind="tertiary" disabled={deleting} onClick={() => setPendingDelete(null)}>
+            Cancel
+          </Button>
+          <Button kind="danger" disabled={deleting} onClick={() => void confirmDelete()}>
+            {deleting ? 'Deleting…' : 'Delete'}
           </Button>
         </div>
       </Modal>

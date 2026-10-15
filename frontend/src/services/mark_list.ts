@@ -10,7 +10,10 @@ export interface MarkListRow {
   timberMark: string | null;
   markApplDate: string | null; // ISO date
   orgUnitCode: string | null;
+  /** The timber mark's status — on amendment rows too. */
   markStatusSt: string | null;
+  /** The amendment row's own status, else the mark's newest amendment's; null with none. */
+  amendStatusSt: string | null;
   clientName: string | null;
   disablePrintInd: string | null;
   disableAckInd: string | null;
@@ -23,7 +26,10 @@ export interface MarkListParams {
   /** Administrative district org-unit number — the only criterion legacy offers. */
   hdrDistrict?: string;
   timberMark?: string;
-  /** A PRIVATE_MARK_STATUS_CODE value (HN, PA, PI, DV, HI, HX). */
+  /**
+   * A PRIVATE_MARK_STATUS_CODE value (HN, PA, PI, DV, HI, HX), matched against the timber
+   * mark's status and the amendment's.
+   */
   markStatusSt?: string;
   orgUnitCode?: string;
   clientName?: string;

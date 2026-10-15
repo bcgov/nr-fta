@@ -44,6 +44,7 @@ import {
   getLandDistricts,
   getOrgUnits,
   getPrimaryIds,
+  getPrivateMarkAmendStatuses,
   getSalvageTypes,
   type CodeOption,
 } from '@/services/codeLists';
@@ -70,7 +71,8 @@ const HEADERS = [
   { key: 'timberMark', header: 'Timber mark' },
   { key: 'salvageInd', header: 'Salvage type' },
   { key: 'certificate', header: 'Certificate' },
-  { key: 'markStatusSt', header: 'Mark status' },
+  { key: 'markStatusSt', header: 'Timber mark status' },
+  { key: 'amendStatusSt', header: 'Amendment status' },
   { key: 'markIssueDate', header: 'Issue date' },
   { key: 'markExpiryDate', header: 'Expiry date' },
 ];
@@ -133,6 +135,7 @@ const TimberMarkSearch: FC = () => {
   const [landDistricts, setLandDistricts] = useState<CodeOption[]>([]);
   const [primaryIds, setPrimaryIds] = useState<CodeOption[]>([]);
   const [mgmtUnits, setMgmtUnits] = useState<ManagementUnit[]>([]);
+  const [amendStatuses, setAmendStatuses] = useState<CodeOption[]>([]);
   const [codeListsLoading, setCodeListsLoading] = useState(true);
 
   useEffect(() => {
@@ -146,6 +149,7 @@ const TimberMarkSearch: FC = () => {
       getLandDistricts(),
       getPrimaryIds(),
       getManagementUnits(),
+      getPrivateMarkAmendStatuses(),
     ]).then((settled) => {
       if (cancelled) return;
       const setters = [
@@ -157,6 +161,7 @@ const TimberMarkSearch: FC = () => {
         setLandDistricts,
         setPrimaryIds,
         setMgmtUnits,
+        setAmendStatuses,
       ];
       const names = [
         'districts',
@@ -167,6 +172,7 @@ const TimberMarkSearch: FC = () => {
         'land districts',
         'primary IDs',
         'management units',
+        'amendment statuses',
       ];
       const failed: string[] = [];
       settled.forEach((r, i) => {
@@ -302,6 +308,7 @@ const TimberMarkSearch: FC = () => {
   const hasResults = rows !== null && rows.length > 0;
   // "HI - Issued" in the pill, as the other status columns show it.
   const markStatusNames = new Map(markStatuses.map((o) => [o.code, o.description]));
+  const amendStatusNames = new Map(amendStatuses.map((o) => [o.code, o.description]));
 
   const codeItems = (options: CodeOption[]) =>
     options.map((o) => <SelectItem key={o.code} value={o.code} text={o.description || o.code} />);
@@ -743,12 +750,19 @@ const TimberMarkSearch: FC = () => {
                                 >
                                   {row.cells.map((cell) => {
                                     const value = cell.value as string | null | undefined;
-                                    if (cell.info.header === 'markStatusSt') {
+                                    if (
+                                      cell.info.header === 'markStatusSt' ||
+                                      cell.info.header === 'amendStatusSt'
+                                    ) {
+                                      const names =
+                                        cell.info.header === 'markStatusSt'
+                                          ? markStatusNames
+                                          : amendStatusNames;
                                       return (
                                         <TableCell key={cell.id}>
                                           {value ? (
                                             <StatusTag
-                                              status={markStatusNames.get(value) || value}
+                                              status={names.get(value) || value}
                                               variant={statusCodeVariant(value)}
                                             />
                                           ) : (

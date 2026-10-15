@@ -6,6 +6,7 @@ import ca.bc.gov.nrs.fta.shared.dto.ManagementUnitDto;
 import java.util.List;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -89,9 +90,9 @@ public class CodeListService {
    * here it backs a single autocomplete, so the whole list is fetched once and
    * filtered in the browser rather than queried per keystroke.
    *
-   * <p>Unlike legacy, expired units are left out — the same rule every other
-   * list here follows. A unit that has expired can still sit on a historical
-   * tenure, so if those need to be searchable this filter is what to relax.
+   * <p>For the search screens, unlike legacy, expired units are left out — the same rule
+   * every other list here follows. The private mark forms take the whole table, as legacy's
+   * popup and its {@code SIL_EDIT_MGMT_UNIT} check did there ({@code all}).
    */
   private static final String MANAGEMENT_UNITS_SQL =
       """
@@ -102,7 +103,7 @@ public class CodeListService {
         FROM the.forest_mgmt_unit fmu
         JOIN the.mgmt_unit_type_code mutc
               ON mutc.mgmt_unit_type_code = fmu.mgmt_unit_type_code
-       WHERE SYSDATE BETWEEN fmu.effective_date AND fmu.expiry_date
+       WHERE (:all = 'Y' OR SYSDATE BETWEEN fmu.effective_date AND fmu.expiry_date)
        ORDER BY fmu.mgmt_unit_type_code, fmu.mgmt_unit_id
       """;
 
@@ -113,10 +114,16 @@ public class CodeListService {
           rs.getString("type_description"),
           rs.getString("description"));
 
-  /** Management units for the tenure search's autocomplete (legacy SIL004). */
-  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
-  public List<ManagementUnitDto> managementUnits() {
-    return jdbc.query(MANAGEMENT_UNITS_SQL, MANAGEMENT_UNIT_MAPPER);
+  /**
+   * Management units for the autocompletes (legacy SIL004): current ones only, or with
+   * {@code all} every unit, expired included.
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS,
+      key = "#root.methodName + #all")
+  public List<ManagementUnitDto> managementUnits(boolean all) {
+    return jdbc.query(MANAGEMENT_UNITS_SQL,
+        new MapSqlParameterSource("all", all ? "Y" : "N"),
+        MANAGEMENT_UNIT_MAPPER);
   }
 
   /** Administrative org units, keyed by the numeric id the search package expects. */

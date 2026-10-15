@@ -15,9 +15,9 @@ import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
 import {
+  getAllManagementUnits,
   getCascadeSplits,
   getDistrictDefaultCascades,
-  getManagementUnits,
   getThreeLetterDistricts,
   orgUnitCodeOf,
   type CodeOption,
@@ -153,7 +153,7 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    Promise.all([getThreeLetterDistricts(), getCascadeSplits(), getManagementUnits()])
+    Promise.all([getThreeLetterDistricts(), getCascadeSplits(), getAllManagementUnits()])
       .then(([d, c, m]) => {
         if (cancelled) return;
         setDistricts(d);

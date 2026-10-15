@@ -103,6 +103,14 @@ public class TimbermarkSearchService {
              tm.timber_mark                                                            AS timber_mark,
              tm.certificate                                                            AS certificate,
              tm.mark_status_st                                                         AS mark_status_st,
+             -- A private mark's amendment, as its detail page shows it: the outstanding
+             -- (PI or HN) one, else the newest. Null for a mark with none.
+             (SELECT MAX(a.prv_mrk_amd_sts_st)
+                       KEEP (DENSE_RANK FIRST
+                             ORDER BY CASE WHEN a.prv_mrk_amd_sts_st IN ('PI', 'HN') THEN 0 ELSE 1 END,
+                                      a.amend_request_date DESC)
+                FROM the.tmbr_mark_amend a
+               WHERE a.timber_mark = tm.timber_mark)                                   AS amend_status_st,
              tm.mark_issue_date                                                        AS mark_issue_date,
              NVL(tm.mark_extend_date, tm.mark_expiry_date)                             AS mark_expiry_date,
              tm.salvage_type_code                                                      AS salvage_ind,
@@ -121,6 +129,7 @@ public class TimbermarkSearchService {
           rs.getString("timber_mark"),
           rs.getString("certificate"),
           rs.getString("mark_status_st"),
+          rs.getString("amend_status_st"),
           rs.getObject("mark_issue_date", java.time.LocalDate.class),
           rs.getObject("mark_expiry_date", java.time.LocalDate.class),
           rs.getString("salvage_ind"),
@@ -172,7 +181,8 @@ public class TimbermarkSearchService {
         "Timber mark",
         "Salvage type",
         "Certificate",
-        "Mark status",
+        "Timber mark status",
+        "Amendment status",
         "Issue date",
         "Expiry date");
 
@@ -193,6 +203,7 @@ public class TimbermarkSearchService {
             rs.getString("salvage_ind"),
             rs.getString("certificate"),
             rs.getString("mark_status_st"),
+            rs.getString("amend_status_st"),
             rs.getObject("mark_issue_date", java.time.LocalDate.class),
             rs.getObject("mark_expiry_date", java.time.LocalDate.class)));
   }

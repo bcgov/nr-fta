@@ -109,6 +109,13 @@ export interface ManagementUnit {
 export const getManagementUnits = () =>
   cached<ManagementUnit[]>('/api/fta/code-lists/management-units');
 
+/**
+ * Every management unit, expired ones included — the private mark forms'. Legacy
+ * FTA510 offered (SIL004) and accepted (SIL_EDIT_MGMT_UNIT) any unit there.
+ */
+export const getAllManagementUnits = () =>
+  cached<ManagementUnit[]>('/api/fta/code-lists/management-units?all=true');
+
 /** Tenure file statuses — `TENURE_FILE_STATUS_CODE`, not `FILE_STATUS_CODE`. */
 export const getFileStatuses = () => list('file-statuses');
 

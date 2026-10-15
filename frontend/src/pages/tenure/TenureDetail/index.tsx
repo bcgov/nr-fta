@@ -7,6 +7,7 @@ import {
   ChartColumn,
   Currency,
   Folders,
+  Money,
   Notebook,
   Stamp,
   TableOfContents,
@@ -37,6 +38,7 @@ import CpCbAmendmentsPanel from './CpCbAmendmentsPanel';
 import CutBlocksPanel from './CutBlocksPanel';
 import CuttingPermitsPanel from './CuttingPermitsPanel';
 import DetailsPanel from './DetailsPanel';
+import HarvestHistoryPanel from './HarvestHistoryPanel';
 import SaleInfoPanel from './SaleInfoPanel';
 import TenureApplicationPanel from './TenureApplicationPanel';
 import TenureNotesPanel from './TenureNotesPanel';
@@ -52,6 +54,8 @@ interface TenureTab {
   render: (props: TenurePanelProps, canEditCp: boolean) => ReactNode;
   /** Only for these file types; every tenure when absent. */
   fileTypes?: readonly string[];
+  /** Only for file types it accepts — for a rule a list can't express. */
+  fileTypeTest?: (fileTypeCode: string) => boolean;
 }
 
 /**
@@ -60,6 +64,13 @@ interface TenureTab {
  * (FTA980) are blocks within a timber licence's area.
  */
 const TIMBER_LICENCE_TYPES = ['A06', 'A30'];
+
+/**
+ * B-type (timber sale) files: legacy FTA100 showed its Harvest History button
+ * (FTA990) for every file type starting with B — its "except B40" comment is
+ * not what the condition does.
+ */
+const isBType = (fileTypeCode: string) => fileTypeCode.startsWith('B');
 
 const TABS: TenureTab[] = [
   { label: 'Details', icon: TableOfContents, render: (p) => <DetailsPanel {...p} /> },
@@ -98,6 +109,12 @@ const TABS: TenureTab[] = [
     fileTypes: TIMBER_LICENCE_TYPES,
   },
   {
+    label: 'Harvest history',
+    icon: Money,
+    render: (p) => <HarvestHistoryPanel {...p} />,
+    fileTypeTest: isBType,
+  },
+  {
     label: 'CP/CB amendments',
     icon: RecentlyViewed,
     render: (p) => <CpCbAmendmentsPanel {...p} />,
@@ -111,8 +128,11 @@ const TenureTabs: FC<{
   tabs: LazyTabs;
 }> = ({ panelProps, canEditCp, tabs }) => {
   // Fixed for the tenure (its file type isn't editable), so tab indices are stable.
+  const fileType = panelProps.tenure.fileTypeCode ?? '';
   const shown = TABS.filter(
-    (t) => !t.fileTypes || t.fileTypes.includes(panelProps.tenure.fileTypeCode ?? ''),
+    (t) =>
+      (!t.fileTypes || t.fileTypes.includes(fileType)) &&
+      (!t.fileTypeTest || t.fileTypeTest(fileType)),
   );
   return (
     <Tabs selectedIndex={tabs.selected} onChange={tabs.onChange}>

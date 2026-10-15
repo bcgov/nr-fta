@@ -16,7 +16,13 @@ public record MarkListDto(
     String timberMark,
     LocalDate markApplDate,
     String orgUnitCode,
+    /** The timber mark's status (PRIVATE_MARK_CERTIFICATE), on amendment rows too. */
     String markStatusSt,
+    /**
+     * The amendment's status: on an amendment row its own, otherwise the mark's newest
+     * amendment's (HI once one is issued); null when the mark has none.
+     */
+    String amendStatusSt,
     String clientName,
     String disablePrintInd,
     String disableAckInd,

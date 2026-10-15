@@ -149,6 +149,20 @@ public class MarkUpdateService {
     write(current, rules, request, v, userId, newTimberMark);
   }
 
+  /**
+   * Whether this save makes the saving user the certificate's signer
+   * ({@code PRIVATE_MARK_ACTIVATED_USERID}, which {@link MarkCertificateReport} signs by), as
+   * legacy's did: every data-only save (UPDATE_REC, district or Headquarters, sets it however
+   * little changed), and issuing (SAVE's PI-to-HN branch). No other status or amendment-status
+   * change touches it — HX to HI included.
+   *
+   * <p>Legacy chose UPDATE_REC when neither the status nor the amendment status changed.
+   */
+  static boolean signsCertificate(String prevStatus, String status, boolean amendChanged) {
+    boolean dataOnly = Objects.equals(prevStatus, status) && !amendChanged;
+    return dataOnly || ("PI".equals(prevStatus) && "HN".equals(status));
+  }
+
   private static ResponseStatusException changedElsewhere() {
     return new ResponseStatusException(
         HttpStatus.CONFLICT,
@@ -322,7 +336,8 @@ public class MarkUpdateService {
       UPDATE the.private_mark_certificate
          SET timber_mark                   = NVL(:newTimberMark, timber_mark),
              forest_file_id                = NVL(:newTimberMark, forest_file_id),
-             private_mark_activated_userid = CASE WHEN :newTimberMark IS NOT NULL
+             -- The certificate's signer (see signsCertificate).
+             private_mark_activated_userid = CASE WHEN :signs = 'Y'
                                                   THEN UPPER(:userId)
                                                   ELSE private_mark_activated_userid END,
              forest_district               = TO_NUMBER(:forestDistrict),
@@ -428,7 +443,8 @@ public class MarkUpdateService {
         .addValue("crownGrantedInd",
             v.grantedDate() != null || !blank(v.grantedDesc()) ? "Y" : "N")
         .addValue("mapReferenceId", MarkFieldChecks.mapReferenceId(v.reg(), v.comp()))
-        .addValue("amendChanged", amendChanged ? "Y" : "N");
+        .addValue("amendChanged", amendChanged ? "Y" : "N")
+        .addValue("signs", signsCertificate(prevStatus, status, amendChanged) ? "Y" : "N");
 
     if (issuing) {
       // Before the certificate: it takes the new forest file as its own.

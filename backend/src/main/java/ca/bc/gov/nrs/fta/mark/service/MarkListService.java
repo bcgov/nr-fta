@@ -4,6 +4,7 @@ import ca.bc.gov.nrs.fta.mark.dto.MarkListDto;
 import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
 import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
+import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import java.util.List;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -50,6 +51,7 @@ public class MarkListService {
              m.mark_appl_date        AS mark_appl_date,
              m.org_unit_code         AS org_unit_code,
              m.mark_status_st        AS mark_status_st,
+             m.amend_status_st       AS amend_status_st,
              m.client_name           AS client_name,
              m.disable_print_ind     AS disable_print_ind,
              m.disable_ack_ind       AS disable_ack_ind,
@@ -73,7 +75,12 @@ public class MarkListService {
                      ou.org_unit_code                                     AS org_unit_code,
                      ou.org_unit_no                                       AS org_unit_no,
                      pmc.private_mark_status_code                         AS mark_status_st,
-                     NVL(cli.client_name, 'Client not specified at present') AS client_name,
+                     -- The newest amendment's: none is outstanding (see the WHERE below).
+                     (SELECT MAX(a.prv_mrk_amd_sts_st)
+                               KEEP (DENSE_RANK FIRST ORDER BY a.amend_request_date DESC)
+                        FROM the.tmbr_mark_amend a
+                       WHERE a.timber_mark = pmc.timber_mark)             AS amend_status_st,
+                     NVL({CLIENT_NAME}, 'Client not specified at present') AS client_name,
                      cli.client_number                                    AS client_number,
                      CASE WHEN fcl.client_number IS NOT NULL
                           THEN fcl.client_locn_code ELSE ffc.client_locn_code END AS client_locn_code,
@@ -105,8 +112,9 @@ public class MarkListService {
                      pmc.private_mark_application_date                    AS mark_appl_date,
                      ou.org_unit_code                                     AS org_unit_code,
                      ou.org_unit_no                                       AS org_unit_no,
-                     amd.prv_mrk_amd_sts_st                               AS mark_status_st,
-                     cli.client_name                                      AS client_name,
+                     pmc.private_mark_status_code                         AS mark_status_st,
+                     amd.prv_mrk_amd_sts_st                               AS amend_status_st,
+                     {CLIENT_NAME}                                      AS client_name,
                      cli.client_number                                    AS client_number,
                      fcl.client_locn_code                                 AS client_locn_code,
                      CASE WHEN amd.prv_mrk_amd_sts_st = 'HN' THEN 'N' ELSE 'Y' END AS disable_print_ind,
@@ -131,12 +139,15 @@ public class MarkListService {
              ) m
        WHERE (:hdrDistrict  IS NULL OR TO_CHAR(m.org_unit_no) = :hdrDistrict)
          AND (:timberMark   IS NULL OR m.timber_mark LIKE :timberMark || '%')
-         AND (:markStatusSt IS NULL OR m.mark_status_st = :markStatusSt)
+         -- Either status: an amendment row is found by its own status, as legacy listed it,
+         -- and by its timber mark's.
+         AND (:markStatusSt IS NULL OR m.mark_status_st = :markStatusSt
+              OR m.amend_status_st = :markStatusSt)
          AND (:orgUnitCode  IS NULL OR m.org_unit_code = :orgUnitCode)
          AND (:clientName   IS NULL OR UPPER(m.client_name) LIKE UPPER(:clientName) || '%')
          AND (:clientNumber IS NULL OR m.client_number = :clientNumber)
          AND (:clientLocnCode IS NULL OR m.client_locn_code = :clientLocnCode)
-      """;
+      """.replace("{CLIENT_NAME}", ClientNameSql.displayName("cli"));
 
   // Newest application first; undated rows last rather than Oracle's default
   // of first for DESC. Certificate and process type break ties so the order is
@@ -153,7 +164,8 @@ public class MarkListService {
    *                     the value comes from a picker, and a prefix match would
    *                     let district 18 also return 1867's marks
    * @param timberMark   partial timber mark (prefix match), or null
-   * @param markStatusSt exact mark/amendment status code, or null
+   * @param markStatusSt exact status code, matched against the timber mark's status and the
+   *                     amendment's, or null
    * @param orgUnitCode  exact org-unit code, or null
    * @param clientName   client/holder name (prefix match), or null
    * @param clientNumber exact client number (a picked client), or null
@@ -194,6 +206,7 @@ public class MarkListService {
         rs.getObject("mark_appl_date", java.time.LocalDate.class),
         rs.getString("org_unit_code"),
         rs.getString("mark_status_st"),
+        rs.getString("amend_status_st"),
         rs.getString("client_name"),
         rs.getString("disable_print_ind"),
         rs.getString("disable_ack_ind"),
@@ -221,8 +234,8 @@ public class MarkListService {
       String clientLocnCode,
       CsvWriter csv) {
     csv.writeRow(
-        "Certificate", "Timber mark", "Application date", "District", "Status", "Client",
-        "Last updated by");
+        "Certificate", "Timber mark", "Application date", "District", "Timber mark status",
+        "Amendment status", "Client", "Last updated by");
 
     streamingJdbc.jdbc().query(
         SELECT_COLUMNS + FROM_WHERE + ORDER_BY,
@@ -236,6 +249,7 @@ public class MarkListService {
             rs.getObject("mark_appl_date", java.time.LocalDate.class),
             rs.getString("org_unit_code"),
             rs.getString("mark_status_st"),
+            rs.getString("amend_status_st"),
             rs.getString("client_name"),
             rs.getString("idir")));
   }

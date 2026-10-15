@@ -1,6 +1,7 @@
 package ca.bc.gov.nrs.fta.mark.service;
 
 import ca.bc.gov.nrs.fta.mark.dto.MarkDetailDto;
+import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -64,7 +65,7 @@ public class MarkDetailService {
              ou.org_unit_code                      AS org_unit_code,
              COALESCE(pmcl.client_number, ffc.client_number)       AS client_number,
              COALESCE(pmcl.client_locn_code, ffc.client_locn_code) AS client_locn_code,
-             cli.client_name                       AS client_name,
+             {CLIENT_NAME}                       AS client_name,
              NVL(haa.marking_method_code, 'S')     AS marking_method_code,
              NVL(haa.marking_instrument_code, 'H') AS marking_instrument_code,
              pmc.crown_granted_acq_desc            AS crown_granted_acq_desc,
@@ -157,7 +158,7 @@ public class MarkDetailService {
        -- The outer joins can fan out (more than one 'A' client or hauling
        -- authority row); the header is one record, so take the first.
        FETCH FIRST 1 ROW ONLY
-      """;
+      """.replace("{CLIENT_NAME}", ClientNameSql.displayName("cli"));
 
   private static final String LAND_INDEX_SQL =
       """
@@ -187,7 +188,7 @@ public class MarkDetailService {
       """
       SELECT ffc.client_number                  AS client_number,
              ffc.client_locn_code               AS client_locn_code,
-             cli.client_name                    AS client_name,
+             {CLIENT_NAME}                    AS client_name,
              loc.city                           AS client_city,
              ffc.forest_file_client_skey        AS for_client_link_skey,
              ffc.forest_file_client_type_code   AS file_client_type,
@@ -207,7 +208,7 @@ public class MarkDetailService {
       UNION
       SELECT pcl.client_number                  AS client_number,
              pcl.client_locn_code               AS client_locn_code,
-             cli.client_name                    AS client_name,
+             {CLIENT_NAME}                    AS client_name,
              loc.city                           AS client_city,
              pcl.private_mark_client_skey       AS for_client_link_skey,
              pcl.private_mark_client_type_code  AS file_client_type,
@@ -224,7 +225,7 @@ public class MarkDetailService {
             AND loc.client_locn_code = pcl.client_locn_code
        WHERE pcl.certificate = :certificate
        ORDER BY 1, 2
-      """;
+      """.replace("{CLIENT_NAME}", ClientNameSql.displayName("cli"));
 
   private static final String AMENDMENTS_SQL =
       """

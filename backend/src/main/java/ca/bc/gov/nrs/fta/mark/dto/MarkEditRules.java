@@ -10,9 +10,10 @@ import java.util.Set;
  * and the {@code p_disable_save_ind} of {@code FTA_510_PRIVATE_MARK.GET}).
  *
  * <p>Legacy decides by organization level (Headquarters, District, Region). This app has
- * no organization levels, so every user who may edit private marks ({@code FTA_ADMIN} and
- * both timber mark roles, district included) gets the Headquarters rules, except where a
- * district role is held to less (Status, the marking codes, Submit to HQ). The record is
+ * no organization levels, so {@code FTA_ADMIN} and the Headquarters timber mark role get
+ * the Headquarters rules. The district role ({@code FTA_TIMBER_MARK_DISTRICT_ADMIN}) may
+ * change only the marking codes, and the status of a cancelled (HX) mark back to issued
+ * (HI) — nothing else on the page, by the business's rule rather than legacy's. The record is
  * computed once, here, and serves both the detail page (which fields open for editing) and the update
  * endpoint (which fields it accepts), so the two cannot disagree.
  *
@@ -51,6 +52,7 @@ import java.util.Set;
  * @param clientsUpdate     updating an associated client already on the mark (FTA513's
  *                          save of an existing row): Headquarters at any status; a district
  *                          as it may add
+ * @param notes             adding a note (FTA970) — any editor but a district
  */
 public record MarkEditRules(
     boolean editable,
@@ -74,7 +76,8 @@ public record MarkEditRules(
     boolean submit,
     String submitReason,
     boolean landIndexUpdate,
-    boolean clientsUpdate) {
+    boolean clientsUpdate,
+    boolean notes) {
 
   /** Legacy Headquarters may save a mark in these statuses ({@code FTA_510.GET}). */
   private static final Set<String> SAVEABLE_STATUSES = Set.of("HI", "HX", "PI", "PA", "HN");
@@ -92,6 +95,13 @@ public record MarkEditRules(
       "PI", List.of("PI", "DV", "EE"),
       "HI", List.of("HI", "HX"),
       "HX", List.of("HX", "HI", "PI", "DD", "DV"));
+
+  /** A district's only status change: a cancelled mark back to issued. */
+  private static final List<String> DISTRICT_HX_OPTIONS = List.of("HX", "HI");
+
+  /** Why a district can't make a change other than its own two; for the API's refusals. */
+  static final String DISTRICT_REASON = "A district can change only the marking requirements"
+      + " and instrument, and a cancelled (HX) mark's status to HI.";
 
   /** The values an outstanding amendment may take ({@code amendStatusCertainValues}). */
   private static final List<String> AMENDMENT_STATUSES = List.of("PI", "HN", "DV");
@@ -112,11 +122,29 @@ public record MarkEditRules(
       String amendmentsReason,
       String submitReason,
       boolean landIndexUpdate,
-      boolean clientsUpdate) {
+      boolean clientsUpdate,
+      boolean notes) {
     return new MarkEditRules(
         false, reason, false, false, false, false, false, false, false, List.of(), false,
         List.of(), landIndex, landIndexReason, clients, clientsReason, amendments,
-        amendmentsReason, submitReason == null, submitReason, landIndexUpdate, clientsUpdate);
+        amendmentsReason, submitReason == null, submitReason, landIndexUpdate, clientsUpdate,
+        notes);
+  }
+
+  /**
+   * A district's rules: the marking codes once the mark has them (they live on
+   * HAULING_AUTHORITY, which exists from HN on), and HX back to HI — neither for a view-only
+   * mark type. Nothing else: no land index, client, amendment, note or Submit to HQ.
+   */
+  private static MarkEditRules district(MarkDetailDto mark, boolean viewOnlyType) {
+    String status = mark.markStatusCode();
+    boolean marking = !viewOnlyType && mark.timberMark() != null;
+    boolean reinstate = !viewOnlyType && "HX".equals(status);
+    return new MarkEditRules(
+        marking || reinstate, null, false, false, false, marking, false, false, reinstate,
+        reinstate ? DISTRICT_HX_OPTIONS : status == null ? List.of() : List.of(status), false,
+        List.of(), false, DISTRICT_REASON, false, DISTRICT_REASON, false, DISTRICT_REASON,
+        false, DISTRICT_REASON, false, false, false);
   }
 
   /**
@@ -130,9 +158,9 @@ public record MarkEditRules(
   /**
    * The rules for {@code mark} and a user who may ({@code userCanEdit}) or may not edit
    * private marks; {@code districtUser} is the {@code FTA_TIMBER_MARK_DISTRICT_ADMIN} role,
-   * legacy's district organization level, which alone submits applications to Headquarters.
-   * Every other editor is Headquarters, which may always change the status, and the marking
-   * codes once the mark has them.
+   * which may change only the marking codes and an HX mark's status to HI (see
+   * {@link #district}). Every other editor is Headquarters, which may always change the
+   * status, and the marking codes once the mark has them.
    */
   public static MarkEditRules of(MarkDetailDto mark, boolean userCanEdit, boolean districtUser) {
     String status = mark.markStatusCode();
@@ -197,28 +225,29 @@ public record MarkEditRules(
           amendmentsReason,
           submitReason,
           false,
+          false,
           false);
+    }
+    if (districtUser) {
+      return district(mark, viewOnlyType);
     }
     if (viewOnlyType) {
       return none(null, landIndex, landIndexReason, clients, clientsReason, amendments,
-          amendmentsReason, submitReason, false, false);
+          amendmentsReason, submitReason, false, false, true);
     }
-    // Headquarters: the timber mark roles other than the district's (and FTA_ADMIN).
-    boolean headquarters = !districtUser;
-    // Correcting a land index or client already on the mark: Headquarters at any status
-    // (legacy held updates to the add gates); a district still as it may add.
-    boolean landIndexUpdate = headquarters || landIndex;
-    boolean clientsUpdate = headquarters || clients;
+    // From here on, Headquarters: the Headquarters timber mark role and FTA_ADMIN.
+    // Correcting a land index or client already on the mark: at any status (legacy held
+    // updates to the add gates).
+    boolean landIndexUpdate = true;
+    boolean clientsUpdate = true;
     // The marking codes live on HAULING_AUTHORITY, which exists once the mark is issued
-    // (HN on). Headquarters may change them at any status from then; a district only until
-    // the certificate is printed and the mark is issued (HN).
-    boolean markingOpen = mark.timberMark() != null
-        && (headquarters || "HN".equals(status));
+    // (HN on); Headquarters may change them at any status from then.
+    boolean markingOpen = mark.timberMark() != null;
     if (status == null || !SAVEABLE_STATUSES.contains(status)) {
-      if (!headquarters || status == null) {
+      if (status == null) {
         // No reason: the status is on screen, and a note saying so isn't wanted.
         return none(null, landIndex, landIndexReason, clients, clientsReason, amendments,
-            amendmentsReason, submitReason, landIndexUpdate, clientsUpdate);
+            amendmentsReason, submitReason, landIndexUpdate, clientsUpdate, true);
       }
       // Headquarters keeps the marking codes and Status at a status legacy can't save.
       List<String> options = STATUS_TRANSITIONS.getOrDefault(status, List.of(status));
@@ -227,7 +256,7 @@ public record MarkEditRules(
           markingOpen || open, null, false, false, false, markingOpen, false, false, open,
           open ? options : List.of(status), false, List.of(), landIndex, landIndexReason,
           clients, clientsReason, amendments, amendmentsReason, submitReason == null,
-          submitReason, landIndexUpdate, clientsUpdate);
+          submitReason, landIndexUpdate, clientsUpdate, true);
     }
 
     // setProtectionStates, Headquarters, existing record, opened from the FTA500 list:
@@ -248,10 +277,8 @@ public record MarkEditRules(
         && mark.fileTypeCode() == null
         && mark.timberMark() == null
         && ("PI".equals(status) || "PA".equals(status));
-    // Headquarters may always change the status, cancelled (HX) included: the client and
-    // outstanding-amendment holds are a district's.
-    boolean statusOpen = statusOptions.size() > 1
-        && (headquarters || (hasClient && !amendmentOutstanding));
+    // Headquarters may always change the status, cancelled (HX) included.
+    boolean statusOpen = statusOptions.size() > 1;
 
     return new MarkEditRules(
         true,
@@ -276,6 +303,7 @@ public record MarkEditRules(
         submitReason == null,
         submitReason,
         landIndexUpdate,
-        clientsUpdate);
+        clientsUpdate,
+        true);
   }
 }
