@@ -108,6 +108,22 @@ public record MarkDetailDto(
         timberMarkRecord, landIndex, clients, amendments, notes, editRules);
   }
 
+  /**
+   * The amendment whose status the mark shows as its "Amendment Status": the outstanding
+   * (PI or HN) one, else the newest. An issued (HI) amendment isn't outstanding, so it still
+   * shows once it's done. Null when the mark has no amendments.
+   */
+  public Amendment shownAmendment() {
+    if (amendments == null || amendments.isEmpty()) {
+      return null;
+    }
+    // The list is newest first (MarkDetailService).
+    return amendments.stream()
+        .filter(a -> "PI".equals(a.prvMrkAmdStsSt()) || "HN".equals(a.prvMrkAmdStsSt()))
+        .findFirst()
+        .orElse(amendments.get(0));
+  }
+
   /** This record with the current user's edit rules attached. */
   public MarkDetailDto withEditRules(MarkEditRules rules) {
     return new MarkDetailDto(

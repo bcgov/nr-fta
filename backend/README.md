@@ -125,10 +125,14 @@ SLEE.image=sl_signature.png
 
 - **Images:** PNG (or JPEG/GIF), ideally on a transparent or white background. They print in a
   156 × 45 point box, scaled to fit with their shape kept, right-aligned above the name.
-- **From legacy:** fta-archive holds legacy's twelve, exported from its report server —
-  `fta/source/jasper-server/src/main/resources/resources/JCRS/FTA/Images/*_signature.png.data`
-  are plain PNGs (copy each, dropping `.data`). The keys, names and titles are the
-  `v_signatory_name` / `v_signatory_title` chains in
+- **From legacy:** the real signatures live only in the **production JasperReports Server
+  repository**, folder `/JCRS/FTA/Images` (`*_signature.png`). Export them from there (the
+  server's repository export, or download each image as an administrator), or get fresh scans
+  from the business. **Don't use the copies in fta-archive**
+  (`fta/source/jasper-server/src/main/resources/resources/JCRS/FTA/Images/*_signature.png.data`):
+  their metadata calls every one a "Placeholder image", and three are the same file. The real
+  images were loaded straight into the server and never committed. The keys, names and titles
+  are still right there: the `v_signatory_name` / `v_signatory_title` chains in
   `…/JCRS/FTA/Reports/FTA/FTA402-002dPrivateMark.rpt_files/FTA402_PrivateMark.rpt_jrxml.data`.
   That list dates from about 2017: have the business confirm who should sign today.
 - **Adding someone:** add their three lines and drop their image in. **Removing someone:**

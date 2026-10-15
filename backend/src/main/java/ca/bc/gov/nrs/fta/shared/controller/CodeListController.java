@@ -28,12 +28,14 @@ public class CodeListController {
   }
 
   /**
-   * Management units for the tenure search's autocomplete — the list legacy
-   * SIL004 showed in its own popup screen.
+   * Management units for the autocompletes — the list legacy SIL004 showed in its own popup
+   * screen. Current units only, unless {@code all=true} (the private mark forms, which
+   * legacy let pick any unit).
    */
   @GetMapping("/management-units")
-  public ResponseEntity<List<ManagementUnitDto>> managementUnits() {
-    return ResponseEntity.ok(codeListService.managementUnits());
+  public ResponseEntity<List<ManagementUnitDto>> managementUnits(
+      @RequestParam(defaultValue = "false") boolean all) {
+    return ResponseEntity.ok(codeListService.managementUnits(all));
   }
 
   @GetMapping("/org-units")

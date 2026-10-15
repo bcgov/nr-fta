@@ -29,8 +29,10 @@ import org.springframework.stereotype.Component;
  * {@code FTAR402P_Client} procedures; their SELECTs are ported here, so the report needs only
  * read access, and the dates are formatted as the procedure did ("10th day of April, 2021.").
  *
- * <p>It is signed by the official who issued the mark ({@link CertificateSignatories}), or
- * prints a blank signature line when they have no signature set up.
+ * <p>It is signed by the mark's recorded signer ({@code PRIVATE_MARK_ACTIVATED_USERID}: whoever
+ * last saved or issued it, see {@link MarkUpdateService#signsCertificate}) through
+ * {@link CertificateSignatories}, or prints a blank signature line when they have no signature
+ * set up.
  *
  * <p>A certificate exists only once the mark is issued: it reads the mark's forest file and
  * its main ('A') client, as FTAR402P's inner joins do.
@@ -138,7 +140,7 @@ public class MarkCertificateReport {
     List<Map<String, ?>> secondary = jdbc.query(CLIENTS_SQL, p, (rs, n) -> Map.of(
         "TIMBER_MARK", String.valueOf(rs.getString("timber_mark")),
         "SECONDARY_LICENSEE", String.valueOf(rs.getString("secondary_licensee"))));
-    // Signed by the official who issued the mark, as legacy signed it.
+    // Signed by the mark's recorded signer, as legacy signed it.
     Signatory signatory = signatories
         .forUser((String) rows.get(0).get("activated_userid"))
         .orElse(null);

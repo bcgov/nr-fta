@@ -51,7 +51,7 @@ class MarkEditRulesTest {
 
       assertThat(rules.editable()).isFalse();
       assertThat(rules.reason()).isNull();
-      assertThat(MarkEditRules.of(mark("DV", "B01", "12A345", "00001", null), true, true)
+      assertThat(MarkEditRules.of(mark("DV", null, null, "00001", null), true, true)
           .editable()).isFalse();
     }
 
@@ -119,12 +119,12 @@ class MarkEditRulesTest {
     }
 
     @Test
-    void markingIsAlwaysOpenForHeadquartersAndUntilIssuedForDistrict() {
+    void markingIsAlwaysOpenOnceTheMarkHasThem() {
       for (String status : new String[] {"HN", "HI", "HX"}) {
         MarkDetailDto marked = mark(status, "B01", "12A345", "00001", null);
         assertThat(hq(marked).marking()).as("HQ at %s", status).isTrue();
         assertThat(MarkEditRules.of(marked, true, true).marking())
-            .as("district at %s", status).isEqualTo("HN".equals(status));
+            .as("district at %s", status).isTrue();
       }
     }
 
@@ -134,7 +134,6 @@ class MarkEditRulesTest {
 
       assertThat(hq(cancelled).status()).isTrue();
       assertThat(hq(cancelled).statusOptions()).containsExactly("HX", "HI", "PI", "DD", "DV");
-      assertThat(MarkEditRules.of(cancelled, true, true).status()).isFalse();
     }
 
     @Test
@@ -154,10 +153,8 @@ class MarkEditRulesTest {
       assertThat(rules.amendmentStatus()).isTrue();
       assertThat(rules.amendmentStatusOptions()).containsExactly("PI", "HN", "DV");
       assertThat(rules.term()).isFalse();
-      // Headquarters may still change the status; a district works the amendment first.
+      // Headquarters may still change the status.
       assertThat(rules.status()).isTrue();
-      assertThat(MarkEditRules.of(mark("HI", "B01", "12A345", "00001", "PI"), true, true)
-          .status()).isFalse();
     }
   }
 
@@ -241,15 +238,6 @@ class MarkEditRulesTest {
       }
     }
 
-    @Test
-    void aDistrictUpdatesOnlyWhereItMayAdd() {
-      for (String status : ALL) {
-        MarkEditRules rules =
-            MarkEditRules.of(mark(status, "B08", "E12345", "00001", null), true, true);
-        assertThat(rules.landIndexUpdate()).as(status).isEqualTo(rules.landIndex());
-        assertThat(rules.clientsUpdate()).as(status).isEqualTo(rules.clients());
-      }
-    }
 
     @Test
     void notForViewOnlyTypesOrViewers() {
@@ -361,17 +349,6 @@ class MarkEditRulesTest {
   @DisplayName("submit to Headquarters")
   class Submit {
 
-    private MarkEditRules district(MarkDetailDto mark) {
-      return MarkEditRules.of(mark, true, true);
-    }
-
-    @Test
-    void aDistrictSubmitsItsPaApplicationWithAClient() {
-      MarkEditRules rules = district(mark("PA", null, null, "00001", null));
-      assertThat(rules.submit()).isTrue();
-      assertThat(rules.submitReason()).isNull();
-    }
-
     @Test
     void headquartersDoesNotSubmit() {
       MarkEditRules rules = hq(mark("PA", null, null, "00001", null));
@@ -380,26 +357,115 @@ class MarkEditRulesTest {
     }
 
     @Test
-    void onlyFromPa() {
-      for (String status : List.of("PI", "HN", "HI", "HX", "DV")) {
-        MarkEditRules rules = district(mark(status, null, null, "00001", null));
-        assertThat(rules.submit()).as(status).isFalse();
-        assertThat(rules.submitReason()).as(status).contains("PA status");
-      }
-    }
-
-    @Test
-    void needsAClient() {
-      MarkEditRules rules = district(mark("PA", null, null, null, null));
-      assertThat(rules.submit()).isFalse();
-      assertThat(rules.submitReason()).contains("Associated clients");
-    }
-
-    @Test
     void viewersCannotSubmit() {
       MarkEditRules rules = MarkEditRules.of(mark("PA", null, null, "00001", null), false, true);
       assertThat(rules.submit()).isFalse();
       assertThat(rules.submitReason()).contains("Your role");
+    }
+  }
+
+  /**
+   * The district role may change the marking codes and a cancelled mark's status to HI, and
+   * nothing else on the page — the business's rule, narrower than legacy's district level.
+   */
+  @Nested
+  @DisplayName("district")
+  class District {
+
+    private static final List<String> ALL =
+        List.of("PA", "PI", "HN", "HI", "HX", "DV", "DD", "EE");
+
+    private MarkEditRules district(MarkDetailDto mark) {
+      return MarkEditRules.of(mark, true, true);
+    }
+
+    @Test
+    void onlyTheMarkingCodesAreOpenOnAnIssuedMark() {
+      MarkEditRules rules = district(mark("HI", "B01", "12A345", "00001", null));
+
+      assertThat(rules.editable()).isTrue();
+      assertThat(rules.marking()).isTrue();
+      assertThat(rules.status()).isFalse();
+      assertThat(rules.statusOptions()).containsExactly("HI");
+      assertThat(rules.applicationDate()).isFalse();
+      assertThat(rules.term()).isFalse();
+      assertThat(rules.location()).isFalse();
+      assertThat(rules.markType()).isFalse();
+      assertThat(rules.branch()).isFalse();
+      assertThat(rules.amendmentStatus()).isFalse();
+    }
+
+    @Test
+    void aCancelledMarkMayGoBackToIssuedOnly() {
+      MarkEditRules rules = district(mark("HX", "B01", "12A345", null, null));
+
+      assertThat(rules.status()).isTrue();
+      assertThat(rules.statusOptions()).containsExactly("HX", "HI");
+      assertThat(rules.marking()).isTrue();
+    }
+
+    @Test
+    void statusIsClosedEverywhereButHx() {
+      for (String status : ALL) {
+        MarkEditRules rules = district(mark(status, "B01", "12A345", "00001", null));
+        assertThat(rules.status()).as(status).isEqualTo("HX".equals(status));
+      }
+    }
+
+    @Test
+    void anApplicationWithoutAMarkHasNothingOpen() {
+      MarkEditRules rules = district(mark("PA", null, null, "00001", null));
+
+      assertThat(rules.editable()).isFalse();
+      assertThat(rules.marking()).isFalse();
+    }
+
+    @Test
+    void outstandingAmendmentIsNotWorked() {
+      MarkEditRules rules = district(mark("HI", "B01", "12A345", "00001", "PI"));
+
+      assertThat(rules.amendmentStatus()).isFalse();
+      assertThat(rules.amendmentStatusOptions()).isEmpty();
+    }
+
+    @Test
+    void noOtherTabTakesChanges() {
+      for (String status : ALL) {
+        MarkEditRules rules = district(mark(status, "B08", "E12345", "00001", null));
+        assertThat(rules.landIndex()).as(status).isFalse();
+        assertThat(rules.landIndexUpdate()).as(status).isFalse();
+        assertThat(rules.clients()).as(status).isFalse();
+        assertThat(rules.clientsUpdate()).as(status).isFalse();
+        assertThat(rules.amendments()).as(status).isFalse();
+        assertThat(rules.notes()).as(status).isFalse();
+        assertThat(rules.submit()).as(status).isFalse();
+      }
+      assertThat(district(mark("PA", null, null, "00001", null)).submit()).isFalse();
+    }
+
+    @Test
+    void refusalsSayWhatADistrictMayChange() {
+      MarkEditRules rules = district(mark("HI", "B08", "E12345", "00001", null));
+
+      assertThat(rules.landIndexReason()).contains("marking requirements");
+      assertThat(rules.clientsReason()).contains("marking requirements");
+      assertThat(rules.amendmentsReason()).contains("marking requirements");
+    }
+
+    @Test
+    void viewOnlyTypesStayClosed() {
+      MarkEditRules rules = district(mark("HX", "B15", "E12345", "00001", null));
+
+      assertThat(rules.editable()).isFalse();
+      assertThat(rules.marking()).isFalse();
+      assertThat(rules.status()).isFalse();
+    }
+
+    @Test
+    void headquartersMayAddNotes() {
+      assertThat(hq(mark("HI", "B08", "E12345", "00001", null)).notes()).isTrue();
+      assertThat(MarkEditRules.of(mark("HI", "B08", "E12345", "00001", null), false).notes())
+          .isFalse();
     }
   }
 

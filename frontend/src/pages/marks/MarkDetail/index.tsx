@@ -189,7 +189,7 @@ const MarkDetail: FC = () => {
                         byCertificate={byCertificate}
                         forestFileId={mark.forestFileId}
                         notes={mark.notes}
-                        canAdd={canEditMarks(user)}
+                        canAdd={!!mark.editRules?.notes}
                         onAdded={reload}
                       />
                     )}

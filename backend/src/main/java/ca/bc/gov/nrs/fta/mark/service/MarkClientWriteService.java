@@ -21,8 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Adds an associated client to a private mark, or updates one on it — legacy FTA513's add
- * row and its save of an existing one ({@code UPDATE_FFC_REC} / {@code UPDATE_PMC_REC}).
+ * Adds an associated client to a private mark, updates one on it, or deletes a previous
+ * licensee — legacy FTA513's add row, its save of an existing one ({@code UPDATE_FFC_REC} /
+ * {@code UPDATE_PMC_REC}) and its Delete ({@code DELETE_REC}).
  *
  * <p>Ports {@code FTA_513_PM_CLIENT}: the gate from its {@code GET} (Headquarters; not
  * B15/B16; only at HI, PI or PA — {@link MarkEditRules#clients()}), the form's and
@@ -83,13 +84,15 @@ public class MarkClientWriteService {
    *     be changed at its status or type; 400 if a field is invalid
    */
   @Transactional
-  public String add(String id, boolean byCertificate, MarkClientRequest request, String userId) {
+  public String add(
+      String id, boolean byCertificate, MarkClientRequest request, boolean districtUser,
+      String userId) {
     MarkDetailDto mark = (byCertificate
             ? markDetailService.findByCertificate(id)
             : markDetailService.findByMarkNumber(id))
         .orElseThrow(() -> new ResponseStatusException(
             HttpStatus.NOT_FOUND, "Private mark not found."));
-    MarkEditRules rules = MarkEditRules.of(mark, true);
+    MarkEditRules rules = MarkEditRules.of(mark, true, districtUser);
     if (!rules.clients()) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, rules.clientsReason());
     }
@@ -254,6 +257,58 @@ public class MarkClientWriteService {
           "This client was changed by someone else. Reload the mark and try again.");
     }
     return note;
+  }
+
+  /**
+   * Deletes the associated client {@code skey} from the mark — FTA513's Delete
+   * ({@code FTA_513_PM_CLIENT.DELETE_REC}). Legacy offered it only on a previous licensee (C)
+   * row, and only where the tab could be saved ({@code p_disable_save_ind = 'N'}, the add gate
+   * {@link MarkEditRules#clients()}); both are enforced here, where legacy left them to the page.
+   *
+   * @throws ResponseStatusException 404 if the mark or the client row on it does not exist;
+   *     409 if the user may not delete it, it is not a previous licensee, or someone else
+   *     changed it first
+   */
+  @Transactional
+  public void delete(
+      String id, boolean byCertificate, long skey, Long revisionCount, boolean districtUser) {
+    MarkDetailDto mark = (byCertificate
+            ? markDetailService.findByCertificate(id)
+            : markDetailService.findByMarkNumber(id))
+        .orElseThrow(() -> new ResponseStatusException(
+            HttpStatus.NOT_FOUND, "Private mark not found."));
+    MarkEditRules rules = MarkEditRules.of(mark, true, districtUser);
+    if (!rules.clients()) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, rules.clientsReason() != null
+          ? rules.clientsReason() : "Clients may not be changed on this mark.");
+    }
+    if (revisionCount == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Revision count is required.");
+    }
+    Target t = targetFor(mark);
+    List<String> types = jdbc.queryForList(
+        "SELECT " + t.typeColumn() + " FROM " + t.table()
+            + " WHERE " + t.skeyColumn() + " = :skey AND " + t.keyColumn() + " = :key",
+        new MapSqlParameterSource().addValue("skey", skey).addValue("key", t.key()),
+        String.class);
+    if (types.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found on this mark.");
+    }
+    if (!"C".equals(types.get(0))) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "Only a previous licensee (C) can be deleted.");
+    }
+    int n = jdbc.update(
+        "DELETE FROM " + t.table() + " WHERE " + t.skeyColumn() + " = :skey"
+            + " AND " + t.keyColumn() + " = :key AND revision_count = :revisionCount",
+        new MapSqlParameterSource()
+            .addValue("skey", skey)
+            .addValue("key", t.key())
+            .addValue("revisionCount", revisionCount));
+    if (n == 0) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT,
+          "This client was changed by someone else. Reload the mark and try again.");
+    }
   }
 
   /**

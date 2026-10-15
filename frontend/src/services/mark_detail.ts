@@ -1,4 +1,4 @@
-import { apiGet, apiGetForBlob, apiPost, apiPostForBlob, apiPut } from './http';
+import { apiDelete, apiGet, apiGetForBlob, apiPost, apiPostForBlob, apiPut } from './http';
 
 // Mirrors the backend MarkDetailDto (ca.bc.gov.nrs.fta.mark.dto), which ports
 // the legacy THE.FTA_510_PRIVATE_MARK.GET record enriched with the land index
@@ -111,6 +111,18 @@ export interface MarkDetail {
   editRules: MarkEditRules | null;
 }
 
+/**
+ * The amendment whose status the mark shows as its "Amendment Status": the outstanding
+ * (PI or HN) one, else the newest — so an issued (HI) amendment still shows once it's done.
+ * As the backend's MarkDetailDto.shownAmendment; `amendments` is newest first.
+ */
+export function shownAmendment(mark: MarkDetail): MarkAmendment | undefined {
+  return (
+    mark.amendments.find((a) => a.prvMrkAmdStsSt === 'PI' || a.prvMrkAmdStsSt === 'HN') ??
+    mark.amendments[0]
+  );
+}
+
 /** Mirrors the backend MarkEditRules: which groups of fields are open, and to what. */
 export interface MarkEditRules {
   editable: boolean;
@@ -146,10 +158,12 @@ export interface MarkEditRules {
   submit: boolean;
   /** Why not, when `submit` is false. */
   submitReason: string | null;
-  /** Updating a land index on the mark — Headquarters at any status, a district as it may add. */
+  /** Updating a land index on the mark — Headquarters at any status; never a district. */
   landIndexUpdate: boolean;
-  /** Updating an associated client — Headquarters at any status, a district as it may add. */
+  /** Updating an associated client — Headquarters at any status; never a district. */
   clientsUpdate: boolean;
+  /** Adding a note (FTA970) — any editor but a district. */
+  notes: boolean;
 }
 
 /** Mirrors the backend MarkClientRequest — the FTA513 add row. Dates are ISO yyyy-mm-dd. */
@@ -192,6 +206,25 @@ export function updateClient(
   return apiPut<{ note?: string }>(
     `/api/fta/marks/${encodeURIComponent(id)}/clients/${skey}${query}`,
     request,
+  );
+}
+
+/**
+ * DELETE /api/fta/marks/{id}/clients/{skey} — FTA513's Delete: removes a previous
+ * licensee (C). Only a C row can be deleted, and only where clients can be added
+ * (`editRules.clients`).
+ */
+export function deleteClient(
+  id: string,
+  skey: number,
+  revisionCount: number | null,
+  byCertificate = false,
+): Promise<void> {
+  const params = new URLSearchParams();
+  if (byCertificate) params.set('by', 'certificate');
+  if (revisionCount != null) params.set('revisionCount', String(revisionCount));
+  return apiDelete<void>(
+    `/api/fta/marks/${encodeURIComponent(id)}/clients/${skey}?${params.toString()}`,
   );
 }
 

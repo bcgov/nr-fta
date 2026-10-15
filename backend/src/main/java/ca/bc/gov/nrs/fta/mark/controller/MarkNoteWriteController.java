@@ -13,12 +13,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Private mark notes API — {@code POST /api/fta/marks/{id}/notes} (add a note).
  * As on the detail endpoint, the id is the timber mark, or the certificate with
- * {@code ?by=certificate}. Write access is {@code FTA_ADMIN} or either timber mark role,
- * enforced by {@code ApiAuthorizationCustomizer}; the audit user id is taken from the
+ * {@code ?by=certificate}. Write access is {@code FTA_ADMIN} or the Headquarters timber mark
+ * role: {@code ApiAuthorizationCustomizer} admits both timber mark roles, and the district's is
+ * refused here ({@code MarkEditRules#notes}). The audit user id is taken from the
  * authenticated JWT.
  */
 @RestController
@@ -37,6 +39,9 @@ public class MarkNoteWriteController {
       @RequestParam(required = false) String by,
       @RequestBody MarkNoteRequest request,
       JwtAuthenticationToken principal) {
+    if (MarkDetailController.isDistrictUser(principal)) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "A district cannot add notes.");
+    }
     String userId = JwtPrincipalUtil.getAuditUserId(principal);
     String forestFileId = markNoteWriteService.add(
         markNumber, "certificate".equals(by), request.note(), userId);

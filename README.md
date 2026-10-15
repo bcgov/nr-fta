@@ -159,4 +159,5 @@ If `/actuator/health` returns `DOWN`, the most likely cause is the Oracle connec
 
 - [backend/README.md](backend/README.md) — Spring profile reference, env-var table, API endpoints, test commands.
 - [docs/architecture.md](docs/architecture.md) — runtime topology, the auth model end to end, and the delivery pipeline.
+- [docs/analysis-legacy-datafixes.md](docs/analysis-legacy-datafixes.md) — why the recurring `nr-fta-automatedb-datafix` fixes exist, and a ranked list of changes that would retire the 427 data fixes run since 2024.
 - [frontend/README.md](frontend/README.md) — Vite scripts, project structure, routing/access model, auth flow.

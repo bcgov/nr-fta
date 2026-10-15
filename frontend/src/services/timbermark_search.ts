@@ -15,6 +15,8 @@ export interface TimbermarkSummary {
   timberMark: string | null;
   certificate: string | null;
   markStatusSt: string | null;
+  /** A private mark's outstanding amendment's status, else its newest's; null with none. */
+  amendStatusSt: string | null;
   markIssueDate: string | null; // ISO date
   markExpiryDate: string | null; // ISO date
   salvageInd: string | null;

@@ -31,6 +31,9 @@ public class MarkSubmitService {
       UPDATE the.private_mark_certificate
          SET private_mark_status_code = 'PI',
              private_mark_status_date = SYSDATE,
+             -- Legacy's submit ran UPDATE_REC, which makes the submitter the certificate's
+             -- signer (MarkUpdateService.signsCertificate).
+             private_mark_activated_userid = UPPER(:userId),
              update_timestamp         = SYSDATE,
              update_userid            = :userId,
              revision_count           = revision_count + 1

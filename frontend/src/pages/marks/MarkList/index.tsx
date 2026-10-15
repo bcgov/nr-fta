@@ -33,6 +33,7 @@ import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import { canEditMarks } from '@/routes/access';
 import {
+  getPrivateMarkAmendStatuses,
   getPrivateMarkStatuses,
   getThreeLetterDistricts,
   type CodeOption,
@@ -55,7 +56,8 @@ const HEADERS = [
   { key: 'timberMark', header: 'Timber mark' },
   { key: 'markApplDate', header: 'Application date' },
   { key: 'orgUnitCode', header: 'District' },
-  { key: 'markStatusSt', header: 'Status' },
+  { key: 'markStatusSt', header: 'Timber mark status' },
+  { key: 'amendStatusSt', header: 'Amendment status' },
   { key: 'clientName', header: 'Client' },
   { key: 'idir', header: 'Last updated by' },
 ];
@@ -76,7 +78,8 @@ const EMPTY_FORM: MarkListParams = {};
  * <p>Legacy offers a single District filter; the mark, holder and status
  * criteria here narrow that same list rather than reproducing a legacy
  * behaviour. Status is backed by `PRIVATE_MARK_STATUS_CODE` — the codes the
- * underlying columns actually hold.
+ * underlying columns actually hold — and matches a row by its timber mark
+ * status or its amendment status.
  *
  * <p>Layout and class names are the shared search-screen treatment in
  * `styles/_search.scss`; see TenureSearch for the pattern.
@@ -119,18 +122,24 @@ const MarkList: FC = () => {
 
   const [districts, setDistricts] = useState<CodeOption[]>([]);
   const [statuses, setStatuses] = useState<CodeOption[]>([]);
+  const [amendStatuses, setAmendStatuses] = useState<CodeOption[]>([]);
   const [codeListsLoading, setCodeListsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled([getThreeLetterDistricts(), getPrivateMarkStatuses()]).then((settled) => {
+    Promise.allSettled([
+      getThreeLetterDistricts(),
+      getPrivateMarkStatuses(),
+      getPrivateMarkAmendStatuses(),
+    ]).then((settled) => {
       if (cancelled) return;
-      const [orgRes, statusRes] = settled;
+      const [orgRes, statusRes, amendRes] = settled;
       if (orgRes.status === 'fulfilled') setDistricts(orgRes.value);
       if (statusRes.status === 'fulfilled') setStatuses(statusRes.value);
+      if (amendRes.status === 'fulfilled') setAmendStatuses(amendRes.value);
       const failed = [
         orgRes.status === 'rejected' ? 'districts' : null,
-        statusRes.status === 'rejected' ? 'statuses' : null,
+        statusRes.status === 'rejected' || amendRes.status === 'rejected' ? 'statuses' : null,
       ].filter(Boolean);
       if (failed.length > 0) setError(`Could not load ${failed.join(', ')}`);
       setCodeListsLoading(false);
@@ -216,6 +225,7 @@ const MarkList: FC = () => {
   const hasResults = rows !== null && rows.length > 0;
   const rowsById = new Map((rows ?? []).map((r) => [r.id, r]));
   const statusNames = new Map(statuses.map((o) => [o.code, o.description]));
+  const amendStatusNames = new Map(amendStatuses.map((o) => [o.code, o.description]));
 
   if (codeListsLoading) {
     return (
@@ -378,12 +388,19 @@ const MarkList: FC = () => {
                                 >
                                   {row.cells.map((cell) => {
                                     const value = cell.value as string | null | undefined;
-                                    if (cell.info.header === 'markStatusSt') {
+                                    if (
+                                      cell.info.header === 'markStatusSt' ||
+                                      cell.info.header === 'amendStatusSt'
+                                    ) {
+                                      const names =
+                                        cell.info.header === 'markStatusSt'
+                                          ? statusNames
+                                          : amendStatusNames;
                                       return (
                                         <TableCell key={cell.id}>
                                           {value ? (
                                             <StatusTag
-                                              status={statusNames.get(value) || value}
+                                              status={names.get(value) || value}
                                               variant={statusCodeVariant(value)}
                                             />
                                           ) : (

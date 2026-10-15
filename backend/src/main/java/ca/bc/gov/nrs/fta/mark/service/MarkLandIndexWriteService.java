@@ -122,11 +122,14 @@ public class MarkLandIndexWriteService {
    */
   @Transactional
   public void add(
-      String id, boolean byCertificate, MarkLandIndexRequest request, String userId) {
+      String id, boolean byCertificate, MarkLandIndexRequest request, boolean districtUser,
+      String userId) {
     MarkDetailDto mark = find(id, byCertificate);
-    if (!MarkEditRules.of(mark, true).landIndex()) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Land index may not be updated at this mark's status or type.");
+    MarkEditRules rules = MarkEditRules.of(mark, true, districtUser);
+    if (!rules.landIndex()) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, districtUser
+          ? rules.landIndexReason()
+          : "Land index may not be updated at this mark's status or type.");
     }
     MapSqlParameterSource p = validated(
         mark, null, null, request.primaryLandIndexCode(), request.secondaryLandIndexCode(),

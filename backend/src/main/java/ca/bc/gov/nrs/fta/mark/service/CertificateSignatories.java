@@ -26,9 +26,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Whose signature goes on an FTA402 certificate — legacy's rule: the official who issued
- * ("activated") the mark, matched on their IDIR, signs it with their scanned signature, name
- * and title.
+ * Whose signature goes on an FTA402 certificate — legacy's rule: the mark's recorded
+ * ("activated") user, matched on their IDIR, signs it with their scanned signature, name and
+ * title. Who that is is set by saves ({@link MarkUpdateService#signsCertificate}).
  *
  * <p>Legacy hard-coded twelve officials and their images into the report. Here they live
  * outside the code, in {@code fta.certificate.signatures-dir}: the signature images are

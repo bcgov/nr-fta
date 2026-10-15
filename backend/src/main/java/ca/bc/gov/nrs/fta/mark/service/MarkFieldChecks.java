@@ -126,13 +126,16 @@ public class MarkFieldChecks {
     return n != null && n > 0;
   }
 
-  /** {@code SIL_EDIT_MGMT_UNIT}: the type/id pair is a FOREST_MGMT_UNIT. */
+  /**
+   * {@code SIL_EDIT_MGMT_UNIT}: with an id, the type/id pair is a FOREST_MGMT_UNIT; without
+   * one, any unit of the type will do (so "T" alone is valid). Expired units count, as there.
+   */
   public boolean mgmtUnitExists(String type, String unitId) {
     Long n = jdbc.queryForObject(
         """
         SELECT COUNT(*) FROM the.forest_mgmt_unit
-         WHERE mgmt_unit_type_code = :type
-           AND NVL(mgmt_unit_id, ' ') = NVL(:unitId, ' ')
+         WHERE mgmt_unit_type_code = UPPER(:type)
+           AND (TRIM(:unitId) IS NULL OR mgmt_unit_id = UPPER(TRIM(:unitId)))
         """,
         new MapSqlParameterSource().addValue("type", type).addValue("unitId", unitId),
         Long.class);

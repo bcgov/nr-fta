@@ -17,9 +17,9 @@ import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import StatusTag from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
 import {
+  getAllManagementUnits,
   getCascadeSplits,
   getDistricts,
-  getManagementUnits,
   getMarkingInstruments,
   getMarkingMethods,
   getPrivateMarkAmendStatuses,
@@ -34,6 +34,7 @@ import {
   skipTimberMark,
   printMarkCertificate,
   submitMark,
+  shownAmendment,
   updateMark,
   type MarkDetail,
 } from '@/services/mark_detail';
@@ -185,7 +186,7 @@ const MarkApplicationPanel: FC<Props> = ({
       getCascadeSplits(),
       getPrivateMarkStatuses(),
       getPrivateMarkAmendStatuses(),
-      getManagementUnits(),
+      getAllManagementUnits(),
       getPrivateMarkTypes(),
     ])
       .then(
@@ -543,6 +544,7 @@ const MarkApplicationPanel: FC<Props> = ({
     mark.mapReferenceReg || mark.mapReferenceComp
       ? `${mark.mapReferenceReg ?? '—'} / ${mark.mapReferenceComp ?? '—'}`
       : '—';
+  const amendment = shownAmendment(mark);
   const statusTag = (code: string | null, desc: string | null) =>
     code ? <StatusTag status={desc ?? code} variant={statusCodeVariant(code)} /> : '—';
 
@@ -702,7 +704,7 @@ const MarkApplicationPanel: FC<Props> = ({
     ),
     field(
       'Amendment Status',
-      statusTag(mark.outstandingAmendStatus, mark.outstandingAmendStatusDesc),
+      statusTag(amendment?.prvMrkAmdStsSt ?? null, amendment?.prvMrkAmdStsDesc ?? null),
       open(rules?.amendmentStatus),
       () => select('amendStatusCode', 'Amendment Status', amendOptions),
     ),
