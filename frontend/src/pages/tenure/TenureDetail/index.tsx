@@ -1,6 +1,5 @@
 import {
   ArrowLeft,
-  Copy,
   DocumentTasks,
   Grid,
   RecentlyViewed,
@@ -33,7 +32,6 @@ import { formatDate } from '@/utils/formatDate';
 import AacPanel from './AacPanel';
 import AssociatedClientsPanel from './AssociatedClientsPanel';
 import AssociatedFilesPanel from './AssociatedFilesPanel';
-import CopyRotationPanel from './CopyRotationPanel';
 import CpCbAmendmentsPanel from './CpCbAmendmentsPanel';
 import CutBlocksPanel from './CutBlocksPanel';
 import CuttingPermitsPanel from './CuttingPermitsPanel';
@@ -101,7 +99,6 @@ const TABS: TenureTab[] = [
     render: (p) => <TenureApplicationPanel {...p} />,
   },
   { label: 'Notes', icon: Notebook, render: (p) => <TenureNotesPanel {...p} /> },
-  { label: 'Copy rotation', icon: Copy, render: (p) => <CopyRotationPanel {...p} /> },
   {
     label: 'TL blocks',
     icon: Grid,

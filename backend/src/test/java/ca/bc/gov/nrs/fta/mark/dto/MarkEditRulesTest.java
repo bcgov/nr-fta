@@ -436,11 +436,62 @@ class MarkEditRulesTest {
         assertThat(rules.landIndexUpdate()).as(status).isFalse();
         assertThat(rules.clients()).as(status).isFalse();
         assertThat(rules.clientsUpdate()).as(status).isFalse();
-        assertThat(rules.amendments()).as(status).isFalse();
         assertThat(rules.notes()).as(status).isFalse();
-        assertThat(rules.submit()).as(status).isFalse();
       }
-      assertThat(district(mark("PA", null, null, "00001", null)).submit()).isFalse();
+    }
+
+    @Test
+    void requestsAnAmendmentOnceAReinstatedMarkIsIssued() {
+      // HX, then saved back to HI: the amendment request opens, as legacy FTA_512's did.
+      assertThat(district(mark("HX", "B08", "E12345", "00001", null)).amendments()).isFalse();
+      MarkEditRules rules = district(mark("HI", "B08", "E12345", "00001", null));
+
+      assertThat(rules.amendments()).isTrue();
+      assertThat(rules.amendmentsReason()).isNull();
+    }
+
+    @Test
+    void requestsNoAmendmentOtherwise() {
+      for (String status : ALL) {
+        if (!"HI".equals(status)) {
+          assertThat(district(mark(status, "B08", "E12345", "00001", null)).amendments())
+              .as(status).isFalse();
+        }
+      }
+      // One already outstanding, or a view-only mark type.
+      assertThat(district(mark("HI", "B08", "E12345", "00001", "PI")).amendments()).isFalse();
+      assertThat(district(mark("HI", "B15", "E12345", "00001", null)).amendments()).isFalse();
+    }
+
+    @Test
+    void submitsAPaApplicationWithAMainLicensee() {
+      MarkEditRules rules = district(mark("PA", null, null, "00001", null));
+
+      assertThat(rules.submit()).isTrue();
+      assertThat(rules.submitReason()).isNull();
+    }
+
+    @Test
+    void submitsNothingElse() {
+      for (String status : ALL) {
+        if (!"PA".equals(status)) {
+          MarkEditRules rules = district(mark(status, null, null, "00001", null));
+          assertThat(rules.submit()).as(status).isFalse();
+          assertThat(rules.submitReason()).as(status).contains("PA status");
+        }
+      }
+      MarkEditRules noClient = district(mark("PA", null, null, null, null));
+      assertThat(noClient.submit()).isFalse();
+      assertThat(noClient.submitReason()).contains("main licensee");
+    }
+
+    @Test
+    void submittingLeavesTheApplicationClosed() {
+      MarkEditRules rules = district(mark("PA", null, null, "00001", null));
+
+      assertThat(rules.editable()).isFalse();
+      assertThat(rules.location()).isFalse();
+      assertThat(rules.clients()).isFalse();
     }
 
     @Test
@@ -449,7 +500,6 @@ class MarkEditRulesTest {
 
       assertThat(rules.landIndexReason()).contains("marking requirements");
       assertThat(rules.clientsReason()).contains("marking requirements");
-      assertThat(rules.amendmentsReason()).contains("marking requirements");
     }
 
     @Test

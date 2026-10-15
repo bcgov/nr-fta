@@ -13,7 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
  * Reads the tenure the rotation tabs work on ({@link RotationsTenure}) and enforces a tab's
  * {@link RotationsRules} before a write.
  *
- * <p>Ports what FTA611/612/613's GET take from {@code FTA_GET_FILE_HEADER} and the
+ * <p>Ports what FTA611/612's GET take from {@code FTA_GET_FILE_HEADER} and the
  * {@code FTA_VALID_GRAZING/HAY/RANGE_FILE_TYPE} and {@code FTA_APPLICATION_PENDING} functions,
  * inlined as scalar subqueries. The term is read with MIN/MAX so a file with more than one
  * {@code TENURE_TERM} row (legacy assumes one) cannot fail the read.
@@ -28,7 +28,6 @@ public class RotationsTenureService {
       """
       SELECT pfu.file_type_code,
              pfu.file_status_st,
-             pfu.revision_count,
              (SELECT MIN(tt.legal_effective_dt) FROM the.tenure_term tt
                WHERE tt.forest_file_id = pfu.forest_file_id)                  AS term_start,
              (SELECT MAX(NVL(tt.current_expiry_dt, tt.initial_expiry_dt)) FROM the.tenure_term tt
@@ -37,8 +36,6 @@ public class RotationsTenureService {
                WHERE g.grazing_file_type_code = pfu.file_type_code)           AS grazing_type,
              (SELECT COUNT(*) FROM the.hay_file_type_code h
                WHERE h.hay_file_type_code = pfu.file_type_code)               AS hay_type,
-             (SELECT COUNT(*) FROM the.range_file_type_code r
-               WHERE r.range_file_type_code = pfu.file_type_code)             AS range_type,
              (SELECT COUNT(*) FROM the.tenure_application ta
                WHERE ta.forest_file_id = pfu.forest_file_id
                  AND ta.tenure_application_type_code IN ('FIL', 'RNG', 'RP')
@@ -66,12 +63,10 @@ public class RotationsTenureService {
         (rs, n) -> new RotationsTenure(
             rs.getString("file_type_code"),
             rs.getString("file_status_st"),
-            rs.getObject("revision_count", Long.class),
             year(rs.getObject("term_start", LocalDate.class)),
             year(rs.getObject("term_end", LocalDate.class)),
             rs.getLong("grazing_type") > 0,
             rs.getLong("hay_type") > 0,
-            rs.getLong("range_type") > 0,
             rs.getLong("app_pending") > 0));
     if (rows.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Tenure not found.");

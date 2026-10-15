@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * The rotation tabs' wire shapes (legacy FTA611, FTA612, FTA613). Numbers the user types
+ * The rotation tabs' wire shapes (legacy FTA611, FTA612). Numbers the user types
  * arrive as strings, so the server can answer with legacy's own messages ("… must be an
  * integer.") rather than a JSON parse error.
  */
@@ -161,40 +161,4 @@ public final class RotationsDtos {
 
   /** What a hay save did, and legacy's confirmation for it. */
   public record HaySaveResult(int saved, int deleted, String message) {}
-
-  // ---------------------------------------------------------------- FTA613 copy
-
-  /**
-   * The copy tab.
-   *
-   * @param kind             GRAZING or HAY: which rotations a copy writes; null when it
-   *                         does not apply
-   * @param pfuRevisionCount sent back with the copy (legacy guards the file's revision)
-   */
-  public record CopyRotationDto(
-      RotationsRules rules,
-      String kind,
-      Integer termStartYear,
-      Integer termEndYear,
-      Long pfuRevisionCount) {}
-
-  /**
-   * A copy. Exactly one of {@code targetYears} (up to 9) and {@code everyOtherYearFrom} is
-   * given. {@code overwrite} confirms replacing target years that already have rotations.
-   */
-  public record CopyRotationRequest(
-      String sourceForestFileId,
-      String sourceYear,
-      String sourceRangeUnitId,
-      List<String> targetYears,
-      String everyOtherYearFrom,
-      boolean overwrite,
-      Long pfuRevisionCount) {}
-
-  /**
-   * The outcome: {@code copied} false means nothing was written and {@code message} asks
-   * to confirm overwriting the years that already have rotations (legacy's "Press Save again
-   * to overwrite").
-   */
-  public record CopyRotationResult(boolean copied, String message, List<Integer> targetYears) {}
 }

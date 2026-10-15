@@ -32,7 +32,6 @@ final class RotationsFieldChecks {
 
   private static final Pattern MONTH_DAY = Pattern.compile("\\d{2}-\\d{2}");
 
-  private static final Pattern ALPHA_NUMERIC = Pattern.compile("[A-Za-z0-9]*");
 
   private RotationsFieldChecks() {}
 
@@ -242,102 +241,5 @@ final class RotationsFieldChecks {
         : "The total harvest plus the non-use (" + harvestPlusNonUse + ") must equal the"
             + " Authorized Forage Tonnes (" + authorizedForageTonnes + "). Authorized Forage"
             + " Tonnes are updatable via the main tenure screen.";
-  }
-
-  // ---------------------------------------------------------------- FTA613 copy form
-
-  /** The most target years legacy's form has boxes for. */
-  static final int MAX_TARGET_YEARS = 9;
-
-  /**
-   * A copy's input once {@code Fta613CopyGhRotaForm}'s validators pass.
-   *
-   * @param targetYears        the listed years, in order; empty in every-other-year mode
-   * @param everyOtherYearFrom the start year in every-other-year mode; null otherwise
-   */
-  record CopyInput(
-      String sourceForestFileId,
-      int sourceYear,
-      String sourceRangeUnitId,
-      List<Integer> targetYears,
-      Integer everyOtherYearFrom) {}
-
-  /**
-   * {@code Fta613CopyGhRotaForm}'s checks: Source Tenure and Source Year mandatory, years
-   * integers from 1900 to 9999, Source Tenure and For Range Unit alphanumeric, exactly one of
-   * the target-year list and the every-other-year start, no year listed twice. Adds the
-   * messages to {@code errors}; returns null when there are any.
-   */
-  static CopyInput copyInput(RotationsDtos.CopyRotationRequest q, List<String> errors) {
-    int before = errors.size();
-    String source = upper(q.sourceForestFileId());
-    if (source == null) {
-      errors.add("Source Tenure is mandatory.");
-    } else if (!ALPHA_NUMERIC.matcher(source).matches()) {
-      errors.add("Source Tenure must be alpha numeric [A-Z, 0-9]");
-    }
-    Integer sourceYear = integer(q.sourceYear(), "Source Year", "Source Year", 1900, 9999, errors);
-    String ru = upper(q.sourceRangeUnitId());
-    if (ru != null && !ALPHA_NUMERIC.matcher(ru).matches()) {
-      errors.add("For Range Unit must be alpha numeric [A-Z, 0-9]");
-    }
-    List<String> listed = q.targetYears() == null ? List.of() : q.targetYears().stream()
-        .map(RotationsFieldChecks::trim)
-        .filter(s -> s != null)
-        .toList();
-    List<Integer> targets = new ArrayList<>();
-    if (listed.size() > MAX_TARGET_YEARS) {
-      errors.add("At most " + MAX_TARGET_YEARS + " target years can be listed.");
-    } else {
-      for (int i = 0; i < listed.size(); i++) {
-        Integer y = integer(listed.get(i), null, "Year " + (i + 1), 1900, 9999, errors);
-        if (y != null) {
-          targets.add(y);
-        }
-      }
-    }
-    Integer start = integer(q.everyOtherYearFrom(), null,
-        "Copy to Every other Target Year starting with Year", 1900, 9999, errors);
-    boolean startGiven = trim(q.everyOtherYearFrom()) != null;
-    if (startGiven == !listed.isEmpty()) {
-      errors.add("You must copy to every other year starting with year or list year(s) you"
-          + " wish to copy to but not both.");
-    }
-    if (targets.stream().distinct().count() < targets.size()) {
-      errors.add("Duplicate Target year(s) exists.");
-    }
-    if (errors.size() > before) {
-      return null;
-    }
-    return new CopyInput(source, sourceYear, ru, targets, start);
-  }
-
-  /**
-   * The years a copy writes: the listed ones, or — "Copy to Every Other Target Year Starting
-   * with Year" — the start and every second year after it up to the end of the term
-   * ({@code COPY_TARGET_YEAR}'s loop, which stops at the first year outside the term).
-   */
-  static List<Integer> copyYears(CopyInput in, int termStartYear, int termEndYear) {
-    if (in.everyOtherYearFrom() == null) {
-      return in.targetYears();
-    }
-    List<Integer> years = new ArrayList<>();
-    for (int y = in.everyOtherYearFrom(); y >= termStartYear && y <= termEndYear; y += 2) {
-      years.add(y);
-    }
-    return years;
-  }
-
-  /**
-   * Legacy's warning when target years already have rotations, with its "press Save again"
-   * advice turned into the confirmation this page asks for.
-   */
-  static String overwriteWarning(List<Integer> years) {
-    String list = years.stream().map(String::valueOf).collect(Collectors.joining(", "));
-    return years.size() == 1
-        ? "Target year " + list + " already has rotations. Copy again to overwrite existing"
-            + " rotations."
-        : "Target years " + list + " already have rotations. Copy again to overwrite existing"
-            + " rotations.";
   }
 }
