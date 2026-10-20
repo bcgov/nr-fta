@@ -2,9 +2,7 @@ package ca.bc.gov.nrs.fta.tenure.tab.rotations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import ca.bc.gov.nrs.fta.tenure.tab.rotations.RotationsDtos.CopyRotationRequest;
 import ca.bc.gov.nrs.fta.tenure.tab.rotations.RotationsDtos.HayRowRequest;
-import ca.bc.gov.nrs.fta.tenure.tab.rotations.RotationsFieldChecks.CopyInput;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -143,70 +141,6 @@ class RotationsFieldChecksTest {
     void harvestOrZero() {
       assertThat(RotationsFieldChecks.harvestOrZero("x")).isZero();
       assertThat(RotationsFieldChecks.harvestOrZero(" 7 ")).isEqualTo(7);
-    }
-  }
-
-  @Nested
-  @DisplayName("copy form (Fta613CopyGhRotaForm)")
-  class Copy {
-
-    private CopyRotationRequest req(String src, String year, List<String> targets, String start) {
-      return new CopyRotationRequest(src, year, null, targets, start, false, 1L);
-    }
-
-    @Test
-    @DisplayName("source required; exactly one of the year list and the start year")
-    void onlyOne() {
-      List<String> e = new ArrayList<>();
-      assertThat(RotationsFieldChecks.copyInput(req(null, "2020", List.of("2021"), "2022"), e))
-          .isNull();
-      assertThat(e).containsExactly(
-          "Source Tenure is mandatory.",
-          "You must copy to every other year starting with year or list year(s) you wish to"
-              + " copy to but not both.");
-      e.clear();
-      assertThat(RotationsFieldChecks.copyInput(req("RAN1", "2020", List.of(" "), null), e))
-          .isNull();
-      assertThat(e).hasSize(1);
-    }
-
-    @Test
-    @DisplayName("duplicate and out-of-range years")
-    void years() {
-      List<String> e = new ArrayList<>();
-      RotationsFieldChecks.copyInput(req("RAN1", "1800", List.of("2021", "2021", "x"), null), e);
-      assertThat(e).containsExactly(
-          "Source Year field must be between 1900 and 9999.",
-          "Year 3 must be an integer.",
-          "Duplicate Target year(s) exists.");
-    }
-
-    @Test
-    @DisplayName("every other year from the start to the end of the term")
-    void everyOther() {
-      List<String> e = new ArrayList<>();
-      CopyInput in = RotationsFieldChecks.copyInput(req("ran1", "2020", null, "2021"), e);
-      assertThat(e).isEmpty();
-      assertThat(in.sourceForestFileId()).isEqualTo("RAN1");
-      assertThat(RotationsFieldChecks.copyYears(in, 2020, 2026)).containsExactly(2021, 2023, 2025);
-    }
-
-    @Test
-    @DisplayName("listed years are copied as listed")
-    void listed() {
-      List<String> e = new ArrayList<>();
-      CopyInput in =
-          RotationsFieldChecks.copyInput(req("RAN1", "2020", List.of("2024", "2022"), ""), e);
-      assertThat(RotationsFieldChecks.copyYears(in, 2020, 2026)).containsExactly(2024, 2022);
-    }
-
-    @Test
-    @DisplayName("the overwrite warning names the years")
-    void warning() {
-      assertThat(RotationsFieldChecks.overwriteWarning(List.of(2021)))
-          .startsWith("Target year 2021 already has rotations.");
-      assertThat(RotationsFieldChecks.overwriteWarning(List.of(2021, 2023)))
-          .startsWith("Target years 2021, 2023 already have rotations.");
     }
   }
 }

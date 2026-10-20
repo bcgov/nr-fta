@@ -150,8 +150,9 @@ public record MarkEditRules(
     return new MarkEditRules(
         marking || reinstate, null, false, false, false, marking, false, false, reinstate,
         reinstate ? DISTRICT_HX_OPTIONS : status == null ? List.of() : List.of(status), false,
-        List.of(), false, DISTRICT_REASON, false, DISTRICT_REASON, false, DISTRICT_REASON,
-        false, DISTRICT_REASON, false, false, false);
+        List.of(), false, DISTRICT_REASON, false, DISTRICT_REASON, amendments, amendmentsReason,
+        !viewOnlyType && submitReason == null, viewOnlyType ? null : submitReason, false, false,
+        false);
   }
 
   /**

@@ -3,9 +3,8 @@ import { apiDelete, apiGet, apiPost, apiPut, toQuery } from './http';
 import type { CodeOption } from './codeLists';
 
 // Mirrors the backend RotationsDtos (ca.bc.gov.nrs.fta.tenure.tab.rotations): the tenure
-// detail's Grazing rotation (legacy FTA611), Hay cutting rotation (FTA612) and Copy rotation
-// (FTA613) tabs. Numbers the user types go up as strings, so the server can answer with
-// legacy's own messages.
+// detail's Grazing rotation (legacy FTA611) and Hay cutting rotation (FTA612) tabs. Numbers
+// the user types go up as strings, so the server can answer with legacy's own messages.
 
 /** A rotation tab's gate: whether it applies to the file, and whether it may be changed. */
 export interface RotationsRules {
@@ -207,45 +206,4 @@ export function saveHayRotations(
   body: HaySaveRequest,
 ): Promise<HaySaveResult> {
   return apiPut<HaySaveResult>(`${base(forestFileId)}/hay-cutting/${year}`, body);
-}
-
-// ---------------------------------------------------------------- copy (FTA613)
-
-export interface CopyRotationTab {
-  rules: RotationsRules;
-  /** Which rotations a copy writes; null when the tab does not apply. */
-  kind: 'GRAZING' | 'HAY' | null;
-  termStartYear: number | null;
-  termEndYear: number | null;
-  pfuRevisionCount: number | null;
-}
-
-export interface CopyRotationRequest {
-  sourceForestFileId: string;
-  sourceYear: string;
-  sourceRangeUnitId: string;
-  targetYears: string[];
-  everyOtherYearFrom: string;
-  overwrite: boolean;
-  pfuRevisionCount: number | null;
-}
-
-export interface CopyRotationResult {
-  /** False: nothing was written; `message` asks to confirm overwriting `targetYears`. */
-  copied: boolean;
-  message: string;
-  targetYears: number[];
-}
-
-/** GET …/rotations/copy. */
-export function getCopyRotationTab(forestFileId: string): Promise<CopyRotationTab> {
-  return apiGet<CopyRotationTab>(`${base(forestFileId)}/copy`);
-}
-
-/** POST …/rotations/copy. */
-export function copyRotations(
-  forestFileId: string,
-  body: CopyRotationRequest,
-): Promise<CopyRotationResult> {
-  return apiPost<CopyRotationResult>(`${base(forestFileId)}/copy`, body);
 }

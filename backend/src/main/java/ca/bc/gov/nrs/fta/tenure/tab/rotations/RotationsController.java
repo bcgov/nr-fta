@@ -1,9 +1,6 @@
 package ca.bc.gov.nrs.fta.tenure.tab.rotations;
 
 import ca.bc.gov.nrs.fta.shared.dto.CodeOptionDto;
-import ca.bc.gov.nrs.fta.tenure.tab.rotations.RotationsDtos.CopyRotationDto;
-import ca.bc.gov.nrs.fta.tenure.tab.rotations.RotationsDtos.CopyRotationRequest;
-import ca.bc.gov.nrs.fta.tenure.tab.rotations.RotationsDtos.CopyRotationResult;
 import ca.bc.gov.nrs.fta.tenure.tab.rotations.RotationsDtos.GrazingProvisionRequest;
 import ca.bc.gov.nrs.fta.tenure.tab.rotations.RotationsDtos.GrazingRotationRequest;
 import ca.bc.gov.nrs.fta.tenure.tab.rotations.RotationsDtos.GrazingRotationsDto;
@@ -25,8 +22,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The tenure detail's rotation tabs (range tenures): Grazing rotation (legacy FTA611), Hay
- * cutting rotation (FTA612) and Copy rotation (FTA613), under
+ * The tenure detail's rotation tabs (range tenures): Grazing rotation (legacy FTA611) and Hay
+ * cutting rotation (FTA612), under
  * {@code /api/fta/tenures/{forestFileId}/rotations}, plus the Animal dropdown at
  * {@code /api/fta/tenure-lookups/livestock-codes}. GETs are open to every role that can open
  * the tenure; writes are FTA_ADMIN by the generic write rule. The audit user id comes from
@@ -40,13 +37,10 @@ public class RotationsController {
 
   private final GrazingRotationService grazing;
   private final HayCuttingRotationService hay;
-  private final CopyRotationService copy;
 
-  public RotationsController(
-      GrazingRotationService grazing, HayCuttingRotationService hay, CopyRotationService copy) {
+  public RotationsController(GrazingRotationService grazing, HayCuttingRotationService hay) {
     this.grazing = grazing;
     this.hay = hay;
-    this.copy = copy;
   }
 
   /** The grazing tab for {@code year}, or legacy's default year. */
@@ -119,24 +113,6 @@ public class RotationsController {
       @RequestBody HaySaveRequest request,
       JwtAuthenticationToken principal) {
     return hay.save(forestFileId, year, request, JwtPrincipalUtil.getAuditUserId(principal));
-  }
-
-  /** The copy tab: whether it applies, the kind of rotations, the term. */
-  @GetMapping(BASE + "/copy")
-  public CopyRotationDto copyTab(@PathVariable String forestFileId) {
-    return copy.get(forestFileId);
-  }
-
-  /**
-   * Copy a source year onto target years. Returns {@code copied: false} with a message, and
-   * writes nothing, when target years already have rotations and {@code overwrite} is false.
-   */
-  @PostMapping(BASE + "/copy")
-  public CopyRotationResult copyRotations(
-      @PathVariable String forestFileId,
-      @RequestBody CopyRotationRequest request,
-      JwtAuthenticationToken principal) {
-    return copy.copy(forestFileId, request, JwtPrincipalUtil.getAuditUserId(principal));
   }
 
   /** The current livestock codes — the grazing dialog's Animal list. */

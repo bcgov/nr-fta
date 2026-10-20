@@ -475,9 +475,7 @@ class MarkEditRulesTest {
         assertThat(rules.landIndexUpdate()).as(status).isFalse();
         assertThat(rules.clients()).as(status).isFalse();
         assertThat(rules.clientsUpdate()).as(status).isFalse();
-        assertThat(rules.amendments()).as(status).isFalse();
         assertThat(rules.notes()).as(status).isFalse();
-        assertThat(rules.submit()).as(status).isFalse();
       }
     }
 
@@ -487,7 +485,6 @@ class MarkEditRulesTest {
 
       assertThat(rules.landIndexReason()).contains("marking requirements");
       assertThat(rules.clientsReason()).contains("marking requirements");
-      assertThat(rules.amendmentsReason()).contains("marking requirements");
     }
 
     @Test
