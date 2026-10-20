@@ -136,11 +136,13 @@ public record MarkEditRules(
   /**
    * A district's rules: its PA application (see {@link #pendingApplication}); otherwise the
    * marking codes once the mark has them (they live on HAULING_AUTHORITY, which exists from
-   * HN on), and HX back to HI — neither for a view-only mark type. Nothing else: no land
-   * index, client, amendment, note or Submit to HQ.
+   * HN on), and HX back to HI — neither for a view-only mark type — and, on the terms legacy
+   * gave them, requesting an amendment on an issued mark ({@code amendments}; FTA_512 let a
+   * district too). Nothing else: no land index, client or note.
    */
   private static MarkEditRules district(
-      MarkDetailDto mark, boolean viewOnlyType, String submitReason) {
+      MarkDetailDto mark, boolean viewOnlyType, String submitReason, boolean amendments,
+      String amendmentsReason) {
     String status = mark.markStatusCode();
     if (!viewOnlyType && "PA".equals(status)) {
       return pendingApplication(submitReason);
@@ -252,7 +254,7 @@ public record MarkEditRules(
           false);
     }
     if (districtUser) {
-      return district(mark, viewOnlyType, submitReason);
+      return district(mark, viewOnlyType, submitReason, amendments, amendmentsReason);
     }
     if (viewOnlyType) {
       return none(null, landIndex, landIndexReason, clients, clientsReason, amendments,
