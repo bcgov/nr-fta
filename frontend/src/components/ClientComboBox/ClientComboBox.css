@@ -1,0 +1,19 @@
+/* A suggestion: the label takes the room and truncates; the status pill keeps its size. */
+.client-combo__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.client-combo__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.client-combo__option .bc-status-tag {
+  flex-shrink: 0;
+}

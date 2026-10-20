@@ -271,8 +271,8 @@ export function updateLandIndex(
 
 /** Mirrors the backend MarkAmendmentRequest — the FTA512 form. */
 export interface MarkAmendmentRequest {
-  /** Requested area, hectares: 0 to 9999.9, one decimal; null for 0.0. */
-  permitBlockArea: number | null;
+  /** Omitted by the UI, which no longer asks for an area; the backend then stores 0.0. */
+  permitBlockArea?: number | null;
   /** Requested amendment changes, up to 2000 characters; required. */
   requestedChanges: string;
 }

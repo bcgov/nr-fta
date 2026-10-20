@@ -173,6 +173,15 @@ public class MarkUpdateService {
     return !Objects.equals(storedType, type) || !Objects.equals(storedId, id);
   }
 
+  /**
+   * Whether this save changes the marking requirements or instrument. An unchanged pair isn't
+   * rewritten, so HAULING_AUTHORITY's audit trigger records only real changes.
+   */
+  static boolean markingChanged(
+      String storedMethod, String storedInstrument, String method, String instrument) {
+    return !Objects.equals(storedMethod, method) || !Objects.equals(storedInstrument, instrument);
+  }
+
   private static ResponseStatusException changedElsewhere() {
     return new ResponseStatusException(
         HttpStatus.CONFLICT,
@@ -538,23 +547,29 @@ public class MarkUpdateService {
       }
     }
 
+    // The marking codes are open wherever the rules open them (HN on, not only at HI as in
+    // legacy), so they're written whenever they changed — gating this on HI dropped an HN
+    // mark's change without a word.
+    if (timberMark != null && r.marking()
+        && markingChanged(c.markingMethodCode(), c.markingInstrumentCode(),
+            v.markingMethodCode(), v.markingInstrumentCode())) {
+      jdbc.update(
+          """
+          UPDATE the.hauling_authority
+             SET marking_method_code     = :method,
+                 marking_instrument_code = :instrument,
+                 update_userid           = :userId,
+                 revision_count          = revision_count + 1
+           WHERE timber_mark = :timberMark
+          """,
+          new MapSqlParameterSource()
+              .addValue("method", v.markingMethodCode())
+              .addValue("instrument", v.markingInstrumentCode())
+              .addValue("userId", userId)
+              .addValue("timberMark", timberMark));
+    }
+
     if ("HI".equals(status) && timberMark != null) {
-      if (r.marking()) {
-        jdbc.update(
-            """
-            UPDATE the.hauling_authority
-               SET marking_method_code     = :method,
-                   marking_instrument_code = :instrument,
-                   update_userid           = :userId,
-                   revision_count          = revision_count + 1
-             WHERE timber_mark = :timberMark
-            """,
-            new MapSqlParameterSource()
-                .addValue("method", v.markingMethodCode())
-                .addValue("instrument", v.markingInstrumentCode())
-                .addValue("userId", userId)
-                .addValue("timberMark", timberMark));
-      }
       updateTerm(c, userId);
     }
   }
