@@ -366,7 +366,8 @@ class MarkEditRulesTest {
 
   /**
    * The district role may change the marking codes and a cancelled mark's status to HI, and
-   * nothing else on the page — the business's rule, narrower than legacy's district level.
+   * nothing else on the page — the business's rule, narrower than legacy's district level —
+   * except its own PA application, which it completes and submits as legacy's district did.
    */
   @Nested
   @DisplayName("district")
@@ -413,11 +414,46 @@ class MarkEditRulesTest {
     }
 
     @Test
-    void anApplicationWithoutAMarkHasNothingOpen() {
-      MarkEditRules rules = district(mark("PA", null, null, "00001", null));
+    void aSubmittedApplicationHasNothingOpen() {
+      MarkEditRules rules = district(mark("PI", null, null, "00001", null));
 
       assertThat(rules.editable()).isFalse();
       assertThat(rules.marking()).isFalse();
+      assertThat(rules.location()).isFalse();
+      assertThat(rules.clients()).isFalse();
+      assertThat(rules.submit()).isFalse();
+    }
+
+    @Test
+    void aPendingApplicationIsTheDistrictsToComplete() {
+      // Legacy's district at PA (state1): the application is open, Status and branch aren't.
+      MarkEditRules rules = district(mark("PA", null, null, null, null));
+
+      assertThat(rules.editable()).isTrue();
+      assertThat(rules.applicationDate()).isTrue();
+      assertThat(rules.term()).isTrue();
+      assertThat(rules.location()).isTrue();
+      assertThat(rules.clients()).isTrue();
+      assertThat(rules.clientsUpdate()).isTrue();
+      assertThat(rules.status()).isFalse();
+      assertThat(rules.statusOptions()).containsExactly("PA");
+      assertThat(rules.branch()).isFalse();
+      assertThat(rules.markType()).isFalse();
+      assertThat(rules.marking()).isFalse();
+      assertThat(rules.landIndex()).isFalse();
+      assertThat(rules.amendments()).isFalse();
+      assertThat(rules.notes()).isFalse();
+    }
+
+    @Test
+    void aPendingApplicationIsSubmittedOnceItHasTheMainLicensee() {
+      MarkEditRules without = district(mark("PA", null, null, null, null));
+      assertThat(without.submit()).isFalse();
+      assertThat(without.submitReason()).contains("main licensee");
+
+      MarkEditRules with = district(mark("PA", null, null, "00001", null));
+      assertThat(with.submit()).isTrue();
+      assertThat(with.submitReason()).isNull();
     }
 
     @Test
@@ -431,6 +467,9 @@ class MarkEditRulesTest {
     @Test
     void noOtherTabTakesChanges() {
       for (String status : ALL) {
+        if ("PA".equals(status)) {
+          continue; // the district's own application: see aPendingApplicationIsTheDistrictsToComplete
+        }
         MarkEditRules rules = district(mark(status, "B08", "E12345", "00001", null));
         assertThat(rules.landIndex()).as(status).isFalse();
         assertThat(rules.landIndexUpdate()).as(status).isFalse();
@@ -438,60 +477,6 @@ class MarkEditRulesTest {
         assertThat(rules.clientsUpdate()).as(status).isFalse();
         assertThat(rules.notes()).as(status).isFalse();
       }
-    }
-
-    @Test
-    void requestsAnAmendmentOnceAReinstatedMarkIsIssued() {
-      // HX, then saved back to HI: the amendment request opens, as legacy FTA_512's did.
-      assertThat(district(mark("HX", "B08", "E12345", "00001", null)).amendments()).isFalse();
-      MarkEditRules rules = district(mark("HI", "B08", "E12345", "00001", null));
-
-      assertThat(rules.amendments()).isTrue();
-      assertThat(rules.amendmentsReason()).isNull();
-    }
-
-    @Test
-    void requestsNoAmendmentOtherwise() {
-      for (String status : ALL) {
-        if (!"HI".equals(status)) {
-          assertThat(district(mark(status, "B08", "E12345", "00001", null)).amendments())
-              .as(status).isFalse();
-        }
-      }
-      // One already outstanding, or a view-only mark type.
-      assertThat(district(mark("HI", "B08", "E12345", "00001", "PI")).amendments()).isFalse();
-      assertThat(district(mark("HI", "B15", "E12345", "00001", null)).amendments()).isFalse();
-    }
-
-    @Test
-    void submitsAPaApplicationWithAMainLicensee() {
-      MarkEditRules rules = district(mark("PA", null, null, "00001", null));
-
-      assertThat(rules.submit()).isTrue();
-      assertThat(rules.submitReason()).isNull();
-    }
-
-    @Test
-    void submitsNothingElse() {
-      for (String status : ALL) {
-        if (!"PA".equals(status)) {
-          MarkEditRules rules = district(mark(status, null, null, "00001", null));
-          assertThat(rules.submit()).as(status).isFalse();
-          assertThat(rules.submitReason()).as(status).contains("PA status");
-        }
-      }
-      MarkEditRules noClient = district(mark("PA", null, null, null, null));
-      assertThat(noClient.submit()).isFalse();
-      assertThat(noClient.submitReason()).contains("main licensee");
-    }
-
-    @Test
-    void submittingLeavesTheApplicationClosed() {
-      MarkEditRules rules = district(mark("PA", null, null, "00001", null));
-
-      assertThat(rules.editable()).isFalse();
-      assertThat(rules.location()).isFalse();
-      assertThat(rules.clients()).isFalse();
     }
 
     @Test

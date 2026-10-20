@@ -13,10 +13,11 @@ import java.util.Set;
  * no organization levels, so {@code FTA_ADMIN} and the Headquarters timber mark role get
  * the Headquarters rules. The district role ({@code FTA_TIMBER_MARK_DISTRICT_ADMIN}) may
  * change only the marking codes, and the status of a cancelled (HX) mark back to issued
- * (HI), submit its PA application to Headquarters and request an amendment on an issued
- * mark — nothing else on the page, by the business's rule rather than legacy's. The record
- * is computed once, here, and serves both the detail page (which fields open for editing) and
- * the update endpoint (which fields it accepts), so the two cannot disagree.
+ * (HI) — nothing else on the page, by the business's rule rather than legacy's — except on
+ * its own pending application (PA), which it completes and submits as legacy's district did.
+ * The record is
+ * computed once, here, and serves both the detail page (which fields open for editing) and the update
+ * endpoint (which fields it accepts), so the two cannot disagree.
  *
  * @param editable          whether the mark can be saved at all
  * @param reason            why not, when {@code editable} is false — null for a status that
@@ -101,9 +102,8 @@ public record MarkEditRules(
   private static final List<String> DISTRICT_HX_OPTIONS = List.of("HX", "HI");
 
   /** Why a district can't make a change other than its own two; for the API's refusals. */
-  static final String DISTRICT_REASON = "A district can change only the marking requirements"
-      + " and instrument and a cancelled (HX) mark's status to HI, submit a PA application"
-      + " to Headquarters, and request an amendment on an issued (HI) mark.";
+  static final String DISTRICT_REASON = "A district can change only a PA application, the"
+      + " marking requirements and instrument, and a cancelled (HX) mark's status to HI.";
 
   /** The values an outstanding amendment may take ({@code amendStatusCertainValues}). */
   private static final List<String> AMENDMENT_STATUSES = List.of("PI", "HN", "DV");
@@ -134,16 +134,17 @@ public record MarkEditRules(
   }
 
   /**
-   * A district's rules: the marking codes once the mark has them (they live on
-   * HAULING_AUTHORITY, which exists from HN on), and HX back to HI — neither for a view-only
-   * mark type — and, on the terms legacy gave them, Submit to HQ ({@code submitReason}) and
-   * requesting an amendment on an issued mark ({@code amendments}; FTA_512 let a district
-   * too). Nothing else: no land index, client or note.
+   * A district's rules: its PA application (see {@link #pendingApplication}); otherwise the
+   * marking codes once the mark has them (they live on HAULING_AUTHORITY, which exists from
+   * HN on), and HX back to HI — neither for a view-only mark type. Nothing else: no land
+   * index, client, amendment, note or Submit to HQ.
    */
   private static MarkEditRules district(
-      MarkDetailDto mark, boolean viewOnlyType, String submitReason, boolean amendments,
-      String amendmentsReason) {
+      MarkDetailDto mark, boolean viewOnlyType, String submitReason) {
     String status = mark.markStatusCode();
+    if (!viewOnlyType && "PA".equals(status)) {
+      return pendingApplication(submitReason);
+    }
     boolean marking = !viewOnlyType && mark.timberMark() != null;
     boolean reinstate = !viewOnlyType && "HX".equals(status);
     return new MarkEditRules(
@@ -152,6 +153,21 @@ public record MarkEditRules(
         List.of(), false, DISTRICT_REASON, false, DISTRICT_REASON, amendments, amendmentsReason,
         !viewOnlyType && submitReason == null, viewOnlyType ? null : submitReason, false, false,
         false);
+  }
+
+  /**
+   * A district's PA application — the one it created, which it completes and then submits to
+   * Headquarters. Legacy's district level at PA ({@code setProtectionStates} state1, the
+   * {@code p_disable_save_ind} of {@code FTA_510_PRIVATE_MARK.GET}): the application date,
+   * term and application fields are open, Status and the branch functions are not. Its
+   * clients are open too ({@code FTA_513_PM_CLIENT} lets a district change them at PA), since
+   * Submit to HQ needs the main licensee. Still no land index, amendment or note.
+   */
+  private static MarkEditRules pendingApplication(String submitReason) {
+    return new MarkEditRules(
+        true, null, true, true, true, false, false, false, false, List.of("PA"), false,
+        List.of(), false, DISTRICT_REASON, true, null, false, DISTRICT_REASON,
+        submitReason == null, submitReason, false, true, false);
   }
 
   /**
@@ -165,8 +181,8 @@ public record MarkEditRules(
   /**
    * The rules for {@code mark} and a user who may ({@code userCanEdit}) or may not edit
    * private marks; {@code districtUser} is the {@code FTA_TIMBER_MARK_DISTRICT_ADMIN} role,
-   * which may change only the marking codes and an HX mark's status to HI (see
-   * {@link #district}). Every other editor is Headquarters, which may always change the
+   * which may change only its PA application, the marking codes and an HX mark's status to
+   * HI (see {@link #district}). Every other editor is Headquarters, which may always change the
    * status, and the marking codes once the mark has them.
    */
   public static MarkEditRules of(MarkDetailDto mark, boolean userCanEdit, boolean districtUser) {
@@ -236,7 +252,7 @@ public record MarkEditRules(
           false);
     }
     if (districtUser) {
-      return district(mark, viewOnlyType, submitReason, amendments, amendmentsReason);
+      return district(mark, viewOnlyType, submitReason);
     }
     if (viewOnlyType) {
       return none(null, landIndex, landIndexReason, clients, clientsReason, amendments,
