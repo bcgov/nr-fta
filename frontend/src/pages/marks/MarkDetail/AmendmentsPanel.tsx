@@ -10,7 +10,6 @@ import {
   TableHeader,
   TableRow,
   TextArea,
-  TextInput,
 } from '@carbon/react';
 import { useState, type FC } from 'react';
 
@@ -28,21 +27,15 @@ const dash = (v: string | number | null | undefined) =>
 
 /** Fta512MarkAmendForm's limits; the backend enforces them too. */
 const MAX_CHANGES = 2000;
-const MAX_AREA = 9999.9;
-const AREA_PATTERN = /^\d{1,4}(\.\d)?$/;
 
 interface Errors {
-  area?: string;
   changes?: string;
 }
 
-const validate = (area: string, changes: string): Errors => {
+const validate = (changes: string): Errors => {
   const e: Errors = {};
   if (!changes.trim()) e.changes = 'Requested amendment changes are required.';
   else if (changes.trim().length > MAX_CHANGES) e.changes = `At most ${MAX_CHANGES} characters.`;
-  const a = area.trim();
-  if (a && (!AREA_PATTERN.test(a) || Number(a) > MAX_AREA))
-    e.area = 'Enter 0 to 9999.9, with at most one decimal place.';
   return e;
 };
 
@@ -70,13 +63,11 @@ interface Props {
 const AmendmentsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }) => {
   const { display } = useNotification();
   const [open, setOpen] = useState(false);
-  const [area, setArea] = useState('');
   const [changes, setChanges] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
 
   const openDialog = () => {
-    setArea('');
     setChanges('');
     setErrors({});
     setOpen(true);
@@ -87,21 +78,14 @@ const AmendmentsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }
   };
 
   const submit = async () => {
-    const found = validate(area, changes);
-    if (found.area || found.changes) {
+    const found = validate(changes);
+    if (found.changes) {
       setErrors(found);
       return;
     }
     setSaving(true);
     try {
-      await addAmendment(
-        id,
-        {
-          permitBlockArea: area.trim() ? Number(area.trim()) : null,
-          requestedChanges: changes.trim(),
-        },
-        byCertificate,
-      );
+      await addAmendment(id, { requestedChanges: changes.trim() }, byCertificate);
       display({
         kind: 'success',
         title: 'Amendment requested',
@@ -159,7 +143,6 @@ const AmendmentsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }
                     <TableHeader>Request Date</TableHeader>
                     <TableHeader>Status</TableHeader>
                     <TableHeader>Requested By</TableHeader>
-                    <TableHeader>Area (Hectares)</TableHeader>
                     <TableHeader>Requested Changes</TableHeader>
                   </TableRow>
                 </TableHead>
@@ -179,9 +162,6 @@ const AmendmentsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }
                       </TableCell>
                       <TableCell>
                         <UserName userId={a.requestingUserid} />
-                      </TableCell>
-                      <TableCell>
-                        {a.permitBlockArea === null ? '—' : a.permitBlockArea.toFixed(1)}
                       </TableCell>
                       <TableCell className="detail-tab__long-text">
                         {dash(a.requestedChanges)}
@@ -206,24 +186,7 @@ const AmendmentsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }
         preventCloseOnClickOutside
       >
         <Stack gap={5}>
-          <p className="detail-dialog__subtitle">
-            All fields are required unless marked optional. The request is saved as PI - Pending
-            Issuance.
-          </p>
-          <TextInput
-            id="amendment-area"
-            labelText="Requested area (ha) (optional)"
-            inputMode="decimal"
-            value={area}
-            helperText="0 to 9999.9, one decimal place."
-            invalid={!!errors.area}
-            invalidText={errors.area}
-            disabled={saving}
-            onChange={(e) => {
-              setArea(e.target.value);
-              if (errors.area) setErrors((prev) => ({ ...prev, area: undefined }));
-            }}
-          />
+          <p className="detail-dialog__subtitle">The request is saved as PI - Pending Issuance.</p>
           <TextArea
             id="amendment-changes"
             labelText="Requested amendment changes"

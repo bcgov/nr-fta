@@ -1,7 +1,11 @@
 import { ComboBox } from '@carbon/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { clientStatus } from '@/components/StatusTag/clientStatus';
+import StatusTag from '@/components/StatusTag/StatusTag';
 import { suggestClients, type ClientSearchResult } from '@/services/client_search';
+
+import './ClientComboBox.css';
 
 import type { FC } from 'react';
 
@@ -16,6 +20,8 @@ type ClientOption = {
   clientNumber: string;
   clientLocnCode: string;
   label: string;
+  /** FOREST_CLIENT.CLIENT_STATUS_CODE; absent on a pin rebuilt from the criteria. */
+  statusCode?: string;
 };
 
 const optionFrom = (c: ClientSearchResult): ClientOption => {
@@ -28,7 +34,19 @@ const optionFrom = (c: ClientSearchResult): ClientOption => {
     label: `${c.clientNumber ?? ''} ${c.clientLocnCode ?? ''} — ${name}${
       place ? ` (${place})` : ''
     }`,
+    statusCode: c.clientStatusCode ?? undefined,
   };
+};
+
+/** A suggestion in the open list: its label, then the client's status pill. */
+const OptionRow: FC<{ item: ClientOption }> = ({ item }) => {
+  const status = clientStatus(item.statusCode);
+  return (
+    <span className="client-combo__option">
+      <span className="client-combo__label">{item.label}</span>
+      {status && <StatusTag status={status.label} variant={status.variant} />}
+    </span>
+  );
 };
 
 interface ClientComboBoxProps {
@@ -152,6 +170,7 @@ const ClientComboBox: FC<ClientComboBoxProps> = ({
       disabled={disabled}
       items={options}
       itemToString={(item) => item?.label ?? ''}
+      itemToElement={(item) => <OptionRow item={item} />}
       selectedItem={selectedItem}
       // The server has already filtered; filtering again would hide matches
       // whose label is composed differently from the typed text.
