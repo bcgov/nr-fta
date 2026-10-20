@@ -163,6 +163,16 @@ public class MarkUpdateService {
     return dataOnly || ("PI".equals(prevStatus) && "HN".equals(status));
   }
 
+  /**
+   * Whether this save moves the certificate to another management unit, and so must carry it
+   * to the forest file. Only a changed unit has passed {@code mgmtUnitExists}: one merely kept
+   * from the certificate (any save a district makes outside PA) can be a legacy pair with no
+   * FOREST_MGMT_UNIT row, which PFU_FMU_FK refuses on the forest file.
+   */
+  static boolean mgmtUnitChanged(String storedType, String storedId, String type, String id) {
+    return !Objects.equals(storedType, type) || !Objects.equals(storedId, id);
+  }
+
   private static ResponseStatusException changedElsewhere() {
     return new ResponseStatusException(
         HttpStatus.CONFLICT,
@@ -460,7 +470,8 @@ public class MarkUpdateService {
     }
 
     String timberMark = c.timberMark();
-    if (timberMark != null) {
+    if (timberMark != null
+        && mgmtUnitChanged(c.mgmtUnitTypeCode(), c.mgmtUnitId(), v.mgmtUnitType(), v.mgmtUnitId())) {
       // UPDATE_REC keeps the forest file's management unit in step.
       jdbc.update(
           """
