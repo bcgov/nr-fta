@@ -101,7 +101,7 @@ public record MarkEditRules(
   /** A district's only status change: a cancelled mark back to issued. */
   private static final List<String> DISTRICT_HX_OPTIONS = List.of("HX", "HI");
 
-  /** Why a district can't make a change other than its own two; for the API's refusals. */
+  /** Why a district can't make a change other than its own; for the API's refusals. */
   static final String DISTRICT_REASON = "A district can change only a PA application, the"
       + " marking requirements and instrument, and a cancelled (HX) mark's status to HI.";
 
