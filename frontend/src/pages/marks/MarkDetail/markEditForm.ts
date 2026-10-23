@@ -80,7 +80,11 @@ export function createForm(mark: MarkDetail): MarkEditForm {
 const orNull = (v: string) => (v.trim() === '' ? null : v.trim());
 const numOrNull = (v: string) => (v.trim() === '' ? null : Number(v));
 
-export function toRequest(form: MarkEditForm, mark: MarkDetail): MarkUpdateRequest {
+export function toRequest(
+  form: MarkEditForm,
+  mark: MarkDetail,
+  amendmentNote: string | null = null,
+): MarkUpdateRequest {
   return {
     revisionCount: mark.revisionCount,
     amendRevisionCount: mark.amendRevisionCount,
@@ -108,7 +112,24 @@ export function toRequest(form: MarkEditForm, mark: MarkDetail): MarkUpdateReque
     amendStatusCode: orNull(form.amendStatusCode),
     // Only a newly chosen type is sent: on a mark that has none, it means "issue".
     fileTypeCode: mark.fileTypeCode ? null : orNull(form.fileTypeCode),
+    amendmentNote: amendmentNote === null ? null : orNull(amendmentNote),
   };
+}
+
+/**
+ * Whether saving `form` moves the outstanding amendment's status: set on the field, or —
+ * cancelling an issued mark (HI → HX) — a pending (PI) amendment approved to HN by the save.
+ */
+export function changesAmendment(
+  form: MarkEditForm,
+  mark: MarkDetail,
+  rules: MarkEditRules,
+): boolean {
+  const current = mark.outstandingAmendStatus ?? '';
+  if (rules.amendmentStatus && form.amendStatusCode !== current) return true;
+  return (
+    rules.status && mark.markStatusCode === 'HI' && form.markStatusCode === 'HX' && current === 'PI'
+  );
 }
 
 /** A Mark Type chosen for a mark that has none: the save will issue it. */

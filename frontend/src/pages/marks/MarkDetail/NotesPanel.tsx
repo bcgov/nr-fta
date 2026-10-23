@@ -139,21 +139,21 @@ const NotesPanel: FC<Props> = ({ id, byCertificate, forestFileId, notes, canAdd,
               <Table size="md" useZebraStyles>
                 <TableHead>
                   <TableRow>
-                    <TableHeader>Entered By</TableHeader>
-                    <TableHeader>Entered</TableHeader>
+                    <TableHeader>Date</TableHeader>
                     <TableHeader>Note</TableHeader>
+                    <TableHeader>Entered By</TableHeader>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {notes.map((n, i) => (
                     <TableRow key={`${n.entryTimestamp ?? 'note'}-${i}`}>
-                      <TableCell>
-                        <UserName userId={n.entryUserid} />
-                      </TableCell>
                       <TableCell className="mark-notes__when">
                         {formatTimestamp(n.entryTimestamp)}
                       </TableCell>
                       <TableCell className="mark-notes__text">{n.note || '—'}</TableCell>
+                      <TableCell>
+                        <UserName userId={n.entryUserid} />
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -5,6 +5,7 @@ import {
   DatePickerInput,
   Select,
   SelectItem,
+  Stack,
   TextArea,
   TextInput,
 } from '@carbon/react';
@@ -38,11 +39,13 @@ import {
   updateMark,
   type MarkDetail,
 } from '@/services/mark_detail';
+import { MARK_NOTE_MAX_LENGTH } from '@/services/mark_write';
 import { triggerBrowserDownload } from '@/utils/download';
 import { formatDate } from '@/utils/formatDate';
 import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
 import {
+  changesAmendment,
   createForm,
   issuing,
   MAX,
@@ -353,6 +356,13 @@ const MarkApplicationPanel: FC<Props> = ({
   // A save that issues the mark first shows the timber mark it will be given, to
   // confirm: issuing can't be undone. `mark` is null when it couldn't be previewed.
   const [issueConfirm, setIssueConfirm] = useState<{ mark: string | null } | null>(null);
+  // A save that moves the amendment's status first asks Headquarters for an optional note,
+  // which the save adds to the Notes tab. Null while the dialog is closed.
+  const [amendNote, setAmendNote] = useState<string | null>(null);
+  const amendNoteError =
+    amendNote !== null && amendNote.trim().length > MARK_NOTE_MAX_LENGTH
+      ? `A note can be at most ${MARK_NOTE_MAX_LENGTH} characters.`
+      : null;
 
   const onSave = async () => {
     if (!rules) return;
@@ -371,6 +381,10 @@ const MarkApplicationPanel: FC<Props> = ({
       const next = await getNextTimberMark(form.fileTypeCode);
       setSaving(false);
       setIssueConfirm({ mark: next });
+      return;
+    }
+    if (changesAmendment(form, mark, rules)) {
+      setAmendNote('');
       return;
     }
     await save(null);
@@ -396,14 +410,18 @@ const MarkApplicationPanel: FC<Props> = ({
     }
   };
 
-  /** The save itself; `expected` is the timber mark the user confirmed, when issuing. */
-  const save = async (expected: string | null) => {
+  /**
+   * The save itself; `expected` is the timber mark the user confirmed, when issuing, and
+   * `note` the amendment note, when the amendment's status moves.
+   */
+  const save = async (expected: string | null, note: string | null = null) => {
     if (!rules) return;
     setSaving(true);
     try {
-      const saved = await updateMark(id, toRequest(form, mark), byCertificate);
+      const saved = await updateMark(id, toRequest(form, mark, note), byCertificate);
       setEditing(false);
       setIssueConfirm(null);
+      setAmendNote(null);
       if (expected && saved.timberMark && saved.timberMark !== expected) {
         // Another issue took the previewed number between the preview and the save.
         display({
@@ -702,12 +720,17 @@ const MarkApplicationPanel: FC<Props> = ({
       () => text('crownGrantedAcqDesc', 'Crown Granted Description', MAX.crownGrantedAcqDesc, 'sm'),
       { optional: true },
     ),
-    field(
-      'Amendment Status',
-      statusTag(amendment?.prvMrkAmdStsSt ?? null, amendment?.prvMrkAmdStsDesc ?? null),
-      open(rules?.amendmentStatus),
-      () => select('amendStatusCode', 'Amendment Status', amendOptions),
-    ),
+    // A cancelled (HX) mark shows its amendment only while approved (HN), awaiting print.
+    ...(mark.markStatusCode !== 'HX' || amendment?.prvMrkAmdStsSt === 'HN'
+      ? [
+          field(
+            'Amendment Status',
+            statusTag(amendment?.prvMrkAmdStsSt ?? null, amendment?.prvMrkAmdStsDesc ?? null),
+            open(rules?.amendmentStatus),
+            () => select('amendStatusCode', 'Amendment Status', amendOptions),
+          ),
+        ]
+      : []),
     { label: 'Amended Date', value: date(mark.markAmendDate) },
     { label: 'Amendment Count', value: mark.amendments.length },
   ];
@@ -939,6 +962,49 @@ const MarkApplicationPanel: FC<Props> = ({
             onClick={() => void save(issueConfirm?.mark ?? null)}
           >
             {saving ? 'Issuing…' : 'Issue mark'}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Amendment note: optional, added to the Notes tab by the save. */}
+      <Modal
+        open={amendNote !== null}
+        passiveModal
+        size="sm"
+        className="detail-dialog"
+        modalHeading="Amendment status change"
+        onRequestClose={() => {
+          if (!saving) setAmendNote(null);
+        }}
+        preventCloseOnClickOutside
+      >
+        <Stack gap={5}>
+          <p className="detail-dialog__subtitle">
+            The note is added to the Notes tab when the mark is saved.
+          </p>
+          <TextArea
+            id="amend-note"
+            labelText="Note (optional)"
+            rows={6}
+            value={amendNote ?? ''}
+            enableCounter
+            maxCount={MARK_NOTE_MAX_LENGTH}
+            invalid={!!amendNoteError}
+            invalidText={amendNoteError ?? undefined}
+            disabled={saving}
+            onChange={(e) => setAmendNote(e.target.value)}
+          />
+        </Stack>
+        <div className="detail-dialog__actions">
+          <Button kind="tertiary" disabled={saving} onClick={() => setAmendNote(null)}>
+            Cancel
+          </Button>
+          <Button
+            kind="primary"
+            disabled={saving || !!amendNoteError}
+            onClick={() => void save(null, amendNote)}
+          >
+            {saving ? 'Saving…' : 'Save changes'}
           </Button>
         </div>
       </Modal>

@@ -289,6 +289,10 @@ public record MarkEditRules(
     // client neither the branch nor the status can be worked (state1), and only then
     // are the application date and client open.
     boolean amendmentOutstanding = mark.outstandingAmendStatus() != null;
+    // A cancelled (HX) mark shows its amendment only once approved (HN), for the district's
+    // print to issue; any other is no longer worked.
+    boolean amendmentWorked = amendmentOutstanding
+        && (!"HX".equals(status) || "HN".equals(mark.outstandingAmendStatus()));
     boolean hasClient = mark.clientNumber() != null;
 
     // Legacy leaves Status open beside an outstanding amendment, but its save only acts on
@@ -317,8 +321,8 @@ public record MarkEditRules(
         hasClient,
         statusOpen,
         statusOpen ? statusOptions : List.of(status),
-        amendmentOutstanding,
-        amendmentOutstanding ? AMENDMENT_STATUSES : List.of(),
+        amendmentWorked,
+        amendmentWorked ? AMENDMENT_STATUSES : List.of(),
         landIndex,
         landIndexReason,
         clients,
