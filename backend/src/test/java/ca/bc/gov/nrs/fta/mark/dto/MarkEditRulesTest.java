@@ -156,6 +156,17 @@ class MarkEditRulesTest {
       // Headquarters may still change the status.
       assertThat(rules.status()).isTrue();
     }
+
+    @Test
+    void cancelledMarkWorksOnlyAnApprovedAmendment() {
+      MarkEditRules approved = hq(mark("HX", "B01", "12A345", "00001", "HN"));
+      assertThat(approved.amendmentStatus()).isTrue();
+      assertThat(approved.amendmentStatusOptions()).containsExactly("PI", "HN", "DV");
+
+      MarkEditRules pending = hq(mark("HX", "B01", "12A345", "00001", "PI"));
+      assertThat(pending.amendmentStatus()).isFalse();
+      assertThat(pending.amendmentStatusOptions()).isEmpty();
+    }
   }
 
   @Nested

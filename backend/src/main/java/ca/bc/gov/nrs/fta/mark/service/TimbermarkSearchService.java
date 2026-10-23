@@ -57,7 +57,10 @@ public class TimbermarkSearchService {
    *
    * <p>The permit's own licensee ({@code L} client on the harvesting authority)
    * wins; a blanket mark has none, so the file's main ({@code A}) client is used
-   * instead. Legacy returns the first row of that union ordered by preference,
+   * instead. A mark with neither — one whose forest file has no clients, as a DV
+   * application's — falls back to its certificate's main client on
+   * {@code PRIVATE_MARK_CLIENT}, where the detail page finds it. Legacy returns
+   * the first row of that union ordered by preference,
    * called per row through two package functions. Here it is a lateral join,
    * added to the page query only — the count never shows the client.
    */
@@ -74,7 +77,12 @@ public class TimbermarkSearchService {
                                SELECT ffc.client_number, ffc.client_locn_code, 2 AS sort_order
                                  FROM the.forest_file_client ffc
                                 WHERE ffc.forest_file_id = tm.forest_file_id
-                                  AND ffc.forest_file_client_type_code = 'A') cand
+                                  AND ffc.forest_file_client_type_code = 'A'
+                               UNION
+                               SELECT pmcl.client_number, pmcl.client_locn_code, 3 AS sort_order
+                                 FROM the.private_mark_client pmcl
+                                WHERE pmcl.certificate = tm.certificate
+                                  AND pmcl.private_mark_client_type_code = 'A') cand
                         ORDER BY cand.sort_order
                         FETCH FIRST 1 ROW ONLY) lic
           LEFT JOIN the.forest_client lic_fc ON lic_fc.client_number = lic.client_number
@@ -104,13 +112,16 @@ public class TimbermarkSearchService {
              tm.certificate                                                            AS certificate,
              tm.mark_status_st                                                         AS mark_status_st,
              -- A private mark's amendment, as its detail page shows it: the outstanding
-             -- (PI or HN) one, else the newest. Null for a mark with none.
+             -- (PI or HN) one, else the newest. Null for a mark with none, and for a
+             -- cancelled (HX) mark unless the amendment is HN (still to be printed).
              (SELECT MAX(a.prv_mrk_amd_sts_st)
                        KEEP (DENSE_RANK FIRST
                              ORDER BY CASE WHEN a.prv_mrk_amd_sts_st IN ('PI', 'HN') THEN 0 ELSE 1 END,
                                       a.amend_request_date DESC)
                 FROM the.tmbr_mark_amend a
-               WHERE a.timber_mark = tm.timber_mark)                                   AS amend_status_st,
+               WHERE a.timber_mark = tm.timber_mark
+                 AND (NVL(tm.mark_status_st, '-') <> 'HX'
+                      OR a.prv_mrk_amd_sts_st = 'HN'))                                AS amend_status_st,
              tm.mark_issue_date                                                        AS mark_issue_date,
              NVL(tm.mark_extend_date, tm.mark_expiry_date)                             AS mark_expiry_date,
              tm.salvage_type_code                                                      AS salvage_ind,

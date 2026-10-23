@@ -315,6 +315,8 @@ export interface MarkUpdateRequest {
   amendStatusCode: string | null;
   /** Mark Type. Sent for a mark that has none, it issues the mark on save. */
   fileTypeCode: string | null;
+  /** Optional note added to the Notes tab when the save changes the amendment status. */
+  amendmentNote: string | null;
 }
 
 /**

@@ -15,7 +15,8 @@ import org.springframework.web.server.ResponseStatusException;
  * <p>Legacy produced the report and then ran {@code FTA_510_PRIVATE_MARK.ISSUE_MARK}, which
  * changes anything only when the user's organization is a district: an approved amendment
  * (HN) becomes HI, or else the issued-but-unprinted mark (HN) becomes HI, with its forest
- * file and tenure term. Here that district behaviour belongs to the
+ * file and tenure term. Legacy skipped a cancelled (HX) mark; here its HN amendment still
+ * becomes HI. Here that district behaviour belongs to the
  * {@code FTA_TIMBER_MARK_DISTRICT_ADMIN} role; everyone else's print just prints, as
  * Headquarters' did. Legacy offered Print only once the status began with H.
  */
@@ -72,9 +73,17 @@ public class MarkPrintService {
     return mark.markStatusCode() != null && mark.markStatusCode().startsWith("H");
   }
 
-  /** ISSUE_MARK, district branch. mainline skips it for a cancelled (HX) mark. */
+  /**
+   * ISSUE_MARK, district branch. mainline skipped it for a cancelled (HX) mark; here an HX
+   * mark's approved (HN) amendment is still issued (HI) — cancelling approves a pending
+   * amendment (see {@link MarkUpdateService#autoApprovesAmendment}) — but the mark stays HX.
+   */
   private void acknowledge(MarkDetailDto mark, String userId) {
-    if ("HX".equals(mark.markStatusCode()) || mark.timberMark() == null) {
+    if (mark.timberMark() == null) {
+      return;
+    }
+    boolean cancelled = "HX".equals(mark.markStatusCode());
+    if (cancelled && !"HN".equals(mark.outstandingAmendStatus())) {
       return;
     }
     MapSqlParameterSource p = new MapSqlParameterSource()
@@ -99,13 +108,16 @@ public class MarkPrintService {
       if (n == 0) {
         throw changedElsewhere();
       }
-      jdbc.update(
-          """
-          UPDATE the.private_mark_certificate
-             SET private_mark_cancel_date = NULL
-           WHERE timber_mark = :mark AND revision_count = :revision
-          """,
-          p);
+      // A cancelled mark keeps its cancel date.
+      if (!cancelled) {
+        jdbc.update(
+            """
+            UPDATE the.private_mark_certificate
+               SET private_mark_cancel_date = NULL
+             WHERE timber_mark = :mark AND revision_count = :revision
+            """,
+            p);
+      }
     } else if ("HN".equals(mark.markStatusCode())) {
       int n = jdbc.update(
           """

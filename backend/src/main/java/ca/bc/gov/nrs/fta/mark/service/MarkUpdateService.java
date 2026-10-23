@@ -51,16 +51,19 @@ public class MarkUpdateService {
   private final MarkDetailService markDetailService;
   private final MarkFieldChecks checks;
   private final PrivateMarkPackage privateMarkPackage;
+  private final MarkNoteWriteService markNoteWriteService;
 
   public MarkUpdateService(
       NamedParameterJdbcTemplate jdbc,
       MarkDetailService markDetailService,
       MarkFieldChecks checks,
-      PrivateMarkPackage privateMarkPackage) {
+      PrivateMarkPackage privateMarkPackage,
+      MarkNoteWriteService markNoteWriteService) {
     this.jdbc = jdbc;
     this.markDetailService = markDetailService;
     this.checks = checks;
     this.privateMarkPackage = privateMarkPackage;
+    this.markNoteWriteService = markNoteWriteService;
   }
 
   /** The values to write: the request's where the rules open a field, the stored ones elsewhere. */
@@ -292,6 +295,11 @@ public class MarkUpdateService {
         && (blank(v.amendStatus()) || !r.amendmentStatusOptions().contains(v.amendStatus()))) {
       e.add("Amendment Status must be PI, HN or DV.");
     }
+    String note = trim(q.amendmentNote());
+    if (note != null && note.length() > MarkNoteWriteService.MAX_NOTE_LENGTH) {
+      e.add("The amendment note can be at most " + MarkNoteWriteService.MAX_NOTE_LENGTH
+          + " characters.");
+    }
     return e;
   }
 
@@ -413,12 +421,18 @@ public class MarkUpdateService {
     String prevStatus = c.markStatusCode();
     boolean amendChanged = r.amendmentStatus()
         && !Objects.equals(v.amendStatus(), c.outstandingAmendStatus());
-    // SAVE: issuing makes the mark HN; approving the outstanding amendment (HN) re-issues it.
+    // SAVE: issuing makes the mark HN; approving the outstanding amendment (HN) re-issues it —
+    // unless the same save cancels the mark, which then stays HX.
     String status = issuing ? "HN"
-        : amendChanged && "HN".equals(v.amendStatus()) ? "HI" : v.status();
+        : amendChanged && "HN".equals(v.amendStatus()) && !"HX".equals(v.status()) ? "HI"
+        : v.status();
     // SAVE, PI to HN: an issue date defaults to today.
     LocalDate issueDate = issuing && v.issueDate() == null ? LocalDate.now() : v.issueDate();
     boolean statusChanged = !Objects.equals(status, prevStatus);
+    // Cancelling an issued mark approves its pending (PI) amendment rather than dropping it,
+    // unless the same save sets the amendment's status itself.
+    boolean autoApprove = autoApprovesAmendment(
+        prevStatus, status, c.outstandingAmendStatus(), amendChanged);
 
     // A changed extension on an issued mark is counted, with reason P (both procedures).
     Integer extendCount = c.markExtendCount();
@@ -462,7 +476,7 @@ public class MarkUpdateService {
         .addValue("crownGrantedInd",
             v.grantedDate() != null || !blank(v.grantedDesc()) ? "Y" : "N")
         .addValue("mapReferenceId", MarkFieldChecks.mapReferenceId(v.reg(), v.comp()))
-        .addValue("amendChanged", amendChanged ? "Y" : "N")
+        .addValue("amendChanged", amendChanged || autoApprove ? "Y" : "N")
         .addValue("signs", signsCertificate(prevStatus, status, amendChanged) ? "Y" : "N");
 
     if (issuing) {
@@ -495,7 +509,8 @@ public class MarkUpdateService {
     }
 
     // SAVE: cancelling an issued mark, or acting on a cancelled one, moves the forest
-    // file's status with it; cancelling also drops the pending amendments.
+    // file's status with it. Legacy's cancel also dropped the pending (PI) amendment; here it
+    // is approved instead (see autoApprovesAmendment).
     if (statusChanged && timberMark != null
         && (("HI".equals(prevStatus) && "HX".equals(status)) || "HX".equals(prevStatus))) {
       jdbc.update(
@@ -512,13 +527,27 @@ public class MarkUpdateService {
               .addValue("status", status)
               .addValue("userId", userId)
               .addValue("timberMark", timberMark));
-      if ("HI".equals(prevStatus) && "HX".equals(status)) {
-        jdbc.update(
-            """
-            DELETE FROM the.tmbr_mark_amend
-             WHERE timber_mark = :timberMark AND prv_mrk_amd_sts_st = 'PI'
-            """,
-            new MapSqlParameterSource("timberMark", timberMark));
+    }
+
+    if (autoApprove) {
+      int n = jdbc.update(
+          """
+          UPDATE the.tmbr_mark_amend
+             SET prv_mrk_amd_sts_st = 'HN',
+                 authorizing_userid = :userId,
+                 update_userid      = :userId,
+                 update_timestamp   = SYSDATE,
+                 revision_count     = revision_count + 1
+           WHERE timber_mark = :timberMark
+             AND prv_mrk_amd_sts_st = 'PI'
+             AND revision_count = :amendRevisionCount
+          """,
+          new MapSqlParameterSource()
+              .addValue("userId", userId)
+              .addValue("timberMark", timberMark)
+              .addValue("amendRevisionCount", q.amendRevisionCount()));
+      if (n == 0) {
+        throw changedElsewhere();
       }
     }
 
@@ -572,6 +601,25 @@ public class MarkUpdateService {
     if ("HI".equals(status) && timberMark != null) {
       updateTerm(c, userId);
     }
+
+    // The note Headquarters may leave when the amendment's status moves, on the Notes tab.
+    String note = trim(q.amendmentNote());
+    if ((amendChanged || autoApprove) && note != null) {
+      markNoteWriteService.add(c.certificate(), true, note, userId);
+    }
+  }
+
+  /**
+   * Whether this save approves the mark's pending amendment on its own: cancelling an issued
+   * mark (HI to HX) with a PI amendment outstanding moves the amendment to HN, unless the save
+   * sets the amendment's status itself.
+   */
+  static boolean autoApprovesAmendment(
+      String prevStatus, String status, String outstandingAmendStatus, boolean amendChanged) {
+    return !amendChanged
+        && "HI".equals(prevStatus)
+        && "HX".equals(status)
+        && "PI".equals(outstandingAmendStatus);
   }
 
   /**

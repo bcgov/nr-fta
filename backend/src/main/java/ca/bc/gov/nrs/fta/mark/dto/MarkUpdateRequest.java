@@ -41,4 +41,9 @@ public record MarkUpdateRequest(
      * Mark Type. Set (on a mark that has none) means "issue the mark": the save generates the
      * timber mark for it and issues it — legacy's Assign Mark and Save as one step (PI to HN).
      */
-    String fileTypeCode) {}
+    String fileTypeCode,
+    /**
+     * Optional note recorded on the Notes tab when the save changes the amendment status;
+     * ignored otherwise. At most 4000 characters.
+     */
+    String amendmentNote) {}
