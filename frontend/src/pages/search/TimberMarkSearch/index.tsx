@@ -536,106 +536,110 @@ const TimberMarkSearch: FC = () => {
               />
             </DatePicker>
 
-            <h2 className="fsp-search__group-heading">Private mark criteria</h2>
+            {/* Boxed like legacy's Private Mark panel, so these read as one group. */}
+            <fieldset className="fsp-search__section">
+              <legend className="fsp-search__section-legend">Private mark criteria</legend>
+              <div className="fsp-search__field-grid">
+                <TextInput
+                  id="tm-certificate"
+                  className="fsp-search__row-start"
+                  labelText="Certificate"
+                  value={form.certificate ?? ''}
+                  onChange={(e) => set('certificate', e.target.value)}
+                  maxLength={6}
+                  autoComplete="off"
+                />
 
-            <TextInput
-              id="tm-certificate"
-              className="fsp-search__row-start"
-              labelText="Certificate"
-              value={form.certificate ?? ''}
-              onChange={(e) => set('certificate', e.target.value)}
-              maxLength={6}
-              autoComplete="off"
-            />
+                <Select
+                  id="tm-land-district"
+                  labelText="Land district"
+                  value={form.landDistrict ?? ''}
+                  onChange={(e) => set('landDistrict', e.target.value)}
+                >
+                  <SelectItem value="" text="Any" />
+                  {codeItems(landDistricts)}
+                </Select>
 
-            <Select
-              id="tm-land-district"
-              labelText="Land district"
-              value={form.landDistrict ?? ''}
-              onChange={(e) => set('landDistrict', e.target.value)}
-            >
-              <SelectItem value="" text="Any" />
-              {codeItems(landDistricts)}
-            </Select>
+                <Select
+                  id="tm-primary-id"
+                  labelText="Primary ID"
+                  value={form.primaryId ?? ''}
+                  onChange={(e) => set('primaryId', e.target.value)}
+                >
+                  <SelectItem value="" text="Any" />
+                  {codeItems(primaryIds)}
+                </Select>
 
-            <Select
-              id="tm-primary-id"
-              labelText="Primary ID"
-              value={form.primaryId ?? ''}
-              onChange={(e) => set('primaryId', e.target.value)}
-            >
-              <SelectItem value="" text="Any" />
-              {codeItems(primaryIds)}
-            </Select>
+                <TextInput
+                  id="tm-primary-detail"
+                  labelText="Primary detail"
+                  value={form.primaryDetail ?? ''}
+                  onChange={(e) => set('primaryDetail', e.target.value)}
+                  maxLength={40}
+                  autoComplete="off"
+                />
 
-            <TextInput
-              id="tm-primary-detail"
-              labelText="Primary detail"
-              value={form.primaryDetail ?? ''}
-              onChange={(e) => set('primaryDetail', e.target.value)}
-              maxLength={40}
-              autoComplete="off"
-            />
-
-            {/* Amended Date is stamped when an amendment such as a renewal is approved, so it
-                finds a mark renewed in a period without knowing when it was first issued. */}
-            <DatePicker
-              datePickerType="single"
-              dateFormat="Y-m-d"
-              className="fsp-search__row-start"
-              value={form.amendDateFrom ? [form.amendDateFrom] : []}
-              onChange={(dates) =>
-                set('amendDateFrom', dates[0] ? dates[0].toISOString().slice(0, 10) : '')
-              }
-            >
-              <DatePickerInput
-                id="tm-amend-from"
-                labelText="Amended date from"
-                placeholder="YYYY-MM-DD"
-                pattern={TYPED_DATE_PATTERN}
-                onChange={(e) => {
-                  const text = e.target.value;
-                  if (text.trim() === '') set('amendDateFrom', '');
-                  else {
-                    const typed = parseTypedDate(text);
-                    if (typed) set('amendDateFrom', typed);
+                {/* Amended Date is stamped when an amendment such as a renewal is approved, so it
+                    finds a mark renewed in a period without knowing when it was first issued. */}
+                <DatePicker
+                  datePickerType="single"
+                  dateFormat="Y-m-d"
+                  className="fsp-search__row-start"
+                  value={form.amendDateFrom ? [form.amendDateFrom] : []}
+                  onChange={(dates) =>
+                    set('amendDateFrom', dates[0] ? dates[0].toISOString().slice(0, 10) : '')
                   }
-                }}
-              />
-            </DatePicker>
+                >
+                  <DatePickerInput
+                    id="tm-amend-from"
+                    labelText="Amended date from"
+                    placeholder="YYYY-MM-DD"
+                    pattern={TYPED_DATE_PATTERN}
+                    onChange={(e) => {
+                      const text = e.target.value;
+                      if (text.trim() === '') set('amendDateFrom', '');
+                      else {
+                        const typed = parseTypedDate(text);
+                        if (typed) set('amendDateFrom', typed);
+                      }
+                    }}
+                  />
+                </DatePicker>
 
-            <DatePicker
-              datePickerType="single"
-              dateFormat="Y-m-d"
-              value={form.amendDateTo ? [form.amendDateTo] : []}
-              onChange={(dates) =>
-                set('amendDateTo', dates[0] ? dates[0].toISOString().slice(0, 10) : '')
-              }
-            >
-              <DatePickerInput
-                id="tm-amend-to"
-                labelText="Amended date to"
-                placeholder="YYYY-MM-DD"
-                pattern={TYPED_DATE_PATTERN}
-                onChange={(e) => {
-                  const text = e.target.value;
-                  if (text.trim() === '') set('amendDateTo', '');
-                  else {
-                    const typed = parseTypedDate(text);
-                    if (typed) set('amendDateTo', typed);
+                <DatePicker
+                  datePickerType="single"
+                  dateFormat="Y-m-d"
+                  value={form.amendDateTo ? [form.amendDateTo] : []}
+                  onChange={(dates) =>
+                    set('amendDateTo', dates[0] ? dates[0].toISOString().slice(0, 10) : '')
                   }
-                }}
-              />
-            </DatePicker>
+                >
+                  <DatePickerInput
+                    id="tm-amend-to"
+                    labelText="Amended date to"
+                    placeholder="YYYY-MM-DD"
+                    pattern={TYPED_DATE_PATTERN}
+                    onChange={(e) => {
+                      const text = e.target.value;
+                      if (text.trim() === '') set('amendDateTo', '');
+                      else {
+                        const typed = parseTypedDate(text);
+                        if (typed) set('amendDateTo', typed);
+                      }
+                    }}
+                  />
+                </DatePicker>
 
-            <div className="fsp-search__full-cell">
-              <Checkbox
-                id="tm-private-only"
-                labelText="Only private marks"
-                checked={form.privateMarkOnlyInd === 'Y'}
-                onChange={(_e, { checked }) => set('privateMarkOnlyInd', checked ? 'Y' : '')}
-              />
-            </div>
+                <div className="fsp-search__full-cell">
+                  <Checkbox
+                    id="tm-private-only"
+                    labelText="Only private marks"
+                    checked={form.privateMarkOnlyInd === 'Y'}
+                    onChange={(_e, { checked }) => set('privateMarkOnlyInd', checked ? 'Y' : '')}
+                  />
+                </div>
+              </div>
+            </fieldset>
 
             <div className="fsp-search__sort-cell">
               <RadioButtonGroup

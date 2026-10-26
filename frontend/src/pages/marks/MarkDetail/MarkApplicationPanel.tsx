@@ -721,7 +721,9 @@ const MarkApplicationPanel: FC<Props> = ({
       { optional: true },
     ),
     // A cancelled (HX) mark shows its amendment only while approved (HN), awaiting print.
-    ...(mark.markStatusCode !== 'HX' || amendment?.prvMrkAmdStsSt === 'HN'
+    // An issued (HI) amendment is never shown.
+    ...(amendment?.prvMrkAmdStsSt !== 'HI' &&
+    (mark.markStatusCode !== 'HX' || amendment?.prvMrkAmdStsSt === 'HN')
       ? [
           field(
             'Amendment Status',
