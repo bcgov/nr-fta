@@ -99,6 +99,44 @@
   color: var(--cds-text-secondary);
 }
 
+// A boxed group of criteria inside the grid (e.g. TimberMarkSearch's private
+// mark fields). Spans the full width and carries its own nested field grid, so
+// the fields inside lay out exactly as they do outside the box.
+//
+// Called out from the rest of the criteria as a grey panel. The panel flips the
+// tile's token swap back — layer-01 surface, layer-02 (white) fields — so
+// inputs still read against the grey.
+.fsp-search__field-grid .fsp-search__section {
+  grid-column: 1 / -1;
+  min-inline-size: 0;
+  margin: 0.5rem 0;
+  padding: 1rem 1rem 1.25rem;
+  border: 0;
+
+  --cds-layer: var(--cds-layer-01);
+  --cds-field: var(--cds-field-02);
+  --cds-field-hover: var(--cds-field-hover-02);
+  --cds-border-subtle: var(--cds-border-subtle-02);
+  background-color: var(--cds-layer-01);
+}
+
+// Floated so it sits inside the panel as a heading, rather than on the
+// fieldset's top border; the grid after it clears the float.
+.fsp-search__section-legend {
+  float: inline-start;
+  inline-size: 100%;
+  padding: 0;
+  margin-block-end: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.375rem;
+  color: var(--cds-text-primary);
+}
+
+.fsp-search__section-legend + .fsp-search__field-grid {
+  clear: both;
+}
+
 // A cell that spans the whole grid — the sort-by radio row, and anywhere else a
 // control needs the full width.
 .fsp-search__field-grid .fsp-search__sort-cell,

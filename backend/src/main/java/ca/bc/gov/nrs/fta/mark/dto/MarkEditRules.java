@@ -49,6 +49,10 @@ import java.util.Set;
  * @param submit            Submit to HQ (FTA510): a district sends its PA application to
  *                          Headquarters, which makes it PI
  * @param submitReason      why not, when {@code submit} is false
+ * @param submitOffered     whether the user is offered Submit to HQ at all — a district
+ *                          editor, on any mark but a view-only type. The button stays enabled
+ *                          for them and, when {@code submit} is false, clicking it shows
+ *                          {@code submitReason} instead of submitting
  * @param landIndexUpdate   updating a land index already on the mark (FTA511's save of an
  *                          existing row): Headquarters at any status; a district as it may add
  * @param clientsUpdate     updating an associated client already on the mark (FTA513's
@@ -77,6 +81,7 @@ public record MarkEditRules(
     String amendmentsReason,
     boolean submit,
     String submitReason,
+    boolean submitOffered,
     boolean landIndexUpdate,
     boolean clientsUpdate,
     boolean notes) {
@@ -129,8 +134,8 @@ public record MarkEditRules(
     return new MarkEditRules(
         false, reason, false, false, false, false, false, false, false, List.of(), false,
         List.of(), landIndex, landIndexReason, clients, clientsReason, amendments,
-        amendmentsReason, submitReason == null, submitReason, landIndexUpdate, clientsUpdate,
-        notes);
+        amendmentsReason, submitReason == null, submitReason, false, landIndexUpdate,
+        clientsUpdate, notes);
   }
 
   /**
@@ -153,8 +158,8 @@ public record MarkEditRules(
         marking || reinstate, null, false, false, false, marking, false, false, reinstate,
         reinstate ? DISTRICT_HX_OPTIONS : status == null ? List.of() : List.of(status), false,
         List.of(), false, DISTRICT_REASON, false, DISTRICT_REASON, amendments, amendmentsReason,
-        !viewOnlyType && submitReason == null, viewOnlyType ? null : submitReason, false, false,
-        false);
+        !viewOnlyType && submitReason == null, viewOnlyType ? null : submitReason, !viewOnlyType,
+        false, false, false);
   }
 
   /**
@@ -169,7 +174,7 @@ public record MarkEditRules(
     return new MarkEditRules(
         true, null, true, true, true, false, false, false, false, List.of("PA"), false,
         List.of(), false, DISTRICT_REASON, true, null, false, DISTRICT_REASON,
-        submitReason == null, submitReason, false, true, false);
+        submitReason == null, submitReason, true, false, true, false);
   }
 
   /**
@@ -281,7 +286,7 @@ public record MarkEditRules(
           markingOpen || open, null, false, false, false, markingOpen, false, false, open,
           open ? options : List.of(status), false, List.of(), landIndex, landIndexReason,
           clients, clientsReason, amendments, amendmentsReason, submitReason == null,
-          submitReason, landIndexUpdate, clientsUpdate, true);
+          submitReason, false, landIndexUpdate, clientsUpdate, true);
     }
 
     // setProtectionStates, Headquarters, existing record, opened from the FTA500 list:
@@ -331,6 +336,7 @@ public record MarkEditRules(
         amendmentsReason,
         submitReason == null,
         submitReason,
+        false,
         landIndexUpdate,
         clientsUpdate,
         true);

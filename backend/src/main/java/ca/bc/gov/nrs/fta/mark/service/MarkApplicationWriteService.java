@@ -122,13 +122,13 @@ public class MarkApplicationWriteService {
       e.add("Initial Term must be 6, 12, 24, 36, 48 or 60 months.");
     }
     checks.validateApplication(e, null, app);
-    if (clientNumber != null) {
-      if (clientLocnCode == null) {
-        // locnCodeAndID: a client number needs its location.
-        e.add("Client location is required with a client number.");
-      } else if (!clientLocationExists(clientNumber, clientLocnCode)) {
-        e.add("Client " + clientNumber + " has no location " + clientLocnCode + ".");
-      }
+    if (clientNumber == null) {
+      e.add("Mark Holder is required.");
+    } else if (clientLocnCode == null) {
+      // locnCodeAndID: a client number needs its location.
+      e.add("Client location is required with a client number.");
+    } else if (!clientLocationExists(clientNumber, clientLocnCode)) {
+      e.add("Client " + clientNumber + " has no location " + clientLocnCode + ".");
     }
     if (!e.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, String.join(" ", e));

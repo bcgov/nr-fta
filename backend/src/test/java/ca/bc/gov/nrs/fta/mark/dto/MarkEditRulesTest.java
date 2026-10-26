@@ -365,6 +365,7 @@ class MarkEditRulesTest {
       MarkEditRules rules = hq(mark("PA", null, null, "00001", null));
       assertThat(rules.submit()).isFalse();
       assertThat(rules.submitReason()).contains("Only a district");
+      assertThat(rules.submitOffered()).isFalse();
     }
 
     @Test
@@ -372,6 +373,7 @@ class MarkEditRulesTest {
       MarkEditRules rules = MarkEditRules.of(mark("PA", null, null, "00001", null), false, true);
       assertThat(rules.submit()).isFalse();
       assertThat(rules.submitReason()).contains("Your role");
+      assertThat(rules.submitOffered()).isFalse();
     }
   }
 
@@ -433,6 +435,8 @@ class MarkEditRulesTest {
       assertThat(rules.location()).isFalse();
       assertThat(rules.clients()).isFalse();
       assertThat(rules.submit()).isFalse();
+      assertThat(rules.submitOffered()).isTrue();
+      assertThat(rules.submitReason()).contains("PA status");
     }
 
     @Test
@@ -459,7 +463,9 @@ class MarkEditRulesTest {
     @Test
     void aPendingApplicationIsSubmittedOnceItHasTheMainLicensee() {
       MarkEditRules without = district(mark("PA", null, null, null, null));
+      // Still offered, so the district is told why it can't submit yet.
       assertThat(without.submit()).isFalse();
+      assertThat(without.submitOffered()).isTrue();
       assertThat(without.submitReason()).contains("main licensee");
 
       MarkEditRules with = district(mark("PA", null, null, "00001", null));
