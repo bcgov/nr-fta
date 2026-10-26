@@ -88,8 +88,11 @@ const validate = (f: Form): Errors => {
   if (!TERM_OPTIONS.includes(f.tenureTerm)) e.tenureTerm = 'Choose an initial term.';
   if (blank(f.forestDistrict)) e.forestDistrict = 'District is required.';
   if (blank(f.cascadeSplitCode)) e.cascadeSplitCode = 'Cascade is required.';
-  if (blank(f.clientName)) e.clientName = 'Mark Holder is required.';
-  else if (blank(f.clientNumber)) e.clientName = 'Pick a client from the list.';
+  // A pick sets clientNumber and clears clientName; clientName is only text typed but not picked.
+  if (blank(f.clientNumber))
+    e.clientName = blank(f.clientName)
+      ? 'Mark Holder is required.'
+      : 'Pick a client from the list.';
   if (blank(f.permitBlockLocn)) e.permitBlockLocn = 'Geographic Location is required.';
   if (blank(f.permitBlockArea)) e.permitBlockArea = 'Area is required.';
   else if (!/^\d{1,4}(\.\d)?$/.test(f.permitBlockArea.trim()))
