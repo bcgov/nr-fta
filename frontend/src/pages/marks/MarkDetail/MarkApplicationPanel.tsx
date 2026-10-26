@@ -263,30 +263,21 @@ const MarkApplicationPanel: FC<Props> = ({
   // the mark issued (HN → HI), so the mark is re-read afterwards.
   const [printing, setPrinting] = useState(false);
   const onPrint = async () => {
-    // Open the tab now, inside the click: a window opened after the await is no
-    // longer user-initiated, and browsers block it as a popup. It is pointed at
-    // the PDF when that arrives, or closed if the print fails.
-    const tab = window.open('', '_blank');
     setPrinting(true);
     try {
       const pdf = await printMarkCertificate(id, byCertificate);
+      // Downloaded straight away rather than opened in a new tab.
       const url = URL.createObjectURL(pdf);
-      if (tab) {
-        tab.location.href = url;
-      } else {
-        // Popups blocked outright: fall back to a download so the certificate isn't lost.
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = `timber-mark-certificate-${mark.timberMark ?? id}.pdf`;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-      }
-      // The tab needs the URL until its viewer has loaded the file; release it later.
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `timber-mark-certificate-${mark.timberMark ?? id}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      // Released after the click has handed the file to the browser's download.
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
       onSaved();
     } catch (err) {
-      tab?.close();
       display({
         kind: 'error',
         title: 'Could not print the certificate',
@@ -326,7 +317,8 @@ const MarkApplicationPanel: FC<Props> = ({
   const printable = (mark.markStatusCode ?? '').startsWith('H');
 
   // Submit to HQ — a district's PA application goes to Headquarters as PI. The
-  // button is always there, disabled when submitting isn't allowed.
+  // button is always there. For a district it stays enabled, and a click that can't
+  // submit (no main licensee yet, say) says why rather than opening the confirmation.
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const onSubmit = async () => {
@@ -864,8 +856,19 @@ const MarkApplicationPanel: FC<Props> = ({
                   kind="tertiary"
                   size="sm"
                   renderIcon={SendAlt}
-                  disabled={!rules.submit || printing || submitting}
-                  onClick={() => setConfirmSubmit(true)}
+                  disabled={!rules.submitOffered || printing || submitting}
+                  onClick={() => {
+                    if (rules.submit) {
+                      setConfirmSubmit(true);
+                      return;
+                    }
+                    display({
+                      kind: 'error',
+                      title: 'Cannot submit to Headquarters',
+                      subtitle: rules.submitReason ?? 'This application cannot be submitted.',
+                      timeout: 9000,
+                    });
+                  }}
                 >
                   Submit to Headquarters
                 </Button>

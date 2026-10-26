@@ -99,6 +99,7 @@ const MarkDetail: FC = () => {
               // The left bar takes the status's colour, as its pill has elsewhere.
               className={`bc-status-accent--${statusCodeVariant(mark.markStatusCode) ?? 'default'}`}
               items={[
+                { label: 'District', value: mark.orgUnitCode || '—' },
                 { label: 'Timber Mark', value: mark.timberMark || '—' },
                 { label: 'File / Certificate', value: mark.certificate || '—' },
                 { label: 'Mark Holder', value: mark.clientName || '—' },

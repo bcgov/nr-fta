@@ -88,8 +88,8 @@ const validate = (f: Form): Errors => {
   if (!TERM_OPTIONS.includes(f.tenureTerm)) e.tenureTerm = 'Choose an initial term.';
   if (blank(f.forestDistrict)) e.forestDistrict = 'District is required.';
   if (blank(f.cascadeSplitCode)) e.cascadeSplitCode = 'Cascade is required.';
-  if (!blank(f.clientName) && blank(f.clientNumber))
-    e.clientName = 'Pick a client from the list, or clear the field.';
+  if (blank(f.clientName)) e.clientName = 'Mark Holder is required.';
+  else if (blank(f.clientNumber)) e.clientName = 'Pick a client from the list.';
   if (blank(f.permitBlockLocn)) e.permitBlockLocn = 'Geographic Location is required.';
   if (blank(f.permitBlockArea)) e.permitBlockArea = 'Area is required.';
   else if (!/^\d{1,4}(\.\d)?$/.test(f.permitBlockArea.trim()))
@@ -338,8 +338,8 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
         <div className="new-mark__full">
           <ClientComboBox
             id="new-mark-client"
-            titleText="Mark Holder (optional)"
-            helperText="Pick the client and location; can be added later on the Associated clients tab."
+            titleText="Mark Holder"
+            helperText="Pick the client and location."
             clientNumber={form.clientNumber}
             clientLocnCode={form.clientLocnCode}
             clientName={form.clientName}

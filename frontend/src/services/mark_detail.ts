@@ -158,6 +158,11 @@ export interface MarkEditRules {
   submit: boolean;
   /** Why not, when `submit` is false. */
   submitReason: string | null;
+  /**
+   * Whether the user is offered Submit to HQ at all (a district editor). The button stays
+   * enabled for them; when `submit` is false a click shows `submitReason` instead.
+   */
+  submitOffered: boolean;
   /** Updating a land index on the mark — Headquarters at any status; never a district. */
   landIndexUpdate: boolean;
   /** Updating an associated client — Headquarters at any status; never a district. */
