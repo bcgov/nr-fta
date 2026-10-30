@@ -781,8 +781,8 @@ const HarvestingAuthoritySearch: FC = () => {
                                   ?.value as string | undefined) ?? '';
                               // A CP id is unique only within its tenure.
                               const fileId =
-                                (row.cells.find((c) => c.info.header === 'forestFileId')
-                                  ?.value as string | undefined) ?? '';
+                                (row.cells.find((c) => c.info.header === 'forestFileId')?.value as
+                                  string | undefined) ?? '';
                               const open = () => {
                                 if (cp && fileId)
                                   navigate(
