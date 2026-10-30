@@ -10,7 +10,7 @@ test('the audit report searches', async ({ page }) => {
   await gotoPage(page, PAGES.auditReport);
   await page.getByLabel('Licensee').fill('E2E-NO-SUCH-LICENSEE');
   await page.getByRole('button', { name: 'Run report' }).click();
-  await expect(page.getByText('Certificates').first()).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByText('Certificates').first()).toBeVisible({ timeout: 15_000 });
   await settled(page);
 });
 
