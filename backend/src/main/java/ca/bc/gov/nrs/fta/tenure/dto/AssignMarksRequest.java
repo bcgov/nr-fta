@@ -3,29 +3,24 @@ package ca.bc.gov.nrs.fta.tenure.dto;
 import java.util.List;
 
 /**
- * Request body for assigning hauling timber marks to the cut blocks of a
- * cutting permit ({@code POST
- * /api/fta/cutting-permits/{cpId}/assign-marks}). Fields mirror the input
- * parameters of the legacy {@code FTA_908_HAULING_AUTH.save} procedure
- * (invoked per block via {@code mainline}/{@code assign_to_all}). The cutting
- * permit id comes from the path; the harvesting authority key and the
- * per-block assignments come from the body.
+ * Request body for assigning timber marks to an authorization's cut blocks ({@code POST
+ * /api/fta/cutting-permits/{cpId}/assign-marks}), legacy FTA908. Either {@code assignToAllMark}
+ * names an existing mark for FTA908's Assign Mark to All, or {@code assignments} lists blocks
+ * individually.
  */
 public record AssignMarksRequest(
     String forestFileId,
-    String hvaSkey,
+    Long hvaSkey,
+    String assignToAllMark,
     List<BlockAssignment> assignments) {
 
   /**
-   * One block's mark assignment — mirrors the block-level params of the legacy
-   * {@code save} procedure. {@code newTimberMark} is optional; when present it
-   * replaces {@code timberMark} for the block (legacy: {@code IF
-   * p_new_timber_mark IS NOT NULL THEN p_timber_mark := p_new_timber_mark}).
+   * One block's mark: an existing {@code timberMark}, or a {@code newTimberMark} to create, not
+   * both. {@code revisionCount} is the block's when it was read.
    */
   public record BlockAssignment(
-      String cbSkey,
-      String cutBlockId,
+      Long cbSkey,
       String timberMark,
       String newTimberMark,
-      String revisionCount) {}
+      Long revisionCount) {}
 }

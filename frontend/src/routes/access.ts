@@ -18,6 +18,11 @@ import type { FamLoginUser, ROLE_TYPE } from '@/context/auth/types';
  *                                                         to HQ by Submit to HQ; its
  *                                                         certificate print also marks
  *                                                         the mark issued (HN → HI)
+ *   FTA_HARVEST_AUTH_       all except Admin              cutting permit and cut block writes,
+ *     SENIOR_ADMIN                                        in any district; read-only elsewhere
+ *   FTA_HARVEST_AUTH_       all except Admin              as senior, without suspensions,
+ *     DISTRICT_ADMIN                                      conditions, postponements, relabel,
+ *                                                         delete, or post-issue terms and rollbacks
  *   FTA_VIEWER              all except Admin              read-only (GET only)
  */
 
@@ -58,7 +63,30 @@ export function canEditMarks(user: FamLoginUser | null | undefined): boolean {
  * FTA_ADMIN's ({@link canEdit}).
  */
 export function canAddTenureNotes(user: FamLoginUser | null | undefined): boolean {
-  return canEditMarks(user);
+  return canEditMarks(user) || canEditHarvest(user);
+}
+
+/**
+ * Whether the user may add and edit cutting permits and cut blocks — FTA_ADMIN or either harvest
+ * role, in any district.
+ */
+export function canEditHarvest(user: FamLoginUser | null | undefined): boolean {
+  const r = effectiveRole(user);
+  return (
+    r === 'FTA_ADMIN' ||
+    r === 'FTA_HARVEST_AUTH_SENIOR_ADMIN' ||
+    r === 'FTA_HARVEST_AUTH_DISTRICT_ADMIN'
+  );
+}
+
+/**
+ * Whether the user holds legacy's Senior Admin and Feature Admin rights over harvest
+ * authorizations — FTA_ADMIN or FTA_HARVEST_AUTH_SENIOR_ADMIN: suspensions, conditions,
+ * postponements, relabel, delete, and changing terms or rolling back a status after issue.
+ */
+export function canManageHarvest(user: FamLoginUser | null | undefined): boolean {
+  const r = effectiveRole(user);
+  return r === 'FTA_ADMIN' || r === 'FTA_HARVEST_AUTH_SENIOR_ADMIN';
 }
 
 /**

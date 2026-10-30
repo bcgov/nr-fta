@@ -1,124 +1,228 @@
 package ca.bc.gov.nrs.fta.tenure.service;
 
+import ca.bc.gov.nrs.fta.tenure.dto.AssignMarksDto;
 import ca.bc.gov.nrs.fta.tenure.dto.AssignMarksRequest;
+import ca.bc.gov.nrs.fta.tenure.dto.AssignMarksRequest.BlockAssignment;
+import java.time.LocalDate;
 import java.util.List;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import java.util.Locale;
+import java.util.Map;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Write operations for assigning hauling timber marks to cut blocks.
+ * Assigning timber marks to cut blocks, legacy FTA908, which FTA902 offered only on a Fort St. John
+ * authorization (harvest type F, identified by its HVA id rather than a CP id).
  *
- * <p>Ports the {@code save} path of the legacy {@code FTA_908_HAULING_AUTH}
- * package to native statements against the {@code THE} Oracle schema via
- * {@link NamedParameterJdbcTemplate}. For each block assignment the legacy
- * {@code save} procedure: (1) ensures a {@code HAULING_AUTHORITY} row exists
- * for the mark (legacy {@code create_hauling_auth}), (2) ensures a
- * {@code HARVESTING_HAULING_XREF} row links the mark to the harvesting
- * authority, defaulting the first mark to primary (legacy
- * {@code create_hauling_xref}), then (3) stamps the mark onto the
- * {@code CUT_BLOCK} row with an optimistic {@code revision_count} guard.
- *
- * <p>Runs against the shared {@code THE} Oracle schema — there is no local
- * database, so it is exercised only in a deployed environment. The legacy
- * pre-write validations (HI status check, orphan-mark check, mark-designate
- * prefix check) should be reproduced here as the module is hardened.
+ * <p>The writes call {@code FTA_908_HAULING_AUTH.mainline} rather than port it, for its issued
+ * status, new mark, mark designate and orphaned mark checks. It compares the block's revision in
+ * its UPDATE but never checks that a row changed, so a stale revision would report success. The
+ * service therefore locks each block and compares the revision first.
  */
 @Service
 public class AssignMarksWriteService {
 
-  private final NamedParameterJdbcTemplate jdbc;
+  private static final String PROCEDURE = "fta_908_hauling_auth.mainline";
+  private static final String CURSOR_TYPE = "the.fta_908_hauling_auth.ref_hauling_auth";
+  private static final String MODIFIED =
+      "A block was changed by someone else. Reload the page and try again.";
 
-  public AssignMarksWriteService(NamedParameterJdbcTemplate jdbc) {
+  private static final String AUTHORIZATION_SQL =
+      """
+      SELECT ha.hva_skey,
+             ha.forest_file_id,
+             ha.harvesting_authority_id,
+             ha.harvest_auth_status_code,
+             ha.status_date,
+             ha.expiry_date,
+             ha.higher_level_plan_reference,
+             cli.client_name AS licensee
+        FROM the.harvesting_authority ha
+        LEFT JOIN the.forest_file_client ffc
+               ON ffc.forest_file_id = ha.forest_file_id
+              AND ffc.forest_file_client_type_code = 'A'
+        LEFT JOIN the.forest_client cli ON cli.client_number = ffc.client_number
+       WHERE ha.forest_file_id = :forestFileId
+         AND ha.harvesting_authority_id = :authorizationId
+         AND ha.harvest_type_code = 'F'
+      """;
+
+  // FTA_908_HAULING_AUTH.GET_LIST
+  private static final String BLOCKS_SQL =
+      """
+      SELECT cb.cb_skey, cb.cut_block_id, cb.timber_mark, cb.revision_count
+        FROM the.cut_block cb
+       WHERE cb.hva_skey = :hvaSkey
+       ORDER BY cb.cut_block_id, cb.timber_mark
+      """;
+
+  // FTA_CODE_LISTS.GET_TIMBER_MARKS, legacy's fta.lookup.harvestTimberMarks
+  private static final String MARKS_SQL =
+      """
+      SELECT DISTINCT xref.timber_mark
+        FROM the.harvesting_hauling_xref xref
+        JOIN the.harvesting_authority hva ON hva.hva_skey = xref.hva_skey
+       WHERE hva.forest_file_id = :forestFileId
+         AND xref.timber_mark IS NOT NULL
+         AND hva.harvest_auth_status_code = 'HI'
+         AND hva.harvest_type_code = 'F'
+       ORDER BY xref.timber_mark
+      """;
+
+  private static final String LOCK_SQL =
+      """
+      SELECT cut_block_id, revision_count
+        FROM the.cut_block
+       WHERE cb_skey = :cbSkey
+         AND hva_skey = :hvaSkey
+         FOR UPDATE
+      """;
+
+  private final NamedParameterJdbcTemplate jdbc;
+  private final HarvestLegacyCall legacy;
+
+  public AssignMarksWriteService(NamedParameterJdbcTemplate jdbc, HarvestLegacyCall legacy) {
     this.jdbc = jdbc;
+    this.legacy = legacy;
   }
 
-  // Mirrors legacy create_hauling_auth: insert the mark only when absent.
-  private static final String INSERT_HAULING_AUTH_SQL =
-      """
-      INSERT INTO the.hauling_authority (
-        timber_mark, forest_file_id, marking_method_code,
-        marking_instrument_code, entry_timestamp, entry_userid,
-        update_timestamp, update_userid, revision_count
-      )
-      SELECT :timberMark, :forestFileId, 'S', 'H',
-             SYSDATE, :userId, SYSDATE, :userId, 1
-        FROM dual
-       WHERE NOT EXISTS (
-             SELECT 1 FROM the.hauling_authority
-              WHERE timber_mark = :timberMark)
-      """;
-
-  // Mirrors legacy create_hauling_xref: link mark to hva, default first as primary.
-  private static final String INSERT_HAULING_XREF_SQL =
-      """
-      INSERT INTO the.harvesting_hauling_xref (
-        hva_skey, timber_mark, primary_mark_ind, revision_count,
-        entry_userid, entry_timestamp, update_userid, update_timestamp
-      )
-      SELECT TO_NUMBER(:hvaSkey), :timberMark,
-             CASE WHEN EXISTS (
-                    SELECT 1 FROM the.harvesting_hauling_xref
-                     WHERE primary_mark_ind = 'Y'
-                       AND hva_skey = TO_NUMBER(:hvaSkey))
-                  THEN 'N' ELSE 'Y' END,
-             1, :userId, SYSDATE, :userId, SYSDATE
-        FROM dual
-       WHERE NOT EXISTS (
-             SELECT 1 FROM the.harvesting_hauling_xref
-              WHERE timber_mark = :timberMark
-                AND hva_skey = TO_NUMBER(:hvaSkey))
-      """;
-
-  // Mirrors legacy save UPDATE of cut_block with optimistic revision guard.
-  private static final String UPDATE_CUT_BLOCK_SQL =
-      """
-      UPDATE the.cut_block
-         SET timber_mark = :timberMark,
-             update_userid = :userId,
-             update_timestamp = SYSDATE,
-             revision_count = revision_count + 1
-       WHERE cb_skey = TO_NUMBER(:cbSkey)
-         AND revision_count = :revisionCount
-      """;
+  /** The authorization, its blocks and the marks on offer. */
+  public AssignMarksDto find(String authorizationId, String forestFileId) {
+    AssignMarksDto authorization = jdbc.query(
+            AUTHORIZATION_SQL,
+            Map.of("forestFileId", forestFileId, "authorizationId", authorizationId),
+            (rs, n) -> new AssignMarksDto(
+                rs.getLong("hva_skey"),
+                rs.getString("forest_file_id"),
+                rs.getString("harvesting_authority_id"),
+                rs.getString("harvest_auth_status_code"),
+                rs.getObject("status_date", LocalDate.class),
+                rs.getObject("expiry_date", LocalDate.class),
+                rs.getString("licensee"),
+                rs.getString("higher_level_plan_reference"),
+                List.of(),
+                List.of()))
+        .stream()
+        .findFirst()
+        .orElseThrow(() -> new ResponseStatusException(
+            HttpStatus.NOT_FOUND, "No Fort St. John authorization matches this file and id."));
+    return new AssignMarksDto(
+        authorization.hvaSkey(),
+        authorization.forestFileId(),
+        authorization.authorizationId(),
+        authorization.statusCode(),
+        authorization.approvalDate(),
+        authorization.expiryDate(),
+        authorization.licensee(),
+        authorization.higherLevelPlanReference(),
+        blocks(authorization.hvaSkey()),
+        marks(forestFileId));
+  }
 
   /**
-   * Assign the requested hauling timber marks to each cut block. Returns the
-   * number of {@code CUT_BLOCK} rows updated.
+   * Assigns the requested marks, all or none.
    *
-   * @param request the forest file, harvesting authority and per-block marks
-   * @param userId  the authenticated user id (audit columns)
+   * @param senior whether the caller may specify a new timber mark
+   * @return the number of blocks updated
    */
   @Transactional
-  public int assignMarks(AssignMarksRequest request, String userId) {
-    List<AssignMarksRequest.BlockAssignment> assignments = request.assignments();
-    if (assignments == null || assignments.isEmpty()) {
-      return 0;
+  public int assignMarks(
+      String authorizationId, AssignMarksRequest q, boolean senior, String userId) {
+    if (q.forestFileId() == null || q.forestFileId().isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Forest file is required.");
+    }
+    AssignMarksDto authorization = find(authorizationId, q.forestFileId());
+    if (q.hvaSkey() == null || q.hvaSkey() != authorization.hvaSkey()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+          "The request does not match this authorization.");
+    }
+    String problem = AssignMarksRules.problem(q, senior);
+    if (problem != null) {
+      throw new ResponseStatusException(
+          problem.startsWith("Specify New") ? HttpStatus.FORBIDDEN : HttpStatus.BAD_REQUEST,
+          problem);
     }
 
-    int updated = 0;
-    for (AssignMarksRequest.BlockAssignment a : assignments) {
-      // Legacy: IF p_new_timber_mark IS NOT NULL THEN p_timber_mark := p_new_timber_mark.
-      String effectiveMark =
-          StringUtils.hasText(a.newTimberMark()) ? a.newTimberMark() : a.timberMark();
-
-      MapSqlParameterSource markParams = new MapSqlParameterSource()
-          .addValue("timberMark", effectiveMark)
-          .addValue("forestFileId", request.forestFileId())
-          .addValue("hvaSkey", request.hvaSkey())
-          .addValue("userId", userId);
-      jdbc.update(INSERT_HAULING_AUTH_SQL, markParams);
-      jdbc.update(INSERT_HAULING_XREF_SQL, markParams);
-
-      MapSqlParameterSource blockParams = new MapSqlParameterSource()
-          .addValue("timberMark", effectiveMark)
-          .addValue("cbSkey", a.cbSkey())
-          .addValue("revisionCount", a.revisionCount())
-          .addValue("userId", userId);
-      updated += jdbc.update(UPDATE_CUT_BLOCK_SQL, blockParams);
+    if (q.assignToAllMark() != null && !q.assignToAllMark().isBlank()) {
+      offeredCheck(authorization, q.assignToAllMark());
+      call("Assign Mark to All", authorization, null, null, q.assignToAllMark(), null, null,
+          userId);
+      return authorization.blocks().size();
     }
-    return updated;
+
+    for (BlockAssignment a : q.assignments()) {
+      String existing = a.timberMark() == null || a.timberMark().isBlank() ? null : a.timberMark();
+      if (existing != null) {
+        offeredCheck(authorization, existing);
+      }
+      String created = existing != null
+          ? null : a.newTimberMark().trim().toUpperCase(Locale.ROOT);
+      String cutBlockId = lockedBlock(a, authorization.hvaSkey());
+      call("SAVE", authorization, a.cbSkey().toString(), cutBlockId, existing, created,
+          a.revisionCount().toString(), userId);
+    }
+    return q.assignments().size();
+  }
+
+  private void offeredCheck(AssignMarksDto authorization, String mark) {
+    if (!authorization.marks().contains(mark)) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Timber Mark " + mark + " is not available on this file.");
+    }
+  }
+
+  private String lockedBlock(BlockAssignment a, long hvaSkey) {
+    List<Map<String, Object>> rows = jdbc.queryForList(
+        LOCK_SQL, Map.of("cbSkey", a.cbSkey(), "hvaSkey", hvaSkey));
+    if (rows.isEmpty()) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "A block is not on this authorization.");
+    }
+    if (((Number) rows.get(0).get("revision_count")).longValue() != a.revisionCount()) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, MODIFIED);
+    }
+    return (String) rows.get(0).get("cut_block_id");
+  }
+
+  private void call(
+      String action,
+      AssignMarksDto authorization,
+      String cbSkey,
+      String cutBlockId,
+      String timberMark,
+      String newTimberMark,
+      String revisionCount,
+      String userId) {
+    legacy.run(PROCEDURE, CURSOR_TYPE,
+        action,
+        authorization.forestFileId(),
+        null, // p_cutting_permit_id: a Fort St. John authorization has none
+        Long.toString(authorization.hvaSkey()),
+        cbSkey,
+        authorization.authorizationId(),
+        null, // p_approval_date
+        null, // p_expiry_date
+        null, // p_licensee
+        cutBlockId,
+        timberMark,
+        newTimberMark,
+        null, // p_higher_level_plan_reference
+        userId,
+        revisionCount);
+  }
+
+  private List<AssignMarksDto.Block> blocks(long hvaSkey) {
+    return jdbc.query(BLOCKS_SQL, Map.of("hvaSkey", hvaSkey), (rs, n) -> new AssignMarksDto.Block(
+        rs.getLong("cb_skey"),
+        rs.getString("cut_block_id"),
+        rs.getString("timber_mark"),
+        rs.getLong("revision_count")));
+  }
+
+  private List<String> marks(String forestFileId) {
+    return jdbc.queryForList(MARKS_SQL, Map.of("forestFileId", forestFileId), String.class);
   }
 }

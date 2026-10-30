@@ -210,7 +210,13 @@ Private Marks, with private-mark writes (`POST /api/fta/marks`) and nothing else
 `FTA_TIMBER_MARK_DISTRICT_ADMIN` has the same access and acts as legacy FTA510's district
 level: its new applications start PA and it sends them to Headquarters with Submit to HQ
 (PA → PI), and its certificate print marks an issued mark issued (HN → HI).
-Both must be created as roles on FTA's CSS integration in each environment.
+Two harvest authorization roles read what `FTA_VIEWER` reads and write cutting
+permits and cut blocks in any district. `FTA_HARVEST_AUTH_DISTRICT_ADMIN` adds and
+edits permits and blocks, assigns marks and retires permits.
+`FTA_HARVEST_AUTH_SENIOR_ADMIN` also gets legacy's Senior Admin and Feature Admin
+rights: suspensions, permit conditions, postponements, relabelling, deleting, and
+changing terms or rolling back a status after issue.
+All of these must be created as roles on FTA's CSS integration in each environment.
 
 ### Three things that are easy to get wrong
 

@@ -137,7 +137,8 @@ export function parsePrivileges(input: string[]): USER_PRIVILEGE_TYPE {
 
 /**
  * Role precedence, highest first. FTA_ADMIN (full CRUD) outranks
- * FTA_TIMBER_MARK_HEADQUARTERS_ADMIN (private-mark writes, a narrow set of screens), then
+ * FTA_HARVEST_AUTH_SENIOR_ADMIN, then FTA_HARVEST_AUTH_DISTRICT_ADMIN (harvest writes, a viewer's
+ * reads), then FTA_TIMBER_MARK_HEADQUARTERS_ADMIN (private-mark writes, a narrow set of screens), then
  * FTA_TIMBER_MARK_DISTRICT_ADMIN (the same screens and writes; only its certificate print
  * differs, and that is decided by the backend from the token, not by this ranking), which
  * outranks FTA_VIEWER (read-only). Mirrors the backend Role enum ordering.
@@ -147,6 +148,8 @@ export function parsePrivileges(input: string[]): USER_PRIVILEGE_TYPE {
  */
 const ROLE_PRECEDENCE: ROLE_TYPE[] = [
   'FTA_ADMIN',
+  'FTA_HARVEST_AUTH_SENIOR_ADMIN',
+  'FTA_HARVEST_AUTH_DISTRICT_ADMIN',
   'FTA_TIMBER_MARK_HEADQUARTERS_ADMIN',
   'FTA_TIMBER_MARK_DISTRICT_ADMIN',
   'FTA_VIEWER',

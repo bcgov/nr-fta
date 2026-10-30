@@ -19,8 +19,9 @@ npm run e2e:ui             # Playwright UI mode
 npm run e2e:all-browsers   # every project
 ```
 
-In CI, `auth.setup.ts` logs in programmatically from `E2E_IDIR_USER` /
-`E2E_IDIR_PASSWORD` (see `.github/workflows/reusable-tests.yml`).
+In CI, `auth.setup.ts` logs in programmatically from `E2E_IDIR_USER`,
+`E2E_IDIR_PASSWORD` and `E2E_IDIR_TOTP_SECRET` (see
+`.github/workflows/reusable-tests.yml`).
 
 ## The session is two files, not one
 
@@ -48,42 +49,91 @@ Re-run `npm run e2e:login` when the cached session expires — symptom: specs
 bouncing to the login domain, or 401s. **That window is 30 minutes**, half of
 what the Cognito refresh token allowed.
 
-### Programmatic login and MFA
+### Unattended login (TOTP)
 
 FTA signs in through the standard realm's **IDIR - MFA** integration, which
-federates to Azure AD and can require a second factor — something a stored
-password cannot satisfy. The programmatic path works only for an account whose
-MFA is met without interaction (a CI service account with a conditional-access
-exemption). If CI starts timing out at the Microsoft sign-in page, that is why,
-and no selector change will fix it.
+federates to Azure AD and requires a second factor. Set `E2E_IDIR_USER`,
+`E2E_IDIR_PASSWORD` and `E2E_IDIR_TOTP_SECRET` and the setup project signs in on
+its own, answering the prompt with a generated authenticator code (`totp.ts`).
+CI reads the same three values from repository secrets of the same names.
+
+This follows BC Gov SSO's
+[Automating MFA with TOTP](https://bcgov.github.io/sso-docs/advanced/automating-mfa-totp)
+guide, and should use a dedicated IDIR test account. To get the secret, sign in
+as that account at <https://mysignins.microsoft.com/security-info>, then
+**Add sign-in method → Microsoft Authenticator → Set up a different
+authentication app → Can't scan QR code?** and copy the **Secret key**. Spaces
+and case don't matter. Finish the registration by entering one generated code so
+the method is actually enrolled, and make it the default sign-in method.
+
+The secret is the second factor itself: keep it in a masked secret, never in the
+repo or a committed `.env`.
+
+```bash
+E2E_IDIR_USER=... E2E_IDIR_PASSWORD=... E2E_IDIR_TOTP_SECRET=... npm run e2e:login
+```
+
+## The test user
+
+**Grant `FTA_ADMIN`, and nothing else**, in the CSS console, in each environment
+the suite runs against: DEV for PR previews and TEST on merge. Roles don't stack,
+so a second role would change nothing. `smoke.spec.ts` names this as the problem
+when the role is missing.
+
+## What every test is held to
+
+`fixtures.ts` fails a test, whatever its own assertions say, on:
+
+- **A write.** The suite is read-only, because it shares Oracle with everyone on
+  TEST and what it added could not all be removed: only an EE cutting permit can
+  be deleted, and a new one starts as PE. Any non-GET API call other than name
+  lookups and reports is aborted. Dialogs are opened and cancelled, never saved.
+- **A 5xx**, which is how an untested native SQL query shows itself.
+- **A 401 or 403**, which means the role is missing or the URL rules are wrong.
+- **An uncaught exception.** There is no error boundary, so it is a blank page.
 
 ## What's covered
 
 | Spec | Backend | Notes |
 |------|---------|-------|
-| `smoke.spec.ts` | real | root returns 200 |
+| `smoke.spec.ts` | real | the test user's role; every page in the menu renders; 404 |
+| `navigation.spec.ts` | real | every menu entry opens its page; labels, icons, bold, open section; the New Application dialog |
+| `search.spec.ts` | real | all nine searches run; the criteria rules legacy enforced; Clear all |
+| `tenure.spec.ts` | real | search to tenure, every tab; back link; add-permit and add-tenure validation |
+| `harvest.spec.ts` | real | permit and cut block: every tab, edit dialogs, Delete's confirmation, assign marks, suspend, re-label |
+| `marks.spec.ts` | real | list to private mark, every tab; the new application dialog |
+| `range.spec.ts` | real | range tenure with every tab; range unit |
+| `admin.spec.ts` | real | audit report; transfer and archive stay disabled until they are ready |
+| `role-access.spec.ts` | none | all six roles: menu, route guard, harvest actions; no role; signed out |
 
-That is the whole suite today. It is deliberately a placeholder: it lets
-`reusable-tests.yml`'s chromium project pass on a fresh PR rather than failing
-with "No tests found". Authenticated flows are not yet covered.
+Searches are data-agnostic: `helpers/search.ts` tries the first few districts
+until one returns a row. A test **skips** when none does, or when the record it
+found doesn't offer the action under test, so read the skip count: a skip is a gap
+in that run's coverage, not a pass.
+
+### How `role-access.spec.ts` covers six roles with one account
+
+The realm can't mint a token for a role the test user doesn't hold, but the
+frontend's role rules read only the profile in sessionStorage. So
+`helpers/mockSession.ts` forges one, and answers every API call from
+`helpers/mockApi.ts` so that the forged token never leaves the browser. This proves
+what each role is shown. It proves nothing about what the server would refuse:
+that is `HarvestAuthorizationRulesTest` in the backend.
 
 ## Helpers
 
 - `utils.ts` — `baseURL`, the two storage-state paths, `gotoProtected` (navigate
   and wait for the Layout header, with a diagnostic dump on timeout), and small
   test-data helpers.
-- `helpers/nav.ts` — `PAGES`, every SideNav-reachable route with its `<h1>` and
-  `data-testid` suffix, plus `gotoPage`. Mirrors `NAV` in
-  `src/routes/routePaths.ts`; keep the two in step. Admin entries carry
-  `role: 'FTA_ADMIN'` — a `FTA_VIEWER` session gets `ForbiddenPage` for those.
+- `helpers/nav.ts` — `PAGES`, every SideNav-reachable route with its `<h1>`,
+  `data-testid` suffix and section, plus `gotoPage`, `openNavSection` (a section's
+  entries are hidden until it is open) and `walkTabs`. Mirrors `NAV` in
+  `src/routes/routePaths.ts`; keep the two in step.
+- `helpers/search.ts` — running a search and opening its first result.
+- `helpers/mockSession.ts`, `helpers/mockApi.ts` — see above.
 
 ## Prerequisites
 
-- **A role on the token.** A signed-in account with no `FTA_ADMIN` /
-  `FTA_VIEWER` role lands on `UnauthorizedPage`, and every page assertion will
-  fail. Roles are assigned per environment in the CSS console.
-- **`FTA_ADMIN` for the Admin section and any write flow.** `FTA_VIEWER` has its
-  edit affordances hidden in the UI *and* its writes rejected with 403 by the
-  backend, so an admin storageState is needed for those.
+- **`FTA_ADMIN` on the test user** — see [The test user](#the-test-user).
 - **A reachable Oracle.** The backend needs a datasource to boot at all; without
   VPN and credentials the app will not come up for the suite to drive.

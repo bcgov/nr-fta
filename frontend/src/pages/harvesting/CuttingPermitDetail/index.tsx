@@ -1,4 +1,5 @@
 import {
+  Archive,
   ArrowLeft,
   Calendar,
   Edit,
@@ -8,22 +9,26 @@ import {
   Stamp,
   TableOfContents,
   Tag as TagIcon,
+  TrashCan,
   Tree,
 } from '@carbon/icons-react';
 import { Button, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import { useCallback, useEffect, useState, type FC } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
+import ConfirmationModal from '@/components/ConfirmationModal';
 import DetailTile, { type DetailField } from '@/components/DetailTile';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
+import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
 import { useLazyTabs } from '@/hooks/useLazyTabs';
 import PageLayout from '@/pages/PageLayout';
-import { canEdit, isPathAllowedForUser } from '@/routes/access';
+import { TimberMarkHarvestHistory } from '@/pages/tenure/TenureDetail/HarvestHistoryPanel';
+import { canEditHarvest, isPathAllowedForUser } from '@/routes/access';
 import {
   getDistricts,
   getMarkingInstruments,
@@ -31,10 +36,17 @@ import {
   getSalvageTypes,
   type CodeOption,
 } from '@/services/codeLists';
-import { getCuttingPermitDetail } from '@/services/cutting_permit_detail';
+import {
+  deletePermit,
+  getCuttingPermitDetail,
+  retirePermit,
+} from '@/services/cutting_permit_detail';
 import { formatDate } from '@/utils/formatDate';
 
+import PermitConditions from './PermitConditions';
 import PermitCutBlocks from './PermitCutBlocks';
+import PermitEditModal from './PermitEditModal';
+import PermitPostponements from './PermitPostponements';
 
 const nf = new Intl.NumberFormat('en-CA');
 
@@ -71,7 +83,8 @@ const label = (options: CodeOption[], code: string | null | undefined) =>
  * of the permit's key facts, then contained Tabs over a full-bleed grey pane of
  * section cards. Reached from the Harvesting Authority Search or the tenure
  * CP/Mark tab. Backed by {@code GET /api/fta/cutting-permits/{cpId}} (which
- * ports THE.FTA_902_CP_DETAIL).
+ * ports THE.FTA_902_CP_DETAIL), whose rules decide which actions are enabled.
+ * Legacy's Print CP Approval is not here: FTA902 disabled it permanently.
  */
 const CuttingPermitDetail: FC = () => {
   const { cpId = '' } = useParams();
@@ -80,8 +93,16 @@ const CuttingPermitDetail: FC = () => {
   const forestFileId = searchParams.get('forestFileId') ?? undefined;
   const { user } = useAuth();
 
+  const navigate = useNavigate();
+  const { display } = useNotification();
+  const [editOpen, setEditOpen] = useState(false);
+  const [confirming, setConfirming] = useState<'retire' | 'delete' | null>(null);
+
   const fetcher = useCallback(
-    () => getCuttingPermitDetail(cpId, { forestFileId }),
+    () =>
+      forestFileId
+        ? getCuttingPermitDetail(cpId, forestFileId)
+        : Promise.reject(new Error('Open this permit from its tenure or a search result.')),
     [cpId, forestFileId],
   );
   const { data: cp, loading, error, reload } = useApiResource(fetcher, [cpId, forestFileId]);
@@ -118,36 +139,68 @@ const CuttingPermitDetail: FC = () => {
   const area = cp?.harvestArea != null ? `${nf.format(cp.harvestArea)} ha` : '—';
   const permitId = cp?.cuttingPermitId ?? cpId;
 
+  const permitQuery = forestFileId ? `?forestFileId=${encodeURIComponent(forestFileId)}` : '';
+  const rules = cp?.rules;
+
   const actions =
-    cp && canEdit(user) ? (
+    cp && rules && canEditHarvest(user) ? (
       <>
-        <Button size="md" kind="tertiary" renderIcon={Edit}>
-          Edit permit
-        </Button>
         <Button
           size="md"
           kind="tertiary"
-          renderIcon={TagIcon}
-          as={Link}
-          to={`/harvesting-authority/${permitId}/assign-marks`}
+          renderIcon={Edit}
+          disabled={!rules.canSave}
+          onClick={() => setEditOpen(true)}
         >
-          Assign marks to blocks
+          Edit permit
+        </Button>
+        {rules.canAssignMarks && (
+          <Button
+            size="md"
+            kind="tertiary"
+            renderIcon={TagIcon}
+            as={Link}
+            to={`/harvesting-authority/${encodeURIComponent(permitId)}/assign-marks${permitQuery}`}
+          >
+            Assign marks to blocks
+          </Button>
+        )}
+        {rules.canSuspendBlocks && (
+          <Button
+            size="md"
+            kind="tertiary"
+            renderIcon={Pause}
+            as={Link}
+            to={`/harvesting-authority/${encodeURIComponent(permitId)}/suspend-blocks${permitQuery}`}
+          >
+            Suspend blocks
+          </Button>
+        )}
+        <Button
+          size="md"
+          kind="tertiary"
+          renderIcon={Archive}
+          disabled={!rules.canRetire}
+          onClick={() => setConfirming('retire')}
+        >
+          Retire
         </Button>
         <Button
           size="md"
           kind="danger"
-          renderIcon={Pause}
-          as={Link}
-          to={`/harvesting-authority/${permitId}/suspend-blocks`}
+          renderIcon={TrashCan}
+          disabled={!rules.canDelete}
+          onClick={() => setConfirming('delete')}
         >
-          Suspend blocks
+          Delete
         </Button>
       </>
     ) : undefined;
 
   // A Timber Mark Headquarters Administrator reaches this page from Timber Mark
   // Search and may not open Harvesting Authority Search, so goes back there.
-  const back = isPathAllowedForUser(user, '/search/harvesting-authority')
+  const readsSections = isPathAllowedForUser(user, '/search/harvesting-authority');
+  const back = readsSections
     ? { path: '/search/harvesting-authority', label: 'Harvesting Authority Search' }
     : { path: '/search/timber-mark', label: 'Timber Mark Search' };
 
@@ -164,6 +217,7 @@ const CuttingPermitDetail: FC = () => {
             : '—',
         },
         { label: 'Legal Description', value: dash(cp.location), wide: true },
+        { label: 'Retired', value: date(cp.retirementDate) },
       ]
     : [];
 
@@ -179,6 +233,12 @@ const CuttingPermitDetail: FC = () => {
         },
         { label: 'Quota Type', value: dash(cp.quotaTypeCode) },
         { label: 'Salvage Type', value: label(lookups.salvageTypes, cp.salvageTypeCode) },
+        {
+          label: 'CP Extension Application Fee Waived',
+          value: dash(cp.extAppFeeWaived),
+        },
+        { label: 'CP Extension Application Fee Paid', value: dash(cp.extAppFeePaid) },
+        { label: 'Within Fibre Recovery Zone', value: dash(cp.withinFibreRecoveryZone) },
       ]
     : [];
 
@@ -254,6 +314,12 @@ const CuttingPermitDetail: FC = () => {
                   <Tab renderIcon={TableOfContents}>Details</Tab>
                   <Tab renderIcon={Tree}>Cut blocks</Tab>
                   <Tab renderIcon={RecentlyViewed}>Harvest history</Tab>
+                  <Tab renderIcon={Stamp} disabled={!readsSections}>
+                    Conditions
+                  </Tab>
+                  <Tab renderIcon={Calendar} disabled={!readsSections}>
+                    Postponements
+                  </Tab>
                 </TabList>
                 <TabPanels>
                   <TabPanel>
@@ -267,6 +333,7 @@ const CuttingPermitDetail: FC = () => {
                             fields={conditionFields}
                           />
                         </div>
+                        <DetailTile title="Term and status" icon={Calendar} fields={termFields} />
                       </div>
                     )}
                   </TabPanel>
@@ -291,11 +358,31 @@ const CuttingPermitDetail: FC = () => {
                   </TabPanel>
 
                   <TabPanel>
-                    {tabs.isOpened(2) && (
-                      <div className="fsp-info__tab-panel">
-                        <DetailTile title="Term and status" icon={Calendar} fields={termFields} />
-                      </div>
+                    {tabs.isOpened(2) &&
+                      (cp.timberMark ? (
+                        <TimberMarkHarvestHistory timberMark={cp.timberMark} />
+                      ) : (
+                        <div className="fsp-info__tab-panel">
+                          <EmptyState
+                            icon={<RecentlyViewed size={48} />}
+                            title="No harvest history for this permit"
+                            body="This permit has no timber mark."
+                          />
+                        </div>
+                      ))}
+                  </TabPanel>
+
+                  <TabPanel>
+                    {tabs.isOpened(3) && (
+                      <PermitConditions
+                        hvaSkey={cp.hvaSkey}
+                        canManage={cp.rules.canManageConditions}
+                      />
                     )}
+                  </TabPanel>
+
+                  <TabPanel>
+                    {tabs.isOpened(4) && <PermitPostponements cp={cp} onChanged={reload} />}
                   </TabPanel>
                 </TabPanels>
               </Tabs>
@@ -303,6 +390,46 @@ const CuttingPermitDetail: FC = () => {
           </>
         )}
       </AsyncBoundary>
+
+      {cp && (
+        <>
+          <PermitEditModal
+            cp={cp}
+            open={editOpen}
+            onClose={() => setEditOpen(false)}
+            onSaved={reload}
+          />
+          <ConfirmationModal
+            open={confirming === 'retire'}
+            onClose={() => setConfirming(null)}
+            heading="Retire cutting permit"
+            confirmLabel="Retire"
+            errorTitle="Could not retire the cutting permit"
+            onConfirm={async () => {
+              await retirePermit(cp.hvaSkey, cp.revisionCount);
+              display({ kind: 'success', title: 'Retirement successful', timeout: 5000 });
+              reload();
+            }}
+          >
+            Retire cutting permit {cp.cuttingPermitId}?
+          </ConfirmationModal>
+          <ConfirmationModal
+            open={confirming === 'delete'}
+            onClose={() => setConfirming(null)}
+            heading="Delete cutting permit"
+            confirmLabel="Delete"
+            danger
+            errorTitle="Could not delete the cutting permit"
+            onConfirm={async () => {
+              await deletePermit(cp.hvaSkey, cp.revisionCount);
+              display({ kind: 'success', title: 'Cutting permit deleted', timeout: 5000 });
+              navigate(`/tenures/${encodeURIComponent(cp.forestFileId ?? '')}`);
+            }}
+          >
+            Delete cutting permit {cp.cuttingPermitId}?
+          </ConfirmationModal>
+        </>
+      )}
     </PageLayout>
   );
 };

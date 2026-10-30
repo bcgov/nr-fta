@@ -21,8 +21,9 @@ import './LayoutSideNav.css';
  *
  * <ul>
  *   <li><b>Expanded</b> — the legacy FTA menu's headings, each a
- *       collapsible {@code SideNavMenu} holding its destinations. The section
- *       containing the current route opens on load; the rest stay closed.
+ *       collapsible {@code SideNavMenu} with an icon, holding its destinations
+ *       as plain labels. The section containing the current route opens on
+ *       load; the rest stay closed.
  *   <li><b>Collapsed</b> — a 48px icon rail showing one icon per section. The icons do not navigate: clicking one expands the nav and
  *       opens that section, so the rail is a way back into the menu rather
  *       than a shortcut past it. Hovering names the section.
@@ -89,16 +90,9 @@ export const LayoutSideNav: FC = () => {
     </SideNavLink>
   );
 
-  /**
-   * A destination inside an expanded section.
-   *
-   * <p>The icon is rendered as a child rather than through a prop: unlike
-   * {@code SideNavLink}, {@code SideNavMenuItem} has no {@code renderIcon}.
-   * Carbon wraps whatever it is given in its own link-text span, so the icon
-   * and label are laid out as a flex row from there (see LayoutSideNav.css).
-   */
+  // Destinations inside a section are labels only; the section heading
+  // carries the icon. The label is wrapped so LayoutSideNav.css can ellipsize it.
   const renderItem = (route: MenuLeaf) => {
-    const Icon = route.icon;
     // Only for a role that can use the dialog.
     if (route.modal === 'new-mark-application' && !mayCreateMark) return null;
     return (
@@ -120,13 +114,8 @@ export const LayoutSideNav: FC = () => {
             : undefined
         }
       >
-        <span className="side-nav-item">
-          {Icon ? (
-            <span className="side-nav-item__icon" aria-hidden="true">
-              <Icon />
-            </span>
-          ) : null}
-          <span className="side-nav-item__label">{route.label}</span>
+        <span className="side-nav-item__label" title={route.label}>
+          {route.label}
         </span>
       </SideNavMenuItem>
     );
@@ -137,6 +126,7 @@ export const LayoutSideNav: FC = () => {
       <SideNavMenu
         key={section.id}
         title={section.label}
+        renderIcon={section.icon}
         defaultExpanded={section.id === activeSectionId}
         className={`side-nav-section side-nav-section--${section.id}`}
       >

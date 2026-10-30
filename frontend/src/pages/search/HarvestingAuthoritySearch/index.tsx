@@ -779,8 +779,15 @@ const HarvestingAuthoritySearch: FC = () => {
                               const cp =
                                 (row.cells.find((c) => c.info.header === 'cuttingPermitId')
                                   ?.value as string | undefined) ?? '';
+                              // A CP id is unique only within its tenure.
+                              const fileId =
+                                (row.cells.find((c) => c.info.header === 'forestFileId')
+                                  ?.value as string | undefined) ?? '';
                               const open = () => {
-                                if (cp) navigate(`/harvesting-authority/${encodeURIComponent(cp)}`);
+                                if (cp && fileId)
+                                  navigate(
+                                    `/harvesting-authority/${encodeURIComponent(cp)}?forestFileId=${encodeURIComponent(fileId)}`,
+                                  );
                               };
                               return (
                                 <TableRow

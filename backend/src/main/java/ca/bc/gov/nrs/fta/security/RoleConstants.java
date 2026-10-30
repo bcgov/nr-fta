@@ -38,10 +38,27 @@ public class RoleConstants {
      */
     public static final String TIMBER_MARK_DISTRICT_AUTHORITY = "FTA_TIMBER_MARK_DISTRICT_ADMIN";
 
+    /**
+     * CSS role / Spring authority for harvest authorization senior staff: everything
+     * {@link #HARVEST_AUTH_DISTRICT_AUTHORITY} may do, plus legacy's Senior Admin and Feature
+     * Admin rights (terms after issue, status rollbacks, postponements, suspensions, relabel
+     * and delete).
+     */
+    public static final String HARVEST_AUTH_SENIOR_AUTHORITY = "FTA_HARVEST_AUTH_SENIOR_ADMIN";
+
+    /**
+     * CSS role / Spring authority for harvest authorization staff: edits cutting permits and
+     * cut blocks. Despite the name it is not limited to one district; like the timber mark
+     * roles it names legacy's organization level, not a geographic scope.
+     */
+    public static final String HARVEST_AUTH_DISTRICT_AUTHORITY = "FTA_HARVEST_AUTH_DISTRICT_ADMIN";
+
     /** CSS role / Spring authority for read-only access. */
     public static final String VIEWER_AUTHORITY = "FTA_VIEWER";
 
     public final Role FTA_ADMIN = Role.FTA_ADMIN;
+    public final Role FTA_HARVEST_AUTH_SENIOR_ADMIN = Role.FTA_HARVEST_AUTH_SENIOR_ADMIN;
+    public final Role FTA_HARVEST_AUTH_DISTRICT_ADMIN = Role.FTA_HARVEST_AUTH_DISTRICT_ADMIN;
     public final Role FTA_TIMBER_MARK_HEADQUARTERS_ADMIN = Role.FTA_TIMBER_MARK_HEADQUARTERS_ADMIN;
     public final Role FTA_TIMBER_MARK_DISTRICT_ADMIN = Role.FTA_TIMBER_MARK_DISTRICT_ADMIN;
     public final Role FTA_VIEWER = Role.FTA_VIEWER;

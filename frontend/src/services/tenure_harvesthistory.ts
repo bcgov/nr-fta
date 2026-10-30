@@ -43,6 +43,13 @@ export interface TenureHarvestHistory {
   unavailable: string[];
 }
 
+/** GET /api/fta/timber-marks/{timberMark}/harvest-history. */
+export function getTimberMarkHarvestHistory(timberMark: string): Promise<TenureHarvestHistory> {
+  return apiGet<TenureHarvestHistory>(
+    `/api/fta/timber-marks/${encodeURIComponent(timberMark)}/harvest-history`,
+  );
+}
+
 /** GET /api/fta/tenures/{forestFileId}/harvest-history. */
 export function getTenureHarvestHistory(forestFileId: string): Promise<TenureHarvestHistory> {
   return apiGet<TenureHarvestHistory>(

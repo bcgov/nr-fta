@@ -1,17 +1,4 @@
-import {
-  Archive,
-  Document,
-  DocumentAdd,
-  DocumentTasks,
-  Download,
-  Edit,
-  Map,
-  Save,
-  Search,
-  Settings,
-  Tag,
-  UserFollow,
-} from '@carbon/icons-react';
+import { Document, Search, Settings, Tag } from '@carbon/icons-react';
 
 import type { ROLE_TYPE } from '@/context/auth/types';
 
@@ -20,7 +7,8 @@ import { isPathAllowedForRole } from './access';
 import type { ComponentType } from 'react';
 
 // The SideNav is two levels: a small set of section headings, each holding a
-// flat list of destinations. It mirrors the legacy FTA menu, which is a static
+// flat list of destinations as plain labels; only the headings carry an icon.
+// It mirrors the legacy FTA menu, which is a static
 // JavaScript structure in `webapp/javascript/menuLinks.js` (lines 103-152)
 // rendered by a DHTML menu engine — not a WebADE or Struts config, and the
 // only place the menu is defined.
@@ -29,7 +17,9 @@ import type { ComponentType } from 'react';
 // Tenures, Private Marks, Recreation and Admin. Labels and order below are
 // legacy's verbatim, including where they read oddly.
 //
-// Four deliberate departures from legacy, each noted at the point it applies:
+// Five deliberate departures from legacy, each noted at the point it applies:
+//   - Entries under Search drop legacy's "Search" suffix, as the heading already
+//     says it: Tenure Search is Tenures here.
 //   - Recreation is not here at all: that work moved to a separate internal
 //     forestry application, so its menu and its Recreation Search entry are
 //     dropped rather than left pointing nowhere.
@@ -53,7 +43,6 @@ export type MenuLeaf = {
   id: string;
   label: string;
   path: string;
-  icon?: ComponentType;
   roles?: string[];
   /**
    * Opens a dialog over the current page instead of navigating. `path` still
@@ -67,8 +56,9 @@ export type MenuSection = {
   id: string;
   label: string;
   /**
-   * Shown in the collapsed rail, which lists the sections rather than
-   * every destination — clicking one opens the nav on that section.
+   * Shown beside the heading, and alone in the collapsed rail, which lists the
+   * sections rather than every destination — clicking one opens the nav on
+   * that section.
    */
   icon: ComponentType;
   items: MenuLeaf[];
@@ -86,49 +76,43 @@ const NAV: MenuSection[] = [
     label: 'Search',
     icon: Search,
     items: [
-      { id: 'search-tenure', label: 'Tenure Search', path: '/search/tenure', icon: Search },
+      { id: 'search-tenure', label: 'Tenures', path: '/search/tenure' },
       {
         id: 'search-harvesting-authority',
-        label: 'Harvesting Authority Search',
+        label: 'Harvesting Authorities',
         path: '/search/harvesting-authority',
-        icon: DocumentTasks,
       },
       {
         id: 'search-timber-mark',
-        label: 'Timber Mark Search',
+        label: 'Timber Marks',
         path: '/search/timber-mark',
-        icon: Tag,
       },
-      { id: 'search-cut-block', label: 'Cut Block Search', path: '/search/cut-block', icon: Map },
+      { id: 'search-cut-block', label: 'Cut Blocks', path: '/search/cut-block' },
       {
         id: 'search-range-tenure',
-        label: 'Range Tenure Search',
+        label: 'Range Tenures',
         path: '/search/range-tenure',
-        icon: Document,
       },
       // Not on the legacy menu: FTA006 was reachable only from within the
       // Range screens. It has a search screen here, so it is offered directly.
       {
         id: 'search-range-unit',
-        label: 'Range Unit Search',
+        label: 'Range Units',
         path: '/search/range-unit',
-        icon: Map,
       },
       {
         id: 'search-metrics',
         label: 'Application Metrics Export',
         path: '/search/metrics',
-        icon: Download,
       },
       // Legacy nests these two under a `Code Tables Search` submenu. Carbon
       // gives us two levels, and the submenu held nothing else, so they sit
       // directly under Search.
-      { id: 'search-client', label: 'Client Search', path: '/search/client', icon: UserFollow },
+      { id: 'search-client', label: 'Clients', path: '/search/client' },
       {
         id: 'search-management-unit',
-        label: 'Management Unit Search',
+        label: 'Management Units',
         path: '/search/management-unit',
-        icon: Document,
       },
     ],
   },
@@ -137,8 +121,8 @@ const NAV: MenuSection[] = [
     label: 'Tenures',
     icon: Document,
     items: [
-      { id: 'tenure-add', label: 'Add Tenure', path: '/tenures/add', icon: DocumentAdd },
-      { id: 'tenure-detail', label: 'Tenure', path: '/tenures', icon: Document },
+      { id: 'tenure-add', label: 'Add Tenure', path: '/tenures/add' },
+      { id: 'tenure-detail', label: 'Tenure', path: '/tenures' },
     ],
   },
   {
@@ -148,12 +132,11 @@ const NAV: MenuSection[] = [
     items: [
       // Legacy labels these "Application/Amendment List" and "Mark Application";
       // shortened here, as the section heading already says Private Marks.
-      { id: 'marks-list', label: 'Application List', path: '/marks', icon: Tag },
+      { id: 'marks-list', label: 'Application List', path: '/marks' },
       {
         id: 'marks-application',
         label: 'New Application',
         path: '/marks/application',
-        icon: DocumentAdd,
         modal: 'new-mark-application',
       },
     ],
@@ -164,45 +147,39 @@ const NAV: MenuSection[] = [
     icon: Settings,
     roles: ADMIN_ONLY,
     items: [
-      { id: 'admin-audit', label: 'Audit Report', path: '/admin/audit', icon: DocumentTasks },
+      { id: 'admin-audit', label: 'Audit Report', path: '/admin/audit' },
       {
         id: 'admin-rents-fees',
         label: 'Annual Rents and Fees Preparation',
         path: '/admin/rents-fees',
-        icon: Document,
       },
       {
         id: 'admin-mark-transfer',
         label: 'Timber Mark Transfer',
         path: '/admin/mark-transfer',
-        icon: Tag,
       },
       // Legacy: Admin > Range Admin Functions > Manage Zone.
-      { id: 'admin-range-zone', label: 'Manage Zone', path: '/admin/range-zone', icon: Map },
+      { id: 'admin-range-zone', label: 'Manage Zone', path: '/admin/range-zone' },
       {
         id: 'admin-org-unit',
         label: 'Organization Unit Maintenance',
         path: '/admin/org-unit',
-        icon: Settings,
       },
       // Legacy: Admin > Range Billing Menu > Calculate Range Bills > these four.
       {
         id: 'admin-billing-tenure',
         label: 'Tenure Billing Instructions',
         path: '/admin/billing/tenure',
-        icon: Document,
       },
       {
         id: 'admin-billing-invoice',
         label: 'Invoice Preview',
         path: '/admin/billing/invoice-preview',
-        icon: Document,
       },
       {
         id: 'admin-billing-pre',
         label: 'Pre Billing Report',
         path: '/admin/billing/pre-billing',
-        icon: Document,
       },
       {
         // Legacy spells this "Submision" in the menu while the screen itself
@@ -210,24 +187,21 @@ const NAV: MenuSection[] = [
         id: 'admin-billing-approval',
         label: 'Tenure Approval Submission',
         path: '/admin/billing/approval',
-        icon: Edit,
       },
       // Legacy: Admin > Range Billing Menu > these three.
       {
         id: 'admin-billing-post',
         label: 'Post Billing Report',
         path: '/admin/billing/post-billing',
-        icon: Document,
       },
       {
         id: 'admin-rates-fees',
         label: 'Rates and Fees Maintenance',
         path: '/admin/rates-fees',
-        icon: Save,
       },
       // Legacy lists Archive Tenures twice — under Range Admin Functions and
       // again under Range Billing Menu, both pointing at FTA640. Once here.
-      { id: 'admin-archive', label: 'Archive Tenures', path: '/admin/archive', icon: Archive },
+      { id: 'admin-archive', label: 'Archive Tenures', path: '/admin/archive' },
     ],
   },
 ];
