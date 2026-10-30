@@ -36,12 +36,15 @@ const num = (v: number | null | undefined) =>
     ? '—'
     : v.toLocaleString('en-CA', { minimumFractionDigits: 1, maximumFractionDigits: 4 });
 
-const blockLink = (forestFileId: string, b: { cutBlockId: string | null }) =>
+const blockLink = (
+  forestFileId: string,
+  b: { cutBlockId: string | null; cuttingPermitId: string | null },
+) =>
   b.cutBlockId ? (
     <Link
       to={`/cut-block/${encodeURIComponent(b.cutBlockId)}?forestFileId=${encodeURIComponent(
         forestFileId,
-      )}`}
+      )}${b.cuttingPermitId ? `&cuttingPermitId=${encodeURIComponent(b.cuttingPermitId)}` : ''}`}
     >
       {b.cutBlockId}
     </Link>

@@ -19,12 +19,10 @@ import { baseURL, STORAGE_STATE } from './e2e/utils';
  * Override the target with E2E_BASE_URL (e.g. http://localhost:3000 for local).
  */
 export default defineConfig({
-  // 60s is a generous ceiling for a single test against the shared, slower
-  // TEST/preview infra — the proc-heavy flows still finish well under it.
-  // Keeping it tight bounds the blast radius of any hang: with retries: 2 a
-  // stuck test now costs ~3 min instead of ~9, and fails legibly rather than
-  // masquerading as "slow CI".
-  timeout: 60_000,
+  // The ceiling for one test against the shared, slower TEST/preview infra. A
+  // detail spec runs a search and then opens every tab, each with its own Oracle
+  // queries, so it needs well over a single request's worth of time.
+  timeout: 180_000,
   testDir: './e2e',
   // Serial execution. We share one rotating refresh token across specs (see
   // e2e/fixtures.ts); parallel workers race that renewal and intermittently
@@ -44,7 +42,10 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: /auth\.setup\.ts/,
-      use: { ...devices['Desktop Chrome'] },
+      // A trace records every call's arguments, so a retried login would carry
+      // the password and TOTP code into the uploaded report. Screenshots of the
+      // Microsoft pages add nothing worth that.
+      use: { ...devices['Desktop Chrome'], trace: 'off', screenshot: 'off' },
     },
     {
       name: 'chromium',

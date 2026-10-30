@@ -41,6 +41,11 @@ import org.springframework.stereotype.Component;
  *       ({@code DELETE /api/fta/marks/{id}/clients/{skey}}), and resolving display names
  *       ({@code POST /api/fta/users/resolve}). Every other endpoint is 403. Mirrors the page
  *       allow-list in the frontend's {@code routes/access.ts}.</li>
+ *   <li><strong>FTA_HARVEST_AUTH_DISTRICT_ADMIN</strong> — what FTA_VIEWER reads, plus adding and
+ *       editing cutting permits and cut blocks, assigning marks and retiring a permit, in any
+ *       district</li>
+ *   <li><strong>FTA_HARVEST_AUTH_SENIOR_ADMIN</strong> — all of that, plus suspensions, permit
+ *       conditions, postponements, relabelling a block and deleting a permit or block</li>
  *   <li><strong>No recognized role</strong> — rejected (403) for any {@code /api/**} endpoint</li>
  * </ul>
  *
@@ -76,7 +81,10 @@ public class ApiAuthorizationCustomizer implements
     // Must appear BEFORE the generic POST /api/** admin-only rule
     authorize
         .requestMatchers(HttpMethod.POST, "/api/reports/**")
-        .hasAnyAuthority(RoleConstants.ADMIN_AUTHORITY, RoleConstants.VIEWER_AUTHORITY);
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.VIEWER_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
 
     // Mark application — FTA_ADMIN or FTA_TIMBER_MARK_HEADQUARTERS_ADMIN. Exact path, so the mark
     // transfer (/api/fta/marks/transfer, an admin screen) stays FTA_ADMIN only.
@@ -95,16 +103,27 @@ public class ApiAuthorizationCustomizer implements
         .hasAnyAuthority(
             RoleConstants.ADMIN_AUTHORITY, RoleConstants.VIEWER_AUTHORITY,
             RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
-            RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY);
+            RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
 
-    // Notes on a private mark or a tenure, and the mark actions — FTA_ADMIN or either timber
-    // mark role, like the mark application (legacy FTA970 let anyone who could open the file add
-    // a note). Must appear BEFORE the generic POST /api/** admin-only rule.
+    // A note on a tenure — FTA_ADMIN, either timber mark role or either harvest role (legacy
+    // FTA970 let anyone who could open the file add a note). Must appear BEFORE the generic
+    // POST /api/** admin-only rule.
+    authorize
+        .requestMatchers(HttpMethod.POST, "/api/fta/tenures/*/notes")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
+            RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
+
+    // Notes on a private mark, and the mark actions — FTA_ADMIN or either timber mark role, like
+    // the mark application. Must appear BEFORE the generic POST /api/** admin-only rule.
     authorize
         .requestMatchers(
             HttpMethod.POST,
             "/api/fta/marks/*/notes",
-            "/api/fta/tenures/*/notes",
             "/api/fta/marks/*/print",
             "/api/fta/marks/*/land-index",
             "/api/fta/marks/*/clients",
@@ -134,6 +153,57 @@ public class ApiAuthorizationCustomizer implements
             RoleConstants.ADMIN_AUTHORITY, RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY);
 
+    // Harvest authorization, senior-only writes: legacy granted these to Senior Admin, Feature
+    // Admin and Super User, not to district staff. Must appear BEFORE the generic write rules.
+    authorize
+        .requestMatchers(
+            HttpMethod.POST,
+            "/api/fta/cutting-permits/*/suspend-blocks",
+            "/api/fta/cutting-permits/*/conditions",
+            "/api/fta/cutting-permits/*/postponements",
+            "/api/fta/cut-blocks/*/suspensions",
+            "/api/fta/cut-blocks/*/relabel")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY);
+    authorize
+        .requestMatchers(
+            HttpMethod.PUT,
+            "/api/fta/cutting-permits/*/postponements/*",
+            "/api/fta/cut-blocks/*/suspensions/*")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY);
+    authorize
+        .requestMatchers(
+            HttpMethod.DELETE,
+            "/api/fta/cutting-permits/*",
+            "/api/fta/cutting-permits/*/conditions/*",
+            "/api/fta/cutting-permits/*/postponements/*",
+            "/api/fta/cut-blocks/*/suspensions/*",
+            "/api/fta/tenures/*/cut-blocks/*")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY);
+
+    // Harvest authorization, adding and editing — FTA_ADMIN or either harvest role. What a save
+    // accepts from each role is HarvestAccess.
+    authorize
+        .requestMatchers(
+            HttpMethod.POST,
+            "/api/fta/tenures/*/cutting-permits",
+            "/api/fta/tenures/*/cut-blocks",
+            "/api/fta/cutting-permits/*/assign-marks",
+            "/api/fta/cutting-permits/*/retire")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
+    authorize
+        .requestMatchers(
+            HttpMethod.PUT,
+            "/api/fta/cutting-permits/*",
+            "/api/fta/cut-blocks/*")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
+
     // Write operations — FTA_ADMIN only
     authorize
         .requestMatchers(HttpMethod.POST, "/api/**")
@@ -160,6 +230,7 @@ public class ApiAuthorizationCustomizer implements
             "/api/fta/tenure-lookups/**",  // code lists the tenure detail's tabs use
             "/api/fta/timber-marks",       // Timber Mark Search
             "/api/fta/timber-marks/export",
+            "/api/fta/timber-marks/*/harvest-history",  // the cutting permit detail's tab
             "/api/fta/cutting-permits/*",  // the detail Timber Mark Search opens
             "/api/fta/marks",              // Application/Amendment List
             "/api/fta/marks/*",            // private mark detail
@@ -168,12 +239,17 @@ public class ApiAuthorizationCustomizer implements
             RoleConstants.ADMIN_AUTHORITY,
             RoleConstants.VIEWER_AUTHORITY,
             RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
-            RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY);
+            RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
 
-    // Read operations — FTA_ADMIN and FTA_VIEWER
+    // Read operations — FTA_ADMIN, FTA_VIEWER and the harvest roles, which read what a viewer does
     authorize
         .requestMatchers(HttpMethod.GET, "/api/**")
-        .hasAnyAuthority(RoleConstants.ADMIN_AUTHORITY, RoleConstants.VIEWER_AUTHORITY);
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.VIEWER_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
 
     // ── Infrastructure / public routes (declared last) ──────────────
 

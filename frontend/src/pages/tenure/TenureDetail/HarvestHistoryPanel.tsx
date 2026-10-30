@@ -14,7 +14,12 @@ import AsyncBoundary from '@/components/AsyncBoundary';
 import DetailTile from '@/components/DetailTile';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { useApiResource } from '@/hooks/useApiResource';
-import { getTenureHarvestHistory, type HarvestHistoryRow } from '@/services/tenure_harvesthistory';
+import {
+  getTenureHarvestHistory,
+  getTimberMarkHarvestHistory,
+  type HarvestHistoryRow,
+  type TenureHarvestHistory,
+} from '@/services/tenure_harvesthistory';
 
 import UnavailableNotice from './UnavailableNotice';
 
@@ -50,7 +55,17 @@ const rowKey = (r: HarvestHistoryRow, i: number) =>
 const HarvestHistoryPanel: FC<TenurePanelProps> = ({ tenure }) => {
   const forestFileId = tenure.forestFileId;
   const fetcher = useCallback(() => getTenureHarvestHistory(forestFileId), [forestFileId]);
-  const { data, loading, error, reload } = useApiResource(fetcher, [forestFileId]);
+  return <HarvestHistoryView fetcher={fetcher} />;
+};
+
+/** The same view for one timber mark — the cutting permit detail's tab (FTA902's button). */
+export const TimberMarkHarvestHistory: FC<{ timberMark: string }> = ({ timberMark }) => {
+  const fetcher = useCallback(() => getTimberMarkHarvestHistory(timberMark), [timberMark]);
+  return <HarvestHistoryView fetcher={fetcher} />;
+};
+
+const HarvestHistoryView: FC<{ fetcher: () => Promise<TenureHarvestHistory> }> = ({ fetcher }) => {
+  const { data, loading, error, reload } = useApiResource(fetcher, [fetcher]);
 
   return (
     <div className="fsp-info__tab-panel">

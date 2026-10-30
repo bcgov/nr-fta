@@ -13,8 +13,14 @@ import java.time.LocalDate;
  * record collects the fields those procedures select from
  * {@code HARVESTING_AUTHORITY} (via {@code GET_TIMBER_MARK}) plus the file
  * header descriptors.
+ *
+ * @param hvaSkey         the key every write addresses the permit by
+ * @param cuttingPermitId the id shown: the harvesting authority id on an FSJ permit
+ * @param revisionCount   HARVESTING_AUTHORITY's, sent back on a write
+ * @param rules           what the caller may do to this permit
  */
 public record CuttingPermitDetailDto(
+    Long hvaSkey,
     String forestFileId,
     String cuttingPermitId,
     String timberMark,
@@ -45,4 +51,11 @@ public record CuttingPermitDetailDto(
     Double harvestArea,
     String location,
     String mgmtUnitId,
-    String mgmtUnitTypeCode) {}
+    String mgmtUnitTypeCode,
+    String licenceToCutCode,
+    String extAppFeeWaived,
+    String extAppFeePaid,
+    String withinFibreRecoveryZone,
+    LocalDate retirementDate,
+    Long revisionCount,
+    CuttingPermitRules rules) {}

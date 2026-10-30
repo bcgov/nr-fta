@@ -24,7 +24,7 @@ import { useApiResource } from '@/hooks/useApiResource';
 import { useLazyTabs, type LazyTabs } from '@/hooks/useLazyTabs';
 import { useNavOrigin } from '@/lib/navOrigin';
 import PageLayout from '@/pages/PageLayout';
-import { canEdit } from '@/routes/access';
+import { canEdit, canEditHarvest } from '@/routes/access';
 import { markDetailPath } from '@/services/mark_detail';
 import { getTenureDetail } from '@/services/tenure_detail';
 import { formatDate } from '@/utils/formatDate';
@@ -84,7 +84,11 @@ const TABS: TenureTab[] = [
       />
     ),
   },
-  { label: 'Cut block', icon: Tree, render: (p) => <CutBlocksPanel {...p} /> },
+  {
+    label: 'Cut block',
+    icon: Tree,
+    render: (p, canEditCp) => <CutBlocksPanel {...p} canEdit={canEditCp} />,
+  },
   { label: 'Associated files', icon: Folders, render: (p) => <AssociatedFilesPanel {...p} /> },
   {
     label: 'Associated clients',
@@ -239,7 +243,7 @@ const TenureDetail: FC = () => {
             {/* Carbon's <Tabs> renders no DOM of its own, so the grey full-bleed
                 pane is styled through this wrapper (styles/_detail.scss). */}
             <div className="fsp-info__page-tabs">
-              <TenureTabs panelProps={panelProps} canEditCp={canEdit(user)} tabs={tabs} />
+              <TenureTabs panelProps={panelProps} canEditCp={canEditHarvest(user)} tabs={tabs} />
             </div>
           </>
         )}

@@ -34,6 +34,7 @@ import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import { getBlockStatuses, getOrgUnits, type CodeOption } from '@/services/codeLists';
+import { blockQuery } from '@/services/cutblock_detail';
 import {
   cutblockSearchExportPath,
   searchCutBlocks,
@@ -455,11 +456,18 @@ const CutBlockSearch: FC = () => {
                           </TableHead>
                           <TableBody>
                             {dtRows.map((row) => {
-                              const blockId =
-                                (row.cells.find((c) => c.info.header === 'cutBlockId')?.value as
+                              const cell = (header: string) =>
+                                (row.cells.find((c) => c.info.header === header)?.value as
                                   string | undefined) ?? '';
+                              const blockId = cell('cutBlockId');
+                              const fileId = cell('forestFileId');
+                              const permitId = cell('cuttingPermitId');
+                              // A label repeats across files and permits, so the link says which.
                               const open = () => {
-                                if (blockId) navigate(`/cut-block/${encodeURIComponent(blockId)}`);
+                                if (blockId && fileId)
+                                  navigate(
+                                    `/cut-block/${encodeURIComponent(blockId)}${blockQuery(fileId, permitId)}`,
+                                  );
                               };
                               return (
                                 <TableRow

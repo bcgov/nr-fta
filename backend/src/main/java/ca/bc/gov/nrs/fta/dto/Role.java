@@ -11,6 +11,10 @@ import lombok.RequiredArgsConstructor;
  * <p>The role names must match the CSS/Keycloak role names exactly:
  * <ul>
  *   <li>{@code FTA_ADMIN} — full CRUD access to all resources</li>
+ *   <li>{@code FTA_HARVEST_AUTH_SENIOR_ADMIN} — everything a viewer reads, plus all cutting
+ *       permit and cut block writes (see {@code ApiAuthorizationCustomizer})</li>
+ *   <li>{@code FTA_HARVEST_AUTH_DISTRICT_ADMIN} — the same reads, plus adding and editing
+ *       cutting permits and cut blocks, without the senior-only writes</li>
  *   <li>{@code FTA_TIMBER_MARK_HEADQUARTERS_ADMIN} — tenure and timber mark search, their
  *       detail screens, and private-mark writes (see {@code ApiAuthorizationCustomizer})</li>
  *   <li>{@code FTA_TIMBER_MARK_DISTRICT_ADMIN} — the same as
@@ -24,6 +28,10 @@ import lombok.RequiredArgsConstructor;
 public enum Role {
     /** Full read/write access — maps to the CSS role "FTA_ADMIN". */
     FTA_ADMIN(RoleType.CONCRETE),
+    /** Harvest authorization senior staff — the CSS role "FTA_HARVEST_AUTH_SENIOR_ADMIN". */
+    FTA_HARVEST_AUTH_SENIOR_ADMIN(RoleType.CONCRETE),
+    /** Harvest authorization staff — the CSS role "FTA_HARVEST_AUTH_DISTRICT_ADMIN". */
+    FTA_HARVEST_AUTH_DISTRICT_ADMIN(RoleType.CONCRETE),
     /** Private-mark administration — the CSS role "FTA_TIMBER_MARK_HEADQUARTERS_ADMIN". */
     FTA_TIMBER_MARK_HEADQUARTERS_ADMIN(RoleType.CONCRETE),
     /**

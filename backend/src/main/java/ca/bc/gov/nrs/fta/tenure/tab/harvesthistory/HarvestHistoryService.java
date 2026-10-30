@@ -166,7 +166,18 @@ public class HarvestHistoryService {
     if (reason != null) {
       return HarvestHistoryDto.unavailable(reason, timberMark);
     }
+    return history(timberMark);
+  }
 
+  /**
+   * One timber mark's harvest history — what FTA902's "Harvest History" button opened, on the
+   * permit's mark whatever the file type.
+   */
+  public HarvestHistoryDto forTimberMark(String timberMark) {
+    return history(timberMark.trim().toUpperCase(java.util.Locale.ROOT));
+  }
+
+  private HarvestHistoryDto history(String timberMark) {
     MapSqlParameterSource params = new MapSqlParameterSource("timberMark", timberMark);
     List<String> notices = new ArrayList<>();
     List<AppraisalRow> appraisalRows = MissingTable.orEmpty(

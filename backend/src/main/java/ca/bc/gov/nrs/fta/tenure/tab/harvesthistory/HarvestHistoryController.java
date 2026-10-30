@@ -9,10 +9,11 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Tenure harvest history tab API (legacy FTA990, read-only):
  * {@code GET /api/fta/tenures/{forestFileId}/harvest-history} — the file's timber mark's
- * appraisal header and billing history.
+ * appraisal header and billing history; {@code GET /api/fta/timber-marks/{mark}/harvest-history}
+ * — the same for one mark, as a cutting permit's tab reads it.
  */
 @RestController
-@RequestMapping("/api/fta/tenures")
+@RequestMapping("/api/fta")
 public class HarvestHistoryController {
 
   private final HarvestHistoryService harvestHistoryService;
@@ -21,8 +22,13 @@ public class HarvestHistoryController {
     this.harvestHistoryService = harvestHistoryService;
   }
 
-  @GetMapping("/{forestFileId}/harvest-history")
+  @GetMapping("/tenures/{forestFileId}/harvest-history")
   public HarvestHistoryDto get(@PathVariable String forestFileId) {
     return harvestHistoryService.get(forestFileId);
+  }
+
+  @GetMapping("/timber-marks/{timberMark}/harvest-history")
+  public HarvestHistoryDto forTimberMark(@PathVariable String timberMark) {
+    return harvestHistoryService.forTimberMark(timberMark);
   }
 }

@@ -1,4 +1,14 @@
-import { ArrowLeft, Document, Edit, Pause, Tag as TagIcon } from '@carbon/icons-react';
+import {
+  ArrowLeft,
+  Calendar,
+  Edit,
+  Pause,
+  Report,
+  TableOfContents,
+  Tag as TagIcon,
+  Tree,
+  WarningAlt,
+} from '@carbon/icons-react';
 import {
   Button,
   Tab,
@@ -13,96 +23,156 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Tag,
 } from '@carbon/react';
+import { useState, type FC } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
-import DefinitionGrid from '@/components/DefinitionGrid';
-import SectionTile from '@/components/SectionTile';
+import DetailTile, { type DetailField } from '@/components/DetailTile';
+import { EmptyState } from '@/components/EmptyState/EmptyState';
+import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
+import StatusTag from '@/components/StatusTag/StatusTag';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import { useLazyTabs } from '@/hooks/useLazyTabs';
 import PageLayout from '@/pages/PageLayout';
-import { canEdit } from '@/routes/access';
-import { getCutblockDetail } from '@/services/cutblock_detail';
+import { canManageHarvest } from '@/routes/access';
+import { blockQuery, getCutblockDetail } from '@/services/cutblock_detail';
+import { formatDate } from '@/utils/formatDate';
 
-import type { FC } from 'react';
+import BlockAmendments from './BlockAmendments';
+import EditCutBlockModal from './EditCutBlockModal';
 
-// Local amendment history for the cut block sub-tab (FTA905 is a separate port).
-const MOCK_AMENDMENTS = [
-  { date: '2022-03-11', type: 'Area', description: 'Boundary adjustment −2.4 ha (riparian).' },
-  { date: '2023-09-01', type: 'Volume', description: 'Planned volume revised after cruise.' },
-];
-
-const fmtArea = (n: number | null): string => (n == null ? '—' : `${n.toFixed(1)} ha`);
+const dash = (v: string | number | null | undefined) =>
+  v === null || v === undefined || v === '' ? '—' : v;
+const date = (v: string | null | undefined) => formatDate(v) || '—';
+const area = (n: number | null) =>
+  n == null
+    ? '—'
+    : `${n.toLocaleString('en-CA', { minimumFractionDigits: 1, maximumFractionDigits: 4 })} ha`;
+const yesNo = (v: string | null) => (v === 'Y' ? 'Yes' : v === 'N' ? 'No' : '—');
 
 /**
  * FTA904 — Cut Block detail. Tombstone + tabs for block details, amendments
  * (FTA905), and suspensions (FTA914). Reached from Cut Block Search or a
  * cutting permit's Cut Blocks tab. Data is loaded from the backend
- * {@code GET /api/fta/cut-blocks/{blockId}} endpoint (which ports
- * THE.FTA_904_CUTBLKDETAIL).
+ * {@code GET /api/fta/cut-blocks/{blockId}} endpoint, which also says what the
+ * block allows; its writes enforce the same rules.
  */
 const CutBlockDetail: FC = () => {
   const { blockId = '' } = useParams();
-  // A block id repeats across tenures and permits, so links from a tenure say which.
+  // A block id repeats across tenures and permits, so links say which.
   const [searchParams] = useSearchParams();
-  const forestFileId = searchParams.get('forestFileId') ?? undefined;
+  const forestFileId = searchParams.get('forestFileId') ?? '';
   const cuttingPermitId = searchParams.get('cuttingPermitId') ?? undefined;
   const { user } = useAuth();
   const { data, loading, error, reload } = useApiResource(
     () => getCutblockDetail(blockId, { forestFileId, cuttingPermitId }),
     [blockId, forestFileId, cuttingPermitId],
   );
+  const [editing, setEditing] = useState(false);
 
   // Each tab is rendered only once opened.
-  const tabs = useLazyTabs(`${blockId}|${forestFileId ?? ''}|${cuttingPermitId ?? ''}`);
+  const tabs = useLazyTabs(`${blockId}|${forestFileId}|${cuttingPermitId ?? ''}`);
 
   const id = data?.cutBlockId ?? blockId;
-  const isSuspended = (data?.blockStatus ?? '').toUpperCase().startsWith('S');
+  const query = data?.forestFileId ? blockQuery(data.forestFileId, data.cuttingPermitId) : '';
+  const rules = data?.rules;
+  // The suspension page is keyed by cb_skey, as a label is unique only within its permit.
+  const suspensionPath = `/cut-block/${data?.cbSkey ?? ''}/suspension`;
 
-  const actions =
-    data && canEdit(user) ? (
-      <>
-        <Button size="md" kind="tertiary" renderIcon={Edit}>
+  const actions = rules && (
+    <>
+      {rules.canEdit && (
+        <Button size="md" kind="tertiary" renderIcon={Edit} onClick={() => setEditing(true)}>
           Edit block
         </Button>
-        <Button size="md" kind="tertiary" renderIcon={Edit} as={Link} to={`/cut-block/${id}/amend`}>
-          Amend
-        </Button>
+      )}
+      {rules.canRelabel && canManageHarvest(user) && (
         <Button
           size="md"
           kind="tertiary"
           renderIcon={TagIcon}
           as={Link}
-          to={`/cut-block/${id}/relabel`}
+          to={`/cut-block/${encodeURIComponent(id)}/relabel${query}`}
         >
           Re-label
         </Button>
-        <Button
-          size="md"
-          kind="danger"
-          renderIcon={Pause}
-          as={Link}
-          to={`/cut-block/${id}/suspend`}
-        >
+      )}
+      {rules.canSuspend && (
+        <Button size="md" kind="danger" renderIcon={Pause} as={Link} to={suspensionPath}>
           Suspend
         </Button>
-      </>
-    ) : undefined;
+      )}
+      {rules.canEditSuspension && (
+        <Button size="md" kind="tertiary" renderIcon={Pause} as={Link} to={suspensionPath}>
+          Edit suspension
+        </Button>
+      )}
+    </>
+  );
+
+  const blockFields: DetailField[] = data
+    ? [
+        {
+          label: 'Status',
+          value: data.blockStatusDescription
+            ? `${data.blockStatus} - ${data.blockStatusDescription}`
+            : dash(data.blockStatus),
+        },
+        { label: 'As of', value: date(data.blockStatusDate) },
+        { label: 'Opening', value: dash(data.opening) },
+        { label: 'SP Exempt', value: yesNo(data.spExemptInd) },
+        { label: 'Reference', value: dash(data.referenceName) },
+        { label: 'Cut Management', value: dash(data.cutRegulationCode) },
+        { label: 'Reforest Declare Type', value: dash(data.reforestDeclareTypeCode) },
+        { label: "Waste Assessment Req'd", value: yesNo(data.wasteAssessmentRequired) },
+        { label: 'Waste Status', value: dash(data.wasteDescription) },
+        { label: 'Under Partition Order', value: yesNo(data.underPartitionOrder) },
+        { label: 'Harvesting Reason', value: dash(data.fireHarvestingReasonCode) },
+        { label: 'Reported Fire Date', value: date(data.reportedFireDate) },
+        { label: 'Approved', value: date(data.decisionDate) },
+        { label: 'Issued', value: date(data.issuanceDate) },
+        { label: 'Block Description', value: dash(data.cutBlockDescription), wide: true },
+      ]
+    : [];
+
+  const areaFields: DetailField[] = data
+    ? [
+        { label: 'Planned Gross', value: area(data.plannedGrossBlockArea) },
+        { label: 'Planned Net', value: area(data.plannedNetBlockArea) },
+        { label: 'Planned Start', value: date(data.plannedHarvestDate) },
+        { label: 'Logged Area', value: area(data.disturbanceGrossArea) },
+        { label: 'Logged Start', value: date(data.disturbanceStartDate) },
+        { label: 'Logged Complete', value: date(data.disturbanceEndDate) },
+        { label: 'Total Logged', value: area(data.totalLoggedArea) },
+      ]
+    : [];
+
+  const markFields: DetailField[] = data
+    ? [
+        { label: 'Mark', value: dash(data.timberMark) },
+        { label: 'District', value: dash(data.forestDistrict) },
+        { label: 'Mark Status', value: dash(data.markStatus) },
+        { label: 'Issue Date', value: date(data.markIssueDate) },
+        { label: 'Mark Term', value: dash(data.markTerm) },
+        { label: 'Expires', value: date(data.markExpiryDate) },
+        { label: 'Salvage Type', value: dash(data.salvageTypeCode) },
+      ]
+    : [];
 
   return (
     <PageLayout
       title={`Cut Block ${id}`}
       subtitle="Block details, amendments, and suspensions"
       actions={actions}
+      backLink={
+        <Link to="/search/cut-block" className="back-link">
+          <ArrowLeft size={16} /> Back to Cut Block Search
+        </Link>
+      }
     >
-      <Link to="/search/cut-block" className="back-link">
-        <ArrowLeft size={16} /> Back to Cut Block Search
-      </Link>
-
       <AsyncBoundary
         loading={loading}
         error={error}
@@ -113,116 +183,136 @@ const CutBlockDetail: FC = () => {
           <>
             <Tombstone
               ariaLabel="Cut block summary"
+              // The left bar takes the status's colour, as on the permit and tenure.
+              className={`bc-status-accent--${statusCodeVariant(data.blockStatus) ?? 'default'}`}
               items={[
                 { label: 'Block', value: data.cutBlockId ?? id },
                 {
                   label: 'Cutting Permit',
-                  value: data.cuttingPermitId ? (
-                    <Link to={`/harvesting-authority/${data.cuttingPermitId}`}>
-                      {data.cuttingPermitId}
+                  value:
+                    data.cuttingPermitId && data.forestFileId ? (
+                      <Link
+                        to={`/harvesting-authority/${encodeURIComponent(
+                          data.cuttingPermitId,
+                        )}?forestFileId=${encodeURIComponent(data.forestFileId)}`}
+                      >
+                        {data.cuttingPermitId}
+                      </Link>
+                    ) : (
+                      dash(data.cuttingPermitId)
+                    ),
+                },
+                {
+                  label: 'Forest File',
+                  value: data.forestFileId ? (
+                    <Link to={`/tenures/${encodeURIComponent(data.forestFileId)}`}>
+                      {data.forestFileId}
                     </Link>
                   ) : (
                     '—'
                   ),
                 },
+                { label: 'Timber Mark', value: dash(data.timberMark) },
                 {
-                  label: 'Forest File',
-                  value: data.forestFileId ? (
-                    <Link to={`/tenures/${data.forestFileId}`}>{data.forestFileId}</Link>
+                  label: 'Status',
+                  value: data.blockStatus ? (
+                    <StatusTag
+                      status={data.blockStatusDescription ?? data.blockStatus}
+                      variant={statusCodeVariant(data.blockStatus)}
+                    />
                   ) : (
                     '—'
                   ),
                 },
-                { label: 'Timber Mark', value: data.timberMark ?? '—' },
-                {
-                  label: 'Status',
-                  value: data.blockStatus ? <Tag type="green">{data.blockStatus}</Tag> : '—',
-                },
-                { label: 'Organization Unit', value: data.forestDistrict ?? '—' },
-                { label: 'Gross Area', value: fmtArea(data.plannedGrossBlockArea) },
-                { label: 'Net Area', value: fmtArea(data.plannedNetBlockArea) },
+                { label: 'Organization Unit', value: dash(data.forestDistrict) },
+                { label: 'Gross Area', value: area(data.plannedGrossBlockArea) },
+                { label: 'Net Area', value: area(data.plannedNetBlockArea) },
               ]}
             />
 
-            <SectionTile title="Cut block details" icon={Document}>
+            {/* Carbon's <Tabs> renders no DOM of its own, so the grey full-bleed
+                pane is styled through this wrapper (styles/_detail.scss). */}
+            <div className="fsp-info__page-tabs">
               <Tabs selectedIndex={tabs.selected} onChange={tabs.onChange}>
                 <TabList aria-label="Cut block sections" contained>
-                  <Tab>Details</Tab>
-                  <Tab>Amendments</Tab>
-                  <Tab>Suspensions</Tab>
+                  <Tab renderIcon={TableOfContents}>Details</Tab>
+                  <Tab renderIcon={Calendar}>Amendments</Tab>
+                  <Tab renderIcon={WarningAlt}>Suspensions</Tab>
                 </TabList>
                 <TabPanels>
                   <TabPanel>
                     {tabs.isOpened(0) && (
-                      <DefinitionGrid
-                        items={[
-                          { label: 'Gross Area', value: fmtArea(data.plannedGrossBlockArea) },
-                          { label: 'Net Area', value: fmtArea(data.plannedNetBlockArea) },
-                          {
-                            label: 'Disturbance Gross Area',
-                            value: fmtArea(data.disturbanceGrossArea),
-                          },
-                          {
-                            label: 'Disturbance Start',
-                            value: data.disturbanceStartDate ?? 'Not started',
-                          },
-                        ]}
-                      />
-                    )}
-                  </TabPanel>
-
-                  <TabPanel>
-                    {tabs.isOpened(1) && (
-                      <div className="bordered-table">
-                        <TableContainer
-                          title="Amendments"
-                          description={`${MOCK_AMENDMENTS.length} amendment(s)`}
-                        >
-                          <Table>
-                            <TableHead>
-                              <TableRow>
-                                <TableHeader>Date</TableHeader>
-                                <TableHeader>Type</TableHeader>
-                                <TableHeader>Description</TableHeader>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {MOCK_AMENDMENTS.map((a, i) => (
-                                <TableRow key={i}>
-                                  <TableCell>{a.date}</TableCell>
-                                  <TableCell>{a.type}</TableCell>
-                                  <TableCell>{a.description}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
+                      <div className="fsp-info__tab-panel">
+                        <div className="fsp-info__tile-row">
+                          <DetailTile title="Block" icon={Tree} fields={blockFields} />
+                          <DetailTile title="Areas and dates" icon={Calendar} fields={areaFields} />
+                        </div>
+                        <DetailTile title="Timber mark" icon={Report} fields={markFields} />
                       </div>
                     )}
                   </TabPanel>
 
                   <TabPanel>
-                    {tabs.isOpened(2) &&
-                      (isSuspended ? (
-                        <DefinitionGrid
-                          items={[
-                            {
-                              label: 'Suspension Status',
-                              value: <Tag type="red">Suspended</Tag>,
-                            },
-                            { label: 'Reason', value: 'Pending cutblock re-survey' },
-                            { label: 'Effective', value: data.blockStatusDate ?? '—' },
-                          ]}
-                        />
-                      ) : (
-                        <p style={{ padding: '1rem 0' }}>
-                          This cut block has no active suspensions.
-                        </p>
-                      ))}
+                    {tabs.isOpened(1) && (
+                      <div className="fsp-info__tab-panel">
+                        {data.forestFileId && (
+                          <BlockAmendments forestFileId={data.forestFileId} cbSkey={data.cbSkey} />
+                        )}
+                      </div>
+                    )}
+                  </TabPanel>
+
+                  <TabPanel>
+                    {tabs.isOpened(2) && (
+                      <div className="fsp-info__tab-panel">
+                        {data.suspensions.length === 0 ? (
+                          <EmptyState
+                            icon={<WarningAlt size={48} />}
+                            title="No suspensions for this cut block"
+                            body="Partition order suspensions of this block appear here."
+                          />
+                        ) : (
+                          <div className="bordered-table">
+                            <TableContainer
+                              title="Suspensions"
+                              description={`${data.suspensions.length} suspension(s)`}
+                            >
+                              <Table>
+                                <TableHead>
+                                  <TableRow>
+                                    <TableHeader>Order No</TableHeader>
+                                    <TableHeader>Under Partition</TableHeader>
+                                    <TableHeader>Start</TableHeader>
+                                    <TableHeader>End</TableHeader>
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  {data.suspensions.map((s) => (
+                                    <TableRow key={s.suspensionId ?? s.orderNumber}>
+                                      <TableCell>{dash(s.orderNumber)}</TableCell>
+                                      <TableCell>{dash(s.underPartition)}</TableCell>
+                                      <TableCell>{date(s.startDate)}</TableCell>
+                                      <TableCell>{date(s.endDate)}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </TabPanel>
                 </TabPanels>
               </Tabs>
-            </SectionTile>
+            </div>
+
+            <EditCutBlockModal
+              block={data}
+              open={editing}
+              onClose={() => setEditing(false)}
+              onSaved={reload}
+            />
           </>
         )}
       </AsyncBoundary>

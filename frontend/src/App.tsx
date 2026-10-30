@@ -25,10 +25,11 @@ import TenureDetail from './pages/tenure/TenureDetail';
 import HarvestingAuthoritySearch from './pages/search/HarvestingAuthoritySearch';
 import CutBlockSearch from './pages/search/CutBlockSearch';
 import CuttingPermitDetail from './pages/harvesting/CuttingPermitDetail';
+import BlockSuspension from './pages/harvesting/BlockSuspension';
 import CutBlockDetail from './pages/harvesting/CutBlockDetail';
+import CutBlockRelabel from './pages/harvesting/CutBlockRelabel';
 import SuspendBlocks from './pages/harvesting/SuspendBlocks';
 import AssignMarks from './pages/harvesting/AssignMarks';
-import CutBlockAction from './pages/harvesting/CutBlockAction';
 import TenureLanding from './pages/tenure/TenureLanding';
 import AddTenure from './pages/tenure/AddTenure';
 import MarkList from './pages/marks/MarkList';
@@ -144,8 +145,12 @@ export default function App() {
           />
           <Route path="/cut-block/:blockId" element={guarded(withLayout(<CutBlockDetail />))} />
           <Route
-            path="/cut-block/:blockId/:action"
-            element={guarded(withLayout(<CutBlockAction />))}
+            path="/cut-block/:blockId/relabel"
+            element={guarded(withLayout(<CutBlockRelabel />))}
+          />
+          <Route
+            path="/cut-block/:blockId/suspension"
+            element={guarded(withLayout(<BlockSuspension />))}
           />
 
           {/* ── Private Marks ──────────────────────────────────────── */}

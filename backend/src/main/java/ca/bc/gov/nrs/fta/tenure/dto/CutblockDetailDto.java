@@ -1,6 +1,8 @@
 package ca.bc.gov.nrs.fta.tenure.dto;
 
+import ca.bc.gov.nrs.fta.tenure.service.CutBlockRules;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Full detail of a single cut block for the FTA904 Cut Block Detail screen.
@@ -15,16 +17,23 @@ import java.time.LocalDate;
  * {@code Double}.
  */
 public record CutblockDetailDto(
+    Long cbSkey,
+    Long hvaSkey,
+    long cbRevisionCount,
+    Long cboaRevisionCount,
+    String fileTypeCode,
     String forestFileId,
     String cuttingPermitId,
     String cutBlockId,
     String timberMark,
     String forestDistrict,
+    String markStatusCode,
     String markStatus,
     LocalDate markIssueDate,
     LocalDate markExpiryDate,
     String markTerm,
     String blockStatus,
+    String blockStatusDescription,
     LocalDate blockStatusDate,
     String cutBlockDescription,
     String spExemptInd,
@@ -45,4 +54,9 @@ public record CutblockDetailDto(
     LocalDate issuanceDate,
     String fireHarvestingReasonCode,
     String underPartitionOrder,
-    LocalDate reportedFireDate) {}
+    LocalDate reportedFireDate,
+    String wasteAssessmentRequired,
+    String wasteDescription,
+    Double totalLoggedArea,
+    List<CutBlockSuspensionDto> suspensions,
+    CutBlockRules rules) {}

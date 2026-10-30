@@ -26,8 +26,10 @@ import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { Modal } from '@/components/Modal';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import StatusTag from '@/components/StatusTag/StatusTag';
+import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
+import { canManageHarvest } from '@/routes/access';
 import type { CodeOption } from '@/services/codeLists';
 import {
   addTenureCutBlock,
@@ -147,6 +149,9 @@ const validate = (f: Form, permit: TenureCutBlockPermit | undefined, fileType: s
  * Results, Map View and Suspend Blocks were links into other systems/screens and are not here.
  */
 const CutBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
+  const { user } = useAuth();
+  // Legacy gave Delete to Feature Admin and Super User, not to district staff.
+  const canDelete = canManageHarvest(user);
   const forestFileId = tenure.forestFileId;
   const { display } = useNotification();
   const fetcher = useCallback(() => getTenureCutBlocks(forestFileId), [forestFileId]);
@@ -464,8 +469,8 @@ const CutBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                                 <OverflowMenuItem
                                   itemText="Delete"
                                   isDelete
-                                  disabled={!canEdit || !b.canDelete}
-                                  title={canEdit && !b.canDelete ? (b.deleteReason ?? '') : ''}
+                                  disabled={!canDelete || !b.canDelete}
+                                  title={canDelete && !b.canDelete ? (b.deleteReason ?? '') : ''}
                                   onClick={() => askDelete(b)}
                                 />
                               </OverflowMenu>
