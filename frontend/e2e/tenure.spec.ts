@@ -36,7 +36,7 @@ test('the back link returns to the search with its results', async ({ page }) =>
   await page.getByRole('link', { name: /Tenure Search/ }).click();
   await expect(page).toHaveURL(/\/search\/tenure$/);
   await expect(page.locator('.fsp-search__row--selectable').first()).toBeVisible({
-    timeout: 90_000,
+    timeout: 15_000,
   });
 });
 
@@ -53,7 +53,7 @@ test('adding a cutting permit validates before it saves', async ({ page }) => {
 
   await page.getByRole('tab', { name: 'Cutting permit / mark' }).click();
   const add = page.getByRole('button', { name: 'Add cutting permit' }).first();
-  await expect(add).toBeVisible({ timeout: 60_000 });
+  await expect(add).toBeVisible({ timeout: 10_000 });
   test.skip(await add.isDisabled(), 'This tenure does not take cutting permits.');
   await add.click();
 

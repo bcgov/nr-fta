@@ -11,14 +11,14 @@ import { chooseOption, openFirstResult } from './helpers/search';
 const openAPermit = async (page: Page) => {
   await gotoPage(page, PAGES.harvestingSearch);
   await openFirstResult(page, '#ha-district', () => chooseOption(page, '#ha-cp-status', 'HI'));
-  await expect(pageHeading(page, 'Cutting Permit')).toBeVisible({ timeout: 60_000 });
+  await expect(pageHeading(page, 'Cutting Permit')).toBeVisible({ timeout: 10_000 });
   await settled(page);
 };
 
 const openABlock = async (page: Page) => {
   await gotoPage(page, PAGES.cutBlockSearch);
   await openFirstResult(page, '#cb-district');
-  await expect(pageHeading(page, /^Cut Block /)).toBeVisible({ timeout: 60_000 });
+  await expect(pageHeading(page, /^Cut Block /)).toBeVisible({ timeout: 10_000 });
   await settled(page);
 };
 
@@ -68,7 +68,7 @@ test.describe('cutting permit', () => {
       const action = page.getByRole('link', { name: link, exact: true });
       test.skip((await action.count()) === 0, `This permit does not offer ${link}.`);
       await action.click();
-      await expect(pageHeading(page, heading)).toBeVisible({ timeout: 60_000 });
+      await expect(pageHeading(page, heading)).toBeVisible({ timeout: 10_000 });
       await settled(page);
     });
   }
@@ -107,7 +107,7 @@ test.describe('cut block', () => {
       const action = page.getByRole('link', { name: new RegExp(`^(danger )?${link}$`) });
       test.skip((await action.count()) === 0, `This block does not offer ${link}.`);
       await action.click();
-      await expect(pageHeading(page, heading)).toBeVisible({ timeout: 60_000 });
+      await expect(pageHeading(page, heading)).toBeVisible({ timeout: 10_000 });
       await settled(page);
     });
   }

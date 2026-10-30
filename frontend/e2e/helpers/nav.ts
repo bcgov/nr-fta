@@ -212,7 +212,7 @@ export const openNavSection = async (page: Page, label: string): Promise<void> =
  * before the test moves on and the fixture's checks in e2e/fixtures.ts catch it.
  */
 export const settled = async (page: Page): Promise<void> => {
-  await page.waitForLoadState('networkidle', { timeout: 90_000 });
+  await page.waitForLoadState('networkidle', { timeout: 15_000 });
 };
 
 /**

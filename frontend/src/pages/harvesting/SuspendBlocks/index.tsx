@@ -1,4 +1,4 @@
-import { ArrowLeft, List, Pause } from '@carbon/icons-react';
+import { ArrowLeft, Pause } from '@carbon/icons-react';
 import {
   Button,
   Checkbox,
@@ -157,56 +157,61 @@ const SuspendBlocks: FC = () => {
                 partitionCodes={data.partitionCodes}
                 disabled={readOnly || saving}
               />
-            </SectionTile>
 
-            <SectionTile title="Blocks" icon={List}>
-              <Checkbox
-                id="susp-all"
-                labelText="Suspend all eligible blocks"
-                checked={suspendAll}
-                disabled={readOnly || saving}
-                onChange={(_, { checked }) => setSuspendAll(checked)}
-              />
-              <div className="bordered-table">
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableHeader>Suspend</TableHeader>
-                        <TableHeader>Cut Block</TableHeader>
-                        <TableHeader>Status</TableHeader>
-                        <TableHeader>Planned Harvest Date</TableHeader>
-                        <TableHeader>Gross (ha)</TableHeader>
-                        <TableHeader>Net (ha)</TableHeader>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {data.blocks.map((b) => (
-                        <TableRow key={b.cbSkey}>
-                          <TableCell>
-                            <Checkbox
-                              id={`susp-${b.cbSkey}`}
-                              labelText={`Suspend block ${b.cutBlockId}`}
-                              hideLabel
-                              checked={suspendAll ? b.selectable : selected.has(b.cbSkey)}
-                              disabled={readOnly || saving || suspendAll || !b.selectable}
-                              onChange={() => toggle(b.cbSkey)}
-                            />
-                          </TableCell>
-                          <TableCell>{b.cutBlockId}</TableCell>
-                          <TableCell>
-                            {b.statusDescription
-                              ? `${b.statusCode} - ${b.statusDescription}`
-                              : b.statusCode}
-                          </TableCell>
-                          <TableCell>{date(b.plannedHarvestDate)}</TableCell>
-                          <TableCell>{b.plannedGrossArea ?? '—'}</TableCell>
-                          <TableCell>{b.plannedNetArea ?? '—'}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+              <div className="fsp-search__field-grid" style={{ marginBlockStart: '1rem' }}>
+                <fieldset className="fsp-search__section">
+                  <legend className="fsp-search__section-legend">Blocks</legend>
+                  <div style={{ clear: 'both' }}>
+                    <Checkbox
+                      id="susp-all"
+                      labelText="Suspend all eligible blocks"
+                      checked={suspendAll}
+                      disabled={readOnly || saving}
+                      onChange={(_, { checked }) => setSuspendAll(checked)}
+                    />
+                    <div className="bordered-table">
+                      <TableContainer>
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableHeader>Suspend</TableHeader>
+                              <TableHeader>Cut Block</TableHeader>
+                              <TableHeader>Status</TableHeader>
+                              <TableHeader>Planned Harvest Date</TableHeader>
+                              <TableHeader>Gross (ha)</TableHeader>
+                              <TableHeader>Net (ha)</TableHeader>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {data.blocks.map((b) => (
+                              <TableRow key={b.cbSkey}>
+                                <TableCell>
+                                  <Checkbox
+                                    id={`susp-${b.cbSkey}`}
+                                    labelText={`Suspend block ${b.cutBlockId}`}
+                                    hideLabel
+                                    checked={suspendAll ? b.selectable : selected.has(b.cbSkey)}
+                                    disabled={readOnly || saving || suspendAll || !b.selectable}
+                                    onChange={() => toggle(b.cbSkey)}
+                                  />
+                                </TableCell>
+                                <TableCell>{b.cutBlockId}</TableCell>
+                                <TableCell>
+                                  {b.statusDescription
+                                    ? `${b.statusCode} - ${b.statusDescription}`
+                                    : b.statusCode}
+                                </TableCell>
+                                <TableCell>{date(b.plannedHarvestDate)}</TableCell>
+                                <TableCell>{b.plannedGrossArea ?? '—'}</TableCell>
+                                <TableCell>{b.plannedNetArea ?? '—'}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </div>
+                  </div>
+                </fieldset>
               </div>
             </SectionTile>
           </>

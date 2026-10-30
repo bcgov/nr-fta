@@ -3,8 +3,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 /** How many options of a select to try before deciding there is no data to open. */
 const MAX_OPTIONS_TRIED = 8;
 
-/** A search on a slow Oracle table, over VPN, can take most of a minute. */
-const SEARCH_TIMEOUT_MS = 90_000;
+/** The slowest search takes well under this against a real backend. */
+const SEARCH_TIMEOUT_MS = 15_000;
 
 /** The result rows, which open their record when clicked. */
 export const resultRows = (page: Page): Locator => page.locator('.fsp-search__row--selectable');
@@ -14,7 +14,7 @@ const searchForm = (page: Page): Locator => page.locator('form.fsp-search__form'
 
 /** A select's real options (the first is its "All ..." placeholder), once loaded. */
 const optionValues = async (select: Locator): Promise<string[]> => {
-  await expect.poll(() => select.locator('option').count(), { timeout: 60_000 }).toBeGreaterThan(1);
+  await expect.poll(() => select.locator('option').count(), { timeout: 10_000 }).toBeGreaterThan(1);
   const values = await select
     .locator('option')
     .evaluateAll((options) => options.map((o) => (o as HTMLOptionElement).value));
