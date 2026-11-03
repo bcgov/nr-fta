@@ -142,8 +142,8 @@ const AmendmentsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }
                   <TableRow>
                     <TableHeader>Request Date</TableHeader>
                     <TableHeader>Status</TableHeader>
-                    <TableHeader>Requested By</TableHeader>
                     <TableHeader>Requested Changes</TableHeader>
+                    <TableHeader>Requested By</TableHeader>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -160,11 +160,11 @@ const AmendmentsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }
                           '—'
                         )}
                       </TableCell>
-                      <TableCell>
-                        <UserName userId={a.requestingUserid} />
-                      </TableCell>
                       <TableCell className="detail-tab__long-text">
                         {dash(a.requestedChanges)}
+                      </TableCell>
+                      <TableCell>
+                        <UserName userId={a.requestingUserid} />
                       </TableCell>
                     </TableRow>
                   ))}
