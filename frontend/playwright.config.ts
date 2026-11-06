@@ -30,6 +30,12 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  // Stop the whole run as soon as one test has failed for good. Playwright
+  // only counts a test here once it has exhausted its retries, so a flaky
+  // test that passes on its retry doesn't trip it — but a real failure ends
+  // the run instead of burning time on the rest of the suite. CI then re-runs
+  // the whole suite (see "Run Playwright" in .github/workflows/reusable-tests.yml).
+  maxFailures: 1,
   reporter: [['line'], ['list', { printSteps: true }], ['html', { open: 'never' }]],
   use: {
     baseURL,
