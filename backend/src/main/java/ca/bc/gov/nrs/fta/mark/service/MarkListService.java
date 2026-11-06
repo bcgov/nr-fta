@@ -5,7 +5,9 @@ import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
 import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
+import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
 import java.util.List;
+import java.util.Map;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -153,8 +155,29 @@ public class MarkListService {
   // of first for DESC. Certificate and process type break ties so the order is
   // deterministic and a row cannot appear on two pages once OFFSET is applied —
   // an application and its amendment share a certificate.
-  private static final String ORDER_BY =
-      " ORDER BY m.mark_appl_date DESC NULLS LAST, m.certificate, m.process_type\n";
+  private static final String DEFAULT_ORDER =
+      "m.mark_appl_date DESC NULLS LAST, m.certificate, m.process_type";
+
+  /**
+   * Results-table columns a user can sort on, keyed as the frontend names them. They
+   * sort on the inline view's columns ({@code m.}), so no joined table can make a
+   * name ambiguous.
+   */
+  private static final Map<String, String> SORT_COLUMNS = Map.of(
+      "certificate", "m.certificate",
+      "timberMark", "m.timber_mark",
+      "markApplDate", "m.mark_appl_date",
+      "orgUnitCode", "m.org_unit_code",
+      "markStatusSt", "m.mark_status_st",
+      "amendStatusSt", "m.amend_status_st",
+      "clientName", "m.client_name",
+      "idir", "m.idir");
+
+  /** A column sort, else the default; certificate and process type keep it total. */
+  private static String orderBy(String sort) {
+    return ColumnSort.orderBy(sort, SORT_COLUMNS, DEFAULT_ORDER, "m.certificate, m.process_type")
+        + "\n";
+  }
 
   /**
    * Private mark application/amendment list — mirrors
@@ -183,6 +206,25 @@ public class MarkListService {
       String clientLocnCode,
       int page,
       int size) {
+    return list(hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName, clientNumber,
+        clientLocnCode, page, size, null);
+  }
+
+  /**
+   * {@link #list(String, String, String, String, String, String, String, int, int)} in a
+   * results-table column sort ({@link ColumnSort}); null keeps the default order.
+   */
+  public PagedResponse<MarkListDto> list(
+      String hdrDistrict,
+      String timberMark,
+      String markStatusSt,
+      String orgUnitCode,
+      String clientName,
+      String clientNumber,
+      String clientLocnCode,
+      int page,
+      int size,
+      String sort) {
     MapSqlParameterSource params =
         filters(hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName,
             clientNumber, clientLocnCode);
@@ -196,7 +238,7 @@ public class MarkListService {
         .addValue("size", size);
 
     List<MarkListDto> rows = jdbc.query(
-        SELECT_COLUMNS + FROM_WHERE + ORDER_BY
+        SELECT_COLUMNS + FROM_WHERE + orderBy(sort)
             + " OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
         pageParams,
         (rs, rowNum) -> new MarkListDto(
@@ -233,12 +275,27 @@ public class MarkListService {
       String clientNumber,
       String clientLocnCode,
       CsvWriter csv) {
+    exportCsv(hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName, clientNumber,
+        clientLocnCode, null, csv);
+  }
+
+  /** The export in the table's column sort ({@link ColumnSort}); null keeps the default. */
+  public void exportCsv(
+      String hdrDistrict,
+      String timberMark,
+      String markStatusSt,
+      String orgUnitCode,
+      String clientName,
+      String clientNumber,
+      String clientLocnCode,
+      String sort,
+      CsvWriter csv) {
     csv.writeRow(
         "Certificate", "Timber mark", "Application date", "District", "Timber mark status",
         "Amendment status", "Client", "Last updated by");
 
     streamingJdbc.jdbc().query(
-        SELECT_COLUMNS + FROM_WHERE + ORDER_BY,
+        SELECT_COLUMNS + FROM_WHERE + orderBy(sort),
         filters(hdrDistrict, timberMark, markStatusSt, orgUnitCode, clientName,
             clientNumber, clientLocnCode),
         // Cast required: a void lambda body matches both the RowCallbackHandler

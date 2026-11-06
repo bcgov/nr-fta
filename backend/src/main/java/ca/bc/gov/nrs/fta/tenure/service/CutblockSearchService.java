@@ -4,9 +4,11 @@ import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
 import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
+import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
 import ca.bc.gov.nrs.fta.tenure.dto.CutblockSearchDto;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -190,12 +192,33 @@ public class CutblockSearchService {
    * formatted client columns are built here, so an export running any other
    * shape would show different client values than the table.
    */
-  private static String pageQuery(String sortBy) {
+  private static String pageQuery(String sortBy, String sort) {
+    String columnSort = ColumnSort.expression(sort, SORT_COLUMNS);
     return "SELECT * FROM (" + PAGE_COLUMNS
         + "  FROM (" + SELECT_COLUMNS + FROM_WHERE + ") b\n"
         + "  LEFT JOIN the.forest_client lic_fc ON lic_fc.client_number = b.lic_client_number)"
-        + orderBy(sortBy);
+        + (columnSort == null
+            ? orderBy(sortBy)
+            // The block's key trails, so a row cannot land on two pages.
+            : "\n ORDER BY " + columnSort
+                + ", forest_file_id, cutting_permit_id, cut_block_id, cb_skey");
   }
+
+  /**
+   * Results-table columns a user can sort on, keyed as the frontend names them,
+   * mapped to the outer query's column aliases.
+   */
+  private static final Map<String, String> SORT_COLUMNS = Map.ofEntries(
+      Map.entry("orgUnitCode", "org_unit_code"),
+      Map.entry("clientName", "client_name"),
+      Map.entry("clientNumber", "client_number"),
+      Map.entry("forestFileId", "forest_file_id"),
+      Map.entry("cuttingPermitId", "cutting_permit_id"),
+      Map.entry("timberMark", "timber_mark"),
+      Map.entry("cutBlockId", "cut_block_id"),
+      Map.entry("blockStatusSt", "block_status_st"),
+      Map.entry("disturbanceStartDate", "disturbance_start_date"),
+      Map.entry("disturbanceEndDate", "disturbance_end_date"));
 
   private static final RowMapper<CutblockSearchDto> ROW_MAPPER =
       (rs, rowNum) -> new CutblockSearchDto(
@@ -250,6 +273,37 @@ public class CutblockSearchService {
       String sortBy,
       int page,
       int size) {
+    return search(
+        forestFileId, cuttingPermitId, timberMark, cutBlockId, blockStatusSt, orgUnitNo,
+        clientNumber, clientLocnCode, clientName, managedByFile, managedByCp,
+        harvestStartDateFrom, harvestStartDateTo, districtAdminZone, sortBy, null, page, size);
+  }
+
+  /**
+   * {@link #search} in a results-table column sort.
+   *
+   * @param sort {@code <column>,asc|desc} ({@link ColumnSort}); null keeps the
+   *             {@code sortBy} order
+   */
+  public PagedResponse<CutblockSearchDto> search(
+      String forestFileId,
+      String cuttingPermitId,
+      String timberMark,
+      String cutBlockId,
+      String blockStatusSt,
+      String orgUnitNo,
+      String clientNumber,
+      String clientLocnCode,
+      String clientName,
+      String managedByFile,
+      String managedByCp,
+      String harvestStartDateFrom,
+      String harvestStartDateTo,
+      String districtAdminZone,
+      String sortBy,
+      String sort,
+      int page,
+      int size) {
     MapSqlParameterSource params = criteria(
         forestFileId, cuttingPermitId, timberMark, cutBlockId, blockStatusSt, orgUnitNo,
         clientNumber, clientLocnCode, clientName, managedByFile, managedByCp,
@@ -268,7 +322,7 @@ public class CutblockSearchService {
         .addValue("size", size);
 
     List<CutblockSearchDto> rows = jdbc.query(
-        pageQuery(sortBy) + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
+        pageQuery(sortBy, sort) + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
         pageParams,
         ROW_MAPPER);
 
@@ -305,6 +359,31 @@ public class CutblockSearchService {
       String districtAdminZone,
       String sortBy,
       CsvWriter csv) {
+    exportCsv(
+        forestFileId, cuttingPermitId, timberMark, cutBlockId, blockStatusSt, orgUnitNo,
+        clientNumber, clientLocnCode, clientName, managedByFile, managedByCp,
+        harvestStartDateFrom, harvestStartDateTo, districtAdminZone, sortBy, null, csv);
+  }
+
+  /** {@link #exportCsv} in the table's column sort. */
+  public void exportCsv(
+      String forestFileId,
+      String cuttingPermitId,
+      String timberMark,
+      String cutBlockId,
+      String blockStatusSt,
+      String orgUnitNo,
+      String clientNumber,
+      String clientLocnCode,
+      String clientName,
+      String managedByFile,
+      String managedByCp,
+      String harvestStartDateFrom,
+      String harvestStartDateTo,
+      String districtAdminZone,
+      String sortBy,
+      String sort,
+      CsvWriter csv) {
 
     csv.writeRow(
         "District",
@@ -319,7 +398,7 @@ public class CutblockSearchService {
         "End date");
 
     streamingJdbc.jdbc().query(
-        pageQuery(sortBy),
+        pageQuery(sortBy, sort),
         criteria(
             forestFileId, cuttingPermitId, timberMark, cutBlockId, blockStatusSt, orgUnitNo,
             clientNumber, clientLocnCode, clientName, managedByFile, managedByCp,

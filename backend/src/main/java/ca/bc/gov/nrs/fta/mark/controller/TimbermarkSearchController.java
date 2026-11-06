@@ -60,6 +60,7 @@ public class TimbermarkSearchController {
       @RequestParam(required = false) String primaryDetail,
       @RequestParam(required = false) String privateMarkOnlyInd,
       @RequestParam(required = false) String sortBy,
+      @RequestParam(required = false) String sort,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
     TimbermarkSearchCriteria criteria = new TimbermarkSearchCriteria(
@@ -71,7 +72,7 @@ public class TimbermarkSearchController {
 
     int safePage = Math.max(page, 0);
     int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
-    return ResponseEntity.ok(timbermarkSearchService.search(criteria, safePage, safeSize));
+    return ResponseEntity.ok(timbermarkSearchService.search(criteria, safePage, safeSize, sort));
   }
 
   /**
@@ -105,7 +106,8 @@ public class TimbermarkSearchController {
       @RequestParam(required = false) String primaryId,
       @RequestParam(required = false) String primaryDetail,
       @RequestParam(required = false) String privateMarkOnlyInd,
-      @RequestParam(required = false) String sortBy) {
+      @RequestParam(required = false) String sortBy,
+      @RequestParam(required = false) String sort) {
     TimbermarkSearchCriteria criteria = new TimbermarkSearchCriteria(
         adminOrgUnitNo, districtAdminZone, forestFileId, cuttingPermitId, timberMark,
         fileTypeCode, markStatusSt, clientNumber, clientLocnCode, clientName, fileClientType,
@@ -114,6 +116,6 @@ public class TimbermarkSearchController {
         privateMarkOnlyInd, sortBy);
 
     return CsvExport.response(
-        "timber-marks", csv -> timbermarkSearchService.exportCsv(criteria, csv));
+        "timber-marks", csv -> timbermarkSearchService.exportCsv(criteria, sort, csv));
   }
 }

@@ -60,6 +60,7 @@ public class TenureController {
       @RequestParam(required = false) String cashSaleInd,
       @RequestParam(required = false) String mapNotationTypeCode,
       @RequestParam(required = false) String sortBy,
+      @RequestParam(required = false) String sort,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
     TenureSearchCriteria criteria = new TenureSearchCriteria(
@@ -71,7 +72,7 @@ public class TenureController {
 
     int safePage = Math.max(page, 0);
     int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
-    return ResponseEntity.ok(tenureService.search(criteria, safePage, safeSize));
+    return ResponseEntity.ok(tenureService.search(criteria, safePage, safeSize, sort));
   }
 
   /**
@@ -100,7 +101,8 @@ public class TenureController {
       @RequestParam(required = false) String salvageInd,
       @RequestParam(required = false) String cashSaleInd,
       @RequestParam(required = false) String mapNotationTypeCode,
-      @RequestParam(required = false) String sortBy) {
+      @RequestParam(required = false) String sortBy,
+      @RequestParam(required = false) String sort) {
     TenureSearchCriteria criteria = new TenureSearchCriteria(
         adminOrgUnitNo, forestFileId, fileTypeCode, tenureType, fileStatus,
         clientNumber, clientLocnCode, clientName, fileClientType,
@@ -108,6 +110,6 @@ public class TenureController {
         issueDateFrom, issueDateTo, expiryDateFrom, expiryDateTo,
         salvageInd, cashSaleInd, mapNotationTypeCode, sortBy);
 
-    return CsvExport.response("tenures", csv -> tenureService.exportCsv(criteria, csv));
+    return CsvExport.response("tenures", csv -> tenureService.exportCsv(criteria, sort, csv));
   }
 }

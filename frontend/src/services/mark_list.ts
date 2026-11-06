@@ -36,6 +36,8 @@ export interface MarkListParams {
   /** A picked client: matched exactly, with its location. */
   clientNumber?: string;
   clientLocnCode?: string;
+  /** A results-table column sort, `<column key>,asc|desc` (lib/columnSort). */
+  sort?: string;
   /** 0-indexed, following the backend. Carbon's Pagination is 1-indexed. */
   page?: number;
   size?: number;

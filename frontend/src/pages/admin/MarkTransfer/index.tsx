@@ -90,7 +90,7 @@ const MarkTransfer: FC = () => {
                 labelText="Timber Mark"
                 placeholder="e.g. 52/1234"
                 value={form.timberMark}
-                onChange={(e) => set('timberMark')(e.target.value)}
+                onChange={(e) => set('timberMark')(e.target.value.toUpperCase())}
                 required
               />
             </Column>

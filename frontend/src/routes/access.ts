@@ -23,7 +23,13 @@ import type { FamLoginUser, ROLE_TYPE } from '@/context/auth/types';
  *   FTA_HARVEST_AUTH_       all except Admin              as senior, without suspensions,
  *     DISTRICT_ADMIN                                      conditions, postponements, relabel,
  *                                                         delete, or post-issue terms and rollbacks
+ *   FTA_APT_ADMIN           all except Admin              apportionment (APT) writes, any org
+ *                                                         unit; read-only elsewhere
  *   FTA_VIEWER              all except Admin              read-only (GET only)
+ *
+ * The one exception to "no stacking" is APT: FTA_APT_ADMIN is checked against every role the
+ * user holds (canEditApt, and APT pages in isPathAllowedForUser), so a harvest or timber mark
+ * administrator who is also an APT administrator keeps both.
  */
 
 /** The user's single effective role (or undefined when none). */
@@ -87,6 +93,23 @@ export function canEditHarvest(user: FamLoginUser | null | undefined): boolean {
 export function canManageHarvest(user: FamLoginUser | null | undefined): boolean {
   const r = effectiveRole(user);
   return r === 'FTA_ADMIN' || r === 'FTA_HARVEST_AUTH_SENIOR_ADMIN';
+}
+
+/**
+ * Whether the user may create, edit and delete apportionment (APT) records — FTA_ADMIN or
+ * FTA_APT_ADMIN, in any org unit. Unlike the checks above this reads every role the user holds,
+ * not just the effective one, so a higher role does not hide APT editing.
+ */
+export function canEditApt(user: FamLoginUser | null | undefined): boolean {
+  const held = user?.privileges ?? {};
+  return 'FTA_ADMIN' in held || 'FTA_APT_ADMIN' in held;
+}
+
+/** Where the APT pages live; matched as a prefix (exact or `prefix + "/"`). */
+export const APT_PATH_PREFIX = '/apt';
+
+function isAptPath(pathname: string): boolean {
+  return pathname === APT_PATH_PREFIX || pathname.startsWith(`${APT_PATH_PREFIX}/`);
 }
 
 /**
@@ -158,6 +181,9 @@ export function isPathAllowedForUser(
   user: FamLoginUser | null | undefined,
   pathname: string,
 ): boolean {
+  // APT pages are open to every role that reads them, and to an APT administrator whatever
+  // role outranks it (a timber mark role's allow-list would otherwise shut them out).
+  if (isAptPath(pathname) && canEditApt(user)) return true;
   return isPathAllowedForRole(effectiveRole(user), pathname);
 }
 

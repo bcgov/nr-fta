@@ -640,7 +640,29 @@ Light → dark token map (light values intentionally left in the page SCSS):
   .fsp-inbox__results .cds--pagination {
     background-color: var(--cds-layer-01);
     border-block-start-color: var(--cds-border-strong-01);
+    border-block-end-color: var(--cds-border-strong-01);
     color: var(--cds-text-secondary);
+  }
+  // Retint the footer's vertical dividers (hard-coded #c6c6c8 in
+  // _search.scss) to the dark border token so they don't read as bright
+  // lines on the dark bar. Both scopes, mirroring the shared light block.
+  // Matches nr-fspts.
+  .fsp-search__results,
+  .fsp-inbox__results {
+    .cds--pagination .cds--select__item-count {
+      border-inline-end-color: var(--cds-border-strong-01);
+    }
+    .cds--pagination__right {
+      border-inline-start-color: var(--cds-border-strong-01);
+    }
+    .cds--pagination__control-buttons .cds--popover-container {
+      border-inline-start-color: var(--cds-border-strong-01);
+    }
+  }
+  // The "Searching" spinner's track is a light #c6c6c8 ring.
+  .fsp-search__searching-spinner {
+    border-color: var(--cds-border-subtle-01);
+    border-top-color: var(--cds-interactive);
   }
   .fsp-search__results .cds--pagination .cds--select-input,
   .fsp-search__results .cds--pagination .cds--pagination__button,
@@ -728,6 +750,34 @@ overridden here. Applies app-wide to every `kind="tertiary"` button.
   background-color: #ebf2fc;
   border-color: var(--cds-button-tertiary);
   color: var(--cds-button-tertiary);
+}
+
+/* ---------------------------------------------------------------
+Dark mode: tertiary hover, and the search criteria panel. Same as nr-fsp-new.
+
+1. `.cds--btn--tertiary:hover` above paints a light-blue wash (#ebf2fc) and
+   takes its text from --cds-button-tertiary. Under g100 that token is WHITE,
+   so hover was a glaring near-white slab with the label all but gone. Keep
+   the "subtle wash, text keeps its colour" intent with a dark wash:
+   layer-hover-01 under white text.
+
+2. `.fsp-search__tile.cds--tile` zeroes the inline padding so the fields line
+   up with the page title, which sits outside the Tile. That reads fine in
+   light mode, where the tile is white on a white page. Under g100 the tile
+   (layer-02) is visibly lighter than the page, so the fields sit flush
+   against its edges and look clipped. Restore real padding for dark only.
+--------------------------------------------------------------- */
+:root[data-carbon-theme='g100'] {
+  .cds--btn--tertiary:hover {
+    background-color: var(--cds-layer-hover-01);
+    border-color: var(--cds-button-tertiary);
+    color: var(--cds-button-tertiary);
+  }
+
+  .fsp-search__tile.cds--tile {
+    padding-inline: 1.5rem;
+    padding-block: 1.5rem;
+  }
 }
 
 /* ---------------------------------------------------------------

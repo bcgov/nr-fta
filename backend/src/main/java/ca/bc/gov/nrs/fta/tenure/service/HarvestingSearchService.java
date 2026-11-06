@@ -4,11 +4,13 @@ import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
 import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
+import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
 import ca.bc.gov.nrs.fta.tenure.dto.HarvestingSearchCriteria;
 import ca.bc.gov.nrs.fta.tenure.dto.HarvestingSearchDto;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -263,6 +265,44 @@ public class HarvestingSearchService {
       """;
 
   /**
+   * Results-table columns a user can sort on, keyed as the frontend names them,
+   * mapped to the grouped query's column aliases. NTS and NTS mapsheet are each one
+   * cell on screen joined from three columns, so they sort on the same join.
+   */
+  private static final Map<String, String> SORT_COLUMNS = Map.ofEntries(
+      Map.entry("orgUnitCode", "org_unit_code"),
+      Map.entry("clientName", "client_name"),
+      Map.entry("clientNumber", "client_number"),
+      Map.entry("fileTypeCode", "file_type_code"),
+      Map.entry("forestFileId", "forest_file_id"),
+      Map.entry("cuttingPermitId", "cutting_permit_id"),
+      Map.entry("timberMark", "timber_mark"),
+      Map.entry("ogcNumber", "ogc_number"),
+      Map.entry("nts",
+          "TRIM(nts_mapquarter || ' ' || nts_mapunit || ' ' || nts_mapblock)"),
+      Map.entry("ntsMapsheet",
+          "TRIM(nts_mapsheet_grid || ' ' || nts_mapsheet_letter || ' ' || nts_mapsheet_square)"),
+      Map.entry("programNumber", "program_number"),
+      Map.entry("geographicIdentifier", "geographic_identifier"));
+
+  /**
+   * The rows in display order, unpaged — what the page query and the export share.
+   *
+   * <p>With a column sort the grouped query is wrapped and sorted on its aliases:
+   * an {@code ORDER BY} on a grouped query may only name grouped expressions, and
+   * the client label is not one. The file, permit and HVA key trail the column, as
+   * they trail the legacy sort, so a row cannot land on two pages.
+   */
+  private static String resultsQuery(String sort) {
+    String columnSort = ColumnSort.expression(sort, SORT_COLUMNS);
+    if (columnSort == null) {
+      return SELECT_LIST + FROM_AND_WHERE + GROUP_BY + ORDER_BY;
+    }
+    return "SELECT * FROM (\n" + SELECT_LIST + FROM_AND_WHERE + GROUP_BY + ")"
+        + "\n ORDER BY " + columnSort + ", forest_file_id, cutting_permit_id, hva_skey\n";
+  }
+
+  /**
    * Validates the file id / cutting permit / HVA id combination.
    *
    * <p>The procedure checks this before opening its cursor whenever a file id is
@@ -337,6 +377,17 @@ public class HarvestingSearchService {
   /** Runs the search, returning one page of results. */
   public PagedResponse<HarvestingSearchDto> search(
       HarvestingSearchCriteria criteria, int page, int size) {
+    return search(criteria, page, size, null);
+  }
+
+  /**
+   * {@link #search(HarvestingSearchCriteria, int, int)} in a results-table column sort.
+   *
+   * @param sort {@code <column>,asc|desc} ({@link ColumnSort}); null keeps the
+   *             criteria's {@code sortBy} order
+   */
+  public PagedResponse<HarvestingSearchDto> search(
+      HarvestingSearchCriteria criteria, int page, int size, String sort) {
     MapSqlParameterSource params = bind(criteria);
 
     Long total = jdbc.queryForObject(
@@ -349,7 +400,7 @@ public class HarvestingSearchService {
       return PagedResponse.ofPage(List.of(), page, size, 0);
     }
 
-    String sql = SELECT_LIST + FROM_AND_WHERE + GROUP_BY + ORDER_BY
+    String sql = resultsQuery(sort)
         + " OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY";
     params.addValue("offset", (long) page * size).addValue("limit", size);
 
@@ -397,6 +448,15 @@ public class HarvestingSearchService {
    */
   public void exportCsv(
       HarvestingSearchCriteria criteria, boolean showOilAndGas, CsvWriter csv) {
+    exportCsv(criteria, showOilAndGas, null, csv);
+  }
+
+  /**
+   * {@link #exportCsv(HarvestingSearchCriteria, boolean, CsvWriter)} in the table's
+   * column sort.
+   */
+  public void exportCsv(
+      HarvestingSearchCriteria criteria, boolean showOilAndGas, String sort, CsvWriter csv) {
 
     List<Object> header = new ArrayList<>(List.of(
         "District",
@@ -417,7 +477,7 @@ public class HarvestingSearchService {
     csv.writeRow(header.toArray());
 
     streamingJdbc.jdbc().query(
-        SELECT_LIST + FROM_AND_WHERE + GROUP_BY + ORDER_BY,
+        resultsQuery(sort),
         bind(criteria),
         // Cast required: a void lambda body matches both the RowCallbackHandler
         // and ResultSetExtractor overloads, so the compiler cannot choose.

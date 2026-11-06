@@ -4,8 +4,10 @@ import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
 import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.MgmtUnitSearchDto;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
+import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -61,7 +63,23 @@ public class MgmtUnitSearchService {
               OR UPPER(mut.description) LIKE '%' || UPPER(:description) || '%')
       """;
 
-  private static final String ORDER_BY = " ORDER BY mut.mgmt_unit_type_code\n";
+  /**
+   * Results-table columns a user can sort on, keyed as the frontend names them, mapped to
+   * the wrapped query's aliases. Sorted outside the select so "description" means the
+   * displayed {@code code - description}, never the table's own column.
+   */
+  private static final Map<String, String> SORT_COLUMNS = Map.of(
+      "mgmtUnitTypeCode", "mgmt_unit_type_code",
+      "description", "description",
+      "effectiveDate", "effective_date",
+      "expiryDate", "expiry_date");
+
+  /** The rows, unpaged, in the column sort or else by code (the code is unique). */
+  private static String resultsQuery(String sort) {
+    return "SELECT * FROM (\n" + SELECT_COLUMNS + FROM_WHERE + ")"
+        + ColumnSort.orderBy(sort, SORT_COLUMNS, "mgmt_unit_type_code", "mgmt_unit_type_code")
+        + "\n";
+  }
 
   private static final RowMapper<MgmtUnitSearchDto> ROW_MAPPER =
       (rs, rowNum) -> new MgmtUnitSearchDto(
@@ -81,6 +99,16 @@ public class MgmtUnitSearchService {
    */
   public PagedResponse<MgmtUnitSearchDto> search(
       String mgmtUnitTypeCode, String description, int page, int size) {
+    return search(mgmtUnitTypeCode, description, page, size, null);
+  }
+
+  /**
+   * {@link #search(String, String, int, int)} in a results-table column sort.
+   *
+   * @param sort {@code <column>,asc|desc} ({@link ColumnSort}); null keeps the code order
+   */
+  public PagedResponse<MgmtUnitSearchDto> search(
+      String mgmtUnitTypeCode, String description, int page, int size, String sort) {
     MapSqlParameterSource params = criteria(mgmtUnitTypeCode, description);
 
     Long total = jdbc.queryForObject("SELECT COUNT(*)\n" + FROM_WHERE, params, Long.class);
@@ -92,7 +120,7 @@ public class MgmtUnitSearchService {
         .addValue("size", size);
 
     List<MgmtUnitSearchDto> rows = jdbc.query(
-        SELECT_COLUMNS + FROM_WHERE + ORDER_BY
+        resultsQuery(sort)
             + " OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
         pageParams,
         ROW_MAPPER);
@@ -114,11 +142,17 @@ public class MgmtUnitSearchService {
    * can sort and filter as a date.
    */
   public void exportCsv(String mgmtUnitTypeCode, String description, CsvWriter csv) {
+    exportCsv(mgmtUnitTypeCode, description, null, csv);
+  }
+
+  /** {@link #exportCsv(String, String, CsvWriter)} in the table's column sort. */
+  public void exportCsv(
+      String mgmtUnitTypeCode, String description, String sort, CsvWriter csv) {
 
     csv.writeRow("MU type", "Description", "Effective date", "Expiry date");
 
     streamingJdbc.jdbc().query(
-        SELECT_COLUMNS + FROM_WHERE + ORDER_BY,
+        resultsQuery(sort),
         criteria(mgmtUnitTypeCode, description),
         // Cast required: a void lambda body matches both the RowCallbackHandler
         // and ResultSetExtractor overloads, so the compiler cannot choose.

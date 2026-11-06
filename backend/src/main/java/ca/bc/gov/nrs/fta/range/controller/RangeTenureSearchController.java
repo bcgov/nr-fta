@@ -59,6 +59,7 @@ public class RangeTenureSearchController {
       @RequestParam(required = false) String nonBillableNonUseTo,
       @RequestParam(required = false) String totalAnnualUseFrom,
       @RequestParam(required = false) String totalAnnualUseTo,
+      @RequestParam(required = false) String sort,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
     int safePage = Math.max(page, 0);
@@ -92,7 +93,8 @@ public class RangeTenureSearchController {
             totalAnnualUseFrom,
             totalAnnualUseTo,
             safePage,
-            safeSize));
+            safeSize,
+            sort));
   }
 
   /**
@@ -126,7 +128,8 @@ public class RangeTenureSearchController {
       @RequestParam(required = false) String nonBillableNonUseFrom,
       @RequestParam(required = false) String nonBillableNonUseTo,
       @RequestParam(required = false) String totalAnnualUseFrom,
-      @RequestParam(required = false) String totalAnnualUseTo) {
+      @RequestParam(required = false) String totalAnnualUseTo,
+      @RequestParam(required = false) String sort) {
     return CsvExport.response(
         "range-tenures",
         csv -> rangeTenureSearchService.exportCsv(
@@ -156,6 +159,7 @@ public class RangeTenureSearchController {
             nonBillableNonUseTo,
             totalAnnualUseFrom,
             totalAnnualUseTo,
+            sort,
             csv));
   }
 }

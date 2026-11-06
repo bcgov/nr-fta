@@ -20,6 +20,8 @@ import lombok.RequiredArgsConstructor;
  *   <li>{@code FTA_TIMBER_MARK_DISTRICT_ADMIN} — the same as
  *       FTA_TIMBER_MARK_HEADQUARTERS_ADMIN, except that printing an issued mark's certificate
  *       also marks it issued (HN to HI), as a district user's print did in legacy FTA510</li>
+ *   <li>{@code FTA_APT_ADMIN} — everything a viewer reads, plus every APT (apportionment) write
+ *       under {@code /api/fta/apt/**}, for any org unit</li>
  *   <li>{@code FTA_VIEWER} — read-only access (GET requests only)</li>
  * </ul>
  */
@@ -39,6 +41,8 @@ public enum Role {
      * "FTA_TIMBER_MARK_DISTRICT_ADMIN".
      */
     FTA_TIMBER_MARK_DISTRICT_ADMIN(RoleType.CONCRETE),
+    /** Apportionment (APT) editing — the CSS role "FTA_APT_ADMIN"; legacy APT2's APT_EDITOR. */
+    FTA_APT_ADMIN(RoleType.CONCRETE),
     /** Read-only access — maps to the CSS role "FTA_VIEWER". */
     FTA_VIEWER(RoleType.CONCRETE);
 

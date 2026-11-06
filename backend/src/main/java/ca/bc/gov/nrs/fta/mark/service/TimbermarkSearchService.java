@@ -6,7 +6,9 @@ import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
 import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
+import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
 import java.util.List;
+import java.util.Map;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -151,6 +153,17 @@ public class TimbermarkSearchService {
 
   public PagedResponse<TimbermarkSearchDto> search(
       TimbermarkSearchCriteria criteria, int page, int size) {
+    return search(criteria, page, size, null);
+  }
+
+  /**
+   * One page of matching marks.
+   *
+   * @param sort a results-table column sort ({@link ColumnSort}); null keeps the
+   *             criteria's {@code sortBy} order
+   */
+  public PagedResponse<TimbermarkSearchDto> search(
+      TimbermarkSearchCriteria criteria, int page, int size, String sort) {
     Query q = build(criteria);
 
     Long total = jdbc.queryForObject(
@@ -163,7 +176,7 @@ public class TimbermarkSearchService {
         .addValue("size", size);
 
     List<TimbermarkSearchDto> rows = jdbc.query(
-        resultsQuery(q, criteria.sortBy()) + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
+        resultsQuery(q, criteria.sortBy(), sort) + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
         pageParams,
         ROW_MAPPER);
 
@@ -182,6 +195,11 @@ public class TimbermarkSearchService {
    * page's {@code HEADERS}); keep the two in step.
    */
   public void exportCsv(TimbermarkSearchCriteria criteria, CsvWriter csv) {
+    exportCsv(criteria, null, csv);
+  }
+
+  /** {@link #exportCsv(TimbermarkSearchCriteria, CsvWriter)} in the table's column sort. */
+  public void exportCsv(TimbermarkSearchCriteria criteria, String sort, CsvWriter csv) {
     csv.writeRow(
         "District",
         "Client name",
@@ -199,7 +217,7 @@ public class TimbermarkSearchService {
 
     Query q = build(criteria);
     streamingJdbc.jdbc().query(
-        resultsQuery(q, criteria.sortBy()),
+        resultsQuery(q, criteria.sortBy(), sort),
         q.params(),
         // Cast required: a void lambda body matches both the RowCallbackHandler
         // and ResultSetExtractor overloads, so the compiler cannot choose.
@@ -228,13 +246,40 @@ public class TimbermarkSearchService {
    * export keeps the wrapping even without OFFSET, so both read the same
    * columns.
    */
-  private static String resultsQuery(Query q, String sortBy) {
+  private static String resultsQuery(Query q, String sortBy, String sort) {
     return "SELECT * FROM (\n" + SELECT_COLUMNS + q.from() + LICENSEE_JOINS + q.where() + ")"
-        + orderBy(sortBy);
+        + orderBy(sortBy, sort);
   }
 
-  /** Cutting permit trails the sort key so a row cannot land on two pages. */
-  private static String orderBy(String sortBy) {
+  /**
+   * Results-table columns a user can sort on, keyed as the frontend names them,
+   * mapped to the wrapped query's column aliases.
+   */
+  private static final Map<String, String> SORT_COLUMNS = Map.ofEntries(
+      Map.entry("orgUnitCode", "org_unit_code"),
+      Map.entry("clientName", "client_name"),
+      Map.entry("clientNumber", "client_number"),
+      Map.entry("fileTypeCode", "file_type_code"),
+      Map.entry("forestFileId", "forest_file_id"),
+      Map.entry("cuttingPermitId", "cutting_permit_id"),
+      Map.entry("timberMark", "timber_mark"),
+      Map.entry("salvageInd", "salvage_ind"),
+      Map.entry("certificate", "certificate"),
+      Map.entry("markStatusSt", "mark_status_st"),
+      Map.entry("amendStatusSt", "amend_status_st"),
+      Map.entry("markIssueDate", "mark_issue_date"),
+      Map.entry("markExpiryDate", "mark_expiry_date"));
+
+  /**
+   * A column sort wins; without one, the criteria's {@code sortBy}. The file, permit,
+   * mark and certificate trail the sort key so a row cannot land on two pages.
+   */
+  private static String orderBy(String sortBy, String sort) {
+    String columnSort = ColumnSort.expression(sort, SORT_COLUMNS);
+    if (columnSort != null) {
+      return "\n ORDER BY " + columnSort
+          + ", forest_file_id, cutting_permit_id, timber_mark, certificate";
+    }
     if (TimbermarkSearchCriteria.SORT_CLIENT.equals(sortBy)) {
       return "\n ORDER BY client_name, forest_file_id, cutting_permit_id";
     }
@@ -391,6 +436,11 @@ public class TimbermarkSearchService {
    * Client criteria resolve through {@code FOREST_FILE_CLIENT} rather than
    * filtering the mark directly. With no explicit client type the legacy clause
    * spans the main and secondary clients.
+   *
+   * <p>A private mark is also matched on its certificate's own clients
+   * ({@code PRIVATE_MARK_CLIENT}, the same client-type codes). Legacy matched the
+   * forest file only, so a new application — which has a holder but no forest
+   * file (and no mark) until it is issued — could not be found by its client.
    */
   private static void appendClientCriteria(
       TimbermarkSearchCriteria c, MapSqlParameterSource p, StringBuilder where) {
@@ -399,34 +449,52 @@ public class TimbermarkSearchService {
     if (!any) {
       return;
     }
-    StringBuilder sub = new StringBuilder(
-        "          SELECT ffc.forest_file_id FROM the.forest_file_client ffc WHERE 1 = 1\n");
     if (notBlank(c.fileClientType())) {
       p.addValue("fileClientType", c.fileClientType().trim());
-      sub.append("            AND ffc.forest_file_client_type_code = :fileClientType\n");
-    } else {
-      sub.append("            AND ffc.forest_file_client_type_code IN ('A','B')\n");
     }
     if (notBlank(c.clientNumber())) {
       p.addValue("clientNumber", c.clientNumber().trim());
-      sub.append("            AND ffc.client_number = :clientNumber\n");
     }
     if (notBlank(c.clientLocnCode())) {
       p.addValue("clientLocnCode", c.clientLocnCode().trim());
-      sub.append("            AND ffc.client_locn_code = :clientLocnCode\n");
     }
     if (notBlank(c.clientName())) {
       p.addValue("clientName", c.clientName().trim());
-      sub.append("""
-                      AND ffc.client_number IN (SELECT vcp.client_number
-                                                  FROM the.v_client_public vcp
-                                                 WHERE UPPER(vcp.client_name)
-                                                       LIKE UPPER(:clientName) || '%')
-          """);
     }
     where.append("   AND (tm.forest_file_id IN (\n")
-        .append(sub)
+        .append(clientSubquery(c, "the.forest_file_client", "forest_file_id",
+            "forest_file_client_type_code"))
+        .append("   ) OR tm.certificate IN (\n")
+        .append(clientSubquery(c, "the.private_mark_client", "certificate",
+            "private_mark_client_type_code"))
         .append("   ))\n");
+  }
+
+  /** One client table's half of {@link #appendClientCriteria}; binds the shared parameters. */
+  private static String clientSubquery(
+      TimbermarkSearchCriteria c, String table, String keyColumn, String typeColumn) {
+    StringBuilder sub = new StringBuilder("          SELECT cl." + keyColumn + " FROM " + table
+        + " cl WHERE 1 = 1\n");
+    if (notBlank(c.fileClientType())) {
+      sub.append("            AND cl." + typeColumn + " = :fileClientType\n");
+    } else {
+      sub.append("            AND cl." + typeColumn + " IN ('A','B')\n");
+    }
+    if (notBlank(c.clientNumber())) {
+      sub.append("            AND cl.client_number = :clientNumber\n");
+    }
+    if (notBlank(c.clientLocnCode())) {
+      sub.append("            AND cl.client_locn_code = :clientLocnCode\n");
+    }
+    if (notBlank(c.clientName())) {
+      sub.append("""
+                      AND cl.client_number IN (SELECT vcp.client_number
+                                                 FROM the.v_client_public vcp
+                                                WHERE UPPER(vcp.client_name)
+                                                      LIKE UPPER(:clientName) || '%')
+          """);
+    }
+    return sub.toString();
   }
 
   /**

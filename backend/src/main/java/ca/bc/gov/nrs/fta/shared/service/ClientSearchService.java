@@ -5,7 +5,9 @@ import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.ClientSearchDto;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
+import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
@@ -93,6 +95,33 @@ public class ClientSearchService {
                 t3.client_locn_code
       """;
 
+  /**
+   * Results-table columns a user can sort on, keyed as the frontend names them, mapped to
+   * the wrapped query's aliases (so "client name" is the displayed name).
+   */
+  private static final Map<String, String> SORT_COLUMNS = Map.of(
+      "clientAcronym", "client_acronym",
+      "clientNumber", "client_number",
+      "clientLocnCode", "client_locn_code",
+      "clientName", "client_name",
+      "clientLocnName", "client_locn_name",
+      "city", "city",
+      "clientStatusCode", "client_status_code");
+
+  /**
+   * The rows, unpaged. With a column sort they are sorted outside the select, on its
+   * aliases; client number and location (unique together) trail it so a row cannot land
+   * on two pages. Without one, the legacy order.
+   */
+  private static String resultsQuery(String sort) {
+    String columnSort = ColumnSort.expression(sort, SORT_COLUMNS);
+    if (columnSort == null) {
+      return SELECT_COLUMNS + FROM_WHERE + ORDER_BY;
+    }
+    return "SELECT * FROM (\n" + SELECT_COLUMNS + FROM_WHERE + ")\n ORDER BY " + columnSort
+        + ", client_number, client_locn_code\n";
+  }
+
   private static final RowMapper<ClientSearchDto> ROW_MAPPER =
       (rs, rowNum) -> new ClientSearchDto(
           rs.getString("client_number"),
@@ -125,6 +154,25 @@ public class ClientSearchService {
       String legalMiddleName,
       int page,
       int size) {
+    return search(clientNumber, clientAcronym, clientName, legalFirstName, legalMiddleName,
+        page, size, null);
+  }
+
+  /**
+   * {@link #search(String, String, String, String, String, int, int)} in a results-table
+   * column sort.
+   *
+   * @param sort {@code <column>,asc|desc} ({@link ColumnSort}); null keeps the legacy order
+   */
+  public PagedResponse<ClientSearchDto> search(
+      String clientNumber,
+      String clientAcronym,
+      String clientName,
+      String legalFirstName,
+      String legalMiddleName,
+      int page,
+      int size,
+      String sort) {
     MapSqlParameterSource params =
         criteria(clientNumber, clientAcronym, clientName, legalFirstName, legalMiddleName);
 
@@ -137,7 +185,7 @@ public class ClientSearchService {
         .addValue("size", size);
 
     List<ClientSearchDto> rows = jdbc.query(
-        SELECT_COLUMNS + FROM_WHERE + ORDER_BY
+        resultsQuery(sort)
             + " OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
         pageParams,
         ROW_MAPPER);
@@ -159,6 +207,19 @@ public class ClientSearchService {
       String legalFirstName,
       String legalMiddleName,
       CsvWriter csv) {
+    exportCsv(clientNumber, clientAcronym, clientName, legalFirstName, legalMiddleName, null,
+        csv);
+  }
+
+  /** {@link #exportCsv(String, String, String, String, String, CsvWriter)} in a column sort. */
+  public void exportCsv(
+      String clientNumber,
+      String clientAcronym,
+      String clientName,
+      String legalFirstName,
+      String legalMiddleName,
+      String sort,
+      CsvWriter csv) {
 
     csv.writeRow(
         "Client acronym",
@@ -170,7 +231,7 @@ public class ClientSearchService {
         "Status");
 
     streamingJdbc.jdbc().query(
-        SELECT_COLUMNS + FROM_WHERE + ORDER_BY,
+        resultsQuery(sort),
         criteria(clientNumber, clientAcronym, clientName, legalFirstName, legalMiddleName),
         // Cast required: a void lambda body matches both the RowCallbackHandler
         // and ResultSetExtractor overloads, so the compiler cannot choose.

@@ -63,6 +63,8 @@ export interface TimbermarkSearchParams {
   privateMarkOnlyInd?: string;
   /** 'district' | 'client' | 'fileType'. */
   sortBy?: string;
+  /** A results-table column sort, `<column key>,asc|desc` (lib/columnSort); wins over sortBy. */
+  sort?: string;
   /** 0-indexed, following the backend. Carbon's Pagination is 1-indexed. */
   page?: number;
   size?: number;

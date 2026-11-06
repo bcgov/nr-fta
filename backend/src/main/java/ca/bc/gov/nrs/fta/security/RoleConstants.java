@@ -53,6 +53,14 @@ public class RoleConstants {
      */
     public static final String HARVEST_AUTH_DISTRICT_AUTHORITY = "FTA_HARVEST_AUTH_DISTRICT_ADMIN";
 
+    /**
+     * CSS role / Spring authority for apportionment (APT) staff: everything
+     * {@link #VIEWER_AUTHORITY} reads, plus every write under {@code /api/fta/apt/**}, for any
+     * org unit. Legacy APT2's {@code APT_EDITOR}; its {@code APT_VIEWER} maps to
+     * {@link #VIEWER_AUTHORITY}.
+     */
+    public static final String APT_AUTHORITY = "FTA_APT_ADMIN";
+
     /** CSS role / Spring authority for read-only access. */
     public static final String VIEWER_AUTHORITY = "FTA_VIEWER";
 
@@ -61,5 +69,6 @@ public class RoleConstants {
     public final Role FTA_HARVEST_AUTH_DISTRICT_ADMIN = Role.FTA_HARVEST_AUTH_DISTRICT_ADMIN;
     public final Role FTA_TIMBER_MARK_HEADQUARTERS_ADMIN = Role.FTA_TIMBER_MARK_HEADQUARTERS_ADMIN;
     public final Role FTA_TIMBER_MARK_DISTRICT_ADMIN = Role.FTA_TIMBER_MARK_DISTRICT_ADMIN;
+    public final Role FTA_APT_ADMIN = Role.FTA_APT_ADMIN;
     public final Role FTA_VIEWER = Role.FTA_VIEWER;
 }
