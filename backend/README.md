@@ -11,7 +11,7 @@ Spring Boot backend service for the Forest Tenure Administration application.
 | Spring Security | 6.5.x | OAuth2 Resource Server + JWT |
 | Oracle JDBC | 21.3.x (ojdbc11) | Database connectivity (TCPS to BC Gov shared Oracle) |
 | Undertow | 2.3.x | Embedded HTTP server (Tomcat excluded) |
-| JasperReports | 6.21.5 | On the classpath for future PDF reports — **no report code or endpoint exists yet** |
+| JasperReports | 6.21.5 | Embedded PDF rendering: the FTA402 timber mark certificate, and APT's nine reports (templates go in `src/main/resources/reports/apt/`; see the README there) |
 | Lombok | 1.18.x | Boilerplate reduction |
 | Resilience4j | 2.3.x | Circuit breaker / retry |
 

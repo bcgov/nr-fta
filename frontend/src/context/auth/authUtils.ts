@@ -141,7 +141,11 @@ export function parsePrivileges(input: string[]): USER_PRIVILEGE_TYPE {
  * reads), then FTA_TIMBER_MARK_HEADQUARTERS_ADMIN (private-mark writes, a narrow set of screens), then
  * FTA_TIMBER_MARK_DISTRICT_ADMIN (the same screens and writes; only its certificate print
  * differs, and that is decided by the backend from the token, not by this ranking), which
- * outranks FTA_VIEWER (read-only). Mirrors the backend Role enum ordering.
+ * outranks FTA_APT_ADMIN (a viewer's pages plus apportionment writes), which outranks FTA_VIEWER
+ * (read-only). Mirrors the backend Role enum ordering.
+ *
+ * FTA_APT_ADMIN's rank decides only menus, which are a viewer's. Its writes are asked of
+ * every role the user holds (access.canEditApt), so APT editing survives being outranked.
  *
  * Timber Mark Headquarters Administrator over Viewer is a trade: someone granted both keeps
  * the mark writes but loses the Viewer's wider menu, because roles do not stack.
@@ -152,6 +156,7 @@ const ROLE_PRECEDENCE: ROLE_TYPE[] = [
   'FTA_HARVEST_AUTH_DISTRICT_ADMIN',
   'FTA_TIMBER_MARK_HEADQUARTERS_ADMIN',
   'FTA_TIMBER_MARK_DISTRICT_ADMIN',
+  'FTA_APT_ADMIN',
   'FTA_VIEWER',
 ];
 

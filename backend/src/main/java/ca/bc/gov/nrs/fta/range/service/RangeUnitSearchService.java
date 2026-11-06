@@ -4,7 +4,9 @@ import ca.bc.gov.nrs.fta.range.dto.RangeUnitSearchDto;
 import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
 import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
+import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
 import java.util.List;
+import java.util.Map;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -84,6 +86,31 @@ public class RangeUnitSearchService {
   private static final String ORDER_BY =
       "\n ORDER BY ou.org_unit_code, rp.range_unit_id, rp.pasture_id";
 
+  /**
+   * Results-table columns a user can sort on, keyed as the frontend names them, mapped to
+   * the wrapped query's aliases.
+   */
+  private static final Map<String, String> SORT_COLUMNS = Map.of(
+      "rangeUnitId", "range_unit_id",
+      "pastureId", "pasture_id",
+      "rangeUnitName", "range_unit_name",
+      "pastureName", "pasture_name",
+      "rangeUnitStatusDesc", "range_unit_status_desc");
+
+  /**
+   * The rows, unpaged. With a column sort they are sorted outside the select, on its
+   * aliases, with range unit and pasture (unique together) trailing so a row cannot land
+   * on two pages. Without one, the legacy order.
+   */
+  private static String resultsQuery(String sort) {
+    String columnSort = ColumnSort.expression(sort, SORT_COLUMNS);
+    if (columnSort == null) {
+      return SELECT_COLUMNS + FROM_WHERE + ORDER_BY;
+    }
+    return "SELECT * FROM (\n" + SELECT_COLUMNS + FROM_WHERE + ")\n ORDER BY " + columnSort
+        + ", range_unit_id, pasture_id";
+  }
+
   private static final RowMapper<RangeUnitSearchDto> ROW_MAPPER =
       (rs, rowNum) -> new RangeUnitSearchDto(
           rs.getString("range_unit_id"),
@@ -109,6 +136,23 @@ public class RangeUnitSearchService {
       String rangeStatus,
       int page,
       int size) {
+    return search(orgUnitNo, rangeUnitName, pastureName, rangeStatus, page, size, null);
+  }
+
+  /**
+   * {@link #search(String, String, String, String, int, int)} in a results-table column
+   * sort.
+   *
+   * @param sort {@code <column>,asc|desc} ({@link ColumnSort}); null keeps the legacy order
+   */
+  public PagedResponse<RangeUnitSearchDto> search(
+      String orgUnitNo,
+      String rangeUnitName,
+      String pastureName,
+      String rangeStatus,
+      int page,
+      int size,
+      String sort) {
     MapSqlParameterSource params = criteria(orgUnitNo, rangeUnitName, pastureName, rangeStatus);
 
     Long total = jdbc.queryForObject("SELECT COUNT(*)\n" + FROM_WHERE, params, Long.class);
@@ -120,7 +164,7 @@ public class RangeUnitSearchService {
         .addValue("size", size);
 
     List<RangeUnitSearchDto> rows = jdbc.query(
-        SELECT_COLUMNS + FROM_WHERE + ORDER_BY
+        resultsQuery(sort)
             + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
         pageParams,
         ROW_MAPPER);
@@ -143,11 +187,22 @@ public class RangeUnitSearchService {
       String pastureName,
       String rangeStatus,
       CsvWriter csv) {
+    exportCsv(orgUnitNo, rangeUnitName, pastureName, rangeStatus, null, csv);
+  }
+
+  /** {@link #exportCsv(String, String, String, String, CsvWriter)} in a column sort. */
+  public void exportCsv(
+      String orgUnitNo,
+      String rangeUnitName,
+      String pastureName,
+      String rangeStatus,
+      String sort,
+      CsvWriter csv) {
 
     csv.writeRow("Range unit", "Pasture ID", "Range unit name", "Pasture name", "Status");
 
     streamingJdbc.jdbc().query(
-        SELECT_COLUMNS + FROM_WHERE + ORDER_BY,
+        resultsQuery(sort),
         criteria(orgUnitNo, rangeUnitName, pastureName, rangeStatus),
         // Cast required: a void lambda body matches both the RowCallbackHandler
         // and ResultSetExtractor overloads, so the compiler cannot choose.

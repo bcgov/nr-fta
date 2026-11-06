@@ -5,6 +5,7 @@ import { useState, type FC, type FormEvent } from 'react';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
 import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
+import { nextColumnSort, sortRows } from '@/lib/columnSort';
 import { MOCK_APPLICATIONS, findApplication } from '@/mocks/applications';
 import { ORG_UNITS } from '@/mocks/reference';
 import PageLayout from '@/pages/PageLayout';
@@ -59,6 +60,8 @@ const ApplicationMetrics: FC = () => {
   const notify = useNotification();
   const [orgUnit, setOrgUnit] = useState('');
   const [rows, setRows] = useState<MetricRow[] | null>(null);
+  // Every row is in the browser, so a header click sorts them here.
+  const [sort, setSort] = useState<string | undefined>();
 
   const onSearch = (e: FormEvent) => {
     e.preventDefault();
@@ -67,6 +70,7 @@ const ApplicationMetrics: FC = () => {
   const onReset = () => {
     setOrgUnit('');
     setRows(null);
+    setSort(undefined);
   };
   const onExport = () =>
     notify.display({
@@ -130,8 +134,10 @@ const ApplicationMetrics: FC = () => {
         <div className="bordered-table">
           <SearchResultsTable
             title="Processing metrics"
-            rows={rows}
+            rows={sortRows(rows, sort)}
             headers={HEADERS}
+            sort={sort}
+            onSort={(key) => setSort((prev) => nextColumnSort(prev, key))}
             emptyTitle="No metrics found"
             emptyBody="No applications match the selected organization unit."
           />

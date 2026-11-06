@@ -1,8 +1,8 @@
-import { Document, Search, Settings, Tag } from '@carbon/icons-react';
+import { ChartPie, Document, Search, Settings, Tag } from '@carbon/icons-react';
 
 import type { ROLE_TYPE } from '@/context/auth/types';
 
-import { isPathAllowedForRole } from './access';
+import { APT_PATH_PREFIX, isPathAllowedForRole } from './access';
 
 import type { ComponentType } from 'react';
 
@@ -141,6 +141,19 @@ const NAV: MenuSection[] = [
       },
     ],
   },
+  // Not in legacy FTA: the APT2 application (nr-apt2), folded in. Its four top-level screens,
+  // in APT2's order; the rest are reached from a management unit or licence.
+  {
+    id: 'apportionment',
+    label: 'Apportionment',
+    icon: ChartPie,
+    items: [
+      { id: 'apt-management-units', label: 'Management Units', path: '/apt/management-units' },
+      { id: 'apt-licences', label: 'Licences', path: '/apt/licences' },
+      { id: 'apt-linkages', label: 'Linkages', path: '/apt/linkages' },
+      { id: 'apt-reports', label: 'Reports', path: '/apt/reports' },
+    ],
+  },
   {
     id: 'admin',
     label: 'Administration',
@@ -217,23 +230,37 @@ const isVisible = (userRoles: string[], required?: string[]) =>
  * Forbidden. A section or entry may also carry its own `roles` allow-list; a
  * section whose every entry is filtered out is dropped.
  *
+ * <p>APT entries are the exception to "the effective role decides": an APT administrator
+ * outranked by another role (a timber mark role, whose allow-list has no APT pages) still sees
+ * them, as access.isPathAllowedForUser still lets them in.
+ *
  * @param userRoles  the user's canonical FTA role(s); the first is effective.
+ * @param heldRoles  every role the user holds (the keys of `user.privileges`); defaults to
+ *                   `userRoles`.
  */
-export function getMenuSections(userRoles: string[]): MenuSection[] {
+export function getMenuSections(
+  userRoles: string[],
+  heldRoles: string[] = userRoles,
+): MenuSection[] {
   const role = userRoles[0] as ROLE_TYPE | undefined;
+  const aptAdmin = heldRoles.includes('FTA_ADMIN') || heldRoles.includes('FTA_APT_ADMIN');
+  const allowed = (path: string) =>
+    isPathAllowedForRole(role, path) || (aptAdmin && path.startsWith(`${APT_PATH_PREFIX}/`));
   return NAV.filter((section) => isVisible(userRoles, section.roles))
     .map((section) => ({
       ...section,
-      items: section.items.filter(
-        (item) => isVisible(userRoles, item.roles) && isPathAllowedForRole(role, item.path),
-      ),
+      items: section.items.filter((item) => isVisible(userRoles, item.roles) && allowed(item.path)),
     }))
     .filter((section) => section.items.length > 0);
 }
 
 /** The id of the section containing `path`, or undefined if none does. */
-export function sectionIdForPath(userRoles: string[], path: string): string | undefined {
-  return getMenuSections(userRoles).find((section) =>
+export function sectionIdForPath(
+  userRoles: string[],
+  path: string,
+  heldRoles: string[] = userRoles,
+): string | undefined {
+  return getMenuSections(userRoles, heldRoles).find((section) =>
     section.items.some((item) => item.path === path),
   )?.id;
 }

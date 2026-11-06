@@ -33,6 +33,7 @@ import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
 import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
+import { nextColumnSort, sortHeaderProps } from '@/lib/columnSort';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import { originState, TIMBER_MARK_SEARCH_ORIGIN } from '@/lib/navOrigin';
 import PageLayout from '@/pages/PageLayout';
@@ -285,6 +286,18 @@ const TimberMarkSearch: FC = () => {
     [runSearch],
   );
 
+  // A header click re-sorts what's on screen: the criteria last searched, not edits made
+  // since, from the first page. The sort also goes into the form, so searching again keeps it.
+  const onSort = useCallback(
+    (key: string) => {
+      if (!searched) return;
+      const sort = nextColumnSort(searched.sort, key);
+      setForm((prev) => ({ ...prev, sort }));
+      void runSearch(0, pageSize, { ...searched, sort }, false);
+    },
+    [searched, setForm, runSearch, pageSize],
+  );
+
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
     setLastSearch(null);
@@ -374,7 +387,7 @@ const TimberMarkSearch: FC = () => {
               placeholder="e.g. 52/1234"
               helperText="A valid mark ignores all other criteria"
               value={form.timberMark ?? ''}
-              onChange={(e) => set('timberMark', e.target.value)}
+              onChange={(e) => set('timberMark', e.target.value.toUpperCase())}
               maxLength={6}
               autoComplete="off"
             />
@@ -646,7 +659,10 @@ const TimberMarkSearch: FC = () => {
                 legendText="Sort by"
                 name="tm-sort-by"
                 valueSelected={form.sortBy ?? 'district'}
-                onChange={(value) => set('sortBy', String(value))}
+                // Choosing an order here drops a column sort, which would otherwise win.
+                onChange={(value) =>
+                  setForm((prev) => ({ ...prev, sortBy: String(value), sort: undefined }))
+                }
               >
                 <RadioButton labelText="District" value="district" id="tm-sort-district" />
                 <RadioButton labelText="Client name" value="client" id="tm-sort-client" />
@@ -710,7 +726,11 @@ const TimberMarkSearch: FC = () => {
                           <TableHead>
                             <TableRow>
                               {headers.map((h) => (
-                                <TableHeader {...getHeaderProps({ header: h })} key={h.key}>
+                                <TableHeader
+                                  {...getHeaderProps({ header: h })}
+                                  {...sortHeaderProps(searched?.sort, h.key, onSort)}
+                                  key={h.key}
+                                >
                                   {h.header}
                                 </TableHeader>
                               ))}

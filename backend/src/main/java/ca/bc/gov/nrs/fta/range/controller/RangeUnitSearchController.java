@@ -37,12 +37,13 @@ public class RangeUnitSearchController {
       @RequestParam(required = false) String rangeUnitName,
       @RequestParam(required = false) String pastureName,
       @RequestParam(required = false) String rangeStatus,
+      @RequestParam(required = false) String sort,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
     int safePage = Math.max(page, 0);
     int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
     return ResponseEntity.ok(rangeUnitSearchService.search(
-        orgUnitNo, rangeUnitName, pastureName, rangeStatus, safePage, safeSize));
+        orgUnitNo, rangeUnitName, pastureName, rangeStatus, safePage, safeSize, sort));
   }
 
   /**
@@ -58,10 +59,11 @@ public class RangeUnitSearchController {
       @RequestParam(required = false) String orgUnitNo,
       @RequestParam(required = false) String rangeUnitName,
       @RequestParam(required = false) String pastureName,
-      @RequestParam(required = false) String rangeStatus) {
+      @RequestParam(required = false) String rangeStatus,
+      @RequestParam(required = false) String sort) {
     return CsvExport.response(
         "range-units",
         csv -> rangeUnitSearchService.exportCsv(
-            orgUnitNo, rangeUnitName, pastureName, rangeStatus, csv));
+            orgUnitNo, rangeUnitName, pastureName, rangeStatus, sort, csv));
   }
 }

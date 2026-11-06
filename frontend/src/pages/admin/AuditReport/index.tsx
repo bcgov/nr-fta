@@ -86,7 +86,7 @@ const AuditReport: FC = () => {
                 labelText="Timber Mark"
                 placeholder="e.g. AB1234"
                 value={criteria.timberMark ?? ''}
-                onChange={(e) => onField('timberMark')(e.target.value)}
+                onChange={(e) => onField('timberMark')(e.target.value.toUpperCase())}
               />
             </Column>
             <Column sm={4} md={4} lg={4}>

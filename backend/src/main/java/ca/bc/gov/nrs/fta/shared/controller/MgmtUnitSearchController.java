@@ -37,12 +37,13 @@ public class MgmtUnitSearchController {
   public ResponseEntity<PagedResponse<MgmtUnitSearchDto>> search(
       @RequestParam(required = false) String mgmtUnitTypeCode,
       @RequestParam(required = false) String description,
+      @RequestParam(required = false) String sort,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
     int safePage = Math.max(page, 0);
     int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
     return ResponseEntity.ok(
-        mgmtUnitSearchService.search(mgmtUnitTypeCode, description, safePage, safeSize));
+        mgmtUnitSearchService.search(mgmtUnitTypeCode, description, safePage, safeSize, sort));
   }
 
   /**
@@ -52,9 +53,10 @@ public class MgmtUnitSearchController {
   @GetMapping("/export")
   public ResponseEntity<StreamingResponseBody> exportCsv(
       @RequestParam(required = false) String mgmtUnitTypeCode,
-      @RequestParam(required = false) String description) {
+      @RequestParam(required = false) String description,
+      @RequestParam(required = false) String sort) {
     return CsvExport.response(
         "management-units",
-        csv -> mgmtUnitSearchService.exportCsv(mgmtUnitTypeCode, description, csv));
+        csv -> mgmtUnitSearchService.exportCsv(mgmtUnitTypeCode, description, sort, csv));
   }
 }

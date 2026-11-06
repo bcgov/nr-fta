@@ -1,0 +1,40 @@
+/* APT linkages: the new-relationship form and the client search dialog. */
+
+.apt-linkages__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-inline-size: 60rem;
+}
+
+/* Client number, its name, and Find, on one line; stacked on a narrow screen. */
+.apt-linkages__row {
+  display: grid;
+  grid-template-columns: minmax(10rem, 14rem) minmax(12rem, 1fr) auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+.apt-linkages__search {
+  display: grid;
+  grid-template-columns: minmax(10rem, 14rem) minmax(12rem, 1fr) auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+@media (max-width: 42rem) {
+  .apt-linkages__row,
+  .apt-linkages__search {
+    grid-template-columns: 1fr;
+  }
+}
+
+.apt-linkages__filter {
+  max-inline-size: 28rem;
+  margin-block-end: 1rem;
+}
+
+.apt-linkages__action-cell {
+  inline-size: 3rem;
+  text-align: end;
+}

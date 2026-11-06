@@ -42,6 +42,16 @@ import TimberMarkSearch from './pages/search/TimberMarkSearch';
 import ClientSearch from './pages/search/ClientSearch';
 import ManagementUnitSearch from './pages/search/ManagementUnitSearch';
 import ApplicationMetrics from './pages/search/ApplicationMetrics';
+import AptManagementUnitSearch from './pages/apt/ManagementUnitSearch';
+import AptManagementUnitEdit from './pages/apt/ManagementUnitEdit';
+import AptManagementUnitHistory from './pages/apt/ManagementUnitHistory';
+import AptManagementUnitDetail from './pages/apt/ManagementUnitDetail';
+import AptCommitments from './pages/apt/Commitments';
+import AptCommitmentHistory from './pages/apt/CommitmentHistory';
+import AptLicenceSearch from './pages/apt/LicenceSearch';
+import AptLicenceDetail from './pages/apt/LicenceDetail';
+import AptLinkages from './pages/apt/Linkages';
+import AptReports from './pages/apt/Reports';
 import { defaultRouteForUser, isPathAllowedForUser } from './routes/access';
 
 import type { FC, ReactNode } from 'react';
@@ -250,6 +260,43 @@ export default function App() {
           <Route path="/admin/archive" element={guarded(withLayout(<ArchiveTenures />))} />
 
           {/* Unknown in-shell path → 404 */}
+          {/* Apportionment (APT) — ported from nr-apt2. Paths are listed in routes/aptPaths.ts. */}
+          <Route
+            path="/apt/management-units"
+            element={guarded(withLayout(<AptManagementUnitSearch />))}
+          />
+          <Route
+            path="/apt/management-units/new"
+            element={guarded(withLayout(<AptManagementUnitEdit />))}
+          />
+          <Route
+            path="/apt/management-units/:muId/edit"
+            element={guarded(withLayout(<AptManagementUnitEdit />))}
+          />
+          <Route
+            path="/apt/management-units/:muId/history"
+            element={guarded(withLayout(<AptManagementUnitHistory />))}
+          />
+          <Route
+            path="/apt/management-units/:muId/history/:historyId"
+            element={guarded(withLayout(<AptManagementUnitDetail />))}
+          />
+          <Route
+            path="/apt/management-units/:muId/history/:historyId/apportionments/:apportionmentId/commitments"
+            element={guarded(withLayout(<AptCommitments />))}
+          />
+          <Route
+            path="/apt/commitments/:commitmentId/history"
+            element={guarded(withLayout(<AptCommitmentHistory />))}
+          />
+          <Route path="/apt/licences" element={guarded(withLayout(<AptLicenceSearch />))} />
+          <Route
+            path="/apt/licences/:forestFileId"
+            element={guarded(withLayout(<AptLicenceDetail />))}
+          />
+          <Route path="/apt/linkages" element={guarded(withLayout(<AptLinkages />))} />
+          <Route path="/apt/reports" element={guarded(withLayout(<AptReports />))} />
+
           <Route path="*" element={guarded(withLayout(<NotFound />))} />
         </Routes>
       ) : (

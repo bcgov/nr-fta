@@ -48,6 +48,7 @@ public class CutblockSearchController {
       @RequestParam(required = false) String harvestStartDateTo,
       @RequestParam(required = false) String districtAdminZone,
       @RequestParam(required = false) String sortBy,
+      @RequestParam(required = false) String sort,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
     int safePage = Math.max(page, 0);
@@ -56,7 +57,7 @@ public class CutblockSearchController {
         forestFileId, cuttingPermitId, timberMark, cutBlockId, blockStatusSt, orgUnitNo,
         clientNumber, clientLocnCode, clientName, managedByFile, managedByCp,
         harvestStartDateFrom, harvestStartDateTo, districtAdminZone,
-        sortBy, safePage, safeSize));
+        sortBy, sort, safePage, safeSize));
   }
 
   /**
@@ -79,12 +80,13 @@ public class CutblockSearchController {
       @RequestParam(required = false) String harvestStartDateFrom,
       @RequestParam(required = false) String harvestStartDateTo,
       @RequestParam(required = false) String districtAdminZone,
-      @RequestParam(required = false) String sortBy) {
+      @RequestParam(required = false) String sortBy,
+      @RequestParam(required = false) String sort) {
     return CsvExport.response(
         "cut-blocks",
         csv -> cutblockSearchService.exportCsv(
             forestFileId, cuttingPermitId, timberMark, cutBlockId, blockStatusSt, orgUnitNo,
             clientNumber, clientLocnCode, clientName, managedByFile, managedByCp,
-            harvestStartDateFrom, harvestStartDateTo, districtAdminZone, sortBy, csv));
+            harvestStartDateFrom, harvestStartDateTo, districtAdminZone, sortBy, sort, csv));
   }
 }

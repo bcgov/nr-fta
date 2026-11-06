@@ -81,6 +81,7 @@ public class HarvestingSearchController {
       @RequestParam(required = false) String ntsMapsheetLetter,
       @RequestParam(required = false) String ntsMapsheetSquare,
       @RequestParam(required = false) String sortBy,
+      @RequestParam(required = false) String sort,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
 
@@ -96,7 +97,7 @@ public class HarvestingSearchController {
 
     int safePage = Math.max(page, 0);
     int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
-    return ResponseEntity.ok(harvestingSearchService.search(criteria, safePage, safeSize));
+    return ResponseEntity.ok(harvestingSearchService.search(criteria, safePage, safeSize, sort));
   }
 
   /**
@@ -139,7 +140,8 @@ public class HarvestingSearchController {
       @RequestParam(required = false) String ntsMapsheetGrid,
       @RequestParam(required = false) String ntsMapsheetLetter,
       @RequestParam(required = false) String ntsMapsheetSquare,
-      @RequestParam(required = false) String sortBy) {
+      @RequestParam(required = false) String sortBy,
+      @RequestParam(required = false) String sort) {
 
     HarvestingSearchCriteria criteria = new HarvestingSearchCriteria(
         forestDistrict, mgmtUnitType, mgmtUnitId, forestFileId, cuttingPermitId, timberMark,
@@ -159,7 +161,7 @@ public class HarvestingSearchController {
 
     return CsvExport.response(
         "harvesting-authorities",
-        csv -> harvestingSearchService.exportCsv(effective, showOilAndGas, csv));
+        csv -> harvestingSearchService.exportCsv(effective, showOilAndGas, sort, csv));
   }
 
   /**

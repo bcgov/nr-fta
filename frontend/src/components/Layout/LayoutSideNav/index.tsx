@@ -40,6 +40,7 @@ export const LayoutSideNav: FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const roles = user?.roles ?? [];
+  const heldRoles = Object.keys(user?.privileges ?? {});
   const mayCreateMark = canEditMarks(user);
   // "New Application" pops its dialog over whatever page is open.
   const [newMarkOpen, setNewMarkOpen] = useState(false);
@@ -53,7 +54,7 @@ export const LayoutSideNav: FC = () => {
   // then falls back to the current page's section on the next navigation.
   const [railSectionId, setRailSectionId] = useState<string | undefined>(undefined);
 
-  const routeSectionId = sectionIdForPath(roles, location.pathname);
+  const routeSectionId = sectionIdForPath(roles, location.pathname, heldRoles);
   const activeSectionId = railSectionId ?? routeSectionId;
 
   // Once the nav is closed again, forget the rail choice so reopening follows
@@ -146,8 +147,8 @@ export const LayoutSideNav: FC = () => {
       >
         <SideNavItems>
           {isSideNavExpanded
-            ? getMenuSections(roles).map(renderSection)
-            : getMenuSections(roles).map(renderRailSection)}
+            ? getMenuSections(roles, heldRoles).map(renderSection)
+            : getMenuSections(roles, heldRoles).map(renderRailSection)}
         </SideNavItems>
       </SideNav>
       {/* Outside the nav, whose drawer styles would clip a fixed dialog. */}

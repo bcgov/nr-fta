@@ -31,7 +31,18 @@ public class TenureService {
    */
   public PagedResponse<TenureSummaryDto> search(
       TenureSearchCriteria criteria, int page, int size) {
-    return source.search(criteria, page, size);
+    return search(criteria, page, size, null);
+  }
+
+  /**
+   * {@link #search(TenureSearchCriteria, int, int)} in a results-table column sort.
+   *
+   * @param sort {@code <column>,asc|desc} (see {@code ColumnSort}); null keeps the
+   *             criteria's {@code sortBy} order
+   */
+  public PagedResponse<TenureSummaryDto> search(
+      TenureSearchCriteria criteria, int page, int size, String sort) {
+    return source.search(criteria, page, size, sort);
   }
 
   /**
@@ -42,6 +53,11 @@ public class TenureService {
    * @param csv      the writer the rows are streamed to
    */
   public void exportCsv(TenureSearchCriteria criteria, CsvWriter csv) {
-    source.exportCsv(criteria, csv);
+    exportCsv(criteria, null, csv);
+  }
+
+  /** {@link #exportCsv(TenureSearchCriteria, CsvWriter)} in the table's column sort. */
+  public void exportCsv(TenureSearchCriteria criteria, String sort, CsvWriter csv) {
+    source.exportCsv(criteria, sort, csv);
   }
 }

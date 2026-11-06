@@ -216,6 +216,11 @@ edits permits and blocks, assigns marks and retires permits.
 `FTA_HARVEST_AUTH_SENIOR_ADMIN` also gets legacy's Senior Admin and Feature Admin
 rights: suspensions, permit conditions, postponements, relabelling, deleting, and
 changing terms or rolling back a status after issue.
+**`FTA_APT_ADMIN`** brings in legacy APT2's `APT_EDITOR`: it reads what
+`FTA_VIEWER` reads and makes every apportionment write under `/api/fta/apt/**`, for
+any org unit. APT2's `APT_VIEWER` becomes plain `FTA_VIEWER`. Unlike the other
+roles, the frontend checks it against every role a user holds (`canEditApt`), so a
+higher-ranked role does not hide APT editing.
 All of these must be created as roles on FTA's CSS integration in each environment.
 
 ### Three things that are easy to get wrong

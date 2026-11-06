@@ -5,8 +5,10 @@ import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
 import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
+import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
 import java.sql.Types;
 import java.util.List;
+import java.util.Map;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -132,6 +134,36 @@ public class RangeTenureSearchService {
           + " tt.legal_effective_dt, NVL(tt.current_expiry_dt, tt.initial_expiry_dt)";
 
   /**
+   * Results-table columns a user can sort on, keyed as the frontend names them, mapped to
+   * the wrapped query's aliases.
+   */
+  private static final Map<String, String> SORT_COLUMNS = Map.of(
+      "orgUnitCode", "org_unit_code",
+      "clientName", "client_name",
+      "fileClientTypeDesc", "file_client_type_desc",
+      "fileTypeCode", "file_type_code",
+      "forestFileId", "forest_file_id",
+      "fileStatusDesc", "file_status_desc",
+      "issueDate", "issue_date",
+      "expiryDate", "expiry_date");
+
+  /**
+   * The rows, unpaged. With a column sort they are sorted outside the select, on its
+   * aliases (the client name is also a column of the joined client view, which Oracle's
+   * OFFSET rewrite can trip over: ORA-00918), with the legacy key trailing to break ties.
+   * Without one, the legacy order.
+   */
+  private static String resultsQuery(String sort) {
+    String columnSort = ColumnSort.expression(sort, SORT_COLUMNS);
+    if (columnSort == null) {
+      return SELECT_COLUMNS + FROM_WHERE + ORDER_BY;
+    }
+    return "SELECT * FROM (\n" + SELECT_COLUMNS + FROM_WHERE + ")\n ORDER BY " + columnSort
+        + ", org_unit_code, forest_file_id, client_number, client_locn_code,"
+        + " file_client_type_desc, issue_date, expiry_date";
+  }
+
+  /**
    * Range tenure search — mirrors {@code FTA_001R_TENR_SRCH.mainline}
    * ({@code GET} action). Each filter is applied only when its bind value is
    * non-null.
@@ -165,6 +197,50 @@ public class RangeTenureSearchService {
       String totalAnnualUseTo,
       int page,
       int size) {
+    return search(
+        forestFileId, fileTypeCode, orgUnitNo, zone, clientName, clientNumber, clientLocnCode,
+        fileClientType, fileStatus, mgmtUnitType, mgmtUnitId, issueDateFrom, issueDateTo,
+        expiryDateFrom, expiryDateTo, provisionYear, authorizedUseFrom, authorizedUseTo,
+        temporaryIncreaseFrom, temporaryIncreaseTo, billableNonUseFrom, billableNonUseTo,
+        nonBillableNonUseFrom, nonBillableNonUseTo, totalAnnualUseFrom, totalAnnualUseTo, page,
+        size, null);
+  }
+
+  /**
+   * {@link #search} in a results-table column sort.
+   *
+   * @param sort {@code <column>,asc|desc} ({@link ColumnSort}); null keeps the legacy order
+   */
+  public PagedResponse<RangeTenureSearchDto> search(
+      String forestFileId,
+      String fileTypeCode,
+      String orgUnitNo,
+      String zone,
+      String clientName,
+      String clientNumber,
+      String clientLocnCode,
+      String fileClientType,
+      String fileStatus,
+      String mgmtUnitType,
+      String mgmtUnitId,
+      String issueDateFrom,
+      String issueDateTo,
+      String expiryDateFrom,
+      String expiryDateTo,
+      String provisionYear,
+      String authorizedUseFrom,
+      String authorizedUseTo,
+      String temporaryIncreaseFrom,
+      String temporaryIncreaseTo,
+      String billableNonUseFrom,
+      String billableNonUseTo,
+      String nonBillableNonUseFrom,
+      String nonBillableNonUseTo,
+      String totalAnnualUseFrom,
+      String totalAnnualUseTo,
+      int page,
+      int size,
+      String sort) {
     MapSqlParameterSource params = criteria(
         forestFileId, fileTypeCode, orgUnitNo, zone,
         clientName, clientNumber, clientLocnCode, fileClientType, fileStatus,
@@ -185,7 +261,7 @@ public class RangeTenureSearchService {
         .addValue("size", size);
 
     List<RangeTenureSearchDto> rows = jdbc.query(
-        SELECT_COLUMNS + FROM_WHERE + ORDER_BY
+        resultsQuery(sort)
             + "\n OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY",
         pageParams,
         (rs, rowNum) -> new RangeTenureSearchDto(
@@ -248,6 +324,45 @@ public class RangeTenureSearchService {
       String totalAnnualUseFrom,
       String totalAnnualUseTo,
       CsvWriter csv) {
+    exportCsv(
+        forestFileId, fileTypeCode, orgUnitNo, zone, clientName, clientNumber, clientLocnCode,
+        fileClientType, fileStatus, mgmtUnitType, mgmtUnitId, issueDateFrom, issueDateTo,
+        expiryDateFrom, expiryDateTo, provisionYear, authorizedUseFrom, authorizedUseTo,
+        temporaryIncreaseFrom, temporaryIncreaseTo, billableNonUseFrom, billableNonUseTo,
+        nonBillableNonUseFrom, nonBillableNonUseTo, totalAnnualUseFrom, totalAnnualUseTo, null,
+        csv);
+  }
+
+  /** {@link #exportCsv} in a results-table column sort ({@link ColumnSort}). */
+  public void exportCsv(
+      String forestFileId,
+      String fileTypeCode,
+      String orgUnitNo,
+      String zone,
+      String clientName,
+      String clientNumber,
+      String clientLocnCode,
+      String fileClientType,
+      String fileStatus,
+      String mgmtUnitType,
+      String mgmtUnitId,
+      String issueDateFrom,
+      String issueDateTo,
+      String expiryDateFrom,
+      String expiryDateTo,
+      String provisionYear,
+      String authorizedUseFrom,
+      String authorizedUseTo,
+      String temporaryIncreaseFrom,
+      String temporaryIncreaseTo,
+      String billableNonUseFrom,
+      String billableNonUseTo,
+      String nonBillableNonUseFrom,
+      String nonBillableNonUseTo,
+      String totalAnnualUseFrom,
+      String totalAnnualUseTo,
+      String sort,
+      CsvWriter csv) {
 
     csv.writeRow(
         "Administration organization unit",
@@ -260,7 +375,7 @@ public class RangeTenureSearchService {
         "Expiry date");
 
     streamingJdbc.jdbc().query(
-        SELECT_COLUMNS + FROM_WHERE + ORDER_BY,
+        resultsQuery(sort),
         criteria(
             forestFileId, fileTypeCode, orgUnitNo, zone,
             clientName, clientNumber, clientLocnCode, fileClientType, fileStatus,

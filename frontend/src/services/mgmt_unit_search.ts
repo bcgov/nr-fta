@@ -16,6 +16,8 @@ export interface MgmtUnitSearchParams {
   mgmtUnitTypeCode?: string;
   description?: string;
   /** 0-indexed, following the backend. Carbon's Pagination is 1-indexed. */
+  /** A results-table column sort, `<column key>,asc|desc` (lib/columnSort). */
+  sort?: string;
   page?: number;
   size?: number;
 }

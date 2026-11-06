@@ -31,6 +31,7 @@ import ExportCsvButton from '@/components/ExportCsvButton';
 import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { useNotification } from '@/context/notification/useNotification';
 import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
+import { nextColumnSort, sortHeaderProps } from '@/lib/columnSort';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
@@ -102,10 +103,11 @@ const MIN_CRITERIA = 2;
 
 const hasValue = (v: string | undefined) => v !== undefined && v.trim().length > 0;
 
-/** Counts criteria the way the backend does — the O&G checkbox counts, sort does not. */
+/** Counts criteria the way the backend does — the O&G checkbox counts, sorts do not. */
 const countCriteria = (criteria: HarvestingSearchParams) => {
-  const { sortBy, page: _p, size: _s, searchOnlyOg, ...rest } = criteria;
+  const { sortBy, sort, page: _p, size: _s, searchOnlyOg, ...rest } = criteria;
   void sortBy;
+  void sort;
   void _p;
   void _s;
   let count = Object.values(rest).filter((v) => hasValue(v as string | undefined)).length;
@@ -321,6 +323,18 @@ const HarvestingAuthoritySearch: FC = () => {
     [runSearch],
   );
 
+  // A header click re-sorts what's on screen: the criteria last searched, not edits made
+  // since, from the first page. The sort also goes into the form, so searching again keeps it.
+  const onSort = useCallback(
+    (key: string) => {
+      if (!searched) return;
+      const sort = nextColumnSort(searched.sort, key);
+      setForm((prev) => ({ ...prev, sort }));
+      void runSearch(0, pageSize, { ...searched, sort });
+    },
+    [searched, setForm, runSearch, pageSize],
+  );
+
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
     setLastSearch(null);
@@ -409,7 +423,7 @@ const HarvestingAuthoritySearch: FC = () => {
               placeholder="e.g. 52/1234"
               helperText="A valid mark ignores all other criteria"
               value={form.timberMark ?? ''}
-              onChange={(e) => set('timberMark', e.target.value)}
+              onChange={(e) => set('timberMark', e.target.value.toUpperCase())}
               maxLength={10}
               autoComplete="off"
             />
@@ -698,7 +712,10 @@ const HarvestingAuthoritySearch: FC = () => {
                 legendText="Sort by"
                 name="ha-sort-by"
                 valueSelected={form.sortBy ?? SORT_DISTRICT}
-                onChange={(value) => set('sortBy', String(value))}
+                // Choosing an order here drops a column sort, which would otherwise win.
+                onChange={(value) =>
+                  setForm((prev) => ({ ...prev, sortBy: String(value), sort: undefined }))
+                }
               >
                 <RadioButton labelText="District" value={SORT_DISTRICT} id="ha-sort-district" />
                 <RadioButton labelText="Client name" value={SORT_CLIENT} id="ha-sort-client" />
@@ -768,7 +785,11 @@ const HarvestingAuthoritySearch: FC = () => {
                           <TableHead>
                             <TableRow>
                               {hdrs.map((h) => (
-                                <TableHeader {...getHeaderProps({ header: h })} key={h.key}>
+                                <TableHeader
+                                  {...getHeaderProps({ header: h })}
+                                  {...sortHeaderProps(searched?.sort, h.key, onSort)}
+                                  key={h.key}
+                                >
                                   {h.header}
                                 </TableHeader>
                               ))}

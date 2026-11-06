@@ -64,6 +64,8 @@ export interface HarvestingSearchParams {
   ntsMapsheetSquare?: string;
   /** '1' district, '2' client name, '3' file type. */
   sortBy?: string;
+  /** A results-table column sort, `<column key>,asc|desc` (lib/columnSort); wins over sortBy. */
+  sort?: string;
   /** 0-indexed, following the backend. Carbon's Pagination is 1-indexed. */
   page?: number;
   size?: number;

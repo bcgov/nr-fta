@@ -29,6 +29,7 @@ import UserName from '@/components/UserName';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
+import { nextColumnSort, sortHeaderProps } from '@/lib/columnSort';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import { canEditMarks } from '@/routes/access';
@@ -212,6 +213,18 @@ const MarkList: FC = () => {
     [runSearch],
   );
 
+  // A header click re-sorts what's on screen: the criteria last searched, not edits made
+  // since, from the first page. The sort also goes into the form, so searching again keeps it.
+  const onSort = useCallback(
+    (key: string) => {
+      if (!searched) return;
+      const sort = nextColumnSort(searched.sort, key);
+      setForm((prev) => ({ ...prev, sort }));
+      void runSearch(0, pageSize, { ...searched, sort });
+    },
+    [searched, setForm, runSearch, pageSize],
+  );
+
   const onClear = useCallback(() => {
     setForm(EMPTY_FORM);
     setLastSearch(null);
@@ -273,7 +286,7 @@ const MarkList: FC = () => {
               labelText="Timber mark"
               placeholder="e.g. 12 3456"
               value={form.timberMark ?? ''}
-              onChange={(e) => set('timberMark', e.target.value)}
+              onChange={(e) => set('timberMark', e.target.value.toUpperCase())}
               maxLength={6}
               autoComplete="off"
             />
@@ -354,7 +367,11 @@ const MarkList: FC = () => {
                           <TableHead>
                             <TableRow>
                               {headers.map((h) => (
-                                <TableHeader {...getHeaderProps({ header: h })} key={h.key}>
+                                <TableHeader
+                                  {...getHeaderProps({ header: h })}
+                                  {...sortHeaderProps(searched?.sort, h.key, onSort)}
+                                  key={h.key}
+                                >
                                   {h.header}
                                 </TableHeader>
                               ))}

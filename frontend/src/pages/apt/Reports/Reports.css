@@ -1,0 +1,12 @@
+/* APT reports: the report table's run buttons and the data-extract buttons. */
+
+.apt-reports__action-cell {
+  inline-size: 10rem;
+  text-align: end;
+}
+
+.apt-reports__extracts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}

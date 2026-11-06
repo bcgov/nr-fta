@@ -10,6 +10,7 @@ import {
 } from '@carbon/react';
 
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import { sortHeaderProps } from '@/lib/columnSort';
 
 import type { ReactNode } from 'react';
 
@@ -26,6 +27,12 @@ interface SearchResultsTableProps<T extends { id: string }> {
   renderCell?: (row: T, columnKey: string) => ReactNode | undefined;
   emptyTitle?: string;
   emptyBody?: ReactNode;
+  /**
+   * The column sort the rows are in (`<key>,asc|desc`, lib/columnSort). With `onSort`, every
+   * header is clickable; the caller sorts `rows` itself, as this table only shows them.
+   */
+  sort?: string;
+  onSort?: (key: string) => void;
 }
 
 /**
@@ -41,6 +48,8 @@ export function SearchResultsTable<T extends { id: string }>({
   renderCell,
   emptyTitle = 'No results found',
   emptyBody = 'Adjust your search criteria and try again.',
+  sort,
+  onSort,
 }: SearchResultsTableProps<T>) {
   if (rows.length === 0) {
     return <EmptyState title={emptyTitle} body={emptyBody} />;
@@ -59,7 +68,11 @@ export function SearchResultsTable<T extends { id: string }>({
                 {dtHeaders.map((header) => {
                   const { key, ...rest } = getHeaderProps({ header });
                   return (
-                    <TableHeader key={key} {...rest}>
+                    <TableHeader
+                      key={key}
+                      {...rest}
+                      {...(onSort && sortHeaderProps(sort, header.key, onSort))}
+                    >
                       {header.header}
                     </TableHeader>
                   );

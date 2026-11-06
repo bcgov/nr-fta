@@ -6,7 +6,7 @@ import { navSection, openNavSection, pageHeading, sideNav } from './helpers/nav'
 import { gotoProtected } from './utils';
 
 /**
- * What each role may see and open, for all six roles, from one test account: see
+ * What each role may see and open, for all seven roles, from one test account: see
  * signInAs for how, and for why this covers the screens and not the server.
  *
  * The expectations are written out here rather than read from routes/access.ts, so
@@ -18,11 +18,12 @@ const HARVEST_SENIOR = 'FTA_HARVEST_AUTH_SENIOR_ADMIN';
 const HARVEST_DISTRICT = 'FTA_HARVEST_AUTH_DISTRICT_ADMIN';
 const MARK_HQ = 'FTA_TIMBER_MARK_HEADQUARTERS_ADMIN';
 const MARK_DISTRICT = 'FTA_TIMBER_MARK_DISTRICT_ADMIN';
+const APT = 'FTA_APT_ADMIN';
 const VIEWER = 'FTA_VIEWER';
 
-const ALL_ROLES = [ADMIN, HARVEST_SENIOR, HARVEST_DISTRICT, MARK_HQ, MARK_DISTRICT, VIEWER];
+const ALL_ROLES = [ADMIN, HARVEST_SENIOR, HARVEST_DISTRICT, MARK_HQ, MARK_DISTRICT, APT, VIEWER];
 const MARK_ROLES = [MARK_HQ, MARK_DISTRICT];
-const WIDE_READ_ROLES = [HARVEST_SENIOR, HARVEST_DISTRICT, VIEWER];
+const WIDE_READ_ROLES = [HARVEST_SENIOR, HARVEST_DISTRICT, APT, VIEWER];
 
 const PERMIT_PATH = `/harvesting-authority/${PERMIT_ID}?forestFileId=${FILE_ID}`;
 const BLOCK_PATH = `/cut-block/${BLOCK_ID}?forestFileId=${FILE_ID}&cuttingPermitId=${PERMIT_ID}`;
@@ -58,10 +59,11 @@ test.describe('without a role', () => {
 
 test.describe('the menu', () => {
   const SECTIONS: Record<string, string[]> = {
-    [ADMIN]: ['Search', 'Tenures', 'Private Marks', 'Administration'],
-    [HARVEST_SENIOR]: ['Search', 'Tenures', 'Private Marks'],
-    [HARVEST_DISTRICT]: ['Search', 'Tenures', 'Private Marks'],
-    [VIEWER]: ['Search', 'Tenures', 'Private Marks'],
+    [ADMIN]: ['Search', 'Tenures', 'Private Marks', 'Apportionment', 'Administration'],
+    [HARVEST_SENIOR]: ['Search', 'Tenures', 'Private Marks', 'Apportionment'],
+    [HARVEST_DISTRICT]: ['Search', 'Tenures', 'Private Marks', 'Apportionment'],
+    [APT]: ['Search', 'Tenures', 'Private Marks', 'Apportionment'],
+    [VIEWER]: ['Search', 'Tenures', 'Private Marks', 'Apportionment'],
     [MARK_HQ]: ['Search', 'Private Marks'],
     [MARK_DISTRICT]: ['Search', 'Private Marks'],
   };
@@ -89,6 +91,7 @@ test.describe('the menu', () => {
     [MARK_DISTRICT, true],
     [HARVEST_SENIOR, false],
     [HARVEST_DISTRICT, false],
+    [APT, false],
     [VIEWER, false],
   ] as const) {
     test(`${role} ${offered ? 'is' : 'is not'} offered a new mark application`, async ({
@@ -108,6 +111,19 @@ test.describe('the menu', () => {
     await signInAs(context, [VIEWER, MARK_HQ]);
     await gotoProtected(page, '/welcome');
     await expect(navSection(page, 'Tenures')).toHaveCount(0);
+  });
+
+  test('an APT administrator outranked by a timber mark role keeps Apportionment', async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, [MARK_HQ, APT]);
+    await gotoProtected(page, '/welcome');
+    await expect(sideNav(page).getByRole('button')).toHaveText([
+      'Search',
+      'Private Marks',
+      'Apportionment',
+    ]);
   });
 
   test('a role scoped to a district still counts as that role', async ({ page, context }) => {
@@ -137,6 +153,10 @@ test.describe('the route guard', () => {
     { path: '/marks', deniedTo: [] },
     { path: `/tenures/${FILE_ID}`, deniedTo: [] },
     { path: PERMIT_PATH.split('?')[0], deniedTo: [] },
+    { path: '/apt/management-units', deniedTo: MARK_ROLES },
+    { path: '/apt/licences', deniedTo: MARK_ROLES },
+    { path: '/apt/linkages', deniedTo: MARK_ROLES },
+    { path: '/apt/reports', deniedTo: MARK_ROLES },
   ];
 
   for (const role of ALL_ROLES) {
@@ -155,7 +175,7 @@ test.describe('the route guard', () => {
 test.describe('harvest authorization actions', () => {
   const EDITORS = [ADMIN, HARVEST_SENIOR, HARVEST_DISTRICT];
 
-  for (const role of [...EDITORS, VIEWER]) {
+  for (const role of [...EDITORS, APT, VIEWER]) {
     const edits = EDITORS.includes(role);
 
     test(`${role} ${edits ? 'can' : 'cannot'} act on a cutting permit`, async ({
@@ -227,6 +247,36 @@ test.describe('harvest authorization actions', () => {
       await expect(page.getByRole('button', { name: 'Edit permit' })).toHaveCount(0);
       await expect(page.getByRole('tab', { name: 'Conditions' })).toBeDisabled();
       await expect(page.getByRole('tab', { name: 'Postponements' })).toBeDisabled();
+    });
+  }
+});
+
+test.describe('apportionment actions', () => {
+  // FTA_ADMIN and FTA_APT_ADMIN write APT, checked against every role held: a timber mark
+  // role outranking FTA_APT_ADMIN does not take the writes away.
+  for (const [name, roles, edits] of [
+    [ADMIN, [ADMIN], true],
+    [APT, [APT], true],
+    [`${MARK_HQ} + ${APT}`, [MARK_HQ, APT], true],
+    [HARVEST_SENIOR, [HARVEST_SENIOR], false],
+    [VIEWER, [VIEWER], false],
+  ] as const) {
+    test(`${name} ${edits ? 'can' : 'cannot'} create management units and relationships`, async ({
+      page,
+      context,
+    }) => {
+      await signInAs(context, [...roles]);
+      await gotoProtected(page, '/apt/management-units');
+      await expect(pageHeading(page, 'Management Units')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'New management unit' })).toHaveCount(
+        edits ? 1 : 0,
+      );
+
+      await gotoProtected(page, '/apt/linkages');
+      await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Create relationship' })).toHaveCount(
+        edits ? 1 : 0,
+      );
     });
   }
 });

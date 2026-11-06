@@ -40,13 +40,14 @@ public class ClientSearchController {
       @RequestParam(required = false) String clientName,
       @RequestParam(required = false) String legalFirstName,
       @RequestParam(required = false) String legalMiddleName,
+      @RequestParam(required = false) String sort,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
     int safePage = Math.max(page, 0);
     int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
     return ResponseEntity.ok(clientSearchService.search(
         clientNumber, clientAcronym, clientName, legalFirstName, legalMiddleName,
-        safePage, safeSize));
+        safePage, safeSize, sort));
   }
 
   /** Most suggestions a type-ahead returns; enough to choose from, cheap to render. */
@@ -75,10 +76,11 @@ public class ClientSearchController {
       @RequestParam(required = false) String clientAcronym,
       @RequestParam(required = false) String clientName,
       @RequestParam(required = false) String legalFirstName,
-      @RequestParam(required = false) String legalMiddleName) {
+      @RequestParam(required = false) String legalMiddleName,
+      @RequestParam(required = false) String sort) {
     return CsvExport.response(
         "clients",
         csv -> clientSearchService.exportCsv(
-            clientNumber, clientAcronym, clientName, legalFirstName, legalMiddleName, csv));
+            clientNumber, clientAcronym, clientName, legalFirstName, legalMiddleName, sort, csv));
   }
 }

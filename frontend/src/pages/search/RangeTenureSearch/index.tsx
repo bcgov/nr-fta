@@ -29,6 +29,7 @@ import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
 import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
+import { nextColumnSort, sortHeaderProps } from '@/lib/columnSort';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
 import {
@@ -193,7 +194,7 @@ const RangeTenureSearch: FC = () => {
   const runSearch = useCallback(
     async (nextPage: number, nextSize: number, criteria: RangeTenureSearchParams = form) => {
       const filled = Object.entries(criteria).filter(
-        ([k, v]) => k !== 'page' && k !== 'size' && v !== undefined && v !== '',
+        ([k, v]) => k !== 'page' && k !== 'size' && k !== 'sort' && v !== undefined && v !== '',
       ).length;
       if (filled < MIN_CRITERIA) {
         setError('Enter at least two search criteria.');
@@ -249,6 +250,18 @@ const RangeTenureSearch: FC = () => {
       void runSearch(newPage - 1, newSize);
     },
     [runSearch],
+  );
+
+  // A header click re-sorts what's on screen: the criteria last searched, not edits made
+  // since, from the first page. The sort also goes into the form, so searching again keeps it.
+  const onSort = useCallback(
+    (key: string) => {
+      if (!searched) return;
+      const sort = nextColumnSort(searched.sort, key);
+      setForm((prev) => ({ ...prev, sort }));
+      void runSearch(0, pageSize, { ...searched, sort });
+    },
+    [searched, setForm, runSearch, pageSize],
   );
 
   const onClear = useCallback(() => {
@@ -585,7 +598,11 @@ const RangeTenureSearch: FC = () => {
                           <TableHead>
                             <TableRow>
                               {headers.map((h) => (
-                                <TableHeader {...getHeaderProps({ header: h })} key={h.key}>
+                                <TableHeader
+                                  {...getHeaderProps({ header: h })}
+                                  {...sortHeaderProps(searched?.sort, h.key, onSort)}
+                                  key={h.key}
+                                >
                                   {h.header}
                                 </TableHeader>
                               ))}
