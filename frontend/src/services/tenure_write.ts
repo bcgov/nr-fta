@@ -5,8 +5,6 @@ export interface CreateTenureRequest {
   forestFileId: string;
   fileTypeCode: string;
   orgUnitCode: string;
-  clientNumber: string;
-  clientName: string;
   issueDate: string | null; // ISO date
 }
 
