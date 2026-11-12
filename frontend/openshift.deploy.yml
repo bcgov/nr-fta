@@ -38,6 +38,12 @@ parameters:
   - name: REGISTRY
     description: Image registry path (no tag)
     value: ghcr.io/bcgov/nr-fta/frontend
+  # IMAGE_TAG is the same on every push to a PR (its number), so without
+  # something that changes the pod template, `oc apply` reports the Deployment
+  # "unchanged" and the pods keep serving the PR's first image.
+  - name: DEPLOY_ID
+    description: The commit being deployed; a new value rolls the pods
+    value: ""
   - name: DOMAIN
     description: Cluster apps domain (do not include leading dot)
     value: apps.gold.devops.gov.bc.ca
@@ -85,6 +91,9 @@ objects:
           labels:
             app: ${NAME}-frontend-${ZONE}
             app.kubernetes.io/instance: ${ZONE}
+          annotations:
+            # Changes on every deploy, so the pods restart and pull the new image.
+            fta/deploy-id: "${DEPLOY_ID}"
         spec:
           automountServiceAccountToken: false
           securityContext:
@@ -92,6 +101,8 @@ objects:
           initContainers:
             - name: seed-srv
               image: ${REGISTRY}:${IMAGE_TAG}
+              # The tag is reused across pushes; a cached copy would be stale.
+              imagePullPolicy: Always
               command:
                 - sh
                 - -c
@@ -117,6 +128,7 @@ objects:
           containers:
             - name: ${NAME}-frontend
               image: ${REGISTRY}:${IMAGE_TAG}
+              imagePullPolicy: Always
               ports:
                 - name: http
                   containerPort: 3000
