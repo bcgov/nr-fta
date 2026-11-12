@@ -48,6 +48,11 @@ public class CodeListController {
     return ResponseEntity.ok(codeListService.districts());
   }
 
+  @GetMapping("/regions")
+  public ResponseEntity<List<CodeOptionDto>> regions() {
+    return ResponseEntity.ok(codeListService.regions());
+  }
+
   /** District number to its default cascade split code. */
   @GetMapping("/district-default-cascades")
   public ResponseEntity<List<CodeOptionDto>> districtDefaultCascades() {
@@ -77,6 +82,16 @@ public class CodeListController {
   @GetMapping("/private-mark-amend-statuses")
   public ResponseEntity<List<CodeOptionDto>> privateMarkAmendStatuses() {
     return ResponseEntity.ok(codeListService.privateMarkAmendStatuses());
+  }
+
+  @GetMapping("/range-file-types")
+  public ResponseEntity<List<CodeOptionDto>> rangeFileTypes() {
+    return ResponseEntity.ok(codeListService.rangeFileTypes());
+  }
+
+  @GetMapping("/billing-instructions")
+  public ResponseEntity<List<CodeOptionDto>> billingInstructions() {
+    return ResponseEntity.ok(codeListService.billingInstructions());
   }
 
   @GetMapping("/file-types")

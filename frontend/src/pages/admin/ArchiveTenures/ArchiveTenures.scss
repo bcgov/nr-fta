@@ -1,0 +1,5 @@
+// The Go button has no label, so push it down level with the labelled inputs.
+.archive-tenures__go {
+  display: flex;
+  align-items: flex-end;
+}

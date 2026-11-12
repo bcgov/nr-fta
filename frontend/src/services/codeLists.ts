@@ -57,6 +57,9 @@ export const getOrgUnits = () => list('org-units');
 /** District-level org units (code = ORG_UNIT_NO), for the FTA510 District dropdown. */
 export const getDistricts = () => list('districts');
 
+/** Region-level org units (code = ORG_UNIT_NO), for the FTA640 Region dropdown. */
+export const getRegions = () => list('regions');
+
 /**
  * An org unit option's ORG_UNIT_CODE ("DKM"). The option's code is the
  * ORG_UNIT_NO, but its label reads "CODE - name" (CodeListService), so the code
@@ -87,6 +90,12 @@ export const getPrivateMarkTypes = () => list('private-mark-types');
 export const getPrivateMarkAmendStatuses = () => list('private-mark-amend-statuses');
 
 export const getFileTypes = () => list('file-types');
+
+/** Range file types (RANGE_FILE_TYPE_CODE), for FTA680's Tenure Type. */
+export const getRangeFileTypes = () => list('range-file-types');
+
+/** Billing instructions a user may choose on FTA680 (all but "B"). */
+export const getBillingInstructionCodes = () => list('billing-instructions');
 
 /**
  * One management unit — a Timber Supply Area, Tree Farm Licence and so on.

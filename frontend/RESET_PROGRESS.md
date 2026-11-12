@@ -109,7 +109,7 @@ Admin / Billing / Reports (all FTA_ADMIN-gated; mock: `src/mocks/billing.ts`):
 - [x] Org Unit Maintenance (SIL99)
 - [x] Timber Mark Transfer (FTA240)
 - [x] Archive Tenures (FTA640)
-- [x] Billing flows via shared BillingReportScreen: Rents & Fees Prep (FTA670), Billing Instructions (FTA680), Pre/Post Billing (FTA685/686), Approval (FTA690), Invoice Preview (FTA695)
+- [x] Range billing on real data: Billing Instructions (FTA680), Invoice Preview (FTA695), Approval (FTA690), Pre/Post Billing reports (FTA685/686 → FTA408/FTA409 PDFs). Not yet ported ("Not available yet" page): Rents & Fees Prep (FTA670)
 
 ## STATUS: every side-nav route resolves to a real Carbon screen on mock data.
 36 page components. ScreenPlaceholder scaffold removed (no longer needed).

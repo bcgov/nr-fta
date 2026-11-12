@@ -1,0 +1,38 @@
+// Shared by the range billing screens (FTA680, FTA690, FTA695).
+
+// The Go/Submit button has no label, so push it down level with the labelled inputs.
+.billing__go {
+  display: flex;
+  align-items: flex-end;
+}
+
+.billing__caution {
+  max-width: none;
+  margin-top: 1rem;
+}
+
+.billing__errors {
+  margin: 0.25rem 0 0;
+  padding-left: 1rem;
+  list-style: disc;
+}
+
+.billing__instr {
+  min-width: 5rem;
+}
+
+.billing__invoice-title {
+  margin-bottom: 1rem;
+}
+
+.billing__invoice-lines {
+  margin-top: 1.5rem;
+}
+
+.billing__num {
+  text-align: right;
+}
+
+.billing__sort {
+  margin: 1rem 0;
+}

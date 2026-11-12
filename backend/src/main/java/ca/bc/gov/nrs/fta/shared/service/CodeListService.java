@@ -132,6 +132,42 @@ public class CodeListService {
     return jdbc.query(ORG_UNITS_SQL, MAPPER);
   }
 
+  /**
+   * Range file types (RANGE_FILE_TYPE_CODE), for FTA680's Tenure Type dropdown
+   * (legacy {@code sil.lookup.filteredFileTypeCodes} with "R"). Legacy listed
+   * them all, expired or not.
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> rangeFileTypes() {
+    return jdbc.query(
+        """
+        SELECT range_file_type_code AS code,
+               range_file_type_code || ' - ' || description AS description
+          FROM the.range_file_type_code
+         ORDER BY range_file_type_code
+        """,
+        MAPPER);
+  }
+
+  /**
+   * Billing instructions a user may choose on FTA680 (legacy
+   * {@code fta.lookup.billingInstrCodeNoB}): every unexpired code but "B",
+   * which only the system records.
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> billingInstructions() {
+    return jdbc.query(
+        """
+        SELECT billing_instruction_code AS code,
+               billing_instruction_code || ' - ' || description AS description
+          FROM the.billing_instruction_code
+         WHERE billing_instruction_code <> 'B'
+           AND expiry_date > SYSDATE
+         ORDER BY billing_instruction_code
+        """,
+        MAPPER);
+  }
+
   @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> fileTypes() {
     return jdbc.query(codeSql("file_type_code", "the.file_type_code"), MAPPER);
@@ -260,6 +296,25 @@ public class CodeListService {
                org_unit_code || ' - ' || org_unit_name AS description
           FROM the.org_unit
          WHERE org_level_code = 'D'
+           AND SYSDATE BETWEEN effective_date AND expiry_date
+         ORDER BY org_unit_code
+        """,
+        MAPPER);
+  }
+
+  /**
+   * Regions — ORG_UNIT rows at the region level, for the FTA640 Region dropdown
+   * (legacy {@code fta.lookup.regionOrgUnitCode}). The code is the ORG_UNIT_NO,
+   * as {@link #districts()}.
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> regions() {
+    return jdbc.query(
+        """
+        SELECT TO_CHAR(org_unit_no)                   AS code,
+               org_unit_code || ' - ' || org_unit_name AS description
+          FROM the.org_unit
+         WHERE org_level_code = 'R'
            AND SYSDATE BETWEEN effective_date AND expiry_date
          ORDER BY org_unit_code
         """,
