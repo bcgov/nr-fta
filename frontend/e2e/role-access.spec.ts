@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { BLOCK_ID, FILE_ID, PERMIT_ID } from './helpers/mockApi';
 import { signInAs } from './helpers/mockSession';
 import { navSection, openNavSection, pageHeading, sideNav } from './helpers/nav';
-import { gotoProtected } from './utils';
+import { gotoProtected, gotoWithRetry } from './utils';
 
 /**
  * What each role may see and open, for all seven roles, from one test account: see
@@ -38,7 +38,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe('without a role', () => {
   test('signed out, any page offers only the sign-in', async ({ page }) => {
-    await page.goto('/search/tenure');
+    await gotoWithRetry(page, '/search/tenure');
     await expect(page.getByTestId('landing-button__idir')).toBeVisible();
     await expect(sideNav(page)).toHaveCount(0);
   });
@@ -50,7 +50,7 @@ test.describe('without a role', () => {
   ] as const) {
     test(`signed in with ${name}, access is not granted`, async ({ page, context }) => {
       await signInAs(context, [...roles]);
-      await page.goto('/search/tenure');
+      await gotoWithRetry(page, '/search/tenure');
       await expect(page.getByTestId('unauthorized-title')).toBeVisible();
       await expect(sideNav(page)).toHaveCount(0);
     });

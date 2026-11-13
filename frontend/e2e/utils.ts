@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import type { Page } from '@playwright/test';
+import type { Page, Response } from '@playwright/test';
 
 // E2E_BASE_URL is set by `.github/workflows/reusable-tests.yml` at step
 // level (resolved from the PR slot or test/prod target). For local hand-runs,
@@ -48,6 +48,39 @@ export const uniqueSuffix = (): string => {
   return `e2e-${t}-${r}`;
 };
 
+const TRANSIENT_NAV_ERROR =
+  /TimeoutError|Timeout \d+ms exceeded|net::ERR_CONNECTION_REFUSED|net::ERR_CONNECTION_RESET|net::ERR_TIMED_OUT|net::ERR_NETWORK_CHANGED|ECONNREFUSED/;
+
+const isTransientNavigationError = (err: unknown): boolean => {
+  const message = err instanceof Error ? err.message : String(err);
+  const name = err instanceof Error ? err.name : '';
+  return TRANSIENT_NAV_ERROR.test(`${name}: ${message}`);
+};
+
+/**
+ * Navigate to `path` with bounded retry/backoff when the edge router or pod
+ * briefly refuses or drops the initial TCP connection before any document
+ * commits (`about:blank` or `chrome-error://`).
+ */
+export const gotoWithRetry = async (page: Page, path: string): Promise<Response | null> => {
+  const maxAttempts = 4;
+  const attemptTimeoutMs = 10_000;
+  const backoffMs = [2_000, 4_000, 6_000];
+
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await page.goto(path, { timeout: attemptTimeoutMs });
+    } catch (err) {
+      const currentUrl = page.url();
+      const uncommitted = currentUrl === 'about:blank' || currentUrl.startsWith('chrome-error://');
+      if (attempt >= maxAttempts || !uncommitted || !isTransientNavigationError(err)) {
+        throw err;
+      }
+      await page.waitForTimeout(backoffMs[attempt - 1]);
+    }
+  }
+};
+
 /**
  * Navigate to a route on the protected side of the SPA and wait until the
  * Layout header has rendered — that means AuthProvider has finished
@@ -71,7 +104,7 @@ export const gotoProtected = async (page: Page, path: string): Promise<void> => 
   page.on('pageerror', onPageError);
 
   try {
-    await page.goto(path);
+    await gotoWithRetry(page, path);
     await page.getByTestId('bc-header__header').waitFor({ timeout: 10_000 });
   } catch (err) {
     const url = page.url();

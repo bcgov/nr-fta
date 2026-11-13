@@ -3,7 +3,7 @@ import { existsSync, writeFileSync } from 'node:fs';
 import { test as setup, expect, type Locator, type Page } from '@playwright/test';
 
 import { freshTotp } from './totp';
-import { SESSION_STORAGE_STATE, STORAGE_STATE } from './utils';
+import { SESSION_STORAGE_STATE, STORAGE_STATE, gotoWithRetry } from './utils';
 
 /**
  * Auth setup. Runs once per `playwright test` invocation, as a dependency of
@@ -137,7 +137,7 @@ setup('authenticate via IDIR', async ({ page, context }) => {
   const totpSecret = process.env.E2E_IDIR_TOTP_SECRET;
   const programmatic = Boolean(idirUser && idirPassword);
 
-  await page.goto('/');
+  await gotoWithRetry(page, '/');
   await page.getByTestId('landing-button__idir').click();
 
   if (programmatic) {
