@@ -1,0 +1,1888 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FTA409 Post-Billing Report (FTA686) — ported from the legacy Jasper Server report
+  (fta-archive: JCRS/FTA/Reports/FTA/FTA409-PostBilling). Changes from legacy: no query (the backend
+  supplies the rows: PostBillingReport ports FTAR409P and its FTA_GET_* functions), and no
+  Jasper Server LoggedInUser parameter.
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="FTA409_PostBilling" pageWidth="792" pageHeight="612" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="752" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" isSummaryNewPage="true" uuid="e0175754-3607-49bc-9621-e86291fd1ea6">
+	<property name="ireport.zoom" value="2.0"/>
+	<property name="ireport.x" value="530"/>
+	<property name="ireport.y" value="192"/>
+	<property name="ireport.jasperserver.reportUnit" value="/JCRS/FTA/Reports/FTA/FTA409-PostBilling.rpt"/>
+	<property name="ireport.jasperserver.url" value="http://d-yyj0132.vic.cgi.com:8080/jasperserver/services/repository"/>
+	<parameter name="p_userid" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_id" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["FTA409R"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_category" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="p_report_name" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["Post-Billing Report For Year"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_year" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_org_unit_no" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_org_unit_code" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_org_level" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_sort_ind" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<field name="invoice_number" class="java.lang.String"/>
+	<field name="payable_by_client" class="java.lang.String"/>
+	<field name="payable_by_cli_loc" class="java.lang.String"/>
+	<field name="invoice_amount" class="java.lang.Number"/>
+	<field name="invoice_date" class="java.util.Date"/>
+	<field name="invc_sub_type_code" class="java.lang.String"/>
+	<field name="invoice_rln_typ_cd" class="java.lang.String"/>
+	<field name="posted_date" class="java.util.Date"/>
+	<field name="forest_file_id" class="java.lang.String"/>
+	<field name="admin_org_unit_no" class="java.lang.Integer"/>
+	<field name="admin_org_unit_code" class="java.lang.String"/>
+	<field name="orign_org_unit_no" class="java.lang.Integer"/>
+	<field name="admin_org_unit_name" class="java.lang.String"/>
+	<field name="orign_org_unit_name" class="java.lang.String"/>
+	<field name="file_type_code" class="java.lang.String"/>
+	<field name="legal_first_name" class="java.lang.String"/>
+	<field name="client_name" class="java.lang.String"/>
+	<field name="tax" class="java.lang.Number"/>
+	<field name="issue_fee" class="java.lang.Number"/>
+	<field name="fee" class="java.lang.Number"/>
+	<field name="nonuse" class="java.lang.Number"/>
+	<field name="rent" class="java.lang.Number"/>
+	<field name="auth_amt" class="java.lang.Number"/>
+	<field name="hdbs_company_code" class="java.lang.String"/>
+	<field name="address_1" class="java.lang.String"/>
+	<field name="address_2" class="java.lang.String"/>
+	<field name="address_3" class="java.lang.String"/>
+	<field name="city" class="java.lang.String"/>
+	<field name="province" class="java.lang.String"/>
+	<field name="postal_code" class="java.lang.String"/>
+	<field name="current_server" class="java.lang.String"/>
+	<variable name="currentPageNumber" class="java.lang.Integer" resetType="Page">
+		<variableExpression><![CDATA[$V{PAGE_NUMBER}]]></variableExpression>
+		<initialValueExpression><![CDATA[1]]></initialValueExpression>
+	</variable>
+	<variable name="OrgLabel" class="java.lang.String">
+		<variableExpression><![CDATA[($P{p_org_level}.equals( "D" )) ? "by District" : ($P{p_org_level}.equals( "R" ) ? "by Region" : "by Province" )]]></variableExpression>
+		<initialValueExpression><![CDATA[($P{p_org_level}.equals( "D" )) ? "by District" : ($P{p_org_level}.equals( "R" ) ? "by Region" : "by Province" )]]></initialValueExpression>
+	</variable>
+	<variable name="SortDesc" class="java.lang.String">
+		<variableExpression><![CDATA[($P{p_sort_ind}.equals( "1" ) ? "Client Name" :
+($P{p_sort_ind}.equals( "2" ) ? "Tenure Number" :
+($P{p_sort_ind}.equals( "3" ) ? "File Type" :
+($P{p_sort_ind}.equals( "1" ) ? "Invoice" :
+""))))]]></variableExpression>
+		<initialValueExpression><![CDATA[($P{p_sort_ind}.equals( "1" ) ? "Client Name" :  ($P{p_sort_ind}.equals( "2" ) ? "Tenure Number" :  ($P{p_sort_ind}.equals( "3" ) ? "File Type" :  ($P{p_sort_ind}.equals( "1" ) ? "Invoice" :  ""))))]]></initialValueExpression>
+	</variable>
+	<variable name="TaxLabel" class="java.lang.String" resetType="None">
+		<variableExpression><![CDATA[(2010 <= Integer.parseInt($P{p_year}) &&  Integer.parseInt($P{p_year}) <= 2014) ? "GST" : "GST"]]></variableExpression>
+		<initialValueExpression><![CDATA["GST/HST"]]></initialValueExpression>
+	</variable>
+	<variable name="ClientName" class="java.lang.String">
+		<variableExpression><![CDATA[$F{legal_first_name} == null ? $F{client_name} : $F{client_name} + ", " + $F{legal_first_name}]]></variableExpression>
+	</variable>
+	<variable name="CityProv" class="java.lang.String">
+		<variableExpression><![CDATA[$F{city}.trim() + ", " + $F{province}.trim()]]></variableExpression>
+	</variable>
+	<variable name="PostalCode" class="java.lang.String">
+		<variableExpression><![CDATA[]]></variableExpression>
+	</variable>
+	<variable name="C_R" class="java.lang.String">
+		<variableExpression><![CDATA[$F{invoice_rln_typ_cd} == null || $F{invoice_rln_typ_cd}.isEmpty() ? "" : $F{invoice_rln_typ_cd}.substring( 0, 1 )]]></variableExpression>
+	</variable>
+	<variable name="SubTotalFee" class="java.lang.Number">
+		<variableExpression><![CDATA[(java.lang.Number)($F{issue_fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{fee}.doubleValue() + $F{rent}.doubleValue())]]></variableExpression>
+	</variable>
+	<variable name="InvoiceAmount" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ))
+  ? (java.lang.Number)($F{tax}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $F{invoice_amount}]]></variableExpression>
+	</variable>
+	<variable name="ClientSubFee" class="java.lang.Number" resetType="Group" resetGroup="Client_Sort">
+		<variableExpression><![CDATA[$F{invc_sub_type_code}.equals( "RNG" )
+  ? (java.lang.Number)($V{ClientSubFee}.doubleValue() + $F{invoice_amount}.doubleValue())
+  : (java.lang.Number)($V{ClientSubFee}.doubleValue() + $F{issue_fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{fee}.doubleValue() + $F{rent}.doubleValue() + $F{tax}.doubleValue())]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="ManCount" class="java.lang.Integer">
+		<variableExpression><![CDATA[($F{invc_sub_type_code}.equals( "RNG" ) )
+  ? (java.lang.Integer)($V{ManCount}.intValue() + 1)
+  : $V{ManCount}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="ManAuth" class="java.lang.Number">
+		<variableExpression><![CDATA[($F{invc_sub_type_code}.equals( "RNG" ) )
+  ? (java.lang.Number)($V{ManAuth}.doubleValue() + $F{auth_amt}.doubleValue())
+  : $V{ManAuth}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="ManRent" class="java.lang.Number">
+		<variableExpression><![CDATA[(($F{invc_sub_type_code}.equals( "RNG" ) )
+  ? (java.lang.Number)($V{ManRent}.doubleValue() + $F{rent}.doubleValue())
+  : $V{ManRent})]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="ManFee" class="java.lang.Number">
+		<variableExpression><![CDATA[($F{invc_sub_type_code}.equals( "RNG" ) )
+  ? (java.lang.Number)($V{ManFee}.doubleValue() + $F{fee}.doubleValue())
+  : $V{ManFee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="ManNonUse" class="java.lang.Number">
+		<variableExpression><![CDATA[($F{invc_sub_type_code}.equals( "RNG" ) )
+  ? (java.lang.Number)($V{ManNonUse}.doubleValue() + $F{nonuse}.doubleValue())
+  : $V{ManNonUse}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="ManIssueFee" class="java.lang.Number">
+		<variableExpression><![CDATA[($F{invc_sub_type_code}.equals( "RNG" ) )
+  ? (java.lang.Number)($V{ManIssueFee}.doubleValue() + $F{issue_fee}.doubleValue())
+  : $V{ManIssueFee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="ManFeesSub" class="java.lang.Number">
+		<variableExpression><![CDATA[($F{invc_sub_type_code}.equals( "RNG" ) )
+  ? (java.lang.Number)($V{ManFeesSub}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $V{ManFeesSub}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="ManTax" class="java.lang.Number">
+		<variableExpression><![CDATA[($F{invc_sub_type_code}.equals( "RNG" ) )
+  ? (java.lang.Number)($V{ManTax}.doubleValue() + $F{tax}.doubleValue())
+  : $V{ManTax}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="ManInvoice" class="java.lang.Number">
+		<variableExpression><![CDATA[($F{invc_sub_type_code}.equals( "RNG" ) )
+  ? (java.lang.Number)($V{ManInvoice}.doubleValue() + $F{invoice_amount}.doubleValue())
+  : $V{ManInvoice}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E01Count" class="java.lang.Integer">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E01" ))
+  ? (java.lang.Integer)($V{E01Count}.intValue() + 1)
+  : $V{E01Count}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E01Auth" class="java.lang.Number">
+		<variableExpression><![CDATA[((!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E01" ))
+  ? (java.lang.Number)($V{E01Auth}.doubleValue() + $F{auth_amt}.doubleValue())
+  : $V{E01Auth})]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E01Rent" class="java.lang.Number">
+		<variableExpression><![CDATA[((!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E01" ))
+  ? (java.lang.Number)($V{E01Rent}.doubleValue() + $F{rent}.doubleValue())
+  : $V{E01Rent})]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E01Fee" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E01" ))
+  ? (java.lang.Number)($V{E01Fee}.doubleValue() + $F{fee}.doubleValue())
+  : $V{E01Fee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E01NonUse" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E01" ))
+  ? (java.lang.Number)($V{E01NonUse}.doubleValue() + $F{nonuse}.doubleValue())
+  : $V{E01NonUse}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E01IssueFee" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E01" ))
+  ? (java.lang.Number)($V{E01IssueFee}.doubleValue() + $F{issue_fee}.doubleValue())
+  : $V{E01IssueFee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E01FeesSub" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E01" ))
+  ? (java.lang.Number)($V{E01FeesSub}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $V{E01FeesSub}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E01Tax" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E01" ))
+  ? (java.lang.Number)($V{E01Tax}.doubleValue() + $F{tax}.doubleValue())
+  : $V{E01Tax}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E01Invoice" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E01" ))
+  ? (java.lang.Number)($V{E01Invoice}.doubleValue() + $F{tax}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $V{E01Invoice}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E02Count" class="java.lang.Integer">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E02" ))
+  ? (java.lang.Integer)($V{E02Count}.intValue() + 1)
+  : $V{E02Count}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E02Auth" class="java.lang.Number">
+		<variableExpression><![CDATA[((!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E02" ))
+  ? (java.lang.Number)($V{E02Auth}.doubleValue() + $F{auth_amt}.doubleValue())
+  : $V{E02Auth})]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E02Rent" class="java.lang.Number">
+		<variableExpression><![CDATA[((!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E02" ))
+  ? (java.lang.Number)($V{E02Rent}.doubleValue() + $F{rent}.doubleValue())
+  : $V{E02Rent})]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E02Fee" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E02" ))
+  ? (java.lang.Number)($V{E02Fee}.doubleValue() + $F{fee}.doubleValue())
+  : $V{E02Fee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E02NonUse" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E02" ))
+  ? (java.lang.Number)($V{E02NonUse}.doubleValue() + $F{nonuse}.doubleValue())
+  : $V{E02NonUse}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E02IssueFee" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E02" ))
+  ? (java.lang.Number)($V{E02IssueFee}.doubleValue() + $F{issue_fee}.doubleValue())
+  : $V{E02IssueFee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E02FeesSub" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E02" ))
+  ? (java.lang.Number)($V{E02FeesSub}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $V{E02FeesSub}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E02Tax" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E02" ))
+  ? (java.lang.Number)($V{E02Tax}.doubleValue() + $F{tax}.doubleValue())
+  : $V{E02Tax}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E02Invoice" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E02" ))
+  ? (java.lang.Number)($V{E02Invoice}.doubleValue() + $F{tax}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $V{E02Invoice}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E03Count" class="java.lang.Integer">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E03" ))
+  ? (java.lang.Integer)($V{E03Count}.intValue() + 1)
+  : $V{E03Count}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E03Auth" class="java.lang.Number">
+		<variableExpression><![CDATA[((!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E03" ))
+  ? (java.lang.Number)($V{E03Auth}.doubleValue() + $F{auth_amt}.doubleValue())
+  : $V{E03Auth})]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E03Rent" class="java.lang.Number">
+		<variableExpression><![CDATA[((!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E03" ))
+  ? (java.lang.Number)($V{E03Rent}.doubleValue() + $F{rent}.doubleValue())
+  : $V{E03Rent})]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E03Fee" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E03" ))
+  ? (java.lang.Number)($V{E03Fee}.doubleValue() + $F{fee}.doubleValue())
+  : $V{E03Fee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E03NonUse" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E03" ))
+  ? (java.lang.Number)($V{E03NonUse}.doubleValue() + $F{nonuse}.doubleValue())
+  : $V{E03NonUse}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E03IssueFee" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E03" ))
+  ? (java.lang.Number)($V{E03IssueFee}.doubleValue() + $F{issue_fee}.doubleValue())
+  : $V{E03IssueFee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E03FeesSub" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E03" ))
+  ? (java.lang.Number)($V{E03FeesSub}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $V{E03FeesSub}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E03Tax" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E03" ))
+  ? (java.lang.Number)($V{E03Tax}.doubleValue() + $F{tax}.doubleValue())
+  : $V{E03Tax}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="E03Invoice" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "E03" ))
+  ? (java.lang.Number)($V{E03Invoice}.doubleValue() + $F{tax}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $V{E03Invoice}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H01Count" class="java.lang.Integer">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H01" ))
+  ? (java.lang.Integer)($V{H01Count}.intValue() + 1)
+  : $V{H01Count}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H01Auth" class="java.lang.Number">
+		<variableExpression><![CDATA[((!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H01" ))
+  ? (java.lang.Number)($V{H01Auth}.doubleValue() + $F{auth_amt}.doubleValue())
+  : ($V{H01Auth}))]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H01Rent" class="java.lang.Number">
+		<variableExpression><![CDATA[((!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H01" ))
+  ? (java.lang.Number)($V{H01Rent}.doubleValue() + $F{rent}.doubleValue())
+  : $V{H01Rent})]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H01Fee" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H01" ))
+  ? (java.lang.Number)($V{H01Fee}.doubleValue() + $F{fee}.doubleValue())
+  : $V{H01Fee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H01NonUse" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H01" ))
+  ? (java.lang.Number)($V{H01NonUse}.doubleValue() + $F{nonuse}.doubleValue())
+  : $V{H01NonUse}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H01IssueFee" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H01" ))
+  ? (java.lang.Number)($V{H01IssueFee}.doubleValue() + $F{issue_fee}.doubleValue())
+  : $V{H01IssueFee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H01FeesSub" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H01" ))
+  ? (java.lang.Number)($V{H01FeesSub}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $V{H01FeesSub}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H01Tax" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H01" ))
+  ? (java.lang.Number)($V{H01Tax}.doubleValue() + $F{tax}.doubleValue())
+  : $V{H01Tax}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H01Invoice" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H01" ))
+  ? (java.lang.Number)($V{H01Invoice}.doubleValue() + $F{tax}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $V{H01Invoice}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H02Count" class="java.lang.Integer">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H02" ))
+  ? (java.lang.Integer)($V{H02Count}.intValue() + 1)
+  : $V{H02Count}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H02Auth" class="java.lang.Number">
+		<variableExpression><![CDATA[((!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H02" ))
+  ? (java.lang.Number)($V{H02Auth}.doubleValue() + $F{auth_amt}.doubleValue())
+  : $V{H02Auth})]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H02Rent" class="java.lang.Number">
+		<variableExpression><![CDATA[((!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H02" ))
+  ? (java.lang.Number)($V{H02Rent}.doubleValue() + $F{rent}.doubleValue())
+  : $V{H02Rent})]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H02Fee" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H02" ))
+  ? (java.lang.Number)($V{H02Fee}.doubleValue() + $F{fee}.doubleValue())
+  : $V{H02Fee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H02NonUse" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H02" ))
+  ? (java.lang.Number)($V{H02NonUse}.doubleValue() + $F{nonuse}.doubleValue())
+  : $V{H02NonUse}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H02IssueFee" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H02" ))
+  ? (java.lang.Number)($V{H02IssueFee}.doubleValue() + $F{issue_fee}.doubleValue())
+  : $V{H02IssueFee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H02FeesSub" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H02" ))
+  ? (java.lang.Number)($V{H02FeesSub}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $V{H02FeesSub}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H02Tax" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H02" ))
+  ? (java.lang.Number)($V{H02Tax}.doubleValue() + $F{tax}.doubleValue())
+  : $V{H02Tax}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H02Invoice" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H02" ))
+  ? (java.lang.Number)($V{H02Invoice}.doubleValue() + $F{tax}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $V{H02Invoice}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H03Count" class="java.lang.Integer">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H03" ))
+  ? (java.lang.Integer)($V{H03Count}.intValue() + 1)
+  : $V{H03Count}.intValue()]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H03Auth" class="java.lang.Number">
+		<variableExpression><![CDATA[((!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H03" ))
+  ? (java.lang.Number)($V{H03Auth}.doubleValue() + $F{auth_amt}.doubleValue())
+  : ($V{H03Auth}))]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H03Rent" class="java.lang.Number">
+		<variableExpression><![CDATA[((!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H03" ))
+  ? (java.lang.Number)($V{H03Rent}.doubleValue() + $F{rent}.doubleValue())
+  : $V{H03Rent})]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H03Fee" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H03" ))
+  ? (java.lang.Number)($V{H03Fee}.doubleValue() + $F{fee}.doubleValue())
+  : $V{H03Fee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H03NonUse" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H03" ))
+  ? (java.lang.Number)($V{H03NonUse}.doubleValue() + $F{nonuse}.doubleValue())
+  : $V{H03NonUse}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H03IssueFee" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H03" ))
+  ? (java.lang.Number)($V{H03IssueFee}.doubleValue() + $F{issue_fee}.doubleValue())
+  : $V{H03IssueFee}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H03FeesSub" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H03" ))
+  ? (java.lang.Number)($V{H03FeesSub}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $V{H03FeesSub}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H03Tax" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H03" ))
+  ? (java.lang.Number)($V{H03Tax}.doubleValue() + $F{tax}.doubleValue())
+  : $V{H03Tax}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="H03Invoice" class="java.lang.Number">
+		<variableExpression><![CDATA[(!$F{invc_sub_type_code}.equals( "RNG" ) && $F{file_type_code}.equals( "H03" ))
+  ? (java.lang.Number)($V{H03Invoice}.doubleValue() + $F{tax}.doubleValue() + $F{issue_fee}.doubleValue() + $F{fee}.doubleValue() + $F{nonuse}.doubleValue() + $F{rent}.doubleValue())
+  : $V{H03Invoice}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="DebugOn" class="java.lang.String">
+		<variableExpression><![CDATA["Y"]]></variableExpression>
+		<initialValueExpression><![CDATA["Y"]]></initialValueExpression>
+	</variable>
+	<group name="Client_Sort" minHeightToStartNewPage="85">
+		<groupExpression><![CDATA[$F{client_name} + $F{payable_by_client}]]></groupExpression>
+		<groupFooter>
+			<band height="16">
+				<printWhenExpression><![CDATA[$P{p_sort_ind}.equals( "1" )]]></printWhenExpression>
+				<textField pattern="#,##0.00;-#,##0.00">
+					<reportElement uuid="a94aa827-7bd4-4a50-8945-3f8eea3d4c7e" x="648" y="0" width="101" height="11"/>
+					<textElement>
+						<font fontName="Arial" size="9"/>
+					</textElement>
+					<textFieldExpression><![CDATA[  $V{ClientSubFee}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement uuid="0be38823-5c4b-4a9f-acdc-4aa0ea70decb" x="504" y="0" width="144" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="Arial" size="9" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Client Sub Total:]]></text>
+				</staticText>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<pageHeader>
+		<band height="211" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="eadc02a8-36d6-456f-b8a9-d5dfc05e9353" x="165" y="0" width="420" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ministry of Forests, Lands, Natural Resource Operations & Rural Development]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="059e3262-d5e3-45a2-84c2-dcbcaf4f2d69" x="165" y="18" width="420" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Range Billing System]]></text>
+			</staticText>
+			<textField evaluationTime="Auto">
+				<reportElement uuid="2e8b663b-2313-46bc-b264-43df2377d2ec" x="165" y="36" width="420" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Post - Billing Report For " + $P{p_year} + " " + $V{OrgLabel}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="9f7e1513-1d81-4372-8a69-2a3692624806" x="643" y="0" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[FTA409R]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="34731a98-10d7-4921-8c61-a30e274bab09" x="643" y="12" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{current_server}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="ced38229-f701-4809-aad1-ed52dac34d72" x="643" y="24" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_userid}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="8ca97815-6b84-42a0-96a5-b0ac17051df4" x="643" y="36" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Auto" isBlankWhenNull="true">
+				<reportElement uuid="7a6ef189-8423-45d2-9092-a54724c0a8eb" x="643" y="48" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Page " + $V{currentPageNumber}.toString() + " of " + $V{PAGE_NUMBER}.toString()]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement uuid="9b694b2c-a9e6-4a51-af91-0dd347c21509" x="0" y="82" width="693" height="1" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}.intValue() == 1]]></printWhenExpression>
+				</reportElement>
+			</line>
+			<staticText>
+				<reportElement uuid="ab820a0e-dbc3-4f9e-9192-1cecc807efcc" x="0" y="83" width="100" height="18" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}.intValue() == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+					<paragraph spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Report Parameters]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="69e627d7-90e9-4df0-883f-b35145c01561" x="0" y="101" width="84" height="13" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}.intValue() == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Org Unit:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="b7aa5aef-a6eb-4fe0-85a0-448c329f72f3" x="0" y="114" width="84" height="13" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}.intValue() == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Calendar Year:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="14f2aa93-ab67-4239-86ae-f0cba924204f" x="0" y="127" width="84" height="13" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}.intValue() == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Sort By:]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="f8ac3b59-8a98-4a77-b92d-9e800f3c017d" x="84" y="101" width="234" height="13" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}.intValue() == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_org_unit_code}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="ce2a152d-dba2-42f4-b48d-47a08cc03201" x="84" y="114" width="234" height="13" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}.intValue() == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_year}]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Auto">
+				<reportElement uuid="2421dc6c-be97-4fbc-a452-8e8fb474acc6" x="84" y="127" width="234" height="13" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}.intValue() == 1]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{SortDesc}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="d1aca860-2ad1-4518-b6ba-1bbf0749c3d8" x="0" y="151" width="60" height="22"/>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="2"/>
+				</textElement>
+				<text><![CDATA[District:]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="63ac40a7-f170-4849-be9c-c44d490235f3" x="60" y="151" width="258" height="22"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+					<paragraph spacingBefore="2"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{admin_org_unit_name}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="9e0b93f1-e4ac-4523-be35-cc28d972470c" x="0" y="189" width="120" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Client Name]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="bc144f2f-ffff-4889-958e-f055265052bf" x="120" y="173" width="116" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+					<paragraph rightIndent="3"/>
+				</textElement>
+				<text><![CDATA[Invoice]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="259a9905-5f91-4c02-a793-894df1cb189e" x="120" y="189" width="44" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Number]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="3ada91ac-0755-4c53-ad2d-194792733937" x="236" y="173" width="76" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Tenure]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="9ebe5ff8-ed49-4b74-8b06-e98234a9a76b" x="236" y="189" width="52" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Number]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="c4c03273-d3f2-4841-8ad8-d7dcf01e9595" x="184" y="189" width="52" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Date]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="805d4cd1-9a42-449c-9154-37eacee5b0e5" x="164" y="189" width="20" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[C/R]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="1b7649b5-da6b-4ad2-9c8e-c4caf61de671" x="288" y="189" width="24" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Type]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="4d875734-6542-466b-8b1b-04905b2dc641" x="414" y="189" width="50" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Fee]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="1f05277e-227b-471a-ac02-5163388847e1" x="414" y="173" width="50" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Usage]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="42933f9f-ea62-4d0a-81f4-913f2d8ba6b1" x="363" y="189" width="50" height="16"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Rent]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="9ee49aaf-0f55-4e6b-ac27-02fdd4322d06" x="312" y="173" width="101" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Auth]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="8e6aa262-48a1-4b1d-a74e-5d191cac0328" x="312" y="189" width="50" height="16"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Amnt]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="ec536b77-f4e0-4d55-83a3-a06e7c07e369" x="465" y="173" width="50" height="16"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Non]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="f1cf2480-8b4a-4ced-a195-5c6146d58cfb" x="465" y="189" width="50" height="16"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Use]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="943f98d5-5ab3-469e-acae-e4e8b3feb2d5" x="516" y="173" width="50" height="16"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Tenure]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="fb5709cd-21ce-4743-892a-322991c4b76d" x="567" y="173" width="65" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Sub-Total]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="a6fc966e-f6f0-4348-b736-a408cb7fa2e2" x="684" y="173" width="65" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Invoice]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="3674b3ff-7ffe-4f97-99c7-5ece09a19eac" x="567" y="189" width="65" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[All Fees]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="a71312a5-b961-4d38-991e-1cbe8317e0ad" x="516" y="189" width="50" height="16"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Fee]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="400bc7e3-ac36-43ab-8ba5-5736514e5d21" x="684" y="189" width="65" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Total]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="89344fa2-1c01-4be2-aabd-bb397239d37a" x="633" y="189" width="50" height="16"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{TaxLabel}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement uuid="bc11423f-4137-4797-9dfe-dee082b27082" x="0" y="205" width="749" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="ac58e5fa-475f-4208-9234-58393256367d" x="313" y="178" width="34" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="38c0e400-5562-47b9-ad5b-b24f6e156ce2" x="378" y="178" width="34" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="5d7a092e-dfce-4061-80b3-7119ddb03c25" x="294" y="178" width="17" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="90a6f5be-33b4-4884-9190-a621f9acd38d" x="237" y="178" width="17" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="5f160d65-f367-43cc-bb02-1389e65fce62" x="197" y="178" width="38" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="86c1b9cd-5f45-4547-aeab-0ec4358cd4d3" x="121" y="178" width="38" height="1"/>
+			</line>
+		</band>
+	</pageHeader>
+	<detail>
+		<band height="20" splitType="Stretch">
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="f8fa22bf-9e01-4afe-9f13-f36079f235ed" x="0" y="4" width="120" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{ClientName}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="a9a9f652-8fbd-437c-8e82-ca4af24e4abf" x="120" y="4" width="44" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{invoice_number}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="a2fde536-7c8a-4b3c-b545-e732b0cb04c3" x="164" y="4" width="20" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{C_R}]]></textFieldExpression>
+			</textField>
+			<textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement uuid="f5156a4a-b4d3-477d-a224-549cb1d8734e" x="184" y="4" width="52" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="3"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{invoice_date}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="a300c828-8866-491b-8fe8-6d9d31dbff3e" x="236" y="4" width="52" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{forest_file_id}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="8116eb7f-6503-41de-945b-edca0014e44a" x="288" y="4" width="24" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{file_type_code}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0;-#,##0" isBlankWhenNull="true">
+				<reportElement uuid="08a7cea2-a195-48c1-88b0-562b95bb5a52" x="312" y="4" width="50" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="3"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{auth_amt}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="bdcb7a50-7cec-477c-89a3-1d369f61746b" x="363" y="4" width="50" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{rent}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="23e65917-a16a-46e8-af7f-0db341e9c404" x="414" y="4" width="50" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="3"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{fee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="fd85d42e-9d0e-41c6-8a27-45ba63be0854" x="465" y="4" width="50" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="3"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{nonuse}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="d7ec58f4-bac8-4346-97d7-65566a104133" x="516" y="4" width="50" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="3"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{issue_fee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="9f1c26cc-7aa7-4b05-b540-b29f38989286" x="567" y="4" width="65" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="3"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{SubTotalFee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="466620da-d12a-4aa9-a281-b8bff3a9b08a" x="633" y="4" width="50" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="3"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tax}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="c089fcd1-cc16-4ced-96ab-fecd2961eb44" x="684" y="4" width="65" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="3"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{InvoiceAmount}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="345" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="64e3deb0-0020-48a0-9bd7-a1d2de9e2156" x="216" y="325" width="261" height="13"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[End of Report]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="e6e971da-082d-4b99-99c8-523a26782f23" x="185" y="82" width="387" height="25"/>
+				<textElement>
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Post - Billing Summary For " + $F{admin_org_unit_code} + " " + $F{admin_org_unit_name}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="0e7de0da-f9f1-445c-a683-868c0fe24381" x="0" y="136" width="170" height="14"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Tenure Type]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="30ce1c69-1804-4097-9d65-9beaa741e94a" x="173" y="122" width="30" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<text><![CDATA[Inv]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="d450ad7e-6c89-4a55-8aed-b71e5047d017" x="173" y="136" width="30" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<text><![CDATA[Count]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="4112df7c-7e94-4f96-b277-5ed0bcb11721" x="206" y="122" width="46" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<text><![CDATA[Auth]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="a7e3f83c-db50-4475-a65e-1728360c5cfb" x="206" y="136" width="46" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<text><![CDATA[Amount]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="bc689493-4304-47fa-b927-dfbda4dced31" x="255" y="122" width="61" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<text><![CDATA[Ground]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="81a1d93d-64fa-462f-891f-2e2467d74e10" x="255" y="136" width="61" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Rent]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="e9fe22ce-1fdf-4bbe-a648-057a7915a176" x="319" y="122" width="67" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Usage]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="50375545-4ae2-447c-9c05-21282a3e7673" x="319" y="136" width="67" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Fee]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="c04aa552-66f0-4357-914f-9b0ad3d8bb7c" x="389" y="122" width="61" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Non]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="bc41beec-8c9b-428f-9c98-390e412feafc" x="389" y="136" width="61" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Use Fee]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="1d64874d-cbe5-4169-9389-69552b8045c0" x="453" y="122" width="67" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Tenure]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="b82faad3-fd46-4a15-84da-b3b76ca6297d" x="453" y="136" width="67" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Fees]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="d0b9b8ec-bc0b-4178-9f1e-ae6cf1a9627f" x="523" y="122" width="67" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Sub-Total]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="bb98df9b-0e98-444f-8081-f718a0dd0bfd" x="523" y="136" width="67" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[All Fees]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="110ed010-45f3-4c8c-a3f8-8f33fd8b70f1" x="593" y="136" width="52" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{TaxLabel}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="349c0d08-eb37-4166-8665-4cd2ab65b738" x="648" y="122" width="72" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Grand Total]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="d1a98405-cd38-443d-9cfb-51fbb062ad83" x="648" y="136" width="72" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[of all Fees]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="8f0ceb8d-d68a-4cf8-9146-d8544c3141ac" x="0" y="156" width="170" height="14"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Grazing Licences]]></text>
+			</staticText>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="7148b864-08cf-419f-9854-760da84ed827" x="173" y="156" width="30" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01Count}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="19423065-06e5-4188-a481-8a4351b529e9" x="206" y="156" width="46" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01Auth}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="fb34c013-4b51-4a4c-b495-cb154a648c54" x="255" y="156" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01Rent}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="5aeb5ed7-dd63-4b1f-9f22-aa2f772fdf92" x="319" y="156" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01Fee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="d970ed17-bca8-47dc-b9d8-8625b10b3380" x="389" y="156" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01NonUse}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="da3b2f81-3196-4976-a3c0-44456abfc840" x="453" y="156" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01IssueFee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="0214d6a9-760f-4c65-8248-300d15fd96f6" x="523" y="156" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01FeesSub}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="5b2c95d6-bdb5-4961-b7d0-a10b8eee99dd" x="593" y="156" width="52" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01Tax}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="a9d61633-7e42-47de-84a9-67d2744bd1ab" x="648" y="156" width="72" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01Invoice}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="f1a20fa7-cc77-4dac-a68f-de077258a0c5" x="0" y="170" width="170" height="14"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Grazing Permits]]></text>
+			</staticText>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="d005004a-712a-4e21-ac81-15d309b073af" x="173" y="170" width="30" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E02Count}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="b79844dd-4233-4a62-9acb-d452e24fc99d" x="206" y="170" width="46" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E02Auth}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="fb58695c-0b35-42b1-a976-bd2a9b619604" x="255" y="170" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E02Rent}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="fb204e52-79b8-4918-9049-9ba6405709ec" x="319" y="170" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E02Fee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="a83e02ff-e238-4e53-87f8-2bb1ef32d7dd" x="389" y="170" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E02NonUse}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="2be96381-0913-4e40-8a8d-eeefcfd1758a" x="453" y="170" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E02IssueFee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="6c0db3b2-c519-4533-a3df-da30d5cd4276" x="523" y="170" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E02FeesSub}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="eccef4fa-ce8a-4b2a-8aea-de8ac1361298" x="593" y="170" width="52" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E02Tax}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="9542e744-2487-40ed-927e-bc9028ec9644" x="648" y="170" width="72" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E02Invoice}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="8b7982ec-a75b-4db9-b57d-e69edbf83f1c" x="0" y="190" width="170" height="14"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Non-Replaceable Grazing Permits]]></text>
+			</staticText>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="8e6848da-0212-449d-83f9-3eafb73a7f87" x="173" y="190" width="30" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E03Count}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="5f01bb34-1618-42d9-9086-9c201ce35ede" x="206" y="190" width="46" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E03Auth}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="8259067a-6a81-4207-ba49-912bb96a6c36" x="255" y="190" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E03Rent}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="b887e0c3-3d51-4b8d-8d1b-aee41858d054" x="319" y="190" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E03Fee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="b0439665-2123-46c5-9205-06a16bf8b868" x="389" y="190" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E03NonUse}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="ecaa7b96-2609-4180-90be-9d40e08a11f3" x="453" y="190" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E03IssueFee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="1a6acbf9-220e-4cab-a94d-c43ac61a71b3" x="523" y="190" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E03FeesSub}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="d62afa92-0b1c-4474-ae05-ea06c189dfd4" x="593" y="190" width="52" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E03Tax}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="af07270a-2cff-4ddb-870b-58328e4c51ee" x="648" y="190" width="72" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E03Invoice}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="6fb9738d-75ab-4d9a-88c3-d03741ec52e9" x="0" y="226" width="170" height="14"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Haycutting Licences]]></text>
+			</staticText>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="911f443b-a7c1-47d8-aa16-f8bb375c6dc0" x="173" y="226" width="30" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01Count}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="ae5f475e-bae1-435b-a4c1-db15b53b36ba" x="206" y="226" width="46" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01Auth}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="ffaedfd5-8da7-48d2-ac9b-993fbca10d64" x="255" y="226" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01Rent}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="508c27bc-1598-4cd4-b4c0-26da64af3180" x="319" y="226" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01Fee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="c51b3d62-a321-48dc-94ba-39505a8c9c54" x="389" y="226" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01NonUse}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="d0a94213-a931-4792-a756-9f55d46d3172" x="453" y="226" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01IssueFee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="fadd4c61-de30-44ed-aaf0-71f4cd24fe64" x="523" y="226" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01FeesSub}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="c25e2177-4738-4fd8-a333-9a8ecf8181ad" x="593" y="226" width="52" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01Tax}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="b281fa35-89f1-4b7b-94f4-9eec7372ce3a" x="648" y="226" width="72" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01Invoice}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="57fe6bf1-2e65-4862-a028-3dee643590ee" x="0" y="240" width="170" height="14"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Haycutting Permits]]></text>
+			</staticText>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="e4516564-33b3-44b5-8483-8bbd966c1a40" x="206" y="240" width="46" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H02Auth}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="0ab2912c-788b-4535-81b0-23deee71579a" x="523" y="240" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H02FeesSub}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="47c392b6-d844-482d-8782-c598e793dece" x="453" y="240" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H02IssueFee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="bbc02daa-6b18-40d3-9447-763a7ef6621a" x="255" y="240" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H02Rent}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="254dcb69-8efe-4ea4-a251-9e483ea8fdbf" x="593" y="240" width="52" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H02Tax}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="4664ac44-f294-448e-afdb-b16a494040ee" x="648" y="240" width="72" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H02Invoice}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="8f35aaff-c7c8-43ae-a6c7-ffb40ca1aaf1" x="319" y="240" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H02Fee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="aae365ef-dd7f-4a83-822e-06469412bfc4" x="173" y="240" width="30" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H02Count}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="1c77b57e-dea5-44c1-b926-128b0da9e574" x="389" y="240" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H02NonUse}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="212bc110-d4e4-4a7b-b525-8a84761e0364" x="0" y="254" width="170" height="14"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[Non-Replaceable Haycutting Permits]]></text>
+			</staticText>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="b4c49c0d-e217-423b-8867-7f39e29ca44d" x="389" y="254" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H03NonUse}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="2609c3cc-8010-431e-a06d-9ae472781746" x="319" y="254" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H03Fee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="ebbbe16a-3538-4e1c-a6fc-ac56cc1f41ff" x="173" y="254" width="30" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H03Count}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="629214ef-d332-4e54-a999-2c2eac3a5243" x="453" y="254" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H03IssueFee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="154e177c-e205-4824-9aa7-461cbc15f355" x="255" y="254" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H03Rent}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="aedb6608-9465-4d2e-98fc-5fd73c4e7a7b" x="206" y="254" width="46" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H03Auth}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="cd3223b9-19b6-4f1f-9fbc-38a89ada0d6e" x="523" y="254" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H03FeesSub}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="9ef1003f-b04f-469e-8736-93d344d9396d" x="593" y="254" width="52" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H03Tax}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="79feffee-f046-4563-aed0-1d3dd7646c27" x="648" y="254" width="72" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H03Invoice}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="b24d3e20-e7ad-46fd-b1c4-a62b80b6c052" x="0" y="204" width="170" height="14"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Total For Grazing]]></text>
+			</staticText>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="83687ac1-88a7-4a02-9bc7-4140c146e040" x="173" y="204" width="30" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01Count}.intValue() + $V{E02Count}.intValue() + $V{E03Count}.intValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="048985da-79bc-4a22-a50d-4b43851d755b" x="206" y="204" width="46" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01Auth}.intValue() + $V{E02Auth}.intValue() + $V{E03Auth}.intValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="f155e49d-b12b-47d8-a58c-7ac5bd18d0dc" x="255" y="204" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01Rent}.doubleValue() + $V{E02Rent}.doubleValue() + $V{E03Rent}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="a8a4bd34-8a48-44fe-9140-d0b9fef0278d" x="319" y="204" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01Fee}.doubleValue() + $V{E02Fee}.doubleValue() + $V{E03Fee}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="b864b80d-7372-4cad-8814-3f766dccac01" x="389" y="204" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01NonUse}.doubleValue() + $V{E02NonUse}.doubleValue() + $V{E03NonUse}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="f26cf216-2d4e-4654-98e8-319258e117d0" x="453" y="204" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01IssueFee}.doubleValue() + $V{E02IssueFee}.doubleValue() + $V{E03IssueFee}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="81b80134-7558-4290-9e16-9501255c59ca" x="523" y="204" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01FeesSub}.doubleValue() + $V{E02FeesSub}.doubleValue() + $V{E03FeesSub}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="67f2edfc-d9e6-469e-9b73-b38bc1debfbc" x="593" y="204" width="52" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01Tax}.doubleValue() + $V{E02Tax}.doubleValue() + $V{E03Tax}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="22c3c530-b9d9-4ddf-aea8-fcec8c385d18" x="648" y="204" width="72" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{E01Invoice}.doubleValue() + $V{E02Invoice}.doubleValue() + $V{E03Invoice}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="5052a8e8-437a-4e08-a916-6ec0ae0c92c0" x="0" y="268" width="170" height="14"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Total For Haycutting]]></text>
+			</staticText>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="4cd6b6bc-cfec-4db6-bc78-17c0c81ba7c0" x="173" y="268" width="30" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01Count}.intValue() + $V{H02Count}.intValue() + $V{H03Count}.intValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="63e79aa0-b4fe-444e-b8c6-3e7fcdf21405" x="206" y="268" width="46" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01Auth}.intValue() + $V{H02Auth}.intValue() + $V{H03Auth}.intValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="d5bdcb49-60cb-41e5-9c75-1cddec4841d6" x="255" y="268" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01Rent}.doubleValue() + $V{H02Rent}.doubleValue() + $V{H03Rent}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="7a51e697-43c8-476b-8bb2-45255a1a27d3" x="319" y="268" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01Fee}.doubleValue() + $V{H02Fee}.doubleValue() + $V{H03Fee}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="9a688939-f395-439a-b1fa-b6d55f8ca972" x="389" y="268" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01NonUse}.doubleValue() + $V{H02NonUse}.doubleValue() + $V{H03NonUse}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="909339cd-d7aa-42f1-ab91-5331fe78db22" x="453" y="268" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01IssueFee}.doubleValue() + $V{H02IssueFee}.doubleValue() + $V{H03IssueFee}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="0a45c1ea-c0c7-437a-b246-ee8bd9416672" x="523" y="268" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01FeesSub}.doubleValue() + $V{H02FeesSub}.doubleValue() + $V{H03FeesSub}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="b605c141-62f6-4349-b017-cf5b27e2049c" x="593" y="268" width="52" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01Tax}.doubleValue() + $V{H02Tax}.doubleValue() + $V{H03Tax}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="5ee8e831-e94c-4307-a94c-5ec465400cd0" x="648" y="268" width="72" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{H01Invoice}.doubleValue() + $V{H02Invoice}.doubleValue() + $V{H03Invoice}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="d012ecec-f535-4b15-abf8-decfb19ae5a4" x="0" y="292" width="170" height="14"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Total For Manual Invoices]]></text>
+			</staticText>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="f8ee0e03-10df-4ef7-9411-b0af3b1efe34" x="173" y="292" width="30" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{ManCount}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0;-#,##0">
+				<reportElement uuid="0542a4d0-8a80-4986-a8f7-ba1f32d8190d" x="206" y="292" width="46" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{ManAuth}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="6e95179a-3562-48b8-9933-83d72c1637d0" x="255" y="292" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{ManRent}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="0a837bac-11f9-4adf-9ca6-a017d2b74af9" x="319" y="292" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{ManFee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="d594977f-21f3-4262-99c5-3a84c20239e0" x="389" y="292" width="61" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{ManNonUse}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="f2d90d03-607f-4d3a-a803-99a37df69d47" x="453" y="292" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{ManIssueFee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="e56d572b-6601-4881-b5e3-a0b949d7711a" x="523" y="292" width="67" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{ManFeesSub}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="3954cdc1-b4cd-4c1f-9e8d-4d9adcddf85d" x="593" y="292" width="52" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{ManTax}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="d29eca20-0914-4c26-94fc-279cc452cb19" x="648" y="292" width="72" height="14"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="1"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{ManInvoice}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="05f08f3d-f3b1-47ed-98a0-112292a93fbb" x="165" y="0" width="420" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ministry of Forests, Lands, Natural Resource Operations & Rural Development]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="8c476332-665f-4d31-8cf3-45c99462890f" x="165" y="18" width="420" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Range Billing System]]></text>
+			</staticText>
+			<textField evaluationTime="Auto">
+				<reportElement uuid="ea13f973-5d55-4025-a841-12db372158ef" x="165" y="36" width="420" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Post - Billing Report For " + $P{p_year} + " " + $V{OrgLabel}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="46d30ff9-c7f8-4f2c-8493-fcb5c4a3905b" x="643" y="0" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[FTA409R]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="1a17bf7f-96a3-4843-a97a-980a9758512f" x="643" y="12" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{current_server}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="e5462d69-d499-4718-b91e-330053c378b0" x="643" y="24" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_userid}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="11ae14ff-5882-4416-82b8-29e0ed1f6163" x="643" y="36" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Auto" isBlankWhenNull="true">
+				<reportElement uuid="49796628-0184-4410-af1a-8335487caa6d" x="643" y="48" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Page " + $V{currentPageNumber}.toString() + " of " + $V{PAGE_NUMBER}.toString()]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement uuid="b6afb81e-1196-4679-acae-37e603bc0e27" x="0" y="152" width="715" height="1"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineStyle="Dashed"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement uuid="b86c52ef-aa9c-4b9d-ab86-152c3ee50f17" x="174" y="214" width="541" height="1"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineStyle="Dashed"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement uuid="0b8b5aa3-d2da-432b-8267-05f815bd0790" x="174" y="278" width="541" height="1"/>
+				<graphicElement>
+					<pen lineWidth="0.5" lineStyle="Dashed"/>
+				</graphicElement>
+			</line>
+		</band>
+	</summary>
+</jasperReport>

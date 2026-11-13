@@ -36,6 +36,16 @@ public class TenureWriteService {
   private static final String RESOLVE_DISTRICT_SQL =
       "SELECT org_unit_no FROM the.org_unit WHERE org_unit_code = :orgUnitCode";
 
+  // PROV_FOREST_USE.FILE_TYPE_CODE is a foreign key to FILE_TYPE_CODE
+  // (PFU_FTCD_FK). Only currently-effective codes, as the Add Tenure dropdown
+  // (CodeListService.fileTypes) offers.
+  private static final String FILE_TYPE_EXISTS_SQL = """
+      SELECT COUNT(*)
+        FROM the.file_type_code
+       WHERE file_type_code = :fileTypeCode
+         AND SYSDATE BETWEEN effective_date AND expiry_date
+      """;
+
   private static final String EXISTS_SQL =
       "SELECT COUNT(*) FROM the.prov_forest_use WHERE forest_file_id = :forestFileId";
 
@@ -86,8 +96,8 @@ public class TenureWriteService {
    *
    * @param request the tenure to create
    * @param userId  the authenticated user id (audit columns)
-   * @throws ResponseStatusException 400 if the forest-file id is blank or the
-   *     org-unit code is unknown
+   * @throws ResponseStatusException 400 if the forest-file id is blank, or the
+   *     file-type or org-unit code is unknown
    * @throws DuplicateDataException 409 if the forest-file id already exists
    */
   @Transactional
@@ -95,6 +105,19 @@ public class TenureWriteService {
     String forestFileId = request.forestFileId();
     if (forestFileId == null || forestFileId.isBlank()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "forestFileId is required");
+    }
+
+    // Check the file type up front: an unknown one would otherwise fail the
+    // PFU_FTCD_FK foreign key and surface as a 500.
+    Integer fileTypeMatches = request.fileTypeCode() == null || request.fileTypeCode().isBlank()
+        ? Integer.valueOf(0)
+        : jdbc.queryForObject(
+            FILE_TYPE_EXISTS_SQL,
+            new MapSqlParameterSource("fileTypeCode", request.fileTypeCode()),
+            Integer.class);
+    if (fileTypeMatches == null || fileTypeMatches == 0) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Unknown file type code: " + request.fileTypeCode());
     }
 
     // Resolve the org unit up front so an unknown code is rejected with a 400.

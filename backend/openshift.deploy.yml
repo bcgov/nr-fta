@@ -92,6 +92,13 @@ parameters:
     required: false
     description: A hash of CERTIFICATE_SIGNATURES, so new signatures restart the backend.
     value: ""
+  # IMAGE_TAG is the same on every push to a PR (its number); without a value
+  # that changes, `oc apply` can find the Deployment unchanged and keep the
+  # old pods.
+  - name: DEPLOY_ID
+    required: false
+    description: The commit being deployed; a new value rolls the pods
+    value: ""
 
 objects:
   # ── Deployment ────────────────────────────────────────────
@@ -123,6 +130,8 @@ objects:
           annotations:
             # Changes when the signatures do, so the pods restart and read the new ones.
             fta/certificate-signatures-hash: "${CERTIFICATE_SIGNATURES_HASH}"
+            # Changes on every deploy, so the pods restart and pull the new image.
+            fta/deploy-id: "${DEPLOY_ID}"
             prometheus.io/path: /actuator/prometheus
             prometheus.io/port: '8080'
             prometheus.io/scrape: 'true'

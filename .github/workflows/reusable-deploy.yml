@@ -226,6 +226,7 @@ jobs:
             -p KEYSTORE_SECRET="$KEYSTORE_SECRET"
             -p CERTIFICATE_SIGNATURES="$CERTIFICATE_SIGNATURES"
             -p CERTIFICATE_SIGNATURES_HASH="${{ steps.signatures.outputs.hash }}"
+            -p DEPLOY_ID="${{ github.sha }}"
           triggers: ${{ inputs.triggers }}
 
   frontend:
@@ -269,6 +270,7 @@ jobs:
             -p NAME="nr-fta"
             -p IMAGE_TAG="${{ inputs.tag }}"
             -p REPLICAS="${{ inputs.frontend_replicas }}"
+            -p DEPLOY_ID="${{ github.sha }}"
             -p VITE_KEYCLOAK_URL="${{ vars.KEYCLOAK_ISSUER_URI }}"
             -p VITE_KEYCLOAK_CLIENT_ID="${{ vars.KEYCLOAK_CLIENT_ID }}"
           triggers: ${{ inputs.triggers }}

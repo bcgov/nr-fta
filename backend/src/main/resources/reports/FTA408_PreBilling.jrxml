@@ -1,0 +1,1165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FTA408 Pre-Billing Report (FTA685) — ported from the legacy Jasper Server report
+  (fta-archive: JCRS/FTA/Reports/FTA/FTA408-PreBilling). Changes from legacy:
+   - no query: the backend supplies the rows (PreBillingReport ports FTAR408P and its
+     FTAR408_* functions);
+   - the error summary subreport (FTA408_PreBilling_Errors) gets its rows and compiled
+     report as parameters (ERRORS, ERRORS_SUBREPORT) instead of re-querying FTAR408P_ERRORS;
+   - the no-data header's fta_current_server subreport is the CURRENT_SERVER parameter;
+   - the Jasper Server parameters (LoggedInUser, ROOT_DIR, SUBREPORT_DIR/EXT) are gone.
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="FTA408_PreBilling" pageWidth="792" pageHeight="612" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="752" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="c23cf17b-8eed-4487-83c9-948ea6703150">
+	<property name="ireport.zoom" value="1.5000000000000024"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="192"/>
+	<property name="ireport.jasperserver.reportUnit" value="/JCRS/FTA/Reports/FTA/FTA408-PreBilling.rpt"/>
+	<property name="ireport.jasperserver.url" value="http://d-yyj0132.vic.cgi.com:8080/jasperserver/services/repository"/>
+	<parameter name="p_userid" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_id" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["FTA408R"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_category" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="p_report_name" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["Pre-Billing Report For Year"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="ERRORS" class="net.sf.jasperreports.engine.JRDataSource" isForPrompting="false"/>
+	<parameter name="ERRORS_SUBREPORT" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+	<parameter name="CURRENT_SERVER" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="p_year" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_district_code" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<field name="forest_file_id" class="java.lang.String"/>
+	<field name="sort_by" class="java.lang.String"/>
+	<field name="reverse_charge_ind" class="java.lang.String"/>
+	<field name="client_name" class="java.lang.String"/>
+	<field name="file_type_code" class="java.lang.String"/>
+	<field name="auth_amount" class="java.lang.Number"/>
+	<field name="rent" class="java.lang.Number"/>
+	<field name="fee" class="java.lang.Number"/>
+	<field name="non_use_billable_amount" class="java.lang.Number"/>
+	<field name="non_use_nonbillable" class="java.lang.Number"/>
+	<field name="non_use_billable" class="java.lang.Number"/>
+	<field name="issue_fee" class="java.lang.Number"/>
+	<field name="total_incl_tax" class="java.lang.Number"/>
+	<field name="temp_increase" class="java.lang.Number"/>
+	<field name="agreement_no" class="java.lang.Number"/>
+	<field name="nonuse_code" class="java.lang.String"/>
+	<field name="increase_code" class="java.lang.String"/>
+	<field name="current_server" class="java.lang.String"/>
+	<variable name="taxLabel" class="java.lang.String" resetType="None">
+		<variableExpression><![CDATA[(2010 <= Integer.parseInt($P{p_year}) &&
+ Integer.parseInt($P{p_year}) <= 2014) ? "HST" : "GST"]]></variableExpression>
+		<initialValueExpression><![CDATA["GST/HST"]]></initialValueExpression>
+	</variable>
+	<variable name="TaxAmount" class="java.lang.Number">
+		<variableExpression><![CDATA[($F{reverse_charge_ind}.equals( "N" )) ? ($F{rent}.doubleValue() + $F{fee}.doubleValue() + $F{issue_fee}.doubleValue()) * ((double)1.0 + ($F{total_incl_tax}.doubleValue())/(double)100.0)
+                                       : ($F{rent}.doubleValue() + $F{fee}.doubleValue() + $F{issue_fee}.doubleValue() + $F{total_incl_tax}.doubleValue())]]></variableExpression>
+	</variable>
+	<variable name="rent_sum" class="java.lang.Number" calculation="Sum">
+		<variableExpression><![CDATA[$F{rent}]]></variableExpression>
+	</variable>
+	<variable name="fee_sum" class="java.lang.Number" calculation="Sum">
+		<variableExpression><![CDATA[$F{fee}]]></variableExpression>
+	</variable>
+	<variable name="non_use_amount_sum" class="java.lang.Number" calculation="Sum">
+		<variableExpression><![CDATA[$F{non_use_billable_amount}]]></variableExpression>
+	</variable>
+	<variable name="non_use_nonbillable_sum" class="java.lang.Number" calculation="Sum">
+		<variableExpression><![CDATA[$F{non_use_nonbillable}]]></variableExpression>
+	</variable>
+	<variable name="issue_fee_sum" class="java.lang.Number" calculation="Sum">
+		<variableExpression><![CDATA[$F{issue_fee}]]></variableExpression>
+	</variable>
+	<variable name="TaxAmount_sum" class="java.lang.Number" calculation="Sum">
+		<variableExpression><![CDATA[new BigDecimal($V{TaxAmount}.doubleValue()).setScale(2, java.math.RoundingMode.HALF_UP)]]></variableExpression>
+	</variable>
+	<variable name="prevFileType" class="java.lang.String">
+		<variableExpression><![CDATA[$F{file_type_code}]]></variableExpression>
+	</variable>
+	<variable name="repErrorCount" class="java.lang.Integer" calculation="System"/>
+	<variable name="currentPageNumber" class="java.lang.Integer" resetType="Page">
+		<variableExpression><![CDATA[$V{PAGE_NUMBER}]]></variableExpression>
+		<initialValueExpression><![CDATA[1]]></initialValueExpression>
+	</variable>
+	<variable name="debug_on" class="java.lang.String">
+		<variableExpression><![CDATA["N"]]></variableExpression>
+		<initialValueExpression><![CDATA["N"]]></initialValueExpression>
+	</variable>
+	<variable name="BDOne" class="java.math.BigDecimal">
+		<initialValueExpression><![CDATA[1.0]]></initialValueExpression>
+	</variable>
+	<variable name="BD100" class="java.math.BigDecimal">
+		<initialValueExpression><![CDATA[100.0]]></initialValueExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="137" splitType="Stretch">
+			<printWhenExpression><![CDATA[$V{PAGE_NUMBER}.intValue()==1]]></printWhenExpression>
+			<staticText>
+				<reportElement uuid="4f4adc64-cf9b-4b5c-817e-de7da614db49" x="187" y="0" width="385" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ministry of Forests, Lands, Natural Resource Operations & Rural Development]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="b76c70f0-32a4-48c0-9655-b90bddad496e" x="187" y="18" width="385" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Forests Tenure and Administration System]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="f79aab2e-4e05-4392-ab19-ea47c48ad5a1" x="187" y="36" width="385" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="11" isBold="true" isItalic="false" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Pre-Billing Report For " + $P{p_year}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="78165fcb-25b6-4311-9c95-3c21e1516a4e" x="635" y="0" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[FTA408R]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="22c99c58-17ab-4b23-be90-c20423f93c7a" x="635" y="12" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{current_server}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="9546d39f-f9d3-42d0-a9b5-96c41c0f15d2" x="635" y="24" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_userid}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="8290bfaf-6901-46fb-a88a-58a0a711e22a" x="635" y="36" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="92d97de4-91c9-4266-a2b3-a440059d7e7c" x="635" y="48" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Page " + $V{currentPageNumber}.toString() + " of " + $V{PAGE_NUMBER}.toString()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="c47c07ed-e300-4237-9f76-df40e872c067" x="0" y="65" width="100" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Report Parameters:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="e7f976b6-3d3f-46c3-840a-2d4f3f238651" x="0" y="79" width="49" height="18"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[District:]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="a862b5b4-4867-49cc-be4b-0f49289760b0" x="49" y="79" width="234" height="18"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_district_code}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="9712c87d-9b08-4843-be6b-f3edadd1f1c1" x="254" y="97" width="42" height="15" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="5" spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Auth]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="e7726f2a-ddef-4a74-9b74-63d7e37729f4" x="416" y="97" width="48" height="15" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Non-Use]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="6e1bde1b-8816-4021-9861-a3158d1c5381" x="464" y="97" width="48" height="15" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Licence/]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="069c23d6-6cdc-4ffc-bc30-1f0826b33576" x="512" y="97" width="60" height="15" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Total]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="1edf002c-104d-4cad-bfdc-0a1071f90308" x="0" y="112" width="168" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Client Name]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="9772520a-e05b-410d-8056-aeb5a0596692" x="168" y="112" width="60" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tenure]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="a933ef70-3ff3-4c44-baab-05e91afcd039" x="228" y="112" width="26" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Type]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="5ebddaed-e4b9-4747-8b0d-ebbe39e46bea" x="254" y="112" width="42" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="5"/>
+				</textElement>
+				<text><![CDATA[Amount]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="6ba26fdf-4551-4865-a8fb-b89c0cc4b79b" x="296" y="112" width="60" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Rent]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="c72832de-bdce-4a4b-8c3e-f6526a3d79a2" x="356" y="112" width="60" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Fee]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="35b03336-0169-4811-ac89-a769579d8a27" x="416" y="112" width="48" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Amount]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="1afceccb-0a60-4c22-b5a0-dab0769830f1" x="464" y="112" width="48" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Permit Fee]]></text>
+			</staticText>
+			<textField pattern="">
+				<reportElement uuid="18967eab-4740-41bc-9a97-96c174bd3454" x="512" y="112" width="60" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Incl. " + $V{taxLabel}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement uuid="ca6a8edc-d489-42d0-9625-f851fe0c6022" x="0" y="136" width="750" height="1" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+			</line>
+			<textField>
+				<reportElement uuid="68c69cfc-4fa5-4012-b23f-f0361770ff79" x="-12" y="0" width="12" height="12" forecolor="#000000">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( new String("Y") )]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+			</textField>
+			<rectangle>
+				<reportElement uuid="cf813763-2633-4ca3-854a-3d0493654b62" mode="Transparent" x="-12" y="0" width="12" height="12" forecolor="#FF0000">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( new String("Y") )]]></printWhenExpression>
+				</reportElement>
+			</rectangle>
+			<textField>
+				<reportElement uuid="ece53f01-644b-4391-9e5e-df7364ef0d41" x="0" y="0" width="120" height="12">
+					<printWhenExpression><![CDATA["1".equals("2")]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{REPORT_CONTEXT}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="76f882f8-c533-495a-86ee-f71ac8c651e9" x="0" y="12" width="120" height="30">
+					<printWhenExpression><![CDATA["1".equals("2")]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="6"/>
+				</textElement>
+				<textFieldExpression><![CDATA[""]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="a7356ba3-a6ae-46cc-83df-9eb957dc4aae" x="0" y="42" width="120" height="12">
+					<printWhenExpression><![CDATA["1".equals("2")]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[""]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="0e654ffc-53ed-47e7-8dd1-c6c2edc731f3" x="0" y="54" width="240" height="11">
+					<printWhenExpression><![CDATA["1".equals("2")]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="5"/>
+				</textElement>
+				<textFieldExpression><![CDATA[""]]></textFieldExpression>
+			</textField>
+		</band>
+	</title>
+	<pageHeader>
+		<band height="106" splitType="Stretch">
+			<printWhenExpression><![CDATA[$V{PAGE_NUMBER}.intValue()>1]]></printWhenExpression>
+			<staticText>
+				<reportElement uuid="4f4adc64-cf9b-4b5c-817e-de7da614db49" x="187" y="0" width="385" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ministry of Forests, Lands, Natural Resource Operations & Rural Development]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="b76c70f0-32a4-48c0-9655-b90bddad496e" x="187" y="18" width="385" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Forests Tenure and Administration System]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="e865374a-f4df-4eb4-853d-c73682a8fb07" x="187" y="36" width="385" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="11" isBold="true" isItalic="false" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Pre-Billing Report For " + $P{p_year}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="78165fcb-25b6-4311-9c95-3c21e1516a4e" x="635" y="0" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[FTA408R]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="22c99c58-17ab-4b23-be90-c20423f93c7a" x="635" y="12" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{current_server}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="9546d39f-f9d3-42d0-a9b5-96c41c0f15d2" x="635" y="24" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_userid}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="8290bfaf-6901-46fb-a88a-58a0a711e22a" x="635" y="36" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Auto">
+				<reportElement uuid="92d97de4-91c9-4266-a2b3-a440059d7e7c" x="635" y="48" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Page " + $V{currentPageNumber}.toString() + " of " + $V{PAGE_NUMBER}.toString()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="7c329c4f-4ba3-4080-b55b-e51d9effca03" x="254" y="65" width="42" height="15" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="5" spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Auth]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="9619af4a-aa91-472a-ba19-4a92c14cd784" x="416" y="65" width="48" height="15" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Non-Use]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="bc659a00-454d-4c9d-be4e-f629cff9532b" x="464" y="65" width="48" height="15" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Licence/]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="f8e7fbe5-8231-4a4c-a923-e67f55cd3d6d" x="512" y="65" width="60" height="15" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Total]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="0a33bd19-7c09-479e-884e-964d15576099" x="0" y="80" width="168" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Client Name]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="0e6be3d4-2b98-4a52-b9f5-69be999b9611" x="168" y="80" width="60" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tenure]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="c860d73e-f29a-4c0a-950f-561c3aae4db0" x="228" y="80" width="26" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Type]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="1f842311-6211-4e00-8c83-64ca7de2d3b5" x="254" y="80" width="42" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="5"/>
+				</textElement>
+				<text><![CDATA[Amount]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="dcf6b9cd-3058-445b-b112-3490de9f7e36" x="296" y="80" width="60" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Rent]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="341490b4-d7b4-4697-997a-e4f03b8c0b6b" x="356" y="80" width="60" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Fee]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="59f78b97-73d5-4550-b5b3-3abd4ef23f66" x="416" y="80" width="48" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Amount]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="817da970-f695-4659-8813-e8417b58aea6" x="464" y="80" width="48" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Permit Fee]]></text>
+			</staticText>
+			<textField pattern="">
+				<reportElement uuid="db9a7048-ebda-4b8d-a6c1-9ba5bf7f953c" x="512" y="80" width="60" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Incl. " + $V{taxLabel}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement uuid="3ff5b0b9-b42e-42cf-a2d5-5af65e835039" x="0" y="104" width="750" height="1" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+				</reportElement>
+			</line>
+			<textField>
+				<reportElement uuid="89e5756f-27ff-40cc-b327-6d3f40c791c5" x="-12" y="0" width="12" height="12" forecolor="#000000">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( new String("Y") )]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+			</textField>
+			<rectangle>
+				<reportElement uuid="95f99f3e-a649-4ff5-9e9d-6178a289d944" mode="Transparent" x="-12" y="0" width="12" height="12" forecolor="#FF7F00">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( new String("Y") )]]></printWhenExpression>
+				</reportElement>
+			</rectangle>
+		</band>
+	</pageHeader>
+	<columnHeader>
+		<band height="45" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="398f1eb9-1a5e-4440-879c-38c62505fe43" x="243" y="13" width="42" height="15">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="5" spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Auth]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="60d32e85-a2c1-41e2-a352-d801e5ea486b" x="439" y="25" width="92" height="15">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Billable]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="43521f43-424a-4215-95b3-1827bc618957" x="627" y="13" width="58" height="15">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Licence/]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="15bc1440-e6e5-49cd-a630-1f1449de8aec" x="685" y="13" width="63" height="15">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Total]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="e56f21b4-fd23-4751-9865-bca4ce2c4b8d" x="0" y="28" width="144" height="12">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Client Name]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="3ebd5e19-6ae4-4060-9303-7bc2f63c00b8" x="144" y="28" width="60" height="12">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tenure]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="ceb52e47-3d63-43bc-91c6-aadd843ce464" x="204" y="28" width="38" height="12">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Type]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="76e9938a-c027-4151-82ad-15850b7ab824" x="243" y="28" width="42" height="12">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="5"/>
+				</textElement>
+				<text><![CDATA[Use]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="65797435-2493-4676-9aa8-def3182b991f" x="532" y="28" width="43" height="12">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Rent]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="c0c1d267-cfa0-4c88-8ec5-e71e785c2276" x="576" y="28" width="50" height="12">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Fee]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="b7b005d5-3ef0-467a-a69c-31408724c522" x="627" y="28" width="58" height="12">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Permit Fee]]></text>
+			</staticText>
+			<textField pattern="">
+				<reportElement uuid="ed376d0d-952b-4819-b727-c1ef7f57efb5" x="685" y="28" width="63" height="12">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Incl. " + $V{taxLabel}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement uuid="5009c9e6-4c20-4b88-9ace-318a8105de02" x="0" y="43" width="750" height="1"/>
+			</line>
+			<textField>
+				<reportElement uuid="c3067fa4-ba56-48ca-a165-6595b89786c7" x="-12" y="0" width="12" height="12" forecolor="#000000">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( new String("Y") )]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+			</textField>
+			<rectangle>
+				<reportElement uuid="cc7ba0cf-c14e-48cd-8d68-0874981d88a7" mode="Transparent" x="-12" y="0" width="12" height="12" forecolor="#FFFF00">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( new String("Y") )]]></printWhenExpression>
+				</reportElement>
+			</rectangle>
+			<staticText>
+				<reportElement uuid="60d32e85-a2c1-41e2-a352-d801e5ea486b" x="346" y="25" width="92" height="15">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Non-Billable]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="76e9938a-c027-4151-82ad-15850b7ab824" x="286" y="28" width="59" height="12">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="5"/>
+				</textElement>
+				<text><![CDATA[Increase]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="76e9938a-c027-4151-82ad-15850b7ab824" x="286" y="13" width="59" height="15">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph rightIndent="5" spacingBefore="3"/>
+				</textElement>
+				<text><![CDATA[Temp]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="c0c1d267-cfa0-4c88-8ec5-e71e785c2276" x="576" y="16" width="50" height="12">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Usage]]></text>
+			</staticText>
+			<line>
+				<reportElement uuid="9ea5bfbd-926f-409c-9a43-797a4fca111d" x="245" y="6" width="98" height="1"/>
+			</line>
+			<staticText>
+				<reportElement uuid="76e9938a-c027-4151-82ad-15850b7ab824" mode="Opaque" x="274" y="0" width="38" height="12">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="8" isBold="true"/>
+					<paragraph rightIndent="5"/>
+				</textElement>
+				<text><![CDATA[  Usage]]></text>
+			</staticText>
+			<line>
+				<reportElement uuid="9ea5bfbd-926f-409c-9a43-797a4fca111d" x="346" y="6" width="192" height="1"/>
+			</line>
+			<staticText>
+				<reportElement uuid="76e9938a-c027-4151-82ad-15850b7ab824" mode="Opaque" x="398" y="0" width="87" height="12">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="8" isBold="true"/>
+					<paragraph rightIndent="5"/>
+				</textElement>
+				<text><![CDATA[  Non-Use/Reduction]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="16" splitType="Stretch">
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="abd625e8-a5be-4ce7-9364-170c2b56efc1" x="0" y="0" width="144" height="16" isRemoveLineWhenBlank="true">
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+					<paragraph spacingBefore="4"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{client_name}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="6c70e94f-19e8-4196-a009-aebd3183d02c" x="144" y="0" width="60" height="16" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$F{reverse_charge_ind} != null]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="9"/>
+					<paragraph spacingBefore="4"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{forest_file_id}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="7174869e-39ca-4e62-a0f7-e5d9d3ac0751" x="204" y="0" width="38" height="16" isRemoveLineWhenBlank="true"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="9"/>
+					<paragraph spacingBefore="4"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{file_type_code}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0;-#,##0" isBlankWhenNull="true">
+				<reportElement uuid="abe4477e-aeca-41ea-abd4-874a4aee7c4e" x="243" y="0" width="42" height="16" isRemoveLineWhenBlank="true"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="5" spacingBefore="4"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{auth_amount}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="8d569aa8-34f6-43f6-9c28-4be52ba54889" x="532" y="0" width="43" height="16" isRemoveLineWhenBlank="true"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph spacingBefore="4"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{rent}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="6b6b4604-6f4a-4f0d-8c88-c6e79e38ec21" x="576" y="0" width="50" height="16" isRemoveLineWhenBlank="true"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph spacingBefore="4"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{fee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="" isBlankWhenNull="true">
+				<reportElement uuid="822e64ca-ffaf-48c1-b01d-d503973f6938" x="439" y="0" width="92" height="16" isRemoveLineWhenBlank="true"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph spacingBefore="4"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{non_use_billable} +  "(" + new java.text.DecimalFormat("$ #,##0.00").format($F{non_use_billable_amount}) + ")"]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="e032f5ec-5695-4994-9bfe-3600116b0f4f" x="627" y="0" width="58" height="16" isRemoveLineWhenBlank="true"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph spacingBefore="4"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{issue_fee}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="0f023cad-899b-4acd-8c0f-93c717711b34" x="685" y="0" width="63" height="16" isRemoveLineWhenBlank="true"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph spacingBefore="4"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new BigDecimal($V{TaxAmount}.doubleValue()).setScale(2, java.math.RoundingMode.HALF_UP)]]></textFieldExpression>
+			</textField>
+			<rectangle>
+				<reportElement uuid="bd37e724-41ad-4984-9f27-81e16374fd31" mode="Transparent" x="-12" y="0" width="12" height="12" forecolor="#00FF00">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( new String("Y") )]]></printWhenExpression>
+				</reportElement>
+			</rectangle>
+			<textField isStretchWithOverflow="true">
+				<reportElement uuid="ff6bc636-3b4f-4b39-8d54-fc09998f0de1" x="-12" y="0" width="12" height="12" forecolor="#000000">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( new String("Y") )]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+			</textField>
+			<textField pattern="" isBlankWhenNull="true">
+				<reportElement uuid="822e64ca-ffaf-48c1-b01d-d503973f6938" x="346" y="0" width="92" height="16" isRemoveLineWhenBlank="true"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph spacingBefore="4"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{non_use_nonbillable} + "($ 0.00)"]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0;-#,##0" isBlankWhenNull="true">
+				<reportElement uuid="abe4477e-aeca-41ea-abd4-874a4aee7c4e" x="286" y="0" width="59" height="16" isRemoveLineWhenBlank="true">
+					<property name="net.sf.jasperreports.text.truncate.at.char" value="true"/>
+					<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+					<paragraph rightIndent="5" spacingBefore="4"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{temp_increase}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="174" splitType="Immediate">
+			<line>
+				<reportElement uuid="1ba6e576-3ed2-4545-b778-eefd3159547e" x="329" y="6" width="421" height="1" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+			</line>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="2c93ae62-0465-4663-a850-7c6bc1e8a1d7" x="532" y="7" width="43" height="32" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{rent_sum}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="e531d7b0-3529-4fd7-8b99-47194d445e7a" x="576" y="7" width="50" height="32">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{fee_sum}]]></textFieldExpression>
+			</textField>
+			<textField pattern="$ #,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="82db88af-453c-4023-afea-07977ff246cf" x="346" y="7" width="92" height="32">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[0]]></textFieldExpression>
+			</textField>
+			<textField pattern="$ #,##0.00">
+				<reportElement uuid="536e1975-06f8-48df-b9c4-a03115ff4b28" x="438" y="7" width="92" height="32">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{non_use_amount_sum}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="44af4c07-1aa9-463f-a772-23bd3a4df27c" x="627" y="7" width="58" height="32">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{issue_fee_sum}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="52234a26-15f4-4318-8511-71587f34a8f5" x="685" y="7" width="63" height="32">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9" isBold="true"/>
+					<paragraph spacingBefore="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{TaxAmount_sum}]]></textFieldExpression>
+			</textField>
+			<break>
+				<reportElement uuid="aa34b6da-b7d6-4c5a-98e4-a4f8a35a7e7f" x="0" y="39" width="572" height="1">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+			</break>
+			<staticText>
+				<reportElement uuid="13721800-6cf3-4b73-924c-2dc533049302" x="187" y="40" width="385" height="18" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ministry of Forests, Lands, Natural Resource Operations & Rural Development]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="2b7b6e65-970a-4391-995b-a4aea77bce4b" x="187" y="58" width="385" height="18" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Forests Tenure and Administration System]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="ce634ebd-adad-405a-9ffa-6ce69e54aff0" x="187" y="76" width="385" height="18" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="11" isBold="true" isItalic="false" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Pre-Billing Report For " + $P{p_year}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="e0049fa9-f57c-47c1-add3-3791dcb16dda" x="635" y="40" width="108" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[FTA408R]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="04703e6a-6765-450c-bbeb-0eca5aa3cb3a" x="635" y="52" width="108" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{current_server}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="41c87441-2531-4114-8a0d-ed6d265ad246" x="635" y="64" width="108" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_userid}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="1d21a389-fc04-4836-9b96-3405b51ff372" x="635" y="76" width="108" height="12" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Auto">
+				<reportElement uuid="98060613-3405-4c1b-8e9d-c06aef3946de" x="635" y="88" width="108" height="12">
+					<printWhenExpression><![CDATA[$V{REPORT_COUNT}.intValue() > 0]]></printWhenExpression>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Page " + $V{currentPageNumber}.toString() + " of " + $V{PAGE_NUMBER}.toString()]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement uuid="dc32f10f-c5e3-49dc-89cb-9a3e44b7533c" x="0" y="116" width="743" height="58"/>
+				<dataSourceExpression><![CDATA[$P{ERRORS}]]></dataSourceExpression>
+				<returnValue subreportVariable="subErrorCount" toVariable="repErrorCount"/>
+				<subreportExpression><![CDATA[$P{ERRORS_SUBREPORT}]]></subreportExpression>
+			</subreport>
+			<rectangle>
+				<reportElement uuid="c7dcfeea-c114-4f8d-b1ac-ee03d5517d46" mode="Transparent" x="-12" y="0" width="12" height="12" forecolor="#007FFF">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( new String("Y") )]]></printWhenExpression>
+				</reportElement>
+			</rectangle>
+			<textField>
+				<reportElement uuid="65e2ae8f-cd5e-4689-b672-fc1b3baf4658" x="-12" y="0" width="12" height="12" forecolor="#000000">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( new String("Y") )]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+	<noData>
+		<band height="188">
+			<rectangle>
+				<reportElement uuid="f65409e7-4dd1-4caf-bf86-01d03acf57bb" isPrintRepeatedValues="false" mode="Transparent" x="-12" y="0" width="12" height="12" forecolor="#7F007F">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( "Y" )]]></printWhenExpression>
+				</reportElement>
+			</rectangle>
+			<textField>
+				<reportElement uuid="43b44690-c6ee-4bb3-93b4-21429660fbbf" x="-12" y="0" width="12" height="12" forecolor="#000000">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( new String("Y") )]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="16558f9f-9520-4a2f-aef1-903eb42e57ed" x="209" y="0" width="336" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ministry of Forests, Lands, and Natural Resource Operations]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="9b7bafda-9752-4d6e-a9a5-1aa584a49851" x="209" y="18" width="336" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Forests Tenure and Administration System]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="a016df2d-728d-4e1f-8afb-15cc3a34afc9" x="209" y="36" width="336" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="11" isBold="true" isItalic="false" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Pre-Billing Report For " + $P{p_year}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="4297afc5-288f-45a6-a0d8-e1b4b83ac8d1" x="635" y="0" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[FTA408R]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="d745ffd6-5cdf-4951-bbf9-e57fd8f8d5ff" x="635" y="24" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_userid}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="6c399931-8bd4-41ac-8551-f093b8adc44a" x="635" y="36" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="f15e239b-7c83-4a7c-a005-de45082b7f13" x="0" y="65" width="100" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Report Parameters:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="c62ba466-067e-49ec-9c96-3ef11bf31199" x="0" y="79" width="49" height="18"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[District:]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="fa52bd9f-9b32-46e1-923a-eeacb4217511" x="49" y="79" width="234" height="18"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_district_code}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="86134785-c95e-4699-8529-8e3b9acfab86" x="209" y="99" width="288" height="24"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Error Summary]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="bc45a911-95d5-4d97-bf24-535d1cb92216" x="140" y="123" width="72" height="17"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tenure]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="83e67802-c1ab-4ce1-8f66-8409be9388b1" x="212" y="123" width="396" height="17"/>
+				<textElement>
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Error Description]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="720a4f0d-6982-476e-8c37-f43ab3d031e3" x="140" y="140" width="392" height="14"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<text><![CDATA[No instructions found for organization unit.]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="8fa347a8-b723-4819-8bda-ac93714c4c9a" x="635" y="48" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Page " + $V{currentPageNumber}.toString() + " of " + $V{PAGE_NUMBER}.toString()]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="552a9d65-83fc-4da9-9469-3d63d7895107" x="635" y="12" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{CURRENT_SERVER}]]></textFieldExpression>
+			</textField>
+		</band>
+	</noData>
+</jasperReport>

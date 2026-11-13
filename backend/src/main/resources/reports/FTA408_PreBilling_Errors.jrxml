@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FTA408 Pre-Billing Report's error summary — ported from the legacy subreport
+  (fta-archive: JCRS/FTA/Jrxml/FTA408/FTA408_Sub1_Errors). The parent passes the rows
+  (PreBillingReport ports FTAR408P_ERRORS and FTAR408_PRE_BILLING_PROBLEM); no query.
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="FTA408_Sub1_Errors" pageWidth="572" pageHeight="752" whenNoDataType="AllSectionsNoDetail" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="64c5e5cf-56a9-4b47-8343-794af4ad5c76">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="p_year" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_district_code" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_userid" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<field name="calendar_year" class="java.lang.Number"/>
+	<field name="forest_file_id" class="java.lang.String"/>
+	<field name="billing_instruc_code" class="java.lang.String"/>
+	<field name="certified_ts" class="java.lang.String"/>
+	<field name="current_server" class="java.lang.String"/>
+	<variable name="subErrorCount" class="java.lang.Integer">
+		<variableExpression><![CDATA[($F{billing_instruc_code} == null) ? $V{subErrorCount} : new Integer($V{subErrorCount}.intValue() + 1)]]></variableExpression>
+		<initialValueExpression><![CDATA[new Integer(0)]]></initialValueExpression>
+	</variable>
+	<variable name="debug_on" class="java.lang.String">
+		<variableExpression><![CDATA["N"]]></variableExpression>
+		<initialValueExpression><![CDATA["N"]]></initialValueExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="42" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="1b68bf04-2f1d-4bb3-b1f3-8f7d61300014" x="144" y="0" width="288" height="24"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Error Summary]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="782b8cb2-aee8-47bc-a117-bbd77942a03d" x="72" y="24" width="72" height="17"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tenure]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="ce4333e1-055f-4ce1-9ef0-934a22aa708e" x="144" y="24" width="396" height="17"/>
+				<textElement>
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<text><![CDATA[Error Description]]></text>
+			</staticText>
+			<line>
+				<reportElement uuid="c1bf9bce-9135-4884-8eda-2684d605eac3" x="72" y="40" width="468" height="1"/>
+			</line>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="16" splitType="Stretch">
+			<textField>
+				<reportElement uuid="3a3d2b8f-1492-4348-a373-3b785e8b73cf" x="72" y="0" width="72" height="16" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[!$F{billing_instruc_code}.equals( "" )]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{forest_file_id}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="27900588-570e-4b45-a9e3-cd7e2184ec87" x="144" y="0" width="396" height="16" isRemoveLineWhenBlank="true"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{billing_instruc_code}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="16">
+			<staticText>
+				<reportElement uuid="0900ad66-5e40-4d22-9b76-0bce6a3c891e" x="72" y="0" width="468" height="16" isRemoveLineWhenBlank="true">
+					<printWhenExpression><![CDATA[$V{subErrorCount}.intValue() == 0]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[No errors encountered in batch run.]]></text>
+			</staticText>
+			<rectangle>
+				<reportElement uuid="1bf269d3-fa02-4047-bc4d-1e49bc598919" mode="Transparent" x="0" y="0" width="12" height="12" forecolor="#007FFF">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( new String("Y") )]]></printWhenExpression>
+				</reportElement>
+			</rectangle>
+			<textField>
+				<reportElement uuid="f43bb071-8f31-49be-a9be-8dd903df5232" x="0" y="0" width="12" height="12" forecolor="#000000">
+					<printWhenExpression><![CDATA[$V{debug_on}.equals( new String("Y") )]]></printWhenExpression>
+				</reportElement>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

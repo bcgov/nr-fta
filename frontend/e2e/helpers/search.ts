@@ -3,8 +3,11 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 /** How many options of a select to try before deciding there is no data to open. */
 const MAX_OPTIONS_TRIED = 8;
 
-/** The slowest search takes well under this against a real backend. */
-const SEARCH_TIMEOUT_MS = 15_000;
+/**
+ * How long one search may take. A district-wide tenure search (DCC) runs close
+ * to 15s against a cold Oracle cache, and passes on a warm re-run.
+ */
+const SEARCH_TIMEOUT_MS = 45_000;
 
 /** The result rows, which open their record when clicked. */
 export const resultRows = (page: Page): Locator => page.locator('.fsp-search__row--selectable');
@@ -39,6 +42,10 @@ export const chooseOption = async (
  * @return how many rows came back on this page of results
  */
 export const submitSearch = async (page: Page): Promise<number> => {
+  // Each search gets its own budget on top of the test's, so the 20s test
+  // ceiling (playwright.config.ts) does not cut a slow search short — including
+  // openFirstResult, which may search several options in turn.
+  test.info().setTimeout(test.info().timeout + SEARCH_TIMEOUT_MS);
   await searchForm(page).getByRole('button', { name: 'Search', exact: true }).click();
 
   const rows = resultRows(page).first();

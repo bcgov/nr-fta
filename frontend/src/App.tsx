@@ -5,9 +5,14 @@ import SessionTimeout from './components/SessionTimeout';
 import { useAuth } from './context/auth/useAuth';
 import ArchiveTenures from './pages/admin/ArchiveTenures';
 import AuditReport from './pages/admin/AuditReport';
-import BillingReportScreen from './pages/admin/BillingReportScreen';
+import InvoicePreview from './pages/admin/billing/InvoicePreview';
+import PostBillingReport from './pages/admin/billing/PostBillingReport';
+import PreBillingReport from './pages/admin/billing/PreBillingReport';
+import TenureApproval from './pages/admin/billing/TenureApproval';
+import TenureBilling from './pages/admin/billing/TenureBilling';
 import ManageZone from './pages/admin/ManageZone';
 import MarkTransfer from './pages/admin/MarkTransfer';
+import NotYetAvailable from './pages/admin/NotYetAvailable';
 import OrgUnitMaintenance from './pages/admin/OrgUnitMaintenance';
 import RatesMaintenance from './pages/admin/RatesMaintenance';
 import AuthCallback from './pages/AuthCallback';
@@ -178,84 +183,26 @@ export default function App() {
           <Route
             path="/admin/rents-fees"
             element={guarded(
-              withLayout(
-                <BillingReportScreen
-                  title="Annual Rents & Fees Preparation"
-                  legacyId="FTA670"
-                  actionLabel="Run rents & fees preparation"
-                  description="Prepare the annual rent and fee charges for all active tenures in the billing cycle."
-                />,
-              ),
+              withLayout(<NotYetAvailable title="Annual Rents & Fees Preparation" />),
             )}
           />
           <Route path="/admin/mark-transfer" element={guarded(withLayout(<MarkTransfer />))} />
           <Route path="/admin/range-zone" element={guarded(withLayout(<ManageZone />))} />
           <Route path="/admin/org-unit" element={guarded(withLayout(<OrgUnitMaintenance />))} />
-          <Route
-            path="/admin/billing/tenure"
-            element={guarded(
-              withLayout(
-                <BillingReportScreen
-                  title="Tenure Billing Instructions"
-                  legacyId="FTA680"
-                  actionLabel="Save billing instructions"
-                  description="Review and confirm the billing instructions for each tenure before the billing run."
-                />,
-              ),
-            )}
-          />
+          <Route path="/admin/billing/tenure" element={guarded(withLayout(<TenureBilling />))} />
           <Route
             path="/admin/billing/invoice-preview"
-            element={guarded(
-              withLayout(
-                <BillingReportScreen
-                  title="Invoice Preview"
-                  legacyId="FTA695"
-                  actionLabel="Generate invoices"
-                  description="Preview the invoices that will be generated for the current billing cycle."
-                />,
-              ),
-            )}
+            element={guarded(withLayout(<InvoicePreview />))}
           />
           <Route
             path="/admin/billing/pre-billing"
-            element={guarded(
-              withLayout(
-                <BillingReportScreen
-                  title="Pre Billing Report Submission"
-                  legacyId="FTA685"
-                  actionLabel="Submit pre-billing report"
-                  description="Submit the pre-billing report for review before invoices are issued."
-                />,
-              ),
-            )}
+            element={guarded(withLayout(<PreBillingReport />))}
           />
           <Route
             path="/admin/billing/post-billing"
-            element={guarded(
-              withLayout(
-                <BillingReportScreen
-                  title="Post Billing Report Submission"
-                  legacyId="FTA686"
-                  actionLabel="Submit post-billing report"
-                  description="Submit the post-billing reconciliation report after invoices are issued."
-                />,
-              ),
-            )}
+            element={guarded(withLayout(<PostBillingReport />))}
           />
-          <Route
-            path="/admin/billing/approval"
-            element={guarded(
-              withLayout(
-                <BillingReportScreen
-                  title="Tenure Approval Submission"
-                  legacyId="FTA690"
-                  actionLabel="Submit for approval"
-                  description="Submit the prepared billing lines for management approval."
-                />,
-              ),
-            )}
-          />
+          <Route path="/admin/billing/approval" element={guarded(withLayout(<TenureApproval />))} />
           <Route path="/admin/rates-fees" element={guarded(withLayout(<RatesMaintenance />))} />
           <Route path="/admin/archive" element={guarded(withLayout(<ArchiveTenures />))} />
 

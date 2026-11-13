@@ -1,7 +1,10 @@
-import { Archive } from '@carbon/icons-react';
+import { Archive, Search as SearchIcon } from '@carbon/icons-react';
 import {
   Button,
-  Checkbox,
+  Column,
+  Grid,
+  Select,
+  SelectItem,
   Table,
   TableBody,
   TableCell,
@@ -9,54 +12,116 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Tag,
+  TextInput,
 } from '@carbon/react';
-import { useState, type FC } from 'react';
+import { useEffect, useState, type FC, type FormEvent } from 'react';
 
+import AsyncBoundary from '@/components/AsyncBoundary';
 import DestructiveModal from '@/components/core/DestructiveModal';
+import EmptyState from '@/components/EmptyState/EmptyState';
 import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
-import { MOCK_TENURES } from '@/mocks/tenures';
 import PageLayout from '@/pages/PageLayout';
-import { archiveTenures } from '@/services/archive_tenures';
+import {
+  archiveTenures,
+  getArchiveTenuresSummary,
+  type ArchiveTenuresCriteria,
+  type ArchiveTenuresSummary,
+} from '@/services/archive_tenures';
+import { getDistricts, getRegions, type CodeOption } from '@/services/codeLists';
+import './ArchiveTenures.scss';
+
+interface Form {
+  regionNo: string;
+  districtNo: string;
+  expiryYear: string;
+}
+
+const EMPTY: Form = { regionNo: '', districtNo: '', expiryYear: '' };
 
 /**
- * FTA640 — Archive Tenures. Select expired/inactive tenures to archive (mock).
- * Only Expired tenures are eligible.
+ * FTA640 — Archive Tenures, as legacy THE.FTA_640_ARCHIVETEN: pick a region (and
+ * optionally one district) and an expiry year, see how many active grazing and
+ * hay range tenures expired that year in each district, then archive all of them
+ * (status AR). Archiving is refused until the year is over.
+ *
+ * The archive uses the criteria of the last count, not whatever is in the form,
+ * so it changes exactly what the table shows (legacy's "key changed" check).
  */
 const ArchiveTenures: FC = () => {
   const notify = useNotification();
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [regions, setRegions] = useState<CodeOption[]>([]);
+  const [districts, setDistricts] = useState<CodeOption[]>([]);
+  const [form, setForm] = useState<Form>(EMPTY);
+  const [searched, setSearched] = useState<ArchiveTenuresCriteria | null>(null);
+  const [rows, setRows] = useState<ArchiveTenuresSummary[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
-  // Archiving is a bulk action over whatever is checked, and nothing in the UI
-  // undoes it, so it is confirmed rather than fired straight from the button.
+  // Archiving changes every counted tenure and nothing in the UI undoes it.
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const toggle = (id: string) =>
-    setSelected((s) => {
-      const next = new Set(s);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.allSettled([getRegions(), getDistricts()]).then(([r, d]) => {
+      if (cancelled) return;
+      if (r.status === 'fulfilled') setRegions(r.value);
+      if (d.status === 'fulfilled') setDistricts(d.value);
+      if (r.status === 'rejected' || d.status === 'rejected') {
+        notify.display({
+          kind: 'error',
+          title: 'Could not load the region and district lists',
+          subtitle: 'Reload the page to try again.',
+          timeout: 6000,
+        });
       }
-      return next;
     });
+    return () => {
+      cancelled = true;
+    };
+    // Load once; notify is stable for the page's life.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const set = (f: keyof Form) => (v: string) => setForm((s) => ({ ...s, [f]: v }));
+
+  const count = async (c: ArchiveTenuresCriteria) => {
+    setLoading(true);
+    setError(undefined);
+    try {
+      setRows(await getArchiveTenuresSummary(c));
+      setSearched(c);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not count the tenures');
+      setRows(null);
+      setSearched(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onGo = (e: FormEvent) => {
+    e.preventDefault();
+    void count({
+      regionNo: form.regionNo,
+      districtNo: form.districtNo || null,
+      expiryYear: Number(form.expiryYear),
+    });
+  };
 
   const onArchive = async () => {
-    // Archive exactly the files the user selected — the backend only touches
-    // still-active files among this explicit list, so it can never archive
-    // more than what's checked here.
+    if (!searched) return;
     setSaving(true);
     try {
-      const { updated } = await archiveTenures({ forestFileIds: [...selected] });
+      const { updated } = await archiveTenures(searched);
       notify.display({
         kind: 'success',
         title: 'Tenures archived',
         subtitle: `${updated} tenure(s) archived.`,
         timeout: 5000,
       });
-      setSelected(new Set());
+      // Re-count, so the table shows they are gone.
+      await count(searched);
     } catch (err) {
       notify.display({
         kind: 'error',
@@ -70,74 +135,139 @@ const ArchiveTenures: FC = () => {
     }
   };
 
+  const grazing = rows?.reduce((n, r) => n + r.grazingCount, 0) ?? 0;
+  const hay = rows?.reduce((n, r) => n + r.hayCount, 0) ?? 0;
+  const total = grazing + hay;
+  const yearIsOver = searched != null && searched.expiryYear < new Date().getFullYear();
+  const canGo = form.regionNo !== '' && /^\d{4}$/.test(form.expiryYear);
+
   return (
     <PageLayout
       title="Archive Tenures"
-      subtitle="Select expired tenures to move them into the archive."
+      subtitle="Archive the active grazing and hay tenures whose term expired in a given year."
     >
-      <SectionTile
-        title="Tenures"
-        icon={Archive}
-        description="Only tenures in an Expired status are eligible for archiving."
-        actions={
-          <Button
-            size="md"
-            kind="danger"
-            renderIcon={Archive}
-            disabled={selected.size === 0 || saving}
-            onClick={() => setConfirmOpen(true)}
-          >
-            {saving ? 'Archiving…' : `Archive ${selected.size} tenure(s)`}
-          </Button>
-        }
-      >
-        <div className="bordered-table">
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeader>Archive</TableHeader>
-                  <TableHeader>File ID</TableHeader>
-                  <TableHeader>Type</TableHeader>
-                  <TableHeader>Status</TableHeader>
-                  <TableHeader>Licensee</TableHeader>
-                  <TableHeader>Expiry</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {MOCK_TENURES.map((t) => {
-                  const eligible = t.status === 'Expired';
-                  return (
-                    <TableRow key={t.fileId}>
-                      <TableCell>
-                        <Checkbox
-                          id={`arc-${t.fileId}`}
-                          labelText=""
-                          checked={selected.has(t.fileId)}
-                          disabled={!eligible}
-                          onChange={() => toggle(t.fileId)}
-                        />
-                      </TableCell>
-                      <TableCell>{t.fileId}</TableCell>
-                      <TableCell>{t.fileType}</TableCell>
-                      <TableCell>
-                        <Tag type={eligible ? 'gray' : 'green'}>{t.status}</Tag>
-                      </TableCell>
-                      <TableCell>{t.licensee}</TableCell>
-                      <TableCell>{t.expiryDate}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </div>
+      <SectionTile title="Criteria" icon={SearchIcon}>
+        <form onSubmit={onGo}>
+          <Grid narrow>
+            <Column sm={4} md={3} lg={5}>
+              <Select
+                id="arc-region"
+                labelText="Region"
+                value={form.regionNo}
+                onChange={(e) => set('regionNo')(e.target.value)}
+              >
+                <SelectItem value="" text="Choose a region" />
+                {regions.map((r) => (
+                  <SelectItem key={r.code} value={r.code} text={r.description} />
+                ))}
+              </Select>
+            </Column>
+            <Column sm={4} md={3} lg={5}>
+              <Select
+                id="arc-district"
+                labelText="District (optional)"
+                value={form.districtNo}
+                onChange={(e) => set('districtNo')(e.target.value)}
+              >
+                <SelectItem value="" text="All districts in the region" />
+                {districts.map((d) => (
+                  <SelectItem key={d.code} value={d.code} text={d.description} />
+                ))}
+              </Select>
+            </Column>
+            <Column sm={4} md={2} lg={3}>
+              <TextInput
+                id="arc-year"
+                labelText="Expiry Year"
+                placeholder="e.g. 2025"
+                value={form.expiryYear}
+                onChange={(e) => set('expiryYear')(e.target.value.replace(/\D/g, ''))}
+                maxLength={4}
+                inputMode="numeric"
+                autoComplete="off"
+              />
+            </Column>
+            <Column sm={4} md={8} lg={3} className="archive-tenures__go">
+              <Button type="submit" size="md" renderIcon={SearchIcon} disabled={!canGo || loading}>
+                Go
+              </Button>
+            </Column>
+          </Grid>
+        </form>
       </SectionTile>
+
+      {(rows !== null || loading || error) && (
+        <SectionTile
+          title="Tenures to archive"
+          icon={Archive}
+          actions={
+            <Button
+              size="md"
+              kind="danger"
+              renderIcon={Archive}
+              disabled={!yearIsOver || total === 0 || saving || loading}
+              onClick={() => setConfirmOpen(true)}
+            >
+              {saving ? 'Archiving…' : `Archive ${total} tenure(s)`}
+            </Button>
+          }
+        >
+          <AsyncBoundary
+            loading={loading}
+            error={error}
+            onRetry={searched ? () => void count(searched) : undefined}
+            loadingText="Counting tenures…"
+          >
+            {rows && rows.length === 0 ? (
+              <EmptyState
+                title="No tenures to archive"
+                body="No active grazing or hay tenures expired in that year for these criteria."
+              />
+            ) : (
+              rows && (
+                <div className="bordered-table">
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader>District</TableHeader>
+                          <TableHeader>Grazing</TableHeader>
+                          <TableHeader>Hay</TableHeader>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {rows.map((r) => (
+                          <TableRow key={r.district}>
+                            <TableCell>{r.district}</TableCell>
+                            <TableCell>{r.grazingCount}</TableCell>
+                            <TableCell>{r.hayCount}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow>
+                          <TableCell>
+                            <strong>Total</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>{grazing}</strong>
+                          </TableCell>
+                          <TableCell>
+                            <strong>{hay}</strong>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </div>
+              )
+            )}
+          </AsyncBoundary>
+        </SectionTile>
+      )}
 
       <DestructiveModal
         open={confirmOpen}
         title="Archive tenures?"
-        message={`${selected.size} tenure(s) will be moved out of the active list. Of the files selected, only those still active are changed, and archiving is not undone from this screen.`}
+        message={`All ${total} active grazing and hay tenure(s) counted above will be set to Archived. This is not undone from this screen.`}
         confirmButtonText="Archive"
         loading={saving}
         onConfirm={() => void onArchive()}

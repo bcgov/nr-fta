@@ -9,7 +9,7 @@ import {
   SelectItem,
   TextInput,
 } from '@carbon/react';
-import { useState, type FC, type FormEvent } from 'react';
+import { useEffect, useState, type FC, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import SectionTile from '@/components/SectionTile';
@@ -17,34 +17,15 @@ import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import PageLayout from '@/pages/PageLayout';
 import { canEdit } from '@/routes/access';
+import { getFileTypes, getOrgUnits, orgUnitCodeOf, type CodeOption } from '@/services/codeLists';
 import { createTenure } from '@/services/tenure_write';
 import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 import './AddTenure.scss';
-
-// value = the code stored/resolved by the backend; text = the display label.
-const FILE_TYPES = [
-  { code: 'FL', label: 'Forest Licence' },
-  { code: 'TFL', label: 'Tree Farm Licence' },
-  { code: 'WL', label: 'Woodlot Licence' },
-  { code: 'CFA', label: 'Community Forest Agreement' },
-  { code: 'FNWL', label: 'First Nations Woodland Licence' },
-];
-
-const ORG_UNITS = [
-  { code: 'DCC', label: 'DCC — Cariboo-Chilcotin' },
-  { code: 'DPG', label: 'DPG — Prince George' },
-  { code: 'DND', label: 'DND — Nadina' },
-  { code: 'DSQ', label: 'DSQ — Sea to Sky' },
-  { code: 'DVA', label: 'DVA — Campbell River' },
-  { code: 'DMK', label: 'DMK — Mackenzie' },
-];
 
 interface NewTenureForm {
   fileId: string;
   fileType: string;
   orgUnit: string;
-  licensee: string;
-  clientNumber: string;
   issueDate: string;
 }
 
@@ -52,8 +33,6 @@ const EMPTY: NewTenureForm = {
   fileId: '',
   fileType: '',
   orgUnit: '',
-  licensee: '',
-  clientNumber: '',
   issueDate: '',
 };
 
@@ -69,6 +48,32 @@ const AddTenure: FC = () => {
   const [form, setForm] = useState<NewTenureForm>(EMPTY);
   const [saving, setSaving] = useState(false);
   const readOnly = !canEdit(user);
+  // THE.FILE_TYPE_CODE and THE.ORG_UNIT: the insert's file type is a foreign key,
+  // and the backend resolves the org unit by its code, so both must be real values.
+  const [fileTypes, setFileTypes] = useState<CodeOption[]>([]);
+  const [orgUnits, setOrgUnits] = useState<CodeOption[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.allSettled([getFileTypes(), getOrgUnits()]).then(([types, units]) => {
+      if (cancelled) return;
+      if (types.status === 'fulfilled') setFileTypes(types.value);
+      if (units.status === 'fulfilled') setOrgUnits(units.value);
+      if (types.status === 'rejected' || units.status === 'rejected') {
+        notify.display({
+          kind: 'error',
+          title: 'Could not load the file type and organization unit lists',
+          subtitle: 'Reload the page to try again.',
+          timeout: 6000,
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Load once; notify is stable for the page's life.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const set = (f: keyof NewTenureForm) => (v: string) => setForm((s) => ({ ...s, [f]: v }));
 
@@ -80,8 +85,6 @@ const AddTenure: FC = () => {
         forestFileId: form.fileId,
         fileTypeCode: form.fileType,
         orgUnitCode: form.orgUnit,
-        clientNumber: form.clientNumber,
-        clientName: form.licensee,
         issueDate: form.issueDate || null,
       });
       notify.display({
@@ -133,8 +136,8 @@ const AddTenure: FC = () => {
                 onChange={(e) => set('fileType')(e.target.value)}
               >
                 <SelectItem value="" text="Choose a type" />
-                {FILE_TYPES.map((t) => (
-                  <SelectItem key={t.code} value={t.code} text={t.label} />
+                {fileTypes.map((t) => (
+                  <SelectItem key={t.code} value={t.code} text={t.description} />
                 ))}
               </Select>
             </Column>
@@ -147,30 +150,10 @@ const AddTenure: FC = () => {
                 onChange={(e) => set('orgUnit')(e.target.value)}
               >
                 <SelectItem value="" text="Choose an organization unit" />
-                {ORG_UNITS.map((o) => (
-                  <SelectItem key={o.code} value={o.code} text={o.label} />
+                {orgUnits.map((o) => (
+                  <SelectItem key={o.code} value={orgUnitCodeOf(o)} text={o.description} />
                 ))}
               </Select>
-            </Column>
-            <Column sm={4} md={4} lg={4}>
-              <TextInput
-                id="at-licensee"
-                labelText="Licensee / Client"
-                placeholder="e.g. West Fraser Mills Ltd."
-                disabled={readOnly}
-                value={form.licensee}
-                onChange={(e) => set('licensee')(e.target.value)}
-              />
-            </Column>
-            <Column sm={4} md={4} lg={4}>
-              <TextInput
-                id="at-client"
-                labelText="Client Number"
-                placeholder="8-digit number"
-                disabled={readOnly}
-                value={form.clientNumber}
-                onChange={(e) => set('clientNumber')(e.target.value)}
-              />
             </Column>
             <Column sm={4} md={4} lg={4}>
               <DatePicker

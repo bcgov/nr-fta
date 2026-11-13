@@ -14,6 +14,7 @@ import {
   UserMultiple,
 } from '@carbon/icons-react';
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
+import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
@@ -23,6 +24,7 @@ import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import { useLazyTabs, type LazyTabs } from '@/hooks/useLazyTabs';
 import { useNavOrigin } from '@/lib/navOrigin';
+import { recordRecentTenure } from '@/lib/recentTenures';
 import PageLayout from '@/pages/PageLayout';
 import { canEdit, canEditHarvest } from '@/routes/access';
 import { markDetailPath } from '@/services/mark_detail';
@@ -174,6 +176,11 @@ const TenureDetail: FC = () => {
   } = useApiResource(() => getTenureDetail(fileId), [fileId]);
 
   const tabs = useLazyTabs(fileId);
+
+  // Feeds "Recently accessed tenures" on the Tenures landing page.
+  useEffect(() => {
+    if (tenure) recordRecentTenure(user?.userName, tenure);
+  }, [tenure, user?.userName]);
 
   // What every tab panel gets (panelProps.ts).
   const panelProps: TenurePanelProps | null = tenure
