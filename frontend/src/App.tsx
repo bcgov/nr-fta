@@ -36,7 +36,6 @@ import CutBlockRelabel from './pages/harvesting/CutBlockRelabel';
 import SuspendBlocks from './pages/harvesting/SuspendBlocks';
 import AssignMarks from './pages/harvesting/AssignMarks';
 import TenureLanding from './pages/tenure/TenureLanding';
-import AddTenure from './pages/tenure/AddTenure';
 import MarkList from './pages/marks/MarkList';
 import MarkDetail from './pages/marks/MarkDetail';
 import RangeTenureSearch from './pages/search/RangeTenureSearch';
@@ -142,7 +141,8 @@ export default function App() {
 
           {/* ── Tenures ────────────────────────────────────────────── */}
           <Route path="/tenures" element={guarded(withLayout(<TenureLanding />))} />
-          <Route path="/tenures/add" element={guarded(withLayout(<AddTenure />))} />
+          {/* The Tenure List, with the Add New Tenure dialog open over it. */}
+          <Route path="/tenures/add" element={guarded(withLayout(<TenureLanding />))} />
           <Route path="/tenures/:fileId" element={guarded(withLayout(<TenureDetail />))} />
 
           {/* ── Harvesting Authority / Cutting Permits & Cut Blocks ── */}

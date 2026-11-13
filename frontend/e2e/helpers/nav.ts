@@ -89,13 +89,15 @@ export const PAGES = {
   },
 
   // Tenures
-  addTenure: {
-    path: '/tenures/add',
-    heading: /Add New Tenure/i,
-    navId: 'tenure-add',
+  // The menu's Add Tenure opens a dialog over the current page; its path is the
+  // Tenure List with the dialog open.
+  addTenure: { path: '/tenures/add', heading: 'Tenure List' },
+  tenures: {
+    path: '/tenures',
+    heading: 'Tenure List',
+    navId: 'tenure-detail',
     section: 'Tenures',
   },
-  tenures: { path: '/tenures', heading: 'Tenures', navId: 'tenure-detail', section: 'Tenures' },
 
   // Private Marks — nav label and page title differ; this is the title.
   markList: {

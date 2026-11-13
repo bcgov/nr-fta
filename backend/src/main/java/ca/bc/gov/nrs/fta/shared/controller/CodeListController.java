@@ -48,6 +48,16 @@ public class CodeListController {
     return ResponseEntity.ok(codeListService.districts());
   }
 
+  @GetMapping("/district-org-units")
+  public ResponseEntity<List<CodeOptionDto>> districtOrgUnits() {
+    return ResponseEntity.ok(codeListService.districtOrgUnits());
+  }
+
+  @GetMapping("/tenure-admin-org-units")
+  public ResponseEntity<List<CodeOptionDto>> tenureAdminOrgUnits() {
+    return ResponseEntity.ok(codeListService.tenureAdminOrgUnits());
+  }
+
   @GetMapping("/regions")
   public ResponseEntity<List<CodeOptionDto>> regions() {
     return ResponseEntity.ok(codeListService.regions());

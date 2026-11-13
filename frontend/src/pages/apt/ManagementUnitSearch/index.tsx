@@ -20,13 +20,13 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type FC, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import DateField from '@/components/DateField';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import { useSessionState } from '@/hooks/useSessionState';
 import { nextColumnSort, sortHeaderProps, sortRows } from '@/lib/columnSort';
 import { safeErrorMessage } from '@/lib/errorMessage';
-import DateField from '@/pages/apt/components/DateField';
 import { dash, day, unitLabel } from '@/pages/apt/ManagementUnitHistory/shared';
 import PageLayout from '@/pages/PageLayout';
 import { canEditApt } from '@/routes/access';

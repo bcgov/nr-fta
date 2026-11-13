@@ -1,5 +1,6 @@
 import { Money, Receipt } from '@carbon/icons-react';
 import {
+  InlineNotification,
   Table,
   TableBody,
   TableCell,
@@ -108,10 +109,13 @@ const HarvestHistoryView: FC<{ fetcher: () => Promise<TenureHarvestHistory> }> =
                 ]}
               />
               {data.rows.length === 0 ? (
-                <EmptyState
-                  icon={<Money size={48} />}
+                <InlineNotification
+                  kind="info"
+                  lowContrast
+                  hideCloseButton
+                  className="harvest-history__nothing-billed"
                   title="Nothing billed yet"
-                  body={`No harvest has been billed to timber mark ${data.timberMark ?? ''}.`}
+                  subtitle={`No harvest has been billed to timber mark ${data.timberMark ?? ''}.`}
                 />
               ) : (
                 <section className="fsp-info__tile">

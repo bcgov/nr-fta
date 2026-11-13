@@ -24,15 +24,20 @@ import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import StatusTag from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
+import { nextColumnSort, sortHeaderProps, sortRows } from '@/lib/columnSort';
 import {
   getCascadeSplits,
-  getDistricts,
+  getDistrictOrgUnits,
   getMarkingInstruments,
   getMarkingMethods,
   getSalvageTypes,
   type CodeOption,
 } from '@/services/codeLists';
-import { addCuttingPermit, getTenureCuttingPermits } from '@/services/tenure_detail';
+import {
+  addCuttingPermit,
+  getTenureCuttingPermits,
+  type TenureCuttingPermit,
+} from '@/services/tenure_detail';
 import { formatDate } from '@/utils/formatDate';
 
 const dash = (v: string | number | null | undefined) =>
@@ -94,6 +99,25 @@ interface Props {
  * Add New never saved one): status PE, with a timber mark the backend generates
  * by the tenure's file type, after FTA902's checks.
  */
+
+/** The table's columns; each header sorts by its key. */
+const COLUMNS = [
+  { key: 'cuttingPermitId', header: 'Cutting Permit' },
+  { key: 'timberMark', header: 'Timber Mark' },
+  { key: 'orgUnitCode', header: 'District' },
+  { key: 'status', header: 'Status' },
+  { key: 'issueDate', header: 'Issue Date' },
+  { key: 'expiryDate', header: 'Expiry Date' },
+  { key: 'extendDate', header: 'Extend Date' },
+  { key: 'salvageTypeCode', header: 'Salvage' },
+] as const;
+
+/** Status sorts by what the tag shows; the rest by their own field. */
+const sortValue = (cp: TenureCuttingPermit, key: string): unknown =>
+  key === 'status'
+    ? (cp.statusDesc ?? cp.statusCode)
+    : (cp as unknown as Record<string, unknown>)[key];
+
 const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCode, canEdit }) => {
   const { display } = useNotification();
   const fetcher = useCallback(() => getTenureCuttingPermits(forestFileId), [forestFileId]);
@@ -105,6 +129,12 @@ const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCod
   const allowed = canEdit && timberTenure;
   const maxTerm = fileTypeCode === 'A11' ? 60 : 48;
   const salvageFixed = fileTypeCode === 'A31';
+
+  // Every permit is in the browser, so a header click sorts them here.
+
+  const [sort, setSort] = useState<string | undefined>();
+
+  const onSort = (key: string) => setSort((current) => nextColumnSort(current, key));
 
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -139,7 +169,8 @@ const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCod
     if (!open || lists) return;
     let cancelled = false;
     Promise.all([
-      getDistricts(),
+      // Legacy FTA902's list (GET_DISTRICT_ORG_UNIT_CODE), not the org-level one.
+      getDistrictOrgUnits(),
       getMarkingMethods(),
       getMarkingInstruments(),
       getSalvageTypes(),
@@ -274,18 +305,15 @@ const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCod
                   <Table size="md" useZebraStyles>
                     <TableHead>
                       <TableRow>
-                        <TableHeader>Cutting Permit</TableHeader>
-                        <TableHeader>Timber Mark</TableHeader>
-                        <TableHeader>District</TableHeader>
-                        <TableHeader>Status</TableHeader>
-                        <TableHeader>Issue Date</TableHeader>
-                        <TableHeader>Expiry Date</TableHeader>
-                        <TableHeader>Extend Date</TableHeader>
-                        <TableHeader>Salvage</TableHeader>
+                        {COLUMNS.map(({ key, header }) => (
+                          <TableHeader key={key} {...sortHeaderProps(sort, key, onSort)}>
+                            {header}
+                          </TableHeader>
+                        ))}
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {rows.map((cp) => (
+                      {sortRows(rows, sort, sortValue).map((cp) => (
                         <TableRow key={cp.hvaSkey ?? `${cp.cuttingPermitId}-${cp.timberMark}`}>
                           <TableCell>
                             {cp.cuttingPermitId ? (

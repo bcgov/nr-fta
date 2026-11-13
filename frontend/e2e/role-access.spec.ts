@@ -24,6 +24,8 @@ const VIEWER = 'FTA_VIEWER';
 const ALL_ROLES = [ADMIN, HARVEST_SENIOR, HARVEST_DISTRICT, MARK_HQ, MARK_DISTRICT, APT, VIEWER];
 const MARK_ROLES = [MARK_HQ, MARK_DISTRICT];
 const WIDE_READ_ROLES = [HARVEST_SENIOR, HARVEST_DISTRICT, APT, VIEWER];
+/** Everyone but FTA_ADMIN and FTA_HARVEST_AUTH_SENIOR_ADMIN (access.canManageHarvest). */
+const NOT_HARVEST_MANAGERS = [HARVEST_DISTRICT, ...MARK_ROLES, APT, VIEWER];
 
 const PERMIT_PATH = `/harvesting-authority/${PERMIT_ID}?forestFileId=${FILE_ID}`;
 const BLOCK_PATH = `/cut-block/${BLOCK_ID}?forestFileId=${FILE_ID}&cuttingPermitId=${PERMIT_ID}`;
@@ -86,6 +88,13 @@ test.describe('the menu', () => {
       await expect(page.getByTestId('side-nav-link-marks-application')).toHaveCount(
         MARK_CREATORS.includes(role) ? 1 : 0,
       );
+
+      if (SECTIONS[role].includes('Tenures')) {
+        await openNavSection(page, 'Tenures');
+        await expect(page.getByTestId('side-nav-link-tenure-add')).toHaveCount(
+          role === ADMIN ? 1 : 0,
+        );
+      }
     });
   }
 
@@ -124,12 +133,20 @@ test.describe('the route guard', () => {
     { path: '/search/cut-block', deniedTo: MARK_ROLES },
     { path: '/search/range-tenure', deniedTo: MARK_ROLES },
     { path: '/tenures', deniedTo: MARK_ROLES },
-    { path: '/tenures/add', deniedTo: MARK_ROLES },
-    { path: `/harvesting-authority/${PERMIT_ID}/assign-marks`, deniedTo: MARK_ROLES },
-    { path: `/harvesting-authority/${PERMIT_ID}/suspend-blocks`, deniedTo: MARK_ROLES },
+    // Pages that only make a change are closed to a role that may not make it.
+    { path: '/tenures/add', deniedTo: ALL_ROLES.filter((r) => r !== ADMIN) },
+    {
+      path: `/harvesting-authority/${PERMIT_ID}/assign-marks`,
+      deniedTo: [...MARK_ROLES, APT, VIEWER],
+    },
+    {
+      path: `/harvesting-authority/${PERMIT_ID}/suspend-blocks`,
+      deniedTo: NOT_HARVEST_MANAGERS,
+    },
     { path: `/cut-block/${BLOCK_ID}`, deniedTo: MARK_ROLES },
-    { path: `/cut-block/${BLOCK_ID}/relabel`, deniedTo: MARK_ROLES },
-    { path: `/cut-block/${BLOCK_ID}/suspension`, deniedTo: MARK_ROLES },
+    { path: `/cut-block/${BLOCK_ID}/relabel`, deniedTo: NOT_HARVEST_MANAGERS },
+    { path: `/cut-block/${BLOCK_ID}/suspension`, deniedTo: NOT_HARVEST_MANAGERS },
+    { path: '/marks/application', deniedTo: [HARVEST_SENIOR, HARVEST_DISTRICT, APT, VIEWER] },
     { path: '/search/tenure', deniedTo: [] },
     { path: '/search/timber-mark', deniedTo: [] },
     { path: '/marks', deniedTo: [] },

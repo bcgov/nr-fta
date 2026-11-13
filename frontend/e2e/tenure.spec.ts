@@ -69,9 +69,12 @@ test('adding a cutting permit validates before it saves', async ({ page }) => {
 
 test('adding a tenure validates before it saves', async ({ page }) => {
   await gotoPage(page, PAGES.addTenure);
-  await settled(page);
-  await page.getByRole('button', { name: 'Create tenure' }).click();
-  // The browser's own required-field check stops the submit.
-  await expect(page.locator('form.add-tenure__form :invalid').first()).toBeAttached();
-  await expect(page).toHaveURL(/\/tenures\/add$/);
+  const dialog = page.getByRole('dialog', { name: 'Add New Tenure' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Create tenure' }).click();
+  // Still open and flagged. A save would have been aborted by the fixture, and failed the test.
+  await expect(dialog.locator('[data-invalid="true"]').first()).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page).toHaveURL(/\/tenures$/);
 });

@@ -32,6 +32,29 @@ import { useAuth } from '@/context/auth/useAuth';
  *
  * nr-rept had the identical bug and the identical fix (166dc00).
  */
+/**
+ * Whether a sign-in's recorded return path is a page of this app: a same-origin path, never
+ * another site (`//host`, `/\\host`) nor the callback itself.
+ */
+const isInAppPath = (path: string | undefined): path is string =>
+  !!path &&
+  path.startsWith('/') &&
+  !path.startsWith('//') &&
+  !path.startsWith('/\\') &&
+  !path.startsWith('/authCallback');
+
+/**
+ * A silent sign-in (a new tab, see AuthProvider) that Keycloak refused with
+ * `login_required` or the like lands here too. That is not a failure worth logging: the
+ * user simply signs in by hand.
+ */
+const SILENT_REFUSALS = new Set([
+  'login_required',
+  'interaction_required',
+  'consent_required',
+  'account_selection_required',
+]);
+
 const AuthCallback: FC = () => {
   const { completeLogin } = useAuth();
 
@@ -46,16 +69,21 @@ const AuthCallback: FC = () => {
 
     const run = async () => {
       try {
-        await completeLogin();
+        const returnTo = await completeLogin();
         // `replace`, not `assign`: the callback URL carries a spent
         // authorization code, so it must not be left in history for Back.
-        window.location.replace(`${import.meta.env.BASE_URL || '/'}welcome`);
+        window.location.replace(
+          isInAppPath(returnTo) ? returnTo : `${import.meta.env.BASE_URL || '/'}welcome`,
+        );
       } catch (error) {
         // A spent or tampered callback is not something the user can act on —
         // send them back to the sign-in screen rather than showing an error
         // page for a URL they never typed.
-        // eslint-disable-next-line no-console
-        console.error('[AuthCallback] sign-in could not be completed:', error);
+        const code = (error as { error?: unknown } | null)?.error;
+        if (typeof code !== 'string' || !SILENT_REFUSALS.has(code)) {
+          // eslint-disable-next-line no-console
+          console.error('[AuthCallback] sign-in could not be completed:', error);
+        }
         window.location.replace(import.meta.env.BASE_URL || '/');
       }
     };
