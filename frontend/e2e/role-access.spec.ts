@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { BLOCK_ID, FILE_ID, PERMIT_ID } from './helpers/mockApi';
 import { signInAs } from './helpers/mockSession';
 import { navSection, openNavSection, pageHeading, sideNav } from './helpers/nav';
-import { gotoProtected, gotoWithRetry } from './utils';
+import { gotoProtected, gotoWithRetry, installStaticAssetCache } from './utils';
 
 /**
  * What each role may see and open, for all seven roles, from one test account: see
@@ -37,7 +37,8 @@ const forbidden = (page: Page) => page.getByTestId('forbidden-title');
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe('without a role', () => {
-  test('signed out, any page offers only the sign-in', async ({ page }) => {
+  test('signed out, any page offers only the sign-in', async ({ page, context }) => {
+    await installStaticAssetCache(context);
     await gotoWithRetry(page, '/search/tenure');
     await expect(page.getByTestId('landing-button__idir')).toBeVisible();
     await expect(sideNav(page)).toHaveCount(0);
@@ -68,41 +69,22 @@ test.describe('the menu', () => {
     [MARK_DISTRICT]: ['Search', 'Private Marks'],
   };
 
+  const MARK_CREATORS = [ADMIN, MARK_HQ, MARK_DISTRICT];
+
   for (const role of ALL_ROLES) {
-    test(`${role} sees its sections`, async ({ page, context }) => {
+    test(`${role} sees its sections and allowed menu entries`, async ({ page, context }) => {
       await signInAs(context, [role]);
       await gotoProtected(page, '/welcome');
       await expect(sideNav(page).getByRole('button')).toHaveText(SECTIONS[role]);
-    });
-  }
 
-  for (const role of MARK_ROLES) {
-    test(`${role} sees only its two searches`, async ({ page, context }) => {
-      await signInAs(context, [role]);
-      await gotoProtected(page, '/welcome');
-      await openNavSection(page, 'Search');
-      await expect(sideNav(page).getByRole('link')).toHaveText(['Tenures', 'Timber Marks']);
-    });
-  }
+      if (MARK_ROLES.includes(role)) {
+        await openNavSection(page, 'Search');
+        await expect(sideNav(page).getByRole('link')).toHaveText(['Tenures', 'Timber Marks']);
+      }
 
-  for (const [role, offered] of [
-    [ADMIN, true],
-    [MARK_HQ, true],
-    [MARK_DISTRICT, true],
-    [HARVEST_SENIOR, false],
-    [HARVEST_DISTRICT, false],
-    [APT, false],
-    [VIEWER, false],
-  ] as const) {
-    test(`${role} ${offered ? 'is' : 'is not'} offered a new mark application`, async ({
-      page,
-      context,
-    }) => {
-      await signInAs(context, [role]);
-      await gotoProtected(page, '/welcome');
       await openNavSection(page, 'Private Marks');
       await expect(page.getByTestId('side-nav-link-marks-application')).toHaveCount(
-        offered ? 1 : 0,
+        MARK_CREATORS.includes(role) ? 1 : 0,
       );
     });
   }

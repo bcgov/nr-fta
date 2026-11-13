@@ -3,8 +3,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 /** How many options of a select to try before deciding there is no data to open. */
 const MAX_OPTIONS_TRIED = 8;
 
-/** The slowest search takes well under this against a real backend. */
-const SEARCH_TIMEOUT_MS = 15_000;
+/** The slowest search plus its code lists can take ~18s against a real backend. */
+const SEARCH_TIMEOUT_MS = 25_000;
 
 /** The result rows, which open their record when clicked. */
 export const resultRows = (page: Page): Locator => page.locator('.fsp-search__row--selectable');

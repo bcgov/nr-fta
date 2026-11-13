@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 
 import { test as base, expect } from '@playwright/test';
 
-import { SESSION_STORAGE_STATE, STORAGE_STATE } from './utils';
+import { SESSION_STORAGE_STATE, STORAGE_STATE, installStaticAssetCache } from './utils';
 
 /** The saved sessionStorage snapshot, or null when there isn't one yet. */
 const readSessionSnapshot = (): Record<string, string> | null => {
@@ -78,6 +78,8 @@ export const test = base.extend<{ persistRotatedTokens: void }>({
     }
 
     const problems: string[] = [];
+
+    await installStaticAssetCache(context);
 
     await context.route(
       (url) => url.pathname.startsWith('/api/'),
