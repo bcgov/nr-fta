@@ -1,7 +1,8 @@
 import { Search as SearchIcon, Reset, Download } from '@carbon/icons-react';
-import { Button, Column, Grid, Select, SelectItem, TextInput } from '@carbon/react';
+import { Button, Column, Grid, Select, SelectItem } from '@carbon/react';
 import { useState, type FC, type FormEvent } from 'react';
 
+import DateField from '@/components/DateField';
 import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
 import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
@@ -59,6 +60,8 @@ function buildMetrics(orgUnit?: string): MetricRow[] {
 const ApplicationMetrics: FC = () => {
   const notify = useNotification();
   const [orgUnit, setOrgUnit] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [rows, setRows] = useState<MetricRow[] | null>(null);
   // Every row is in the browser, so a header click sorts them here.
   const [sort, setSort] = useState<string | undefined>();
@@ -69,6 +72,8 @@ const ApplicationMetrics: FC = () => {
   };
   const onReset = () => {
     setOrgUnit('');
+    setFrom('');
+    setTo('');
     setRows(null);
     setSort(undefined);
   };
@@ -102,10 +107,10 @@ const ApplicationMetrics: FC = () => {
               </Select>
             </Column>
             <Column sm={4} md={2} lg={3}>
-              <TextInput id="am-from" labelText="Submitted from" placeholder="yyyy-mm-dd" />
+              <DateField id="am-from" labelText="Submitted from" value={from} onChange={setFrom} />
             </Column>
             <Column sm={4} md={2} lg={3}>
-              <TextInput id="am-to" labelText="Submitted to" placeholder="yyyy-mm-dd" />
+              <DateField id="am-to" labelText="Submitted to" value={to} onChange={setTo} />
             </Column>
           </Grid>
           <div className="am-search__actions">

@@ -1,6 +1,7 @@
 import { Select, SelectItem, TextArea, TextInput } from '@carbon/react';
 import { useEffect, useState, type FC } from 'react';
 
+import DateField from '@/components/DateField';
 import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
 import { getBlockStatuses, type CodeOption } from '@/services/codeLists';
@@ -73,13 +74,26 @@ const orNull = (v: string) => (v.trim() === '' ? null : v.trim());
 const numberOrNull = (v: string) => (v.trim() === '' ? null : Number(v));
 const dateOrNull = (v: string) => (v.trim() === '' ? null : parseTypedDate(v));
 
-/** FTA904's editable fields. The backend's CutBlockRules decides what is locked and enforces it. */
+/** The Details tab's two editable tiles; each opens this dialog with only its own fields. */
+export type CutBlockSection = 'block' | 'areas';
+
+const HEADINGS: Record<CutBlockSection, string> = {
+  block: 'Edit block',
+  areas: 'Edit areas and dates',
+};
+
+/**
+ * FTA904's editable fields, one tile's worth at a time. The save still sends every field — the
+ * other tile's unchanged — as the endpoint takes the whole block. The backend's CutBlockRules
+ * decides what is locked and enforces it.
+ */
 const EditCutBlockModal: FC<{
   block: CutblockDetail;
+  section: CutBlockSection;
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
-}> = ({ block, open, onClose, onSaved }) => {
+}> = ({ block, section, open, onClose, onSaved }) => {
   const { display } = useNotification();
   const { rules } = block;
   const [form, setForm] = useState<Form>(() => initial(block));
@@ -175,15 +189,13 @@ const EditCutBlockModal: FC<{
   };
 
   const dateInput = (key: (typeof DATE_FIELDS)[number], label: string, disabled = false) => (
-    <TextInput
+    <DateField
       id={`cb-edit-${key}`}
       labelText={label}
-      placeholder="yyyy-mm-dd"
       value={form[key]}
       disabled={disabled}
-      invalid={badDate(key)}
-      invalidText="Enter a date as yyyy-mm-dd."
-      onChange={(e) => set(key, e.target.value)}
+      invalidText={badDate(key) ? 'Enter a date as yyyy-mm-dd.' : undefined}
+      onChange={(v) => set(key, v)}
     />
   );
 
@@ -235,7 +247,8 @@ const EditCutBlockModal: FC<{
   return (
     <Modal
       open={open}
-      modalHeading={`Edit cut block ${block.cutBlockId ?? ''}`}
+      className="detail-dialog"
+      modalHeading={`${HEADINGS[section]} — cut block ${block.cutBlockId ?? ''}`}
       primaryButtonText={saving ? 'Saving…' : 'Save'}
       secondaryButtonText="Cancel"
       primaryButtonDisabled={saving || !valid}
@@ -243,40 +256,49 @@ const EditCutBlockModal: FC<{
       onSecondarySubmit={onClose}
       onRequestSubmit={submit}
     >
-      <div style={{ display: 'grid', gap: '1rem' }}>
-        {codeSelect('blockStatus', 'Status', statuses, rules.statusLocked)}
-        {dateInput('blockStatusDate', 'As of')}
-        {rules.seniorAuthority && statusChanged && (
-          <TextInput
-            id="cb-edit-overrideReason"
-            labelText="District Override Reason"
-            value={form.overrideReason}
-            onChange={(e) => set('overrideReason', e.target.value)}
-          />
-        )}
-        {numberInput('plannedGrossBlockArea', 'Planned Gross (ha)', rules.plannedLocked)}
-        {numberInput('plannedNetBlockArea', 'Planned Net (ha)')}
-        {dateInput('plannedHarvestDate', 'Planned Start', rules.plannedLocked)}
-        {numberInput('disturbanceGrossArea', 'Logged Area (ha)', rules.disturbanceLocked)}
-        {dateInput('disturbanceStartDate', 'Logged Start', rules.disturbanceLocked)}
-        {dateInput('disturbanceEndDate', 'Logged Complete', rules.disturbanceLocked)}
-        {yesNo('spExemptInd', 'SP Exempt', rules.spExemptLocked)}
-        {codeSelect('cutRegulationCode', 'Cut Management', cutRegulations)}
-        {block.harvestTypeCode === 'F' &&
-          codeSelect('reforestDeclareTypeCode', 'Reforest Declare Type', reforestTypes)}
-        {yesNo('wasteAssessmentRequired', "Waste Assessment Req'd")}
-        {yesNo('underPartitionOrder', 'Under Partition Order')}
-        {codeSelect('fireHarvestingReasonCode', 'Harvesting Reason', fireReasons)}
-        {dateInput('reportedFireDate', 'Reported Fire Date')}
-        <TextArea
-          id="cb-edit-description"
-          labelText="Block Description"
-          maxCount={120}
-          enableCounter
-          value={form.cutBlockDescription}
-          onChange={(e) => set('cutBlockDescription', e.target.value)}
-        />
-      </div>
+      {section === 'block' ? (
+        <div className="detail-dialog__grid">
+          {codeSelect('blockStatus', 'Status', statuses, rules.statusLocked)}
+          {dateInput('blockStatusDate', 'As of')}
+          {rules.seniorAuthority && statusChanged && (
+            <div className="detail-dialog__full">
+              <TextInput
+                id="cb-edit-overrideReason"
+                labelText="District Override Reason"
+                value={form.overrideReason}
+                onChange={(e) => set('overrideReason', e.target.value)}
+              />
+            </div>
+          )}
+          {yesNo('spExemptInd', 'SP Exempt', rules.spExemptLocked)}
+          {codeSelect('cutRegulationCode', 'Cut Management', cutRegulations)}
+          {block.harvestTypeCode === 'F' &&
+            codeSelect('reforestDeclareTypeCode', 'Reforest Declare Type', reforestTypes)}
+          {yesNo('wasteAssessmentRequired', "Waste Assessment Req'd")}
+          {yesNo('underPartitionOrder', 'Under Partition Order')}
+          {codeSelect('fireHarvestingReasonCode', 'Harvesting Reason', fireReasons)}
+          {dateInput('reportedFireDate', 'Reported Fire Date')}
+          <div className="detail-dialog__full">
+            <TextArea
+              id="cb-edit-description"
+              labelText="Block Description"
+              maxCount={120}
+              enableCounter
+              value={form.cutBlockDescription}
+              onChange={(e) => set('cutBlockDescription', e.target.value)}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="detail-dialog__grid">
+          {numberInput('plannedGrossBlockArea', 'Planned Gross (ha)', rules.plannedLocked)}
+          {numberInput('plannedNetBlockArea', 'Planned Net (ha)')}
+          {dateInput('plannedHarvestDate', 'Planned Start', rules.plannedLocked)}
+          {numberInput('disturbanceGrossArea', 'Logged Area (ha)', rules.disturbanceLocked)}
+          {dateInput('disturbanceStartDate', 'Logged Start', rules.disturbanceLocked)}
+          {dateInput('disturbanceEndDate', 'Logged Complete', rules.disturbanceLocked)}
+        </div>
+      )}
     </Modal>
   );
 };

@@ -42,7 +42,7 @@ import { blockQuery, getCutblockDetail } from '@/services/cutblock_detail';
 import { formatDate } from '@/utils/formatDate';
 
 import BlockAmendments from './BlockAmendments';
-import EditCutBlockModal from './EditCutBlockModal';
+import EditCutBlockModal, { type CutBlockSection } from './EditCutBlockModal';
 
 const dash = (v: string | number | null | undefined) =>
   v === null || v === undefined || v === '' ? '—' : v;
@@ -71,7 +71,7 @@ const CutBlockDetail: FC = () => {
     () => getCutblockDetail(blockId, { forestFileId, cuttingPermitId }),
     [blockId, forestFileId, cuttingPermitId],
   );
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState<CutBlockSection | null>(null);
 
   // Each tab is rendered only once opened.
   const tabs = useLazyTabs(`${blockId}|${forestFileId}|${cuttingPermitId ?? ''}`);
@@ -84,22 +84,6 @@ const CutBlockDetail: FC = () => {
 
   const actions = rules && (
     <>
-      {rules.canEdit && (
-        <Button size="md" kind="tertiary" renderIcon={Edit} onClick={() => setEditing(true)}>
-          Edit block
-        </Button>
-      )}
-      {rules.canRelabel && canManageHarvest(user) && (
-        <Button
-          size="md"
-          kind="tertiary"
-          renderIcon={TagIcon}
-          as={Link}
-          to={`/cut-block/${encodeURIComponent(id)}/relabel${query}`}
-        >
-          Re-label
-        </Button>
-      )}
       {rules.canSuspend && (
         <Button size="md" kind="danger" renderIcon={Pause} as={Link} to={suspensionPath}>
           Suspend
@@ -112,6 +96,14 @@ const CutBlockDetail: FC = () => {
       )}
     </>
   );
+
+  /** Each editable tile carries its own Edit, as FSP's information sections do. */
+  const editButton = (section: CutBlockSection, label: string) =>
+    rules?.canEdit ? (
+      <Button size="sm" kind="tertiary" renderIcon={Edit} onClick={() => setEditing(section)}>
+        {label}
+      </Button>
+    ) : undefined;
 
   const blockFields: DetailField[] = data
     ? [
@@ -244,8 +236,35 @@ const CutBlockDetail: FC = () => {
                     {tabs.isOpened(0) && (
                       <div className="fsp-info__tab-panel">
                         <div className="fsp-info__tile-row">
-                          <DetailTile title="Block" icon={Tree} fields={blockFields} />
-                          <DetailTile title="Areas and dates" icon={Calendar} fields={areaFields} />
+                          <DetailTile
+                            title="Block"
+                            icon={Tree}
+                            fields={blockFields}
+                            action={
+                              <div className="fsp-info__tile-actions">
+                                {editButton('block', 'Edit block')}
+                                {/* Legacy FTA904's Re-label: its own screen (FTA231) and its
+                                    own grant, as it renames the block rather than editing it. */}
+                                {rules?.canRelabel && canManageHarvest(user) && (
+                                  <Button
+                                    size="sm"
+                                    kind="tertiary"
+                                    renderIcon={TagIcon}
+                                    as={Link}
+                                    to={`/cut-block/${encodeURIComponent(id)}/relabel${query}`}
+                                  >
+                                    Re-label
+                                  </Button>
+                                )}
+                              </div>
+                            }
+                          />
+                          <DetailTile
+                            title="Areas and dates"
+                            icon={Calendar}
+                            fields={areaFields}
+                            action={editButton('areas', 'Edit areas and dates')}
+                          />
                         </div>
                         <DetailTile title="Timber mark" icon={Report} fields={markFields} />
                       </div>
@@ -309,8 +328,9 @@ const CutBlockDetail: FC = () => {
 
             <EditCutBlockModal
               block={data}
-              open={editing}
-              onClose={() => setEditing(false)}
+              section={editing ?? 'block'}
+              open={editing !== null}
+              onClose={() => setEditing(null)}
               onSaved={reload}
             />
           </>

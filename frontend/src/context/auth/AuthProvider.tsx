@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode } from 'react';
 
 import {
+  AUTH_CALLBACK_PATH,
   KC_IDP_HINT,
   ensureFreshUser,
   forceRenewUser,
@@ -15,6 +16,33 @@ import { type FamLoginUser } from './types';
 
 /** Set on logout so the next sign-in in this tab re-prompts for credentials. */
 const SIGNED_OUT_FLAG = 'fta.signedOut';
+
+/** Set once this tab has tried a silent sign-in, so a refused one is not retried in a loop. */
+const SILENT_TRIED_FLAG = 'fta.silentSignInTried';
+
+/** The page this tab was opened on, kept across a silent sign-in that fails for the manual one. */
+const RETURN_TO_KEY = 'fta.returnTo';
+
+const readFlag = (key: string): string | null => {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const writeFlag = (key: string, value: string | null): void => {
+  try {
+    if (value === null) sessionStorage.removeItem(key);
+    else sessionStorage.setItem(key, value);
+  } catch {
+    /* storage unavailable */
+  }
+};
+
+/** The in-app path being shown, to come back to after signing in. */
+const currentPath = (): string =>
+  `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<FamLoginUser | undefined>(undefined);
@@ -48,15 +76,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let cancelled = false;
 
     const bootstrap = async () => {
+      let redirecting = false;
       try {
         const restored = await loadStoredUser(getUserManager());
         if (!cancelled) applyUser(restored);
+        if (!restored && !cancelled) redirecting = await trySilentSignIn();
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('[AuthProvider] error loading user:', error);
         if (!cancelled) applyUser(null);
       } finally {
-        if (!cancelled) setIsLoading(false);
+        // While the browser is on its way to Keycloak, stay on the blank loading screen
+        // rather than flashing the sign-in page.
+        if (!cancelled && !redirecting) setIsLoading(false);
+      }
+    };
+
+    /**
+     * A tab with no session of its own — a link opened in a new tab or window — signs in
+     * silently from the realm's session. Tokens live in this tab's sessionStorage, so a new
+     * tab starts without them, where the Cognito cookies were shared by every tab. With
+     * `prompt=none` Keycloak never shows a login page: it answers at once with a session or
+     * with `login_required`, and AuthCallback brings the browser back to the page asked for.
+     *
+     * Not after a logout in this tab, not twice in a tab, and not on the callback itself.
+     *
+     * @return true when the browser is being sent to Keycloak
+     */
+    const trySilentSignIn = async (): Promise<boolean> => {
+      if (window.location.pathname.endsWith(AUTH_CALLBACK_PATH)) return false;
+      if (readFlag(SIGNED_OUT_FLAG) === '1' || readFlag(SILENT_TRIED_FLAG) === '1') return false;
+      writeFlag(SILENT_TRIED_FLAG, '1');
+      writeFlag(RETURN_TO_KEY, currentPath());
+      try {
+        await getUserManager().signinRedirect({
+          prompt: 'none',
+          extraQueryParams: { kc_idp_hint: KC_IDP_HINT },
+          state: { returnTo: currentPath() },
+        });
+        return true;
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('[AuthProvider] silent sign-in could not start:', error);
+        return false;
       }
     };
 
@@ -82,9 +144,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       /* storage unavailable — sign in as usual */
     }
+    // Back to the page this tab was opened on, when a silent sign-in kept it.
+    const returnTo = readFlag(RETURN_TO_KEY);
     void getUserManager().signinRedirect({
       extraQueryParams: { kc_idp_hint: KC_IDP_HINT },
       ...(reauth ? { prompt: 'login' } : {}),
+      ...(returnTo ? { state: { returnTo } } : {}),
     });
   }, []);
 
@@ -171,10 +236,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [applyUser]);
 
   /** Completes the redirect back from Keycloak. Used only by AuthCallback. */
-  const completeLogin = useCallback(async (): Promise<void> => {
+  const completeLogin = useCallback(async (): Promise<string | undefined> => {
     const signedIn = await getUserManager().signinRedirectCallback();
     noteSignIn();
     applyUser(signedIn);
+    writeFlag(SILENT_TRIED_FLAG, null);
+    writeFlag(RETURN_TO_KEY, null);
+    const returnTo = (signedIn.state as { returnTo?: unknown } | undefined)?.returnTo;
+    return typeof returnTo === 'string' ? returnTo : undefined;
   }, [applyUser]);
 
   const contextValue: AuthContextType = useMemo(

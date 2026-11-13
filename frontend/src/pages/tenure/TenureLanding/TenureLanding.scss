@@ -1,0 +1,11 @@
+// File ID box with its Go button beside it, bottoms aligned.
+.tenure-landing__form {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  max-inline-size: 28rem;
+
+  > :first-child {
+    flex: 1 1 auto;
+  }
+}

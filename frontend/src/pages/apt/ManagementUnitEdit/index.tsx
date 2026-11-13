@@ -12,12 +12,12 @@ import { useCallback, useEffect, useState, type FC } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
+import DateField from '@/components/DateField';
 import DefinitionGrid from '@/components/DefinitionGrid';
 import { SectionTile } from '@/components/SectionTile';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
-import DateField from '@/pages/apt/components/DateField';
 import { dash, MAX_COMMENTS, unitLabel } from '@/pages/apt/ManagementUnitHistory/shared';
 import PageLayout from '@/pages/PageLayout';
 import { canEditApt } from '@/routes/access';

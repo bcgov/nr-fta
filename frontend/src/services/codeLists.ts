@@ -57,6 +57,18 @@ export const getOrgUnits = () => list('org-units');
 /** District-level org units (code = ORG_UNIT_NO), for the FTA510 District dropdown. */
 export const getDistricts = () => list('districts');
 
+/**
+ * Districts as legacy FTA902 lists them (three-character D codes, not expired), for a cutting
+ * permit's District. Code = ORG_UNIT_NO, as getDistricts.
+ */
+export const getDistrictOrgUnits = () => list('district-org-units');
+
+/**
+ * A tenure's admin org units as legacy FTA100 lists them: districts, then regions, then HQ.
+ * Code = ORG_UNIT_NO, as getOrgUnits.
+ */
+export const getTenureAdminOrgUnits = () => list('tenure-admin-org-units');
+
 /** Region-level org units (code = ORG_UNIT_NO), for the FTA640 Region dropdown. */
 export const getRegions = () => list('regions');
 

@@ -303,6 +303,50 @@ public class CodeListService {
   }
 
   /**
+   * Districts as legacy's {@code sil.lookup.districtOrgUnitCode}
+   * ({@code PKG_SIL_CODE_LISTS.GET_DISTRICT_ORG_UNIT_CODE}) lists them, for FTA902's District:
+   * three-character codes starting with D, not yet expired, by code. Unlike {@link #districts()}
+   * it goes by the code rather than the org level and ignores the effective date, as legacy does.
+   * The code is the ORG_UNIT_NO, as {@link #districts()}.
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> districtOrgUnits() {
+    return jdbc.query(
+        """
+        SELECT TO_CHAR(org_unit_no)                   AS code,
+               org_unit_code || ' - ' || org_unit_name AS description
+          FROM the.org_unit
+         WHERE org_unit_code LIKE 'D%'
+           AND LENGTH(org_unit_code) = 3
+           AND expiry_date > SYSDATE
+         ORDER BY org_unit_code
+        """,
+        MAPPER);
+  }
+
+  /**
+   * A tenure's admin org units as legacy's {@code sil.lookup.orgunit}
+   * ({@code PKG_SIL_CODE_LISTS.GET_ORG_UNIT}) lists them for FTA100's Admin Org: every district
+   * and region (a unit that is its own rollup) and the three-character HQ units, not yet expired —
+   * districts first, then regions, then HQ, each by code. The code is the ORG_UNIT_NO.
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> tenureAdminOrgUnits() {
+    return jdbc.query(
+        """
+        SELECT TO_CHAR(org_unit_no)                   AS code,
+               org_unit_code || ' - ' || org_unit_name AS description
+          FROM the.org_unit
+         WHERE (org_unit_no = rollup_region_no
+                OR org_unit_no = rollup_dist_no
+                OR (org_unit_code LIKE 'H%' AND LENGTH(org_unit_code) = 3))
+           AND expiry_date > SYSDATE
+         ORDER BY DECODE(SUBSTR(org_unit_code, 1, 1), 'D', 0, 'R', 1, 'H', 2, 3), org_unit_code
+        """,
+        MAPPER);
+  }
+
+  /**
    * Regions — ORG_UNIT rows at the region level, for the FTA640 Region dropdown
    * (legacy {@code fta.lookup.regionOrgUnitCode}). The code is the ORG_UNIT_NO,
    * as {@link #districts()}.

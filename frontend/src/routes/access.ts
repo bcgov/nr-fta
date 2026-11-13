@@ -177,10 +177,36 @@ export function isPathAllowedForRole(role: ROLE_TYPE | undefined, pathname: stri
   return match.roles.includes(role);
 }
 
+/**
+ * Pages that exist only to make a change. A user who may not make it is not shown the page at
+ * all — no menu entry, no button to it, and the route guard answers Forbidden — rather than a
+ * page of disabled fields. React Router patterns, matched against the whole path.
+ */
+const WRITE_PAGES: ReadonlyArray<{
+  pattern: string;
+  mayOpen: (user: FamLoginUser | null | undefined) => boolean;
+}> = [
+  { pattern: '/tenures/add', mayOpen: canEdit },
+  { pattern: '/harvesting-authority/:cpId/assign-marks', mayOpen: canEditHarvest },
+  { pattern: '/harvesting-authority/:cpId/suspend-blocks', mayOpen: canManageHarvest },
+  { pattern: '/cut-block/:blockId/relabel', mayOpen: canManageHarvest },
+  { pattern: '/cut-block/:blockId/suspension', mayOpen: canManageHarvest },
+  { pattern: '/marks/application', mayOpen: canEditMarks },
+  { pattern: '/apt/management-units/new', mayOpen: canEditApt },
+  { pattern: '/apt/management-units/:muId/edit', mayOpen: canEditApt },
+];
+
+/** False when `pathname` is a write-only page the user may not use. */
+function mayOpenWritePage(user: FamLoginUser | null | undefined, pathname: string): boolean {
+  const page = WRITE_PAGES.find(({ pattern }) => matchPath(pattern, pathname) !== null);
+  return !page || page.mayOpen(user);
+}
+
 export function isPathAllowedForUser(
   user: FamLoginUser | null | undefined,
   pathname: string,
 ): boolean {
+  if (!mayOpenWritePage(user, pathname)) return false;
   // APT pages are open to every role that reads them, and to an APT administrator whatever
   // role outranks it (a timber mark role's allow-list would otherwise shut them out).
   if (isAptPath(pathname) && canEditApt(user)) return true;

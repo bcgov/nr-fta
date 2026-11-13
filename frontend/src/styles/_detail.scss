@@ -280,6 +280,22 @@
   align-items: start;
 }
 
+// A dialog's fields in two columns (one on a phone); __full spans both.
+.detail-dialog__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem 2rem;
+  align-items: start;
+
+  @media (min-width: 672px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.detail-dialog__full {
+  grid-column: 1 / -1;
+}
+
 // Carbon fixes the single date picker's input at 18rem with (0,3,0) rules that load
 // after this file, so ties go to Carbon; the doubled classes out-rank them whatever
 // the order, and a dialog's date fills its column instead.
@@ -440,4 +456,17 @@
 .detail-edit__pending {
   color: var(--cds-text-secondary);
   font-size: 0.875rem;
+}
+
+// A tab's info banner spans the tab like the tiles around it, not Carbon's 50rem cap.
+.fsp-info__tab-panel > .cds--inline-notification {
+  max-inline-size: none;
+  margin-block: 0;
+}
+
+// Several buttons in a tile header (a cut block's Edit block and Re-label).
+.fsp-info__tile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }

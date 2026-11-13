@@ -2,6 +2,7 @@ import { ArrowRight, Save, Reset } from '@carbon/icons-react';
 import { Button, Column, Grid, TextInput } from '@carbon/react';
 import { useState, type FC, type FormEvent } from 'react';
 
+import DateField from '@/components/DateField';
 import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
 import PageLayout from '@/pages/PageLayout';
@@ -133,12 +134,11 @@ const MarkTransfer: FC = () => {
               />
             </Column>
             <Column sm={4} md={4} lg={4}>
-              <TextInput
+              <DateField
                 id="mt-eff"
                 labelText="Effective date"
-                placeholder="yyyy-mm-dd"
                 value={form.effective}
-                onChange={(e) => set('effective')(e.target.value)}
+                onChange={(v) => set('effective')(v)}
               />
             </Column>
           </Grid>

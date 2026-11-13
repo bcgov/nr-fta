@@ -1,6 +1,7 @@
 import { Button, Checkbox, Select, SelectItem, Stack, TextInput } from '@carbon/react';
 import { useEffect, useState, type FC } from 'react';
 
+import DateField from '@/components/DateField';
 import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
 import {
@@ -17,7 +18,7 @@ import {
   type CuttingPermitDetail,
   type PermitLookups,
 } from '@/services/cutting_permit_detail';
-import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
+import { parseTypedDate } from '@/utils/typedDate';
 
 /** Legacy FTA902's limits; the backend enforces them too. */
 const MAX_LOCATION = 50;
@@ -273,16 +274,13 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
     label: string,
     off: boolean,
   ) => (
-    <TextInput
+    <DateField
       id={`cp-edit-${key}`}
       labelText={label}
-      placeholder="yyyy-mm-dd"
-      pattern={TYPED_DATE_PATTERN}
       value={form[key]}
-      invalid={!!errors[key]}
       invalidText={errors[key]}
       disabled={saving || off}
-      onChange={(e) => set(key, e.target.value)}
+      onChange={(v) => set(key, v)}
     />
   );
   const termsOff = rules.termsLocked;
@@ -340,16 +338,13 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
           />
         </div>
         <div className="detail-dialog__pair">
-          <TextInput
+          <DateField
             id="cp-edit-extend"
             labelText="Extended Date"
-            placeholder="yyyy-mm-dd"
-            pattern={TYPED_DATE_PATTERN}
             value={form.extendDate}
-            invalid={!!errors.extendDate}
             invalidText={errors.extendDate}
             disabled={saving || !rules.canEditExtend}
-            onChange={(e) => setExtendDate(e.target.value)}
+            onChange={setExtendDate}
           />
           <Select
             id="cp-edit-reason"

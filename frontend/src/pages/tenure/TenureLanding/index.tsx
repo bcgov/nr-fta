@@ -1,120 +1,72 @@
-import { Search as SearchIcon, DocumentAdd, Time } from '@carbon/icons-react';
-import {
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@carbon/react';
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, DocumentAdd, Document } from '@carbon/icons-react';
+import { Button, TextInput } from '@carbon/react';
+import { useState, type FC, type FormEvent } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-import EmptyState from '@/components/EmptyState/EmptyState';
 import SectionTile from '@/components/SectionTile';
-import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
-import StatusTag from '@/components/StatusTag/StatusTag';
 import { useAuth } from '@/context/auth/useAuth';
-import { loadRecentTenures } from '@/lib/recentTenures';
 import PageLayout from '@/pages/PageLayout';
-import { formatDate } from '@/utils/formatDate';
+import AddTenureModal from '@/pages/tenure/AddTenureModal';
+import { isPathAllowedForUser } from '@/routes/access';
+import './TenureLanding.scss';
 
-import type { FC } from 'react';
-
-/** The visit's calendar day where the user is (viewedAt is a UTC timestamp). */
-const localDay = (iso: string): string => {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
+const ADD_PATH = '/tenures/add';
 
 /**
- * Landing for the "Tenures" menu entry. In the legacy app you reach a tenure
- * via search; this page offers that entry point plus the tenures this user
- * last opened in this browser (lib/recentTenures), linking straight into the
- * detail (FTA100).
+ * The Tenures menu's "Tenure List" entry — legacy's "Tenure" pick (FTA100 with
+ * `isMenuPick`), which opened an empty tenure screen with a File ID box and Go.
+ * Legacy kept no list of recent files, so neither does this page. Tenure Search
+ * stays under the Search menu, as in legacy.
  */
 const TenureLanding: FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
-  // Read once on mount: the list only changes by visiting a tenure.
-  const [recent] = useState(() => loadRecentTenures(user?.userName));
+  const mayAdd = isPathAllowedForUser(user, ADD_PATH);
+  const [fileId, setFileId] = useState('');
+
+  // The Add New Tenure dialog opens over this page from its button. A direct link to
+  // /tenures/add renders this page with it open too.
+  const onAddRoute = location.pathname === ADD_PATH;
+  const [addOpen, setAddOpen] = useState(false);
+  const closeAdd = () => {
+    setAddOpen(false);
+    if (onAddRoute) navigate('/tenures', { replace: true });
+  };
+
+  const onGo = (e: FormEvent) => {
+    e.preventDefault();
+    const id = fileId.trim();
+    if (id) navigate(`/tenures/${encodeURIComponent(id)}`);
+  };
 
   return (
     <PageLayout
-      title="Tenures"
-      subtitle="Search for a forest tenure file, add a new one, or jump back into a recent file."
+      title="Tenure List"
+      subtitle="Open a forest tenure file by its ID."
       actions={
-        <>
-          <Button size="md" renderIcon={SearchIcon} onClick={() => navigate('/search/tenure')}>
-            Tenure Search
-          </Button>
-          <Button
-            size="md"
-            kind="tertiary"
-            renderIcon={DocumentAdd}
-            onClick={() => navigate('/tenures/add')}
-          >
+        mayAdd ? (
+          <Button size="md" renderIcon={DocumentAdd} onClick={() => setAddOpen(true)}>
             Add New Tenure
           </Button>
-        </>
+        ) : undefined
       }
     >
-      <SectionTile
-        title="Recently accessed tenures"
-        icon={Time}
-        description="The tenures you last opened in this browser"
-      >
-        {recent.length === 0 ? (
-          <EmptyState
-            icon={<Time size={48} />}
-            title="No recent tenures"
-            body="Tenures you open will be listed here."
+      <AddTenureModal open={mayAdd && (addOpen || onAddRoute)} onClose={closeAdd} />
+      <SectionTile title="Open a tenure" icon={Document}>
+        <form className="tenure-landing__form" onSubmit={onGo}>
+          <TextInput
+            id="tenure-landing-fileId"
+            labelText="Forest File ID"
+            placeholder="e.g. A19999"
+            maxLength={10}
+            value={fileId}
+            onChange={(e) => setFileId(e.target.value.toUpperCase())}
           />
-        ) : (
-          <div className="bordered-table">
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableHeader>File ID</TableHeader>
-                    <TableHeader>File Type</TableHeader>
-                    <TableHeader>Status</TableHeader>
-                    <TableHeader>Licensee</TableHeader>
-                    <TableHeader>Organization Unit</TableHeader>
-                    <TableHeader>Last Viewed</TableHeader>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {recent.map((t) => (
-                    <TableRow key={t.fileId}>
-                      <TableCell>
-                        <Link to={`/tenures/${encodeURIComponent(t.fileId)}`}>{t.fileId}</Link>
-                      </TableCell>
-                      <TableCell>{t.fileType || '—'}</TableCell>
-                      <TableCell>
-                        {t.statusCode ? (
-                          <StatusTag
-                            status={t.statusDesc ?? t.statusCode}
-                            variant={statusCodeVariant(t.statusCode)}
-                          />
-                        ) : (
-                          '—'
-                        )}
-                      </TableCell>
-                      <TableCell>{t.licensee || '—'}</TableCell>
-                      <TableCell>{t.orgUnit || '—'}</TableCell>
-                      <TableCell>{formatDate(localDay(t.viewedAt)) || '—'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </div>
-        )}
+          <Button type="submit" size="md" renderIcon={ArrowRight} disabled={!fileId.trim()}>
+            Go
+          </Button>
+        </form>
       </SectionTile>
     </PageLayout>
   );

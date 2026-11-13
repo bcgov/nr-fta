@@ -16,6 +16,7 @@ import { useCallback, useState, type FC } from 'react';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import DateField from '@/components/DateField';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
@@ -29,7 +30,7 @@ import {
   type PermitPostponement,
 } from '@/services/cutting_permit_detail';
 import { formatDate } from '@/utils/formatDate';
-import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
+import { parseTypedDate } from '@/utils/typedDate';
 
 const date = (v: string | null | undefined) => formatDate(v) || '—';
 const WHOLE_PATTERN = /^\d{1,2}$/;
@@ -246,27 +247,21 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
       >
         <Stack gap={5}>
           <div className="detail-dialog__pair">
-            <TextInput
+            <DateField
               id="cp-pp-start"
               labelText="Start"
-              placeholder="yyyy-mm-dd"
-              pattern={TYPED_DATE_PATTERN}
               value={form.start}
-              invalid={!!errors.start}
               invalidText={errors.start}
               disabled={saving}
-              onChange={(e) => set('start', e.target.value)}
+              onChange={(v) => set('start', v)}
             />
-            <TextInput
+            <DateField
               id="cp-pp-expiry"
               labelText="Expiry"
-              placeholder="yyyy-mm-dd"
-              pattern={TYPED_DATE_PATTERN}
               value={form.expiry}
-              invalid={!!errors.expiry}
               invalidText={errors.expiry}
               disabled={saving}
-              onChange={(e) => set('expiry', e.target.value)}
+              onChange={(v) => set('expiry', v)}
             />
           </div>
           <div className="detail-dialog__pair">

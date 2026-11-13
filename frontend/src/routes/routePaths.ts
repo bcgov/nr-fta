@@ -1,8 +1,8 @@
 import { ChartPie, Document, Search, Settings, Tag } from '@carbon/icons-react';
 
-import type { ROLE_TYPE } from '@/context/auth/types';
+import type { FamLoginUser, ROLE_TYPE } from '@/context/auth/types';
 
-import { APT_PATH_PREFIX, isPathAllowedForRole } from './access';
+import { isPathAllowedForUser } from './access';
 
 import type { ComponentType } from 'react';
 
@@ -38,6 +38,9 @@ import type { ComponentType } from 'react';
 // and so on) are reached contextually from a search result, not from the nav,
 // so they do not appear here.
 
+/** The dialogs a nav entry can open in place. */
+export type MenuModal = 'new-mark-application' | 'add-tenure';
+
 /** One destination in the nav. */
 export type MenuLeaf = {
   id: string;
@@ -48,7 +51,7 @@ export type MenuLeaf = {
    * Opens a dialog over the current page instead of navigating. `path` still
    * names the screen for the role check and for a direct link.
    */
-  modal?: 'new-mark-application';
+  modal?: MenuModal;
 };
 
 /** A heading with its destinations. */
@@ -121,8 +124,8 @@ const NAV: MenuSection[] = [
     label: 'Tenures',
     icon: Document,
     items: [
-      { id: 'tenure-add', label: 'Add Tenure', path: '/tenures/add' },
-      { id: 'tenure-detail', label: 'Tenure', path: '/tenures' },
+      { id: 'tenure-add', label: 'Add Tenure', path: '/tenures/add', modal: 'add-tenure' },
+      { id: 'tenure-detail', label: 'Tenure List', path: '/tenures' },
     ],
   },
   {
@@ -242,10 +245,11 @@ export function getMenuSections(
   userRoles: string[],
   heldRoles: string[] = userRoles,
 ): MenuSection[] {
-  const role = userRoles[0] as ROLE_TYPE | undefined;
-  const aptAdmin = heldRoles.includes('FTA_ADMIN') || heldRoles.includes('FTA_APT_ADMIN');
-  const allowed = (path: string) =>
-    isPathAllowedForRole(role, path) || (aptAdmin && path.startsWith(`${APT_PATH_PREFIX}/`));
+  const user: FamLoginUser = {
+    roles: userRoles as ROLE_TYPE[],
+    privileges: Object.fromEntries(heldRoles.map((r) => [r, null])),
+  };
+  const allowed = (path: string) => isPathAllowedForUser(user, path);
   return NAV.filter((section) => isVisible(userRoles, section.roles))
     .map((section) => ({
       ...section,

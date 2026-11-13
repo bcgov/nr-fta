@@ -55,6 +55,19 @@ test('New Application opens its dialog over the current page', async ({ page }) 
   await expect(dialog).toBeHidden();
 });
 
+test('Add Tenure opens its dialog over the current page', async ({ page }) => {
+  await gotoPage(page, PAGES.tenureSearch);
+  await openNavSection(page, 'Tenures');
+  await page.getByTestId('side-nav-link-tenure-add').click();
+
+  const dialog = page.getByRole('dialog', { name: 'Add New Tenure' });
+  await expect(dialog).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`${PAGES.tenureSearch.path}$`));
+
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).toBeHidden();
+});
+
 test('a deep link to the new application opens the dialog over the list', async ({ page }) => {
   await gotoProtected(page, '/marks/application');
   await expect(page.getByRole('dialog', { name: 'New Mark Application' })).toBeVisible();

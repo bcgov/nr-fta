@@ -1,0 +1,53 @@
+// Add New Tenure dialog — a two-column form, the organization unit full width.
+// Same dialog treatment as NewMarkApplicationModal: actions in the body,
+// bottom-right.
+
+.add-tenure {
+  .cds--modal-content {
+    padding-block-end: 1rem;
+  }
+
+  .cds--modal-scroll-content {
+    mask-image: none;
+  }
+}
+
+.add-tenure__strap {
+  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+}
+
+.add-tenure__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem 2rem;
+  align-items: start;
+
+  @media (min-width: 672px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.add-tenure__full {
+  grid-column: 1 / -1;
+}
+
+.add-tenure__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-block-start: 1.5rem;
+}
+
+// Carbon fixes the single date picker's input at 18rem; let it fill its column.
+.add-tenure__grid .add-tenure__date {
+  .cds--date-picker.cds--date-picker--single .cds--date-picker__input,
+  .cds--date-picker,
+  .cds--date-picker-container,
+  .cds--date-picker-input__wrapper,
+  .cds--date-picker-input__wrapper > span {
+    inline-size: 100%;
+  }
+}

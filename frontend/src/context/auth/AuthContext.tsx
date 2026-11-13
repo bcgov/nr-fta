@@ -30,9 +30,10 @@ export type AuthContextType = {
   /**
    * Completes the authorization-code exchange after Keycloak redirects back.
    * Called only by the /authCallback route; rejects if the callback URL carries
-   * no usable code or its state has already been consumed.
+   * no usable code or its state has already been consumed. Resolves to the
+   * in-app path the sign-in started from, when it recorded one.
    */
-  completeLogin: () => Promise<void>;
+  completeLogin: () => Promise<string | undefined>;
 };
 
 export type AuthProviderProps = {
