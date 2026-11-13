@@ -30,8 +30,11 @@ parameters:
     description: Route hostname slot — PR % 50 for previews, or test/prod for those targets
     required: true
   - name: REPLICAS
-    description: Pod count; PR previews get 1 via lite_mode, TEST=2, PROD=3
+    description: Minimum pod count; TEST=1, PR=2, PROD=3
     value: "2"
+  - name: MAX_REPLICAS
+    description: Maximum pod count for the CPU HorizontalPodAutoscaler
+    value: "4"
   - name: IMAGE_TAG
     description: Container image tag (PR number, 'test', or 'prod')
     value: latest
@@ -147,12 +150,12 @@ objects:
                   mountPath: /tmp
               resources:
                 requests:
-                  cpu: "50m"
-                  memory: "64Mi"
+                  cpu: "100m"
+                  memory: "128Mi"
                   ephemeral-storage: "100Mi"
                 limits:
-                  cpu: "200m"
-                  memory: "128Mi"
+                  cpu: "500m"
+                  memory: "256Mi"
                   ephemeral-storage: "200Mi"
               livenessProbe:
                 httpGet:
@@ -194,6 +197,29 @@ objects:
           protocol: TCP
           port: 3000
           targetPort: 3000
+
+  # ── HorizontalPodAutoscaler ───────────────────────────────
+  - apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    metadata:
+      name: ${NAME}-frontend-${ZONE}-cpu
+      labels:
+        app: ${NAME}-frontend-${ZONE}
+        app.kubernetes.io/instance: ${ZONE}
+    spec:
+      scaleTargetRef:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: ${NAME}-frontend-${ZONE}
+      minReplicas: ${{REPLICAS}}
+      maxReplicas: ${{MAX_REPLICAS}}
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 80
 
   # ── Route ─────────────────────────────────────────────────
   - apiVersion: route.openshift.io/v1

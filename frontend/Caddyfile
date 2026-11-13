@@ -34,11 +34,14 @@
 		header_up Host {http.reverse_proxy.upstream.hostport}
 		header_up X-Real-IP {remote_host}
 	}
+	@immutable path /assets/* /fonts/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+	@uncached not path /assets/* /fonts/*
+	header @uncached Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate"
 	header {
 		-Server
 		X-Frame-Options "SAMEORIGIN"
 		X-XSS-Protection "1;mode=block"
-		Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate"
 		X-Content-Type-Options "nosniff"
 		Strict-Transport-Security "max-age=31536000"
 		Content-Security-Policy "default-src 'self' https://*.gov.bc.ca;;
