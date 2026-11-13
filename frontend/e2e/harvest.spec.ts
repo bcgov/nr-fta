@@ -23,7 +23,7 @@ const openABlock = async (page: Page) => {
 };
 
 test.describe('cutting permit', () => {
-  test('opens from search, with every tab loading', async ({ page }) => {
+  test('opens from search, with every tab loading and its dialogs opening', async ({ page }) => {
     await openAPermit(page);
     expect(await walkTabs(page, 'Cutting permit sections')).toEqual([
       'Details',
@@ -32,31 +32,25 @@ test.describe('cutting permit', () => {
       'Conditions',
       'Postponements',
     ]);
-  });
 
-  test('the edit dialog opens and closes without saving', async ({ page }) => {
-    await openAPermit(page);
     const edit = page.getByRole('button', { name: 'Edit permit' });
-    test.skip(await edit.isDisabled(), 'This permit is not editable in its status.');
-    await edit.click();
+    if (!(await edit.isDisabled())) {
+      await edit.click();
+      const dialog = page.getByRole('dialog', { name: 'Edit cutting permit' });
+      await expect(dialog.getByLabel('Status')).toBeVisible();
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await expect(dialog).toBeHidden();
+    }
 
-    const dialog = page.getByRole('dialog', { name: 'Edit cutting permit' });
-    await expect(dialog.getByLabel('Status')).toBeVisible();
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
-    await expect(dialog).toBeHidden();
-  });
-
-  test('Delete asks before it does anything', async ({ page }) => {
-    await openAPermit(page);
     // A Carbon danger button's accessible name starts with a visually hidden "danger".
     const remove = page.getByRole('button', { name: /^(danger )?Delete$/ });
-    test.skip(await remove.isDisabled(), 'This permit cannot be deleted in its status.');
-    await remove.click();
-
-    const dialog = page.getByRole('dialog', { name: 'Delete cutting permit' });
-    await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
-    await expect(dialog).toBeHidden();
+    if (!(await remove.isDisabled())) {
+      await remove.click();
+      const dialog = page.getByRole('dialog', { name: 'Delete cutting permit' });
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await expect(dialog).toBeHidden();
+    }
   });
 
   for (const [link, heading] of [
@@ -75,25 +69,24 @@ test.describe('cutting permit', () => {
 });
 
 test.describe('cut block', () => {
-  test('opens from search, with every tab loading', async ({ page }) => {
+  test('opens from search, with every tab loading and its edit dialog opening', async ({
+    page,
+  }) => {
     await openABlock(page);
     expect(await walkTabs(page, 'Cut block sections')).toEqual([
       'Details',
       'Amendments',
       'Suspensions',
     ]);
-  });
 
-  test('the edit dialog opens and closes without saving', async ({ page }) => {
-    await openABlock(page);
     const edit = page.getByRole('button', { name: 'Edit block' });
-    test.skip((await edit.count()) === 0, 'This block is not editable in its status.');
-    await edit.click();
-
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
-    await expect(dialog).toBeHidden();
+    if ((await edit.count()) > 0) {
+      await edit.click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await expect(dialog).toBeHidden();
+    }
   });
 
   for (const [link, heading] of [

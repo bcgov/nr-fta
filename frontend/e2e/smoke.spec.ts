@@ -1,6 +1,6 @@
 import { expect, test } from './fixtures';
 import { gotoPage, navSection, PAGES, pageHeading, settled } from './helpers/nav';
-import { gotoProtected } from './utils';
+import { gotoProtected, gotoWithRetry } from './utils';
 
 /**
  * Every page in the menu renders for the real test user against the real backend,
@@ -9,7 +9,7 @@ import { gotoProtected } from './utils';
  */
 
 test('root responds with 200', async ({ page }) => {
-  const response = await page.goto('/');
+  const response = await gotoWithRetry(page, '/');
   expect(response?.status(), 'root should return 200').toBe(200);
 });
 

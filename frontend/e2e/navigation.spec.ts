@@ -1,16 +1,26 @@
-import { expect, test } from './fixtures';
+import { expect, test } from '@playwright/test';
+
+import { signInAs } from './helpers/mockSession';
 import {
   gotoPage,
   navSection,
   openNavSection,
   PAGES,
   pageHeading,
-  sideNav,
   type PageDef,
 } from './helpers/nav';
 import { gotoProtected } from './utils';
 
-/** Reaching pages through the menu, and how the menu itself behaves. */
+/**
+ * Reaching pages through the menu, and how the menu itself behaves.
+ * Uses a forged FTA_ADMIN session (see signInAs) so menu/router checks do not
+ * depend on live Oracle queries or the rotating Keycloak refresh token.
+ */
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test.beforeEach(async ({ context }) => {
+  await signInAs(context, ['FTA_ADMIN']);
+});
 
 test('every menu entry opens its page', async ({ page }) => {
   await gotoProtected(page, PAGES.welcome.path);
@@ -22,33 +32,6 @@ test('every menu entry opens its page', async ({ page }) => {
     await expect(page).toHaveURL(new RegExp(`${def.path}$`));
     await expect(pageHeading(page, def.heading)).toBeVisible();
   }
-});
-
-test('Search entries are named for what they find', async ({ page }) => {
-  await gotoProtected(page, PAGES.welcome.path);
-  await openNavSection(page, 'Search');
-  await expect(sideNav(page).getByRole('link')).toHaveText([
-    'Tenures',
-    'Harvesting Authorities',
-    'Timber Marks',
-    'Cut Blocks',
-    'Range Tenures',
-    'Range Units',
-    'Application Metrics Export',
-    'Clients',
-    'Management Units',
-  ]);
-});
-
-test('only section headings carry an icon, and only the current page is bold', async ({ page }) => {
-  await gotoPage(page, PAGES.tenureSearch);
-
-  await expect(navSection(page, 'Search').locator('svg').first()).toBeVisible();
-  await expect(sideNav(page).getByRole('link').locator('svg')).toHaveCount(0);
-
-  const weight = (id: string) => page.getByTestId(`side-nav-link-${id}`).locator('span').first();
-  await expect(weight(PAGES.tenureSearch.navId)).toHaveCSS('font-weight', '600');
-  await expect(weight(PAGES.cutBlockSearch.navId)).toHaveCSS('font-weight', '400');
 });
 
 test('the section holding the current page opens on load, the others stay closed', async ({

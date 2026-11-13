@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import type { BrowserContext } from '@playwright/test';
 
-import { SESSION_STORAGE_STATE, baseURL } from '../utils';
+import { SESSION_STORAGE_STATE, baseURL, fulfillWithAssetCache } from '../utils';
 
 import { mockGet } from './mockApi';
 
@@ -71,7 +71,7 @@ export const signInAs = async (context: BrowserContext, roles: string[]): Promis
     if (url.origin !== origin) {
       await route.abort();
     } else if (!url.pathname.startsWith('/api/')) {
-      await route.continue();
+      await fulfillWithAssetCache(route, { cacheDocuments: true });
     } else if (request.method() === 'GET') {
       await route.fulfill({ json: mockGet(url.pathname) });
     } else {
