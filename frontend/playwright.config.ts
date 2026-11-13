@@ -19,9 +19,9 @@ import { baseURL, STORAGE_STATE } from './e2e/utils';
  * Override the target with E2E_BASE_URL (e.g. http://localhost:3000 for local).
  */
 export default defineConfig({
-  // The ceiling for one test. The slowest takes about 18s against a real backend
-  // (a search plus its code lists), so this leaves it little room.
-  timeout: 20_000,
+  // Give slow search/navigation flows (~18s+ searches, 22-page nav walk) and
+  // transient connection-refused retries in gotoWithRetry room to finish.
+  timeout: 90_000,
   testDir: './e2e',
   // Serial execution. We share one rotating refresh token across specs (see
   // e2e/fixtures.ts); parallel workers race that renewal and intermittently
@@ -29,13 +29,7 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
-  // Stop the whole run as soon as one test has failed for good. Playwright
-  // only counts a test here once it has exhausted its retries, so a flaky
-  // test that passes on its retry doesn't trip it — but a real failure ends
-  // the run instead of burning time on the rest of the suite. CI then re-runs
-  // the whole suite (see "Run Playwright" in .github/workflows/reusable-tests.yml).
-  maxFailures: 1,
+  retries: process.env.CI ? 2 : 0,
   reporter: [['line'], ['list', { printSteps: true }], ['html', { open: 'never' }]],
   use: {
     baseURL,

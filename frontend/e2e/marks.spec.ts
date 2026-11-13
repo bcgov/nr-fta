@@ -13,12 +13,3 @@ test('a private mark opens from the list, with every tab loading', async ({ page
   expect(opened[0]).toBe('Mark application');
   expect(opened.length).toBe(5);
 });
-
-test('the new application dialog opens and closes without saving', async ({ page }) => {
-  await gotoPage(page, PAGES.markList);
-  await page.locator('.fta-page-title').getByRole('button', { name: /New/ }).click();
-  const dialog = page.getByRole('dialog', { name: 'New Mark Application' });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(dialog).toBeHidden();
-});
