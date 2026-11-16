@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR041_FOA_DESC" pageWidth="572" pageHeight="752" whenNoDataType="AllSectionsNoDetail" columnWidth="572" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="37be40f7-d858-429a-b48c-3b894c7caea3">
+	<!-- Was THE.APT_RPTAPTR041_FOA_DESC; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[SELECT DISTINCT lic.apt_foa_st,
+                aftv.expanded_result
+  FROM the.apt_licences    lic,
+       the.apt_commitments comm,
+       (-- APT_FOA_TYPES_V
+        SELECT clt.code_argument,
+               clt.expanded_result,
+               clt.expiry_date
+          FROM the.code_list_table clt,
+               the.code_subset_tbl cst,
+               the.apt_apportionment_categories acat
+         WHERE cst.code_subset_name = 'APT_FOA_ST'
+           AND clt.column_name = cst.column_name
+           AND clt.code_argument = cst.code_argument
+           AND acat.apt_foa_st = clt.code_argument) aftv
+ WHERE lic.forest_file_id = comm.forest_file_id AND
+       SYSDATE BETWEEN comm.effective_date AND
+       nvl(comm.expiry_date,
+           to_date('299912312359',
+                   'yyyymmddhh24mi')) AND
+       comm.include_in_lic_aac_ind = 'Y' AND
+       aftv.code_argument = lic.apt_foa_st AND
+       aftv.expiry_date > SYSDATE
+ ORDER BY lic.apt_foa_st]]>
+	</queryString>
+	<field name="APT_FOA_ST" class="java.lang.String"/>
+	<field name="EXPANDED_RESULT" class="java.lang.String"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="18" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="60ed0261-4792-4f94-a160-24d55302ca31" x="0" y="2" width="41" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true" isUnderline="false"/>
+				</textElement>
+				<text><![CDATA[FOA]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="0d0af021-9f2c-4af4-83be-1bc7a2463dd3" x="52" y="2" width="194" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Description]]></text>
+			</staticText>
+			<line>
+				<reportElement uuid="dfba2e27-a40d-4b0f-b3f3-58854ab2c053" x="52" y="14" width="193" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="7eb0218c-9ead-42e0-81b8-4603d539722c" x="0" y="14" width="41" height="1"/>
+			</line>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="11" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="150bee51-17cf-4e1e-900f-7d07b3c4d32a" x="0" y="0" width="41" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{APT_FOA_ST}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="121c4f24-4951-43d4-a6a8-a7b06f4dcfb1" x="52" y="0" width="382" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{EXPANDED_RESULT}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

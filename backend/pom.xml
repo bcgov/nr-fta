@@ -183,6 +183,16 @@
       <version>6.21.5</version>
     </dependency>
     <!--
+      DejaVu Sans, the font APT2's report templates (reports/apt) are laid out in. A font
+      extension, so it is embedded in the PDF rather than looked up on the host. A font-only
+      artifact with no code, so it need not match the core version exactly.
+    -->
+    <dependency>
+      <groupId>net.sf.jasperreports</groupId>
+      <artifactId>jasperreports-fonts</artifactId>
+      <version>6.21.4</version>
+    </dependency>
+    <!--
       OpenPDF, for the private mark snapshot (MarkSnapshotReport), which is built in code
       rather than from a JRXML. Declared at the version JasperReports 6.21.5 already brings
       in, so the two can't drift apart; move them together.

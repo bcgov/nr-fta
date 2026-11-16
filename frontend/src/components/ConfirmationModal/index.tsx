@@ -74,13 +74,13 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
       modalHeading={heading}
       passiveModal
       size="sm"
-      className="fsp-species-modal"
+      className="detail-dialog"
       onRequestClose={closeDialog}
       preventCloseOnClickOutside
     >
-      <div className="fsp-species-modal__form">{children}</div>
-      <div className="fsp-species-modal__actions">
-        <Button kind="secondary" disabled={busy} onClick={closeDialog}>
+      <div>{children}</div>
+      <div className="detail-dialog__actions">
+        <Button kind="tertiary" disabled={busy} onClick={closeDialog}>
           {cancelLabel}
         </Button>
         <Button

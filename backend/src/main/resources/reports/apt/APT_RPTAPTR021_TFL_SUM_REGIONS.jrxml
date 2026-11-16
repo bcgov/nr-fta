@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR021_TFL_SUM_REGIONS" pageWidth="752" pageHeight="572" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="752" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="6ddcfcbf-4035-4097-80c9-d02d1d70a6af">
+	<parameter name="p_in_rpt_date" class="java.util.Date"/>
+	<!-- Was THE.APT_RPTAPTR021_TFL_SUM_REGIONS; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[SELECT DISTINCT ou.org_unit_code AS reg_ou_code,
+                ou.org_unit_name AS reg_ou_name
+  FROM the.apt_management_units  mu,
+       the.apt_mgmt_unit_history muh,
+       the.org_unit              ou,
+       the.for_client_link       fcl,
+       the.prov_forest_use       pfu,
+       the.tenure_term           tt
+ WHERE mu.org_unit_no = ou.org_unit_no
+   AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE))
+   AND mu.apt_mgmt_unit_st = 'T'
+   AND mu.id = muh.mu_id
+   AND muh.effective_date = (SELECT MAX(muh2.effective_date)
+                               FROM the.apt_mgmt_unit_history muh2
+                              WHERE mu.id = muh2.mu_id)
+   AND muh.effective_date <= CAST($P{p_in_rpt_date} AS DATE)
+   AND mu.apt_mgmt_unit_st = pfu.mgmt_unit_type
+   AND mu.mgmt_unit_number = pfu.mgmt_unit_id
+   AND pfu.file_status_st IN ('HI', 'HS')
+   AND pfu.forest_file_id = 'TFL' || TRIM(LEADING '0' FROM pfu.mgmt_unit_id)
+   AND pfu.forest_file_id = tt.forest_file_id
+   AND DECODE(NVL(tt.current_expiry_dt, TO_DATE('9999-12-31', 'YYYY-MM-DD')),
+              TO_DATE('9999-12-31', 'YYYY-MM-DD'), tt.initial_expiry_dt,
+              tt.current_expiry_dt) > CAST($P{p_in_rpt_date} AS DATE)
+   AND pfu.forest_file_id = fcl.forest_file_id
+   AND fcl.file_client_type = 'A'
+ ORDER BY ou.org_unit_code]]>
+	</queryString>
+	<field name="REG_OU_CODE" class="java.lang.String"/>
+	<field name="REG_OU_NAME" class="java.lang.String"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="13" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="4c005cd0-67e1-41a2-93c8-61ba9e5e6049" x="0" y="2" width="59" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Region]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="1cdaebd7-a174-4aa2-8fd4-bd4ce0b520aa" x="76" y="2" width="375" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Region Name]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="11" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="3594b8d9-f467-4d76-9ebf-7077f4c6f94d" x="0" y="0" width="59" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{REG_OU_CODE}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="a068801a-fb92-46c5-8446-1d79c9d531e8" x="76" y="0" width="575" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{REG_OU_NAME}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR041_JOINT_LICS" pageWidth="572" pageHeight="752" whenNoDataType="AllSectionsNoDetail" columnWidth="572" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="19c6be42-02f7-4dbb-98c2-b4ecadc0436a">
+	<!-- Was THE.APT_RPTAPTR041_JOINT_LICS; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[-- APT_RPT_COUNT_LICENCEES is inlined as a scalar subquery: the count of the rows of the licence
+-- in APT_LICENCE_CLIENTS_V (licence_clients below).
+WITH munv AS (
+    -- APT_MGMT_UNIT_NAMES_V
+    SELECT DECODE(clt.column_name, 'TFL_NUMBER', 'T', 'TSA_NUMBER', 'U', 'WL_NUMBER', 'F')
+                                AS apt_mgmt_unit_st,
+           clt.code_argument     AS mgmt_unit_number,
+           clt.expanded_result   AS mgmt_unit_name
+      FROM the.code_list_table clt
+     WHERE clt.column_name IN ('TFL_NUMBER', 'TSA_NUMBER', 'WL_NUMBER')
+    UNION
+    SELECT DECODE(clt2.column_name, 'MGMT_UNIT_TYPE', 'Z'),
+           NULL,
+           clt2.expanded_result
+      FROM the.code_list_table clt2
+     WHERE clt2.column_name = 'MGMT_UNIT_TYPE'
+       AND clt2.code_argument = 'Z'
+),
+licence_clients AS (
+    -- APT_LICENCE_CLIENTS_V (V_CLIENT_PUBLIC is FOREST_CLIENT)
+    SELECT DISTINCT lic.forest_file_id,
+           DECODE(vcp.client_type_code, 'I',
+                  vcp.client_name || CHR(10) || '     ,' || vcp.legal_first_name,
+                  vcp.client_name) AS client_name,
+           fcl.file_client_type,
+           vcp.client_number
+      FROM the.apt_licences lic,
+           the.for_client_link fcl,
+           the.forest_client vcp
+     WHERE lic.forest_file_id = fcl.forest_file_id
+       AND vcp.client_number = fcl.client_number
+       AND fcl.file_client_type IN ('A', 'B')
+),
+licensee_names AS (
+    -- APT_RPT_CAT_LICENSEE_NAME: the client names of the licence in FILE_CLIENT_TYPE order,
+    -- joined with '; ', first 80 characters
+    SELECT lc.forest_file_id,
+           SUBSTR(LISTAGG(lc.client_name, '; ' ON OVERFLOW TRUNCATE '' WITHOUT COUNT)
+                    WITHIN GROUP (ORDER BY lc.file_client_type, lc.client_number), 1, 80)
+             AS licencee
+      FROM licence_clients lc
+     GROUP BY lc.forest_file_id
+)
+/* JOINTLY HELD */
+    SELECT DISTINCT lic.forest_file_id forest_file_id_j,
+                    ln.licencee licencee,
+                    tt.current_expiry_dt expiry_date_j,
+                    tt.initial_expiry_dt init_expiry_dt_j,
+                    ou.org_unit_code region_code_j,
+                    munv.mgmt_unit_name mgmt_unit_name_j,
+                    lic.apt_foa_st foa_j,
+                    SUM(comm.allowable_annual_cut) sum_aac_j,
+                    0 uav_vol_j, -- CR01-03
+                    ' ' uav_j -- CR01-03
+      FROM the.apt_licences          lic,
+           licensee_names          ln,
+           the.prov_forest_use       pfu,
+           the.tenure_term           tt,
+           the.apt_management_units  mu,
+           the.org_unit              ou,
+           munv munv,
+           the.apt_commitments       comm
+     WHERE ln.forest_file_id = lic.forest_file_id AND
+           ou.org_unit_no = mu.org_unit_no AND
+           munv.mgmt_unit_number = mu.mgmt_unit_number AND
+           munv.apt_mgmt_unit_st = mu.apt_mgmt_unit_st AND
+           mu.apt_mgmt_unit_st IN ('T', 'U') AND
+           mu.mgmt_unit_status_st = 'ACT' -- CR7
+           AND mu.apt_mgmt_unit_st = pfu.mgmt_unit_type AND
+           mu.mgmt_unit_number = pfu.mgmt_unit_id
+          -- AND  PFU.FILE_STATUS_ST <> 'HC'          -- CR7
+           AND pfu.file_status_st IN ('HI', 'HS') -- CR7
+           AND pfu.forest_file_id = tt.forest_file_id --CR13
+           AND (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                       to_date('9999-12-31','YYYY-MM-DD'), --CR13
+                       tt.initial_expiry_dt,
+                       tt.current_expiry_dt) > SYSDATE) --CR13
+           AND lic.forest_file_id = pfu.forest_file_id AND
+           lic.forest_file_id = comm.forest_file_id AND
+           SYSDATE BETWEEN comm.effective_date AND
+           nvl(comm.expiry_date,
+               to_date('299912312359',
+                       'yyyymmddhh24mi')) AND
+           comm.include_in_lic_aac_ind = 'Y' /*AND
+                                       &p_is_jointly_held*/
+           AND 1 < (SELECT COUNT(*) FROM licence_clients lc WHERE lc.forest_file_id = lic.forest_file_id)
+     GROUP BY lic.forest_file_id, ln.licencee,
+              tt.current_expiry_dt,
+              tt.initial_expiry_dt,
+              ou.org_unit_code,
+              munv.mgmt_unit_name,
+              lic.apt_foa_st
+    UNION
+    /*  mgmt_unit_type = 'Z' */
+        SELECT DISTINCT lic.forest_file_id forest_file_id_j,
+                        ln.licencee licencee,
+                        tt.current_expiry_dt expiry_date_j,
+                        tt.initial_expiry_dt init_expiry_dt_j,
+                        ou.org_unit_code region_code_j,
+                        munv.mgmt_unit_name mgmt_unit_name_j,
+                        lic.apt_foa_st foa_j,
+                        SUM(comm.allowable_annual_cut) sum_aac_j,
+                        0 uav_vol_j -- CR01-03
+                       ,
+                        ' ' uav_j -- CR01-03
+          FROM the.apt_licences            lic,
+               licensee_names            ln,
+               the.prov_forest_use         pfu,
+               the.tenure_term             tt,
+               the.apt_partitions          part,
+               the.apt_part_apportionments papt,
+               the.apt_mgmt_unit_history   muh,
+               the.apt_management_units    mu,
+               the.org_unit                ou,
+               munv   munv,
+               the.apt_commitments         comm
+         WHERE ln.forest_file_id = lic.forest_file_id AND
+               pfu.mgmt_unit_type = 'Z' AND
+               pfu.forest_file_id = lic.forest_file_id AND
+               pfu.file_status_st IN ('HI', 'HS') -- CR7
+               AND lic.forest_file_id = comm.forest_file_id AND
+               comm.papt_id = papt.id AND papt.part_id = part.id AND
+               part.muh_id = muh.id AND muh.mu_id = mu.id AND
+               mu.org_unit_no = ou.org_unit_no AND
+               mu.mgmt_unit_number = munv.mgmt_unit_number AND
+               mu.apt_mgmt_unit_st = munv.apt_mgmt_unit_st AND
+               mu.apt_mgmt_unit_st IN ('T', 'U') AND
+               mu.mgmt_unit_status_st = 'ACT' -- CR7
+              -- AND MU.APT_MGMT_UNIT_ST = PFU.MGMT_UNIT_TYPE
+              -- AND MU.MGMT_UNIT_NUMBER = PFU.MGMT_UNIT_ID
+               AND pfu.forest_file_id = tt.forest_file_id --CR13
+               AND (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                           to_date('9999-12-31','YYYY-MM-DD'), --CR13
+                           tt.initial_expiry_dt,
+                           tt.current_expiry_dt) > SYSDATE) --CR13
+               AND SYSDATE BETWEEN comm.effective_date AND
+               nvl(comm.expiry_date,
+                   to_date('299912312359',
+                           'yyyymmddhh24mi')) AND
+               comm.include_in_lic_aac_ind = 'Y' /*AND &p_is_jointly_held*/
+               AND 1 < (SELECT COUNT(*) FROM licence_clients lc WHERE lc.forest_file_id = lic.forest_file_id)
+         GROUP BY lic.forest_file_id, ln.licencee,
+                  tt.current_expiry_dt,
+                  tt.initial_expiry_dt,
+                  ou.org_unit_code,
+                  munv.mgmt_unit_name,
+                  lic.apt_foa_st
+        --order by FOREST_FILE_ID_J
+        /* Unapportioned Volume */
+        UNION
+            SELECT DISTINCT lic.forest_file_id forest_file_id_j,
+                            ln.licencee licencee,
+                            tt.current_expiry_dt expiry_date_j,
+                            tt.initial_expiry_dt init_expiry_dt_j,
+                            ou.org_unit_code region_code_j,
+                            munv.mgmt_unit_name mgmt_unit_name_j,
+                            lic.apt_foa_st foa_j,
+                            0 sum_aac_j -- CR01-03
+                           ,
+                            SUM(comm.allowable_annual_cut) uav_vol_j -- CR01-03
+                           ,
+                            '#' uav_j -- CR01-03
+              FROM the.apt_licences          lic,
+                   licensee_names          ln,
+                   the.prov_forest_use       pfu,
+                   the.tenure_term           tt,
+                   the.apt_management_units  mu,
+                   the.org_unit              ou,
+                   munv munv,
+                   the.apt_commitments       comm
+             WHERE ln.forest_file_id = lic.forest_file_id AND
+                   ou.org_unit_no = mu.org_unit_no AND
+                   munv.mgmt_unit_number = mu.mgmt_unit_number AND
+                   munv.apt_mgmt_unit_st = mu.apt_mgmt_unit_st AND
+                   mu.apt_mgmt_unit_st IN ('T', 'U') AND
+                   mu.mgmt_unit_status_st = 'ACT' -- CR7
+                   AND mu.apt_mgmt_unit_st = pfu.mgmt_unit_type AND
+                   mu.mgmt_unit_number = pfu.mgmt_unit_id
+                  -- AND  PFU.FILE_STATUS_ST <> 'HC'          -- CR7
+                   AND pfu.file_status_st IN ('HI', 'HS') -- CR7
+                   AND pfu.forest_file_id = tt.forest_file_id --CR13
+                   AND (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                               to_date('9999-12-31','YYYY-MM-DD'), --CR13
+                               tt.initial_expiry_dt,
+                               tt.current_expiry_dt) > SYSDATE) --CR13
+                   AND lic.forest_file_id = pfu.forest_file_id AND
+                   lic.forest_file_id = comm.forest_file_id AND
+                   SYSDATE BETWEEN comm.effective_date AND
+                   nvl(comm.expiry_date,
+                       to_date('299912312359',
+                               'yyyymmddhh24mi'))
+                  -- and  comm.include_in_lic_aac_ind = 'Y'               -- CR01-03
+                   AND comm.include_in_lic_aac_ind = 'N' -- CR01-03
+                   AND comm.apt_partition_st = 'UAV' -- CR01-03
+                  /*      AND &p_is_jointly_held*/
+                   AND 1 < (SELECT COUNT(*) FROM licence_clients lc WHERE lc.forest_file_id = lic.forest_file_id)
+             GROUP BY lic.forest_file_id, ln.licencee,
+                      tt.current_expiry_dt,
+                      tt.initial_expiry_dt,
+                      ou.org_unit_code,
+                      munv.mgmt_unit_name,
+                      lic.apt_foa_st
+            UNION
+            /*  mgmt_unit_type = 'Z' */
+                SELECT DISTINCT lic.forest_file_id forest_file_id_j,
+                                ln.licencee licencee,
+                                tt.current_expiry_dt expiry_date_j,
+                                tt.initial_expiry_dt init_expiry_dt_j,
+                                ou.org_unit_code region_code_j,
+                                munv.mgmt_unit_name mgmt_unit_name_j,
+                                lic.apt_foa_st foa_j,
+                                0 sum_aac_j -- CR01-03
+                               ,
+                                SUM(comm.allowable_annual_cut) uav_vol_j -- CR01-03
+                               ,
+                                '#' uav_j -- CR01-03 This char must match the Report
+                  FROM the.apt_licences            lic,
+                       licensee_names            ln,
+                       the.prov_forest_use         pfu,
+                       the.tenure_term             tt,
+                       the.apt_partitions          part,
+                       the.apt_part_apportionments papt,
+                       the.apt_mgmt_unit_history   muh,
+                       the.apt_management_units    mu,
+                       the.org_unit                ou,
+                       munv   munv,
+                       the.apt_commitments         comm
+                 WHERE ln.forest_file_id = lic.forest_file_id AND
+                       pfu.mgmt_unit_type = 'Z' AND
+                       pfu.forest_file_id = lic.forest_file_id AND
+                       pfu.file_status_st IN ('HI', 'HS') -- CR7
+                       AND lic.forest_file_id = comm.forest_file_id AND
+                       comm.papt_id = papt.id AND
+                       papt.part_id = part.id AND part.muh_id = muh.id AND
+                       muh.mu_id = mu.id AND
+                       mu.org_unit_no = ou.org_unit_no AND
+                       mu.mgmt_unit_number = munv.mgmt_unit_number AND
+                       mu.apt_mgmt_unit_st = munv.apt_mgmt_unit_st AND
+                       mu.apt_mgmt_unit_st IN ('T', 'U') AND
+                       mu.mgmt_unit_status_st = 'ACT' -- CR7
+                      -- AND MU.APT_MGMT_UNIT_ST = PFU.MGMT_UNIT_TYPE
+                      -- AND MU.MGMT_UNIT_NUMBER = PFU.MGMT_UNIT_ID
+                       AND pfu.forest_file_id = tt.forest_file_id --CR13
+                       AND (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                                   to_date('9999-12-31','YYYY-MM-DD'), --CR13
+                                   tt.initial_expiry_dt,
+                                   tt.current_expiry_dt) > SYSDATE) --CR13
+                       AND SYSDATE BETWEEN comm.effective_date AND
+                       nvl(comm.expiry_date,
+                           to_date('299912312359',
+                                   'yyyymmddhh24mi'))
+                      -- and  comm.include_in_lic_aac_ind = 'Y'               -- CR01-03
+                       AND comm.include_in_lic_aac_ind = 'N' -- CR01-03
+                       AND comm.apt_partition_st = 'UAV' -- CR01-03
+                      /*      AND &p_is_jointly_held*/
+                       AND
+                       1 < (SELECT COUNT(*) FROM licence_clients lc WHERE lc.forest_file_id = lic.forest_file_id)
+                 GROUP BY lic.forest_file_id, ln.licencee,
+                          tt.current_expiry_dt,
+                          tt.initial_expiry_dt,
+                          ou.org_unit_code,
+                          munv.mgmt_unit_name,
+                          lic.apt_foa_st
+                 ORDER BY 1]]>
+	</queryString>
+	<field name="FOREST_FILE_ID_J" class="java.lang.String"/>
+	<field name="LICENCEE" class="java.lang.String"/>
+	<field name="EXPIRY_DATE_J" class="java.sql.Timestamp"/>
+	<field name="INIT_EXPIRY_DT_J" class="java.sql.Timestamp"/>
+	<field name="REGION_CODE_J" class="java.lang.String"/>
+	<field name="MGMT_UNIT_NAME_J" class="java.lang.String"/>
+	<field name="FOA_J" class="java.lang.String"/>
+	<field name="SUM_AAC_J" class="java.math.BigDecimal"/>
+	<field name="UAV_VOL_J" class="java.math.BigDecimal"/>
+	<field name="UAV_J" class="java.lang.String"/>
+	<variable name="aac" class="java.math.BigDecimal">
+		<variableExpression><![CDATA[( $F{SUM_AAC_J}.intValue() == 0 ? $F{UAV_VOL_J} : $F{SUM_AAC_J} )]]></variableExpression>
+	</variable>
+	<variable name="expiryDate" class="java.sql.Timestamp">
+		<variableExpression><![CDATA[( $F{EXPIRY_DATE_J}.after( $F{INIT_EXPIRY_DT_J} ) ? $F{EXPIRY_DATE_J} : $F{INIT_EXPIRY_DT_J} )]]></variableExpression>
+	</variable>
+	<variable name="total_aac" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$V{aac}]]></variableExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="34" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="96a7fbbf-63ed-4fbf-97db-a8688e118370" x="0" y="0" width="45" height="33"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Forest
+File ID]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="03fb76f8-6e8b-4631-86a6-a4119ebb9224" x="45" y="2" width="156" height="20"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Licensee]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="21e6c15d-9ae7-473c-94e8-13dcb4a2176b" x="214" y="2" width="51" height="20"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[FOA]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="df43573a-29e5-4283-b4c5-c3a99e4823ae" x="334" y="2" width="38" height="20"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Region]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="f0e73c1c-abea-48a5-8288-ab45ae3ad0fa" x="372" y="2" width="88" height="20"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Management Unit]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="74cacf82-1783-4238-a114-bdbb3145faf1" x="265" y="2" width="59" height="20"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Expiry Date]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="76423648-b465-4eec-9318-f2185608244e" x="472" y="2" width="72" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[AAC (m3)]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="0546ee60-0637-4252-802c-9ca78673be34" x="544" y="2" width="28" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="11" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="6ed8b018-0c9a-4ec0-9ece-c63ff81129af" x="0" y="0" width="45" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{FOREST_FILE_ID_J}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="9971a480-359f-4734-a86c-6309f3ffee93" x="45" y="0" width="156" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{LICENCEE}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="c46cbdcd-c7f7-45e6-8d37-f6f7d548b7d7" x="214" y="0" width="51" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{FOA_J}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="99d6d4fb-9c15-4187-aaa0-bd3f551ba891" x="334" y="0" width="38" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{REGION_CODE_J}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="f6eb61e3-fa79-47c5-a9b5-97d3ba22d7e8" x="372" y="0" width="88" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{MGMT_UNIT_NAME_J}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="46cab852-2f67-4279-be11-e76f133a42eb" x="472" y="0" width="72" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{aac}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement uuid="e8ba0608-04e2-4e11-b158-6bd50e6e39f7" x="265" y="0" width="59" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{expiryDate}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="45dd8121-6072-4f07-9bd9-bf742aca9fa7" x="544" y="0" width="28" height="11"/>
+				<textElement textAlignment="Center">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{UAV_J}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="25" splitType="Stretch">
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="e5680252-3fdc-44a3-8fd1-13b0297b395c" x="472" y="12" width="72" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{total_aac}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement uuid="938ea758-2c93-41af-a152-cd91a67e9955" x="472" y="11" width="72" height="1"/>
+			</line>
+		</band>
+	</summary>
+</jasperReport>

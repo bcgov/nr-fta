@@ -14,7 +14,7 @@ import java.time.LocalDate;
  *                                     copies nothing
  * @param determinationDate            required
  * @param effectiveDate                required
- * @param allowableAnnualCut           AAC in cubic metres; required, whole, 0 to 999,999,999
+ * @param allowableAnnualCut           AAC in cubic metres; whole, 0 to 999,999,999
  * @param allowableAnnualCutHa         AAC in hectares; whole, 0 to 999,999,999
  * @param inventoryRevDate             optional
  * @param apportionmentDeterminationDt optional

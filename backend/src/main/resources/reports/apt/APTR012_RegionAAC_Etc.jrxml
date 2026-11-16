@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APTR012_RegionAAC_Etc" pageWidth="612" pageHeight="792" whenNoDataType="AllSectionsNoDetail" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="03d2471b-2188-4250-b045-4bddb20c1ced">
+	<parameter name="user" class="java.lang.String">
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="in_report_date" class="java.util.Date"/>
+	<parameter name="IN_ORG_UNIT_NO" class="java.math.BigDecimal"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_EXT" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[".jrxml"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_id" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["APTR012"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_name" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["Region AAC, Apportionment and Commitments - by Partition"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_category" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["APT2"]]></defaultValueExpression>
+	</parameter>
+	<!-- Was THE.APT_RPTAPTR012_MASTER; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[SELECT ou.org_unit_code,
+       ou.org_unit_name,
+       ou.location_code
+  FROM the.org_unit ou
+ WHERE ou.org_unit_no = $P{IN_ORG_UNIT_NO}]]>
+	</queryString>
+	<field name="ORG_UNIT_CODE" class="java.lang.String"/>
+	<field name="ORG_UNIT_NAME" class="java.lang.String"/>
+	<field name="LOCATION_CODE" class="java.lang.String"/>
+	<variable name="numberFor1stApportionmentSubRep" class="java.lang.Integer">
+		<variableExpression><![CDATA[1]]></variableExpression>
+		<initialValueExpression><![CDATA[]]></initialValueExpression>
+	</variable>
+	<variable name="numberFor1stCommitmentSubRep" class="java.lang.Integer">
+		<variableExpression><![CDATA[1]]></variableExpression>
+		<initialValueExpression><![CDATA[]]></initialValueExpression>
+	</variable>
+	<variable name="numberFor1stHaApportSubRep" class="java.lang.Integer">
+		<variableExpression><![CDATA[1]]></variableExpression>
+		<initialValueExpression><![CDATA[]]></initialValueExpression>
+	</variable>
+	<variable name="numberOfHaPartitionsPerApportionmentSubRep" class="java.lang.Integer">
+		<variableExpression><![CDATA[100]]></variableExpression>
+		<initialValueExpression><![CDATA[]]></initialValueExpression>
+	</variable>
+	<variable name="numberOfPartitionsPerApportionmentSubRep" class="java.lang.Integer">
+		<variableExpression><![CDATA[100]]></variableExpression>
+		<initialValueExpression><![CDATA[]]></initialValueExpression>
+	</variable>
+	<variable name="numberOfPartitionsPerCommitmentSubRep" class="java.lang.Integer">
+		<variableExpression><![CDATA[100]]></variableExpression>
+		<initialValueExpression><![CDATA[]]></initialValueExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<pageHeader>
+		<band height="111" splitType="Stretch">
+			<subreport>
+				<reportElement uuid="76700992-8bad-419b-ae7c-22d14ab587c7" x="0" y="22" width="572" height="29"/>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPT_HEADER" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+			<textField>
+				<reportElement uuid="a877516b-9f45-4426-a5ee-d9283ec89f2e" x="392" y="0" width="80" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Page "+$V{PAGE_NUMBER}+" of"]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report">
+				<reportElement uuid="ee635645-ae2b-4a1d-9e00-d40f9e3dcd9f" x="472" y="0" width="40" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="c43b42a1-eb3b-4bfd-bf59-9a34d5d0ba3b" x="67" y="0" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_report_id}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement uuid="30632573-3796-4974-a30f-86b1deceb2cb" x="67" y="11" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="1f8309d3-28a8-406d-b314-7c26b4318b9b" x="0" y="11" width="67" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Report Date:  ]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="f863ae2b-c4eb-4ad1-bdf3-0fafe570a0f5" x="0" y="0" width="67" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Report ID:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="8387522b-5c00-4846-8af2-c40d19a61890" x="360" y="11" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Run by:  ]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="4db222da-b27e-4265-b6af-aafce327cffa" x="472" y="11" width="88" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{user}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement uuid="0f87e2b0-10e4-4e3d-9577-7059624b17b7" x="213" y="98" width="100" height="13"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{in_report_date}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="45249a9d-f9b1-40ad-a24d-3e588222ff55" x="113" y="98" width="100" height="13"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Effective Date]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="e5a37ca5-696e-4db8-8132-51aef3bae83e" x="1" y="51" width="571" height="13"/>
+				<textElement textAlignment="Center">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_report_name}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="f9ba8812-cbaf-41a3-aafb-632b296ff477" x="113" y="75" width="100" height="13"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Region]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="42cf401f-215d-4e04-b0d9-1ec2e4866d12" x="213" y="75" width="359" height="13"/>
+				<textElement>
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{ORG_UNIT_NAME}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="b549d7bf-124c-45b6-b079-4d3c083b480e" x="0" y="75" width="100" height="13"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Parameters]]></text>
+			</staticText>
+		</band>
+	</pageHeader>
+	<detail>
+		<band height="80" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="f7cafc23-05e6-4740-9424-28e93bd1ca65" x="0" y="11" width="572" height="13"/>
+				<textElement>
+					<font fontName="DejaVu Sans"/>
+				</textElement>
+				<text><![CDATA[A) ALLOWABLE ANNUAL CUT (AAC)	(Section 8, Forest Act)]]></text>
+			</staticText>
+			<subreport>
+				<reportElement uuid="d6dc01af-06d4-405c-8851-7526d5cf8a49" x="0" y="31" width="572" height="46"/>
+				<subreportParameter name="p_in_org_unit_no">
+					<subreportParameterExpression><![CDATA[$P{IN_ORG_UNIT_NO}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="p_in_rpt_date">
+					<subreportParameterExpression><![CDATA[$P{in_report_date}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPTAPTR012_AAC_BY_TSA" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="50">
+			<subreport>
+				<reportElement uuid="cc9b3354-e966-4669-896e-55bdec59e4ee" x="0" y="11" width="572" height="39"/>
+				<subreportParameter name="p_in_org_unit_no">
+					<subreportParameterExpression><![CDATA[$P{IN_ORG_UNIT_NO}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="p_in_rpt_date">
+					<subreportParameterExpression><![CDATA[$P{in_report_date}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPTAPTR012_AAC_BY_PART" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="105">
+			<staticText>
+				<reportElement uuid="4439e97e-b299-4b3c-add4-8fce1d12ebce" x="0" y="12" width="572" height="13"/>
+				<textElement>
+					<font fontName="DejaVu Sans"/>
+				</textElement>
+				<text><![CDATA[B) APPORTIONMENT	(Section 10, Forest Act)]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="a10f3b45-369b-4f52-8ab4-a86c39e15d44" x="0" y="32" width="100" height="13"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[i)  cubic meters]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="688af073-2419-47d9-a635-9c3e1c7c2474" x="0" y="52" width="167" height="11"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Form of Agreement]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="688af073-2419-47d9-a635-9c3e1c7c2474" x="334" y="52" width="238" height="11"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Partitions (m3)]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="688af073-2419-47d9-a635-9c3e1c7c2474" x="167" y="52" width="167" height="11"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Total]]></text>
+			</staticText>
+			<subreport>
+				<reportElement uuid="6c4d0cee-2bb7-4116-8b16-48f1b682b605" x="0" y="63" width="572" height="40"/>
+				<subreportParameter name="p_in_rpt_date">
+					<subreportParameterExpression><![CDATA[$P{in_report_date}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="p_in_org_unit_no">
+					<subreportParameterExpression><![CDATA[$P{IN_ORG_UNIT_NO}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="p_in_first_col">
+					<subreportParameterExpression><![CDATA[$V{numberFor1stApportionmentSubRep}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="p_in_col_count">
+					<subreportParameterExpression><![CDATA[$V{numberOfHaPartitionsPerApportionmentSubRep}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPTAPTR012_APPORTIONMENT" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+			<break>
+				<reportElement uuid="de11c457-847e-4e3b-8101-a73c465e1f23" x="0" y="1" width="100" height="1"/>
+			</break>
+		</band>
+		<band height="75">
+			<staticText>
+				<reportElement uuid="d15ae816-f0b4-48e3-8ee5-84080694d1f5" x="0" y="0" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[i)  hectares]]></text>
+			</staticText>
+			<subreport>
+				<reportElement uuid="b791d42f-3b0f-436c-9a4e-1a2c81634f75" x="0" y="20" width="572" height="55"/>
+				<subreportParameter name="p_in_rpt_date">
+					<subreportParameterExpression><![CDATA[$P{in_report_date}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="p_in_org_unit_no">
+					<subreportParameterExpression><![CDATA[$P{IN_ORG_UNIT_NO}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="p_in_first_col">
+					<subreportParameterExpression><![CDATA[$V{numberFor1stHaApportSubRep}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="p_in_col_count">
+					<subreportParameterExpression><![CDATA[$V{numberOfHaPartitionsPerApportionmentSubRep}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPTAPTR012_APPORT_HA" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="99">
+			<staticText>
+				<reportElement uuid="4439e97e-b299-4b3c-add4-8fce1d12ebce" x="0" y="2" width="572" height="13"/>
+				<textElement>
+					<font fontName="DejaVu Sans"/>
+				</textElement>
+				<text><![CDATA[C) COMMITMENTS - AAC (m3) and No. of Licences]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="688af073-2419-47d9-a635-9c3e1c7c2474" x="0" y="22" width="167" height="11"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Form of Agreement]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="688af073-2419-47d9-a635-9c3e1c7c2474" x="167" y="22" width="167" height="11"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Total]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="688af073-2419-47d9-a635-9c3e1c7c2474" x="334" y="22" width="238" height="11"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Partitions (m3)]]></text>
+			</staticText>
+			<subreport>
+				<reportElement uuid="699b792f-91ad-4f92-88dc-001be4fc2d44" x="0" y="33" width="572" height="63"/>
+				<subreportParameter name="p_in_rpt_date">
+					<subreportParameterExpression><![CDATA[$P{in_report_date}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="p_in_org_unit_no">
+					<subreportParameterExpression><![CDATA[$P{IN_ORG_UNIT_NO}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="p_in_first_part">
+					<subreportParameterExpression><![CDATA[$V{numberFor1stCommitmentSubRep}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="p_in_part_count">
+					<subreportParameterExpression><![CDATA[$V{numberOfPartitionsPerCommitmentSubRep}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPTAPTR012_COMMITMENTS" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+			<break>
+				<reportElement uuid="d87c8c17-4a47-4ca1-8162-ead0c304e5c3" x="0" y="1" width="100" height="1"/>
+			</break>
+		</band>
+		<band height="42">
+			<staticText>
+				<reportElement uuid="d4379292-1245-4458-8c16-688eccfd5cb6" x="0" y="0" width="572" height="40"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[NON-AAC Lump Sum Volume - Lump Sum volumes that originated from a licence under-cut or from undersold volumes in the competitive program.  These volumes do not form an integral part of the current AAC for the TSA and therefore are excluded from the totals. ]]></text>
+			</staticText>
+		</band>
+	</detail>
+	<columnFooter>
+		<band height="4" splitType="Stretch"/>
+	</columnFooter>
+	<pageFooter>
+		<band height="3" splitType="Stretch"/>
+	</pageFooter>
+	<summary>
+		<band height="5" splitType="Stretch"/>
+	</summary>
+</jasperReport>

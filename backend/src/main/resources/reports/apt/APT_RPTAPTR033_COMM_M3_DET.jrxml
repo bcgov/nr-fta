@@ -1,0 +1,799 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR033_COMM_M3" pageWidth="752" pageHeight="572" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="752" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="41a5ce44-9d80-43a6-ad45-795c7bfdfc53">
+	<style name="Crosstab Data Text" hAlign="Center"/>
+	<parameter name="p_in_rpt_date" class="java.util.Date"/>
+	<!-- Was THE.APT_RPTAPTR033_COMM_DETAILS_M3; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[    SELECT q_labels.c_mu_st mu_code,
+           decode(q_labels.c_mu_st,
+                  'TSA',
+                  'A',
+                  'TFL',
+                  'B') mu_code_sort_order,
+           q_labels.comm_expanded_result foa_description,
+           q_labels.comm_org_unit_code || ' (m3)' region_org_unit_code,
+           q_labels.comm_org_unit_code || 'A' column_sort_order,
+           q_labels.c_lic_foa foa_code,
+           q_labels.c_sort_order foa_sort_order,
+           q_comm_body.sum_count sum_count
+      FROM ( -- Q_comm_body
+            -- for the count
+            SELECT decode(pfu.mgmt_unit_type,
+                           'U',
+                           'TSA',
+                           'T',
+                           'TFL') mu_st,
+                    lic.apt_foa_st lic_foa,
+                    acat.sort_order sort_order,
+                    mu.org_unit_no,
+                    SUM(commj.allowable_annual_cut) sum_count
+              FROM the.prov_forest_use              pfu,
+                    the.apt_management_units         mu,
+                    the.tenure_term                  tt,
+                    the.apt_licences                 lic,
+                    the.apt_apportionment_categories acat,
+                    the.apt_commitments_jn           commj
+             WHERE pfu.file_status_st IN ('HI', 'HS') AND
+                   pfu.mgmt_unit_type = mu.apt_mgmt_unit_st AND
+                   pfu.mgmt_unit_id = mu.mgmt_unit_number AND
+                   (mu.mgmt_unit_status_st = 'ACT' or mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE)) AND --RY U42
+                   pfu.forest_file_id = tt.forest_file_id AND
+                   (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                           to_date('9999-12-31','YYYY-MM-DD'),
+                           tt.initial_expiry_dt,
+                           tt.current_expiry_dt) > CAST($P{p_in_rpt_date} AS DATE)) AND
+                   pfu.mgmt_unit_type IN ('U', 'T') AND
+                   pfu.forest_file_id = lic.forest_file_id AND
+                   lic.forest_file_id = commj.forest_file_id AND
+                   acat.apt_foa_st = lic.apt_foa_st AND
+                   acat.apt_mgmt_unit_st = pfu.mgmt_unit_type AND
+                   commj.effective_date(+) <= CAST($P{p_in_rpt_date} AS DATE) AND
+                   nvl(commj.expiry_date,
+                       to_date('2999-12-31',
+                               'YYYY-MM-DD')) > CAST($P{p_in_rpt_date} AS DATE) AND
+                   nvl(commj.jn_datetime,
+                       to_date('18001231',
+                               'YYYYMMDD')) =
+                   (SELECT nvl(MAX(jn_datetime),
+                               to_date('18001231',
+                                       'YYYYMMDD'))
+                      FROM (SELECT ucj.jn_datetime, ucj.id, ucj.forest_file_id, ucj.apt_partition_st, ucj.commit_type_st, ucj.allowable_annual_cut, ucj.include_in_lic_aac_ind, ucj.determination_date, ucj.effective_date, ucj.expiry_date, ucj.papt_id FROM the.apt_commitments_jn ucj WHERE ucj.id NOT IN (SELECT ucj_del.id FROM the.apt_commitments_jn ucj_del WHERE ucj_del.jn_operation = 'DEL'))
+                     WHERE id = commj.id) AND
+                   commj.include_in_lic_aac_ind = 'Y'
+             GROUP BY decode(pfu.mgmt_unit_type,
+                              'U',
+                              'TSA',
+                              'T',
+                              'TFL'),
+                       lic.apt_foa_st,
+                       acat.sort_order,
+                       mu.org_unit_no
+            --, pfu.forest_region
+            UNION -- New code for CR21
+                SELECT decode(pfu.mgmt_unit_type,
+                              'U',
+                              'TSA',
+                              'T',
+                              'TFL',
+                              'Z',
+                              'TSA') mu_st,
+                       lic.apt_foa_st lic_foa,
+                       acat.sort_order sort_order,
+                       mu.org_unit_no,
+                       SUM(commj.allowable_annual_cut) sum_count
+                  FROM the.prov_forest_use              pfu,
+                       the.tenure_term                  tt,
+                       the.apt_licences                 lic,
+                       the.apt_apportionment_categories acat,
+                       the.apt_commitments_jn           commj,
+                       the.apt_management_units         mu,
+                       the.apt_part_apportionments      papt,
+                       the.apt_partitions               part,
+                       the.apt_mgmt_unit_history        muh
+                 WHERE pfu.file_status_st IN ('HI', 'HS') AND
+                       pfu.mgmt_unit_type = 'Z' AND
+                       pfu.forest_file_id = tt.forest_file_id AND
+                       (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                               to_date('9999-12-31','YYYY-MM-DD'),
+                               tt.initial_expiry_dt,
+                               tt.current_expiry_dt) > CAST($P{p_in_rpt_date} AS DATE)) AND
+                       pfu.forest_file_id = lic.forest_file_id AND
+                       lic.forest_file_id = commj.forest_file_id AND
+                       commj.papt_id = papt.id AND
+                       papt.part_id = part.id AND
+                       part.muh_id = muh.id AND muh.mu_id = mu.id AND
+                       acat.apt_foa_st = lic.apt_foa_st AND
+                       (mu.mgmt_unit_status_st = 'ACT' or mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE)) AND --RY U42
+                       acat.apt_mgmt_unit_st = 'U' AND
+                       commj.effective_date(+) <= CAST($P{p_in_rpt_date} AS DATE) AND
+                       nvl(commj.expiry_date,
+                           to_date('2999-12-31',
+                                   'YYYY-MM-DD')) > CAST($P{p_in_rpt_date} AS DATE) AND
+                       nvl(commj.jn_datetime,
+                           to_date('18001231',
+                                   'YYYYMMDD')) =
+                       (SELECT nvl(MAX(jn_datetime),
+                                   to_date('18001231',
+                                           'YYYYMMDD'))
+                          FROM (SELECT ucj.jn_datetime, ucj.id, ucj.forest_file_id, ucj.apt_partition_st, ucj.commit_type_st, ucj.allowable_annual_cut, ucj.include_in_lic_aac_ind, ucj.determination_date, ucj.effective_date, ucj.expiry_date, ucj.papt_id FROM the.apt_commitments_jn ucj WHERE ucj.id NOT IN (SELECT ucj_del.id FROM the.apt_commitments_jn ucj_del WHERE ucj_del.jn_operation = 'DEL'))
+                         WHERE id = commj.id) AND
+                       commj.include_in_lic_aac_ind = 'Y'
+                 GROUP BY decode(pfu.mgmt_unit_type,
+                                 'U',
+                                 'TSA',
+                                 'T',
+                                 'TFL',
+                                 'Z',
+                                 'TSA'),
+                          lic.apt_foa_st,
+                          acat.sort_order,
+                          mu.org_unit_no
+            ) q_comm_body,
+           ( -- q_labels
+            SELECT q_comm_foa.c_mu_st,
+                    q_comm_foa.c_lic_foa,
+                    q_comm_foa.c_sort_order,
+                    q_comm_foa.comm_expanded_result,
+                    q_comm_region.comm_org_unit_code,
+                    q_comm_region.comm_ou_no
+              FROM ( -- Q_COMM_FOA
+                     SELECT DISTINCT decode(pfu.mgmt_unit_type,
+                                             'U',
+                                             'TSA',
+                                             'T',
+                                             'TFL')               c_mu_st,
+                                      lic.apt_foa_st       c_lic_foa,
+                                      acat.sort_order      c_sort_order,
+                                      aftv.expanded_result comm_expanded_result
+                       FROM the.prov_forest_use              pfu,
+                             the.apt_licences                 lic,
+                             the.apt_apportionment_categories acat,
+                             (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)              aftv
+                      WHERE pfu.mgmt_unit_type IN ('U', 'T') AND
+                            pfu.forest_file_id = lic.forest_file_id AND
+                            acat.apt_foa_st = lic.apt_foa_st AND
+                            acat.apt_mgmt_unit_st = pfu.mgmt_unit_type AND
+                            aftv.apt_mgmt_unit_st =
+                            acat.apt_mgmt_unit_st AND
+                            aftv.code_argument = acat.apt_foa_st
+                     UNION
+                         SELECT DISTINCT decode(pfu.mgmt_unit_type,
+                                                'U',
+                                                'TSA',
+                                                'T',
+                                                'TFL',
+                                                'Z',
+                                                'TSA')               c_mu_st,
+                                         lic.apt_foa_st       c_lic_foa,
+                                         acat.sort_order      c_sort_order,
+                                         aftv.expanded_result comm_expanded_result
+                           FROM the.prov_forest_use              pfu,
+                                the.apt_licences                 lic,
+                                the.apt_apportionment_categories acat,
+                                (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)              aftv
+                          WHERE pfu.mgmt_unit_type IN ('U', 'T', 'Z') AND
+                                pfu.forest_file_id = lic.forest_file_id AND
+                                acat.apt_foa_st = lic.apt_foa_st AND
+                                acat.apt_mgmt_unit_st = 'U' -- pfu.mgmt_unit_type
+                                AND aftv.apt_mgmt_unit_st =
+                                acat.apt_mgmt_unit_st AND
+                                aftv.code_argument = acat.apt_foa_st
+                     ) q_comm_foa,
+                    ( -- Q_COMM_REGION
+                     SELECT ou.org_unit_code comm_org_unit_code,
+                             ou.org_unit_no   comm_ou_no
+                       FROM the.org_unit ou
+                      WHERE ou.org_unit_code LIKE 'R__' AND
+                            effective_date <= CAST($P{p_in_rpt_date} AS DATE) AND
+                            expiry_date >= CAST($P{p_in_rpt_date} AS DATE)
+                     ) q_comm_region
+            -- A Cartesian product of q_comm_foa and q_comm_region
+            ) q_labels
+     WHERE q_comm_body.org_unit_no(+) = q_labels.comm_ou_no AND
+           q_comm_body.mu_st(+) = q_labels.c_mu_st AND
+           q_comm_body.lic_foa(+) = q_labels.c_lic_foa
+    UNION
+        -----------------------------------------------------------------
+        -- Get the row totals of the volume sums                       --
+        -----------------------------------------------------------------
+            SELECT q_labels.c_mu_st mu_code,
+                   decode(q_labels.c_mu_st,
+                          'TSA',
+                          'A',
+                          'TFL',
+                          'B') mu_code_sort_order,
+                   q_labels.comm_expanded_result foa_description,
+                   'Totals' || ' (m3)' region_org_unit_code,
+                   'ZZZZA' column_sort_order,
+                   q_labels.c_lic_foa foa_code,
+                   q_labels.c_sort_order foa_sort_order,
+                   (SELECT SUM(q_comm_body.tw_comm_aac)
+  FROM ( --Q_comm_body
+        SELECT decode(pfu.mgmt_unit_type,
+                       'U',
+                       'TSA',
+                       'T',
+                       'TFL') mu_st,
+                lic.apt_foa_st lic_foa,
+                acat.sort_order sort_order,
+                mu.org_unit_no,
+                COUNT(DISTINCT pfu.forest_file_id) lic_count_tw,
+                SUM(commj.allowable_annual_cut) tw_comm_aac
+          FROM the.prov_forest_use              pfu,
+                the.apt_management_units         mu,
+                the.tenure_term                  tt,
+                the.apt_licences                 lic,
+                the.apt_apportionment_categories acat,
+                the.apt_commitments_jn           commj
+         WHERE pfu.file_status_st IN ('HI', 'HS') AND
+               pfu.mgmt_unit_type = mu.apt_mgmt_unit_st AND
+               pfu.mgmt_unit_id = mu.mgmt_unit_number AND
+               (mu.mgmt_unit_status_st = 'ACT' or mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE)) AND --RY U42
+               pfu.forest_file_id = tt.forest_file_id AND
+               (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                       to_date('9999-12-31',
+                               'YYYY-MM-DD'),
+                       tt.initial_expiry_dt,
+                       tt.current_expiry_dt) > CAST($P{p_in_rpt_date} AS DATE)) AND
+               pfu.mgmt_unit_type IN ('U', 'T') AND
+               pfu.forest_file_id = lic.forest_file_id AND
+               lic.forest_file_id = commj.forest_file_id AND
+               acat.apt_foa_st = lic.apt_foa_st AND
+               acat.apt_mgmt_unit_st = pfu.mgmt_unit_type AND
+               commj.effective_date(+) <= CAST($P{p_in_rpt_date} AS DATE) AND
+               nvl(commj.expiry_date,
+                   to_date('2999-12-31',
+                           'YYYY-MM-DD')) > CAST($P{p_in_rpt_date} AS DATE) AND
+               nvl(commj.jn_datetime,
+                   to_date('18001231',
+                           'YYYYMMDD')) =
+               (SELECT nvl(MAX(jn_datetime),
+                           to_date('18001231',
+                                   'YYYYMMDD'))
+                  FROM (SELECT ucj.jn_datetime, ucj.id, ucj.forest_file_id, ucj.apt_partition_st, ucj.commit_type_st, ucj.allowable_annual_cut, ucj.include_in_lic_aac_ind, ucj.determination_date, ucj.effective_date, ucj.expiry_date, ucj.papt_id FROM the.apt_commitments_jn ucj WHERE ucj.id NOT IN (SELECT ucj_del.id FROM the.apt_commitments_jn ucj_del WHERE ucj_del.jn_operation = 'DEL'))
+                 WHERE id = commj.id) AND
+               commj.include_in_lic_aac_ind = 'Y'
+         GROUP BY decode(pfu.mgmt_unit_type,
+                          'U',
+                          'TSA',
+                          'T',
+                          'TFL'),
+                   lic.apt_foa_st,
+                   acat.sort_order,
+                   mu.org_unit_no
+        --, pfu.forest_region
+        UNION -- New code for CR21
+            SELECT decode(pfu.mgmt_unit_type,
+                          'U',
+                          'TSA',
+                          'T',
+                          'TFL',
+                          'Z',
+                          'TSA') mu_st,
+                   lic.apt_foa_st lic_foa,
+                   acat.sort_order sort_order,
+                   mu.org_unit_no
+                   --       ,pfu.forest_region
+                  ,
+                   COUNT(DISTINCT pfu.forest_file_id) lic_count_tw,
+                   SUM(commj.allowable_annual_cut)   tw_comm_aac
+              FROM the.prov_forest_use              pfu,
+                   the.tenure_term                  tt,
+                   the.apt_licences                 lic,
+                   the.apt_apportionment_categories acat,
+                   the.apt_commitments_jn           commj,
+                   the.apt_management_units         mu,
+                   the.apt_part_apportionments      papt,
+                   the.apt_partitions               part,
+                   the.apt_mgmt_unit_history        muh
+             WHERE pfu.file_status_st IN ('HI', 'HS') AND
+                   pfu.mgmt_unit_type = 'Z' AND
+                   pfu.forest_file_id = tt.forest_file_id AND
+                   (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                           to_date('9999-12-31',
+                                   'YYYY-MM-DD'),
+                           tt.initial_expiry_dt,
+                           tt.current_expiry_dt) > CAST($P{p_in_rpt_date} AS DATE)) AND
+                   pfu.forest_file_id = lic.forest_file_id AND
+                   lic.forest_file_id = commj.forest_file_id AND
+                   commj.papt_id = papt.id AND papt.part_id = part.id AND
+                   part.muh_id = muh.id AND muh.mu_id = mu.id AND
+                   (mu.mgmt_unit_status_st = 'ACT' or mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE)) AND --RY U42
+                   acat.apt_foa_st = lic.apt_foa_st AND
+                   acat.apt_mgmt_unit_st = 'U' AND
+                   commj.effective_date(+) <= CAST($P{p_in_rpt_date} AS DATE) AND
+                   nvl(commj.expiry_date,
+                       to_date('2999-12-31',
+                               'YYYY-MM-DD')) > CAST($P{p_in_rpt_date} AS DATE) AND
+                   nvl(commj.jn_datetime,
+                       to_date('18001231',
+                               'YYYYMMDD')) =
+                   (SELECT nvl(MAX(jn_datetime),
+                               to_date('18001231',
+                                       'YYYYMMDD'))
+                      FROM (SELECT ucj.jn_datetime, ucj.id, ucj.forest_file_id, ucj.apt_partition_st, ucj.commit_type_st, ucj.allowable_annual_cut, ucj.include_in_lic_aac_ind, ucj.determination_date, ucj.effective_date, ucj.expiry_date, ucj.papt_id FROM the.apt_commitments_jn ucj WHERE ucj.id NOT IN (SELECT ucj_del.id FROM the.apt_commitments_jn ucj_del WHERE ucj_del.jn_operation = 'DEL'))
+                     WHERE id = commj.id) AND
+                   commj.include_in_lic_aac_ind = 'Y'
+             GROUP BY decode(pfu.mgmt_unit_type,
+                             'U',
+                             'TSA',
+                             'T',
+                             'TFL',
+                             'Z',
+                             'TSA'),
+                      lic.apt_foa_st,
+                      acat.sort_order,
+                      mu.org_unit_no
+        ) q_comm_body,
+       ( --Q_COMM_FOA
+        SELECT DISTINCT decode(pfu.mgmt_unit_type,
+                                'U',
+                                'TSA',
+                                'T',
+                                'TFL')               c_mu_st,
+                         lic.apt_foa_st       c_lic_foa,
+                         acat.sort_order      c_sort_order,
+                         aftv.expanded_result comm_expanded_result
+          FROM the.prov_forest_use              pfu,
+                the.apt_licences                 lic,
+                the.apt_apportionment_categories acat,
+                (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)              aftv
+         WHERE pfu.mgmt_unit_type IN ('U', 'T') AND
+               pfu.forest_file_id = lic.forest_file_id AND
+               acat.apt_foa_st = lic.apt_foa_st AND
+               acat.apt_mgmt_unit_st = pfu.mgmt_unit_type AND
+               aftv.apt_mgmt_unit_st = acat.apt_mgmt_unit_st AND
+               aftv.code_argument = acat.apt_foa_st
+        UNION
+            SELECT DISTINCT decode(pfu.mgmt_unit_type,
+                                   'U',
+                                   'TSA',
+                                   'T',
+                                   'TFL',
+                                   'Z',
+                                   'TSA')               c_mu_st,
+                            lic.apt_foa_st       c_lic_foa,
+                            acat.sort_order      c_sort_order,
+                            aftv.expanded_result comm_expanded_result
+              FROM the.prov_forest_use              pfu,
+                   the.apt_licences                 lic,
+                   the.apt_apportionment_categories acat,
+                   (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)              aftv
+             WHERE pfu.mgmt_unit_type IN ('U', 'T', 'Z') AND
+                   pfu.forest_file_id = lic.forest_file_id AND
+                   acat.apt_foa_st = lic.apt_foa_st AND
+                   acat.apt_mgmt_unit_st = 'U' -- pfu.mgmt_unit_type
+                   AND aftv.apt_mgmt_unit_st = acat.apt_mgmt_unit_st AND
+                   aftv.code_argument = acat.apt_foa_st
+             ORDER BY 1 DESC,
+                      3
+        ) q_comm_foa,
+       ( -- Q_COMM_REGION
+        SELECT ou.org_unit_code comm_org_unit_code,
+                ou.org_unit_no   comm_ou_no
+          FROM the.org_unit ou
+         WHERE ou.org_unit_code LIKE 'R__' AND
+               effective_date <= CAST($P{p_in_rpt_date} AS DATE) AND
+               expiry_date >= CAST($P{p_in_rpt_date} AS DATE)
+        ) q_comm_region
+ WHERE q_comm_body.org_unit_no = q_comm_region.comm_ou_no AND
+       q_comm_body.mu_st = q_comm_foa.c_mu_st AND
+       q_comm_body.lic_foa = q_comm_foa.c_lic_foa AND
+       q_comm_body.mu_st = q_labels.c_mu_st AND
+       q_comm_body.lic_foa = q_labels.c_lic_foa
+ GROUP BY q_comm_body.mu_st,
+          q_comm_body.lic_foa) sum_count
+              FROM ( -- Q_comm_body
+                    -- for the count
+                    SELECT decode(pfu.mgmt_unit_type,
+                                   'U',
+                                   'TSA',
+                                   'T',
+                                   'TFL') mu_st,
+                            lic.apt_foa_st lic_foa,
+                            acat.sort_order sort_order,
+                            mu.org_unit_no,
+                            COUNT(DISTINCT pfu.forest_file_id) sum_count
+                      FROM the.prov_forest_use              pfu,
+                            the.apt_management_units         mu,
+                            the.tenure_term                  tt,
+                            the.apt_licences                 lic,
+                            the.apt_apportionment_categories acat,
+                            the.apt_commitments_jn           commj
+                     WHERE pfu.file_status_st IN ('HI', 'HS') AND
+                           pfu.mgmt_unit_type = mu.apt_mgmt_unit_st AND
+                           pfu.mgmt_unit_id = mu.mgmt_unit_number AND
+                           (mu.mgmt_unit_status_st = 'ACT' or mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE)) AND --RY U42
+                           pfu.forest_file_id = tt.forest_file_id AND
+                           (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                                   to_date('9999-12-31','YYYY-MM-DD'),
+                                   tt.initial_expiry_dt,
+                                   tt.current_expiry_dt) >
+                           CAST($P{p_in_rpt_date} AS DATE)) AND
+                           pfu.mgmt_unit_type IN ('U', 'T') AND
+                           pfu.forest_file_id = lic.forest_file_id AND
+                           lic.forest_file_id = commj.forest_file_id AND
+                           acat.apt_foa_st = lic.apt_foa_st AND
+                           acat.apt_mgmt_unit_st = pfu.mgmt_unit_type AND
+                           commj.effective_date(+) <= CAST($P{p_in_rpt_date} AS DATE) AND
+                           nvl(commj.expiry_date,
+                               to_date('2999-12-31',
+                                       'YYYY-MM-DD')) > CAST($P{p_in_rpt_date} AS DATE) AND
+                           nvl(commj.jn_datetime,
+                               to_date('18001231',
+                                       'YYYYMMDD')) =
+                           (SELECT nvl(MAX(jn_datetime),
+                                       to_date('18001231',
+                                               'YYYYMMDD'))
+                              FROM (SELECT ucj.jn_datetime, ucj.id, ucj.forest_file_id, ucj.apt_partition_st, ucj.commit_type_st, ucj.allowable_annual_cut, ucj.include_in_lic_aac_ind, ucj.determination_date, ucj.effective_date, ucj.expiry_date, ucj.papt_id FROM the.apt_commitments_jn ucj WHERE ucj.id NOT IN (SELECT ucj_del.id FROM the.apt_commitments_jn ucj_del WHERE ucj_del.jn_operation = 'DEL'))
+                             WHERE id = commj.id) AND
+                           commj.include_in_lic_aac_ind = 'Y'
+                     GROUP BY decode(pfu.mgmt_unit_type,
+                                      'U',
+                                      'TSA',
+                                      'T',
+                                      'TFL'),
+                               lic.apt_foa_st,
+                               acat.sort_order,
+                               mu.org_unit_no
+                    --, pfu.forest_region
+                    UNION -- New code for CR21
+                        SELECT decode(pfu.mgmt_unit_type,
+                                      'U',
+                                      'TSA',
+                                      'T',
+                                      'TFL',
+                                      'Z',
+                                      'TSA') mu_st,
+                               lic.apt_foa_st lic_foa,
+                               acat.sort_order sort_order,
+                               mu.org_unit_no,
+                               COUNT(DISTINCT pfu.forest_file_id) sum_count
+                          FROM the.prov_forest_use              pfu,
+                               the.tenure_term                  tt,
+                               the.apt_licences                 lic,
+                               the.apt_apportionment_categories acat,
+                               the.apt_commitments_jn           commj,
+                               the.apt_management_units         mu,
+                               the.apt_part_apportionments      papt,
+                               the.apt_partitions               part,
+                               the.apt_mgmt_unit_history        muh
+                         WHERE pfu.file_status_st IN ('HI', 'HS') AND
+                               pfu.mgmt_unit_type = 'Z' AND
+                               (mu.mgmt_unit_status_st = 'ACT' or mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE)) AND --RY U42
+                               pfu.forest_file_id = tt.forest_file_id AND
+                               (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                                       to_date('9999-12-31','YYYY-MM-DD'),
+                                       tt.initial_expiry_dt,
+                                       tt.current_expiry_dt) >
+                               CAST($P{p_in_rpt_date} AS DATE)) AND pfu.forest_file_id =
+                               lic.forest_file_id AND
+                               lic.forest_file_id =
+                               commj.forest_file_id AND
+                               commj.papt_id = papt.id AND
+                               papt.part_id = part.id AND
+                               part.muh_id = muh.id AND
+                               muh.mu_id = mu.id AND
+                               acat.apt_foa_st = lic.apt_foa_st AND
+                               acat.apt_mgmt_unit_st = 'U' AND
+                               commj.effective_date(+) <= CAST($P{p_in_rpt_date} AS DATE) AND
+                               nvl(commj.expiry_date,
+                                   to_date('2999-12-31',
+                                           'YYYY-MM-DD')) >
+                               CAST($P{p_in_rpt_date} AS DATE) AND
+                               nvl(commj.jn_datetime,
+                                   to_date('18001231',
+                                           'YYYYMMDD')) =
+                               (SELECT nvl(MAX(jn_datetime),
+                                           to_date('18001231',
+                                                   'YYYYMMDD'))
+                                  FROM (SELECT ucj.jn_datetime, ucj.id, ucj.forest_file_id, ucj.apt_partition_st, ucj.commit_type_st, ucj.allowable_annual_cut, ucj.include_in_lic_aac_ind, ucj.determination_date, ucj.effective_date, ucj.expiry_date, ucj.papt_id FROM the.apt_commitments_jn ucj WHERE ucj.id NOT IN (SELECT ucj_del.id FROM the.apt_commitments_jn ucj_del WHERE ucj_del.jn_operation = 'DEL'))
+                                 WHERE id = commj.id) AND
+                               commj.include_in_lic_aac_ind = 'Y'
+                         GROUP BY decode(pfu.mgmt_unit_type,
+                                         'U',
+                                         'TSA',
+                                         'T',
+                                         'TFL',
+                                         'Z',
+                                         'TSA'),
+                                  lic.apt_foa_st,
+                                  acat.sort_order,
+                                  mu.org_unit_no
+                    ) q_comm_body,
+                   ( -- q_labels
+                    SELECT q_comm_foa.c_mu_st,
+                            q_comm_foa.c_lic_foa,
+                            q_comm_foa.c_sort_order,
+                            q_comm_foa.comm_expanded_result,
+                            q_comm_region.comm_org_unit_code,
+                            q_comm_region.comm_ou_no
+                      FROM ( -- Q_COMM_FOA
+                             SELECT DISTINCT decode(pfu.mgmt_unit_type,
+                                                     'U',
+                                                     'TSA',
+                                                     'T',
+                                                     'TFL')               c_mu_st,
+                                              lic.apt_foa_st       c_lic_foa,
+                                              acat.sort_order      c_sort_order,
+                                              aftv.expanded_result comm_expanded_result
+                               FROM the.prov_forest_use              pfu,
+                                     the.apt_licences                 lic,
+                                     the.apt_apportionment_categories acat,
+                                     (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)              aftv
+                              WHERE pfu.mgmt_unit_type IN ('U', 'T') AND
+                                    pfu.forest_file_id =
+                                    lic.forest_file_id AND
+                                    acat.apt_foa_st = lic.apt_foa_st AND
+                                    acat.apt_mgmt_unit_st =
+                                    pfu.mgmt_unit_type AND
+                                    aftv.apt_mgmt_unit_st =
+                                    acat.apt_mgmt_unit_st AND
+                                    aftv.code_argument = acat.apt_foa_st
+                             UNION
+                                 SELECT DISTINCT decode(pfu.mgmt_unit_type,
+                                                        'U',
+                                                        'TSA',
+                                                        'T',
+                                                        'TFL',
+                                                        'Z',
+                                                        'TSA')               c_mu_st,
+                                                 lic.apt_foa_st       c_lic_foa,
+                                                 acat.sort_order      c_sort_order,
+                                                 aftv.expanded_result comm_expanded_result
+                                   FROM the.prov_forest_use              pfu,
+                                        the.apt_licences                 lic,
+                                        the.apt_apportionment_categories acat,
+                                        (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)              aftv
+                                  WHERE pfu.mgmt_unit_type IN
+                                        ('U', 'T', 'Z') AND
+                                        pfu.forest_file_id =
+                                        lic.forest_file_id AND
+                                        acat.apt_foa_st = lic.apt_foa_st AND
+                                        acat.apt_mgmt_unit_st = 'U' -- pfu.mgmt_unit_type
+                                        AND aftv.apt_mgmt_unit_st =
+                                        acat.apt_mgmt_unit_st AND
+                                        aftv.code_argument =
+                                        acat.apt_foa_st
+                             ) q_comm_foa,
+                            ( -- Q_COMM_REGION
+                             SELECT ou.org_unit_code comm_org_unit_code,
+                                     ou.org_unit_no   comm_ou_no
+                               FROM the.org_unit ou
+                              WHERE ou.org_unit_code LIKE 'R__' AND
+                                    effective_date <= CAST($P{p_in_rpt_date} AS DATE) AND
+                                    expiry_date >= CAST($P{p_in_rpt_date} AS DATE)
+                             ) q_comm_region
+                    -- A Cartesian product of q_comm_foa and q_comm_region
+                    ) q_labels
+             WHERE q_comm_body.org_unit_no(+) = q_labels.comm_ou_no AND
+                   q_comm_body.mu_st(+) = q_labels.c_mu_st AND
+                   q_comm_body.lic_foa(+) = q_labels.c_lic_foa]]>
+	</queryString>
+	<field name="MU_CODE" class="java.lang.String"/>
+	<field name="MU_CODE_SORT_ORDER" class="java.lang.String"/>
+	<field name="FOA_DESCRIPTION" class="java.lang.String"/>
+	<field name="REGION_ORG_UNIT_CODE" class="java.lang.String"/>
+	<field name="COLUMN_SORT_ORDER" class="java.lang.String"/>
+	<field name="FOA_CODE" class="java.lang.String"/>
+	<field name="FOA_SORT_ORDER" class="java.math.BigDecimal"/>
+	<field name="SUM_COUNT" class="java.math.BigDecimal"/>
+	<filterExpression><![CDATA[$F{SUM_COUNT} != null && $F{SUM_COUNT}.doubleValue() > 0.0]]></filterExpression>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<summary>
+		<band height="42" splitType="Stretch">
+			<crosstab>
+				<reportElement uuid="fb1d2159-d9fa-4a16-8cab-77244beea457" x="0" y="0" width="752" height="42" isRemoveLineWhenBlank="true"/>
+				<rowGroup name="MU_CODE_SORT_ORDER" width="1" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{MU_CODE_SORT_ORDER}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents mode="Opaque">
+							<textField isBlankWhenNull="true">
+								<reportElement uuid="08f79dbd-afdf-41d6-9fb4-6ba8f996d4c3" style="Crosstab Data Text" x="0" y="0" width="1" height="11" forecolor="#FFFFFF"/>
+								<textElement>
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{MU_CODE_SORT_ORDER}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents backcolor="#005FB3" mode="Opaque">
+							<staticText>
+								<reportElement uuid="4de24fd7-48cc-43f1-b9d2-41047f75cb14" x="0" y="0" width="180" height="11" forecolor="#FFFFFF"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<text><![CDATA[TOTALS]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="MU_CODE" width="33" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{MU_CODE}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="0360d6d6-905c-455c-b85e-48ce1fadc096" style="Crosstab Data Text" x="0" y="0" width="33" height="11"/>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{MU_CODE}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents/>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="FOA_SORT_ORDER" width="3" totalPosition="End">
+					<bucket class="java.math.BigDecimal">
+						<bucketExpression><![CDATA[$F{FOA_SORT_ORDER}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents backcolor="#FFFFFF" mode="Opaque">
+							<textField isBlankWhenNull="true">
+								<reportElement uuid="31426c0a-7e10-4a0f-8c3e-412ddbba10e6" style="Crosstab Data Text" x="0" y="0" width="1" height="11" forecolor="#FFFFFF"/>
+								<textElement>
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{FOA_SORT_ORDER}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents backcolor="#BFE1FF" mode="Opaque">
+							<staticText>
+								<reportElement uuid="01880437-bec0-4fb7-b243-21ccc8260b70" x="0" y="0" width="146" height="11"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<text><![CDATA[Totals]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="FOA_DESCRIPTION" width="143" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{FOA_DESCRIPTION}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="8c6763bb-b3e5-410b-8326-72471703fa52" style="Crosstab Data Text" x="0" y="0" width="143" height="11">
+									<printWhenExpression><![CDATA[//$V{SUM_COUNTMeasure_FOA_DESCRIPTION_COLUMN_SORT_ORDER_ALL} != null && $V{SUM_COUNTMeasure_FOA_DESCRIPTION_COLUMN_SORT_ORDER_ALL}.doubleValue() > 0.0
+true]]></printWhenExpression>
+								</reportElement>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{FOA_DESCRIPTION}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents/>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<columnGroup name="COLUMN_SORT_ORDER" height="2" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{COLUMN_SORT_ORDER}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents backcolor="#FFFFFF" mode="Opaque">
+							<textField isBlankWhenNull="true">
+								<reportElement uuid="fbd4167f-1077-46d8-a1c7-a3998d297c58" style="Crosstab Data Text" x="0" y="0" width="50" height="1"/>
+								<textElement>
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{COLUMN_SORT_ORDER}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents backcolor="#FFFFFF" mode="Opaque"/>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<columnGroup name="REGION_ORG_UNIT_CODE" height="11" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{REGION_ORG_UNIT_CODE}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="c27f77a4-4c44-47b2-a318-e5ff49b2c8bd" style="Crosstab Data Text" x="0" y="0" width="62" height="11" isRemoveLineWhenBlank="true"/>
+								<textElement textAlignment="Right" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{REGION_ORG_UNIT_CODE}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents/>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<measure name="SUM_COUNTMeasure" class="java.math.BigDecimal" calculation="Sum">
+					<measureExpression><![CDATA[$F{SUM_COUNT}]]></measureExpression>
+				</measure>
+				<crosstabCell width="62" height="11">
+					<cellContents>
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="f20965b1-429e-490c-a26e-2cf8584c3358" style="Crosstab Data Text" x="0" y="0" width="62" height="11" isRemoveLineWhenBlank="true">
+								<printWhenExpression><![CDATA[$V{SUM_COUNTMeasure_FOA_DESCRIPTION_COLUMN_SORT_ORDER_ALL} != null && $V{SUM_COUNTMeasure_FOA_DESCRIPTION_COLUMN_SORT_ORDER_ALL}.doubleValue() > 0.0]]></printWhenExpression>
+							</reportElement>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{SUM_COUNTMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="62" height="11" rowTotalGroup="MU_CODE_SORT_ORDER">
+					<cellContents backcolor="#005FB3" mode="Opaque">
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="cb47dbd1-7b6e-40c4-b5b4-b2b080a44dc3" style="Crosstab Data Text" x="0" y="0" width="62" height="11" isRemoveLineWhenBlank="true" forecolor="#FFFFFF"/>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{SUM_COUNTMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" columnTotalGroup="COLUMN_SORT_ORDER">
+					<cellContents backcolor="#FFFFFF" mode="Opaque"/>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" rowTotalGroup="MU_CODE_SORT_ORDER" columnTotalGroup="COLUMN_SORT_ORDER">
+					<cellContents mode="Opaque"/>
+				</crosstabCell>
+				<crosstabCell width="62" height="11" rowTotalGroup="FOA_SORT_ORDER">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="1ae65478-23e0-483b-a25a-f83085d40578" style="Crosstab Data Text" x="0" y="0" width="62" height="11" isRemoveLineWhenBlank="true"/>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{SUM_COUNTMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" rowTotalGroup="FOA_SORT_ORDER" columnTotalGroup="COLUMN_SORT_ORDER">
+					<cellContents backcolor="#FFFFFF" mode="Opaque"/>
+				</crosstabCell>
+				<crosstabCell width="62" height="0" rowTotalGroup="MU_CODE">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="0" rowTotalGroup="MU_CODE" columnTotalGroup="COLUMN_SORT_ORDER">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="62" height="0" rowTotalGroup="FOA_DESCRIPTION">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="0" rowTotalGroup="FOA_DESCRIPTION" columnTotalGroup="COLUMN_SORT_ORDER">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" columnTotalGroup="REGION_ORG_UNIT_CODE">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" rowTotalGroup="MU_CODE_SORT_ORDER" columnTotalGroup="REGION_ORG_UNIT_CODE">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="0" rowTotalGroup="MU_CODE" columnTotalGroup="REGION_ORG_UNIT_CODE">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" rowTotalGroup="FOA_SORT_ORDER" columnTotalGroup="REGION_ORG_UNIT_CODE">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="0" rowTotalGroup="FOA_DESCRIPTION" columnTotalGroup="REGION_ORG_UNIT_CODE">
+					<cellContents/>
+				</crosstabCell>
+			</crosstab>
+		</band>
+	</summary>
+</jasperReport>

@@ -24,6 +24,7 @@ const ROLE_LABEL: Record<ROLE_TYPE, string> = {
   FTA_TIMBER_MARK_HEADQUARTERS_ADMIN: 'Timber Mark Headquarters Administrator',
   FTA_TIMBER_MARK_DISTRICT_ADMIN: 'Timber Mark District Administrator',
   FTA_APT_ADMIN: 'Apportionment Administrator',
+  FTA_APT_VIEWER: 'Apportionment Viewer',
   FTA_VIEWER: 'Viewer',
 };
 
@@ -34,8 +35,9 @@ const ROLE_PRIORITY: ROLE_TYPE[] = [
   'FTA_HARVEST_AUTH_DISTRICT_ADMIN',
   'FTA_TIMBER_MARK_HEADQUARTERS_ADMIN',
   'FTA_TIMBER_MARK_DISTRICT_ADMIN',
-  'FTA_APT_ADMIN',
   'FTA_VIEWER',
+  'FTA_APT_ADMIN',
+  'FTA_APT_VIEWER',
 ];
 
 const HeaderPanelProfile: FC = () => {

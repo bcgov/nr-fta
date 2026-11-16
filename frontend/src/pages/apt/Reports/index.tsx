@@ -81,38 +81,40 @@ const AptReports: FC = () => {
   return (
     <PageLayout title="APT Reports" subtitle="Apportionment reports and data extracts.">
       <SectionTile title="Reports" icon={Report}>
-        <TableContainer>
-          <Table size="md" aria-label="APT reports">
-            <TableHead>
-              <TableRow>
-                <TableHeader>Report</TableHeader>
-                <TableHeader>Name</TableHeader>
-                <TableHeader>
-                  <span className="cds--visually-hidden">Actions</span>
-                </TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {APT_PDF_REPORTS.map((r) => (
-                <TableRow key={r.code}>
-                  <TableCell>{r.code}</TableCell>
-                  <TableCell>{r.name}</TableCell>
-                  <TableCell className="apt-reports__action-cell">
-                    <Button
-                      kind="ghost"
-                      size="sm"
-                      renderIcon={DocumentPdf}
-                      disabled={running !== null}
-                      onClick={() => choose(r)}
-                    >
-                      {running === r.code && !asking ? 'Generating…' : 'Generate'}
-                    </Button>
-                  </TableCell>
+        <div className="bordered-table">
+          <TableContainer>
+            <Table size="md" aria-label="APT reports">
+              <TableHead>
+                <TableRow>
+                  <TableHeader>Report</TableHeader>
+                  <TableHeader>Name</TableHeader>
+                  <TableHeader>
+                    <span className="cds--visually-hidden">Actions</span>
+                  </TableHeader>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHead>
+              <TableBody>
+                {APT_PDF_REPORTS.map((r) => (
+                  <TableRow key={r.code}>
+                    <TableCell>{r.code}</TableCell>
+                    <TableCell>{r.name}</TableCell>
+                    <TableCell className="apt-reports__action-cell">
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        renderIcon={DocumentPdf}
+                        disabled={running !== null}
+                        onClick={() => choose(r)}
+                      >
+                        {running === r.code && !asking ? 'Generating…' : 'Generate'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </div>
       </SectionTile>
 
       <SectionTile title="Data extracts" icon={Download}>

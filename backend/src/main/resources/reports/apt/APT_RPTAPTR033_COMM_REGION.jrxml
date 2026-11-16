@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR033_COMM_REGION" pageWidth="572" pageHeight="752" whenNoDataType="AllSectionsNoDetail" columnWidth="572" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="c3bffe88-8a46-44cc-a89c-b06600dc99ae">
+	<parameter name="p_in_rpt_date" class="java.util.Date"/>
+	<!-- Was THE.APT_RPTAPTR033_COMM_REGION; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[SELECT ou.org_unit_code comm_org_unit_code,
+       ou.org_unit_no comm_ou_no,
+       ou.org_unit_name
+  FROM the.org_unit ou
+ WHERE ou.org_unit_code LIKE 'R__' AND
+       effective_date <= CAST($P{p_in_rpt_date} AS DATE) AND expiry_date >= CAST($P{p_in_rpt_date} AS DATE)]]>
+	</queryString>
+	<field name="COMM_ORG_UNIT_CODE" class="java.lang.String"/>
+	<field name="COMM_OU_NO" class="java.math.BigDecimal"/>
+	<field name="ORG_UNIT_NAME" class="java.lang.String"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="16" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="66bdb709-a61a-42a6-8f71-9ee68522155f" x="0" y="2" width="128" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Region]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="5e58b041-caec-46c5-b6c1-958b173bd5fd" x="139" y="2" width="373" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Region Name]]></text>
+			</staticText>
+			<line>
+				<reportElement uuid="4ed24e9a-9cc7-41f9-b44e-78c1a7e83640" x="0" y="13" width="128" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="12015ebc-c2bd-4c6e-85ee-6f10223a07c3" x="139" y="13" width="373" height="1"/>
+			</line>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="11" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="5f645c85-bcf4-4036-940c-042013370255" x="0" y="0" width="128" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{COMM_ORG_UNIT_CODE}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="b69605f6-4c46-4869-9adc-f75030d378fe" x="139" y="0" width="373" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{ORG_UNIT_NAME}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

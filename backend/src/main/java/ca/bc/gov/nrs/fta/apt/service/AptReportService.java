@@ -50,6 +50,8 @@ public class AptReportService {
     Map<String, String> own = report.reportParams(in);
     Map<String, String> params = new LinkedHashMap<>();
     params.put("user", user == null ? "" : user);
+    // The templates' page headers print User, which JasperServer filled from its own login.
+    params.put("User", user == null ? "" : user);
     params.putAll(own);
     return params;
   }

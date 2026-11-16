@@ -1,0 +1,414 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR012_APPORTIONMENT" pageWidth="572" pageHeight="752" whenNoDataType="AllSectionsNoDetail" columnWidth="572" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="03215568-493d-4090-b572-ee2015bb1008">
+	<style name="Crosstab Data Text" hAlign="Center"/>
+	<parameter name="p_in_rpt_date" class="java.util.Date"/>
+	<parameter name="p_in_org_unit_no" class="java.math.BigDecimal"/>
+	<parameter name="p_in_first_col" class="java.lang.Integer"/>
+	<parameter name="p_in_col_count" class="java.lang.Integer"/>
+	<!-- Was THE.APT_RPTAPTR012_APPORTIONMENT; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[WITH prm AS (
+  SELECT CAST($P{p_in_rpt_date} AS DATE) AS rpt_date,
+         $P{p_in_org_unit_no}            AS org_unit_no,
+         $P{p_in_first_col}              AS first_col,
+         $P{p_in_col_count}              AS col_count
+    FROM dual
+),
+-- APT_PART_RPT_V
+part_rpt AS (
+  SELECT clt.code_argument   AS part_type_cd,
+         clt.expanded_result AS part_type_desc
+    FROM the.code_list_table clt,
+         the.code_subset_tbl cst
+   WHERE cst.code_subset_name = 'APT_PART_RPT_ST'
+     AND clt.column_name = cst.column_name
+     AND clt.code_argument = cst.code_argument
+),
+-- APT_FOA_TYPES_V, management unit type U, not expired at the report date
+foa_types AS (
+  SELECT clt.code_argument,
+         clt.expanded_result,
+         acat.sort_order
+    FROM the.code_list_table clt,
+         the.code_subset_tbl cst,
+         the.apt_apportionment_categories acat,
+         prm
+   WHERE cst.code_subset_name = 'APT_FOA_ST'
+     AND clt.column_name = cst.column_name
+     AND clt.code_argument = cst.code_argument
+     AND acat.apt_foa_st = clt.code_argument
+     AND acat.apt_mgmt_unit_st = 'U'
+     AND clt.expiry_date > prm.rpt_date
+),
+-- History rows in force at the report date: the greatest effective date || apportionment
+-- effective date (null as 2999-12-31) among the units rows effective by then
+muh_current AS (
+  SELECT muh.*
+    FROM the.apt_mgmt_unit_history muh, prm
+   WHERE TO_CHAR(muh.effective_date, 'YYYYMMDD')
+         || TO_CHAR(NVL(muh.apportionment_effective_date, TO_DATE('29991231', 'YYYYMMDD')), 'YYYYMMDD')
+         = (SELECT MAX(TO_CHAR(h.effective_date, 'YYYYMMDD')
+                       || TO_CHAR(NVL(h.apportionment_effective_date, TO_DATE('29991231', 'YYYYMMDD')), 'YYYYMMDD'))
+              FROM the.apt_mgmt_unit_history h
+             WHERE h.mu_id = muh.mu_id
+               AND h.effective_date <= prm.rpt_date
+               AND NVL(h.apportionment_effective_date, TO_DATE('1900', 'YYYY')) <= prm.rpt_date)
+),
+-- History rows with the units latest apportionment effective date on or before the report date
+muh_apportioned AS (
+  SELECT muh.*
+    FROM the.apt_mgmt_unit_history muh, prm
+   WHERE muh.apportionment_effective_date =
+         (SELECT MAX(h.apportionment_effective_date)
+            FROM the.apt_mgmt_unit_history h
+           WHERE h.apportionment_effective_date <= prm.rpt_date
+             AND h.mu_id = muh.mu_id)
+),
+-- APTR.REG_PAPT_FOA_AAC(in_org_unit_no, in_rpt_date, foa) for every FOA at once
+-- (the function summed into a NUMBER(10), hence ROUND, and returned NVL(..., 0))
+reg_foa_sum AS (
+  SELECT papt.apt_foa_st,
+         SUM(papt.allowable_annual_cut) AS sum_papt_aac
+    FROM the.apt_part_apportionments papt,
+         the.apt_partitions part,
+         part_rpt aprv,
+         the.apt_management_units mu,
+         muh_current muh,
+         prm
+   WHERE mu.org_unit_no = prm.org_unit_no
+     AND mu.apt_mgmt_unit_st = 'U'
+     AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > prm.rpt_date)
+     AND mu.id = muh.mu_id
+     AND muh.id = part.muh_id
+     AND part.id = papt.part_id
+     AND part.apt_partition_st = aprv.part_type_cd
+   GROUP BY papt.apt_foa_st
+),
+foa_total AS (
+  SELECT aftv.code_argument,
+         NVL((SELECT ROUND(r.sum_papt_aac) FROM reg_foa_sum r
+               WHERE r.apt_foa_st = aftv.code_argument), 0) AS aac_value
+    FROM foa_types aftv
+),
+-- c_foa_total_total, null set to zero (RY U42)
+foa_total_total AS (
+  SELECT NVL(SUM(ft.aac_value), 0) AS total FROM foa_total ft
+),
+-- APT_RPT_PART_TOTALS(in_rpt_date, in_org_unit_no, partition) for every partition at once
+-- (null when the partition has nothing)
+part_total AS (
+  SELECT part.apt_partition_st,
+         SUM(papt.allowable_annual_cut) AS total
+    FROM the.apt_part_apportionments papt,
+         the.apt_partitions part,
+         the.apt_management_units mu,
+         muh_current muh,
+         foa_types aftv,
+         prm
+   WHERE mu.apt_mgmt_unit_st = 'U'
+     AND mu.id = muh.mu_id
+     AND muh.id = part.muh_id
+     AND papt.part_id = part.id
+     AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > prm.rpt_date)
+     AND mu.org_unit_no = prm.org_unit_no
+     AND papt.apt_foa_st = aftv.code_argument
+   GROUP BY part.apt_partition_st
+),
+-- The regions partitions in force (by latest apportionment effective date)
+region_parts AS (
+  SELECT part.apt_partition_st,
+         aptv.part_type_desc
+    FROM the.apt_partitions part,
+         the.apt_management_units mu,
+         muh_apportioned muh,
+         part_rpt aptv,
+         prm
+   WHERE mu.apt_mgmt_unit_st = 'U'
+     AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > prm.rpt_date)
+     AND mu.id = muh.mu_id
+     AND muh.id = part.muh_id
+     AND part.apt_partition_st = aptv.part_type_cd
+     AND mu.org_unit_no = prm.org_unit_no
+),
+-- c_part_codes, ranked in its ORDER BY
+part_codes AS (
+  SELECT pc.partition_code,
+         ROW_NUMBER() OVER (ORDER BY pc.partition_code) AS partition_rank
+    FROM (SELECT DISTINCT rp.apt_partition_st AS partition_code FROM region_parts rp
+          UNION
+          SELECT DISTINCT rp.apt_partition_st || 'X123' FROM region_parts rp
+          UNION
+          SELECT 'AAA TOTAL' FROM dual
+          UNION
+          SELECT 'AAB TOTAL' FROM dual) pc
+),
+-- The cursor loop: a comma-led list of codes for ranks in_first_col .. in_first_col + in_col_count - 1,
+-- and how many ranks come after that window
+part_window AS (
+  SELECT LISTAGG(CASE WHEN pc.partition_rank BETWEEN prm.first_col
+                                               AND prm.first_col + prm.col_count - 1
+                      THEN ',' || pc.partition_code END)
+           WITHIN GROUP (ORDER BY pc.partition_rank) AS partition_code_list,
+         COUNT(CASE WHEN pc.partition_rank > prm.first_col + prm.col_count - 1
+                    THEN 1 END) AS remaining_partitions_count
+    FROM part_codes pc, prm
+)
+SELECT codes_and_descriptions.foa_code              AS foa_code,
+       codes_and_descriptions.foa_description       AS foa_description,
+       codes_and_descriptions.partition_code        AS partition_code,
+       codes_and_descriptions.partition_description AS partition_description,
+       part.sum_papt_aac                            AS partition_sum,
+       codes_and_descriptions.foa_sort_order        AS foa_sort_order,
+       pw.remaining_partitions_count                AS remaining_partitions_count
+  FROM (-- AAC values with FOA and partition codes
+        SELECT papt.apt_foa_st                AS foa_code,
+               part.apt_partition_st          AS partition_code,
+               SUM(papt.allowable_annual_cut) AS sum_papt_aac
+          FROM the.apt_part_apportionments papt,
+               the.apt_partitions part,
+               the.apt_management_units mu,
+               muh_current muh,
+               prm
+         WHERE mu.apt_mgmt_unit_st = 'U'
+           AND mu.id = muh.mu_id
+           AND muh.id = part.muh_id
+           AND papt.part_id = part.id
+           AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > prm.rpt_date)
+           AND mu.org_unit_no = prm.org_unit_no
+         GROUP BY papt.apt_foa_st, part.apt_partition_st, mu.org_unit_no
+        UNION
+        -- their percentage of the partition total
+        SELECT papt.apt_foa_st,
+               part.apt_partition_st || 'X123',
+               DECODE(SUM(papt.allowable_annual_cut), 0, 0,
+                      DECODE((SELECT pt.total FROM part_total pt
+                               WHERE pt.apt_partition_st = part.apt_partition_st), 0, 0,
+                             SUM(papt.allowable_annual_cut)
+                             / (SELECT pt.total FROM part_total pt
+                                 WHERE pt.apt_partition_st = part.apt_partition_st) * 100))
+          FROM the.apt_part_apportionments papt,
+               the.apt_partitions part,
+               the.apt_management_units mu,
+               muh_current muh,
+               prm
+         WHERE mu.apt_mgmt_unit_st = 'U'
+           AND mu.id = muh.mu_id
+           AND muh.id = part.muh_id
+           AND papt.part_id = part.id
+           AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > prm.rpt_date)
+           AND mu.org_unit_no = prm.org_unit_no
+         GROUP BY papt.apt_foa_st, part.apt_partition_st, mu.org_unit_no
+        UNION
+        -- the total column
+        SELECT ft.code_argument, 'AAA TOTAL', ft.aac_value
+          FROM foa_total ft
+        UNION
+        -- the total percent column
+        SELECT ft.code_argument, 'AAB TOTAL',
+               DECODE(ftt.total, 0, 0, ft.aac_value / ftt.total * 100)
+          FROM foa_total ft, foa_total_total ftt) part,
+       (-- FOA and partition codes and descriptions (every combination)
+        SELECT aftv.code_argument                   AS foa_code,
+               aftv.expanded_result                 AS foa_description,
+               aftv.sort_order                      AS foa_sort_order,
+               partition_list.partition_code        AS partition_code,
+               partition_list.partition_description AS partition_description
+          FROM foa_types aftv,
+               (SELECT DISTINCT rp.apt_partition_st AS partition_code,
+                       rp.part_type_desc            AS partition_description
+                  FROM region_parts rp
+                UNION
+                SELECT DISTINCT rp.apt_partition_st || 'X123', ' %'
+                  FROM region_parts rp
+                UNION
+                SELECT 'AAA TOTAL', 'm3' FROM dual
+                UNION
+                SELECT 'AAB TOTAL', '%' FROM dual) partition_list
+         ORDER BY foa_sort_order) codes_and_descriptions,
+       part_window pw
+ WHERE codes_and_descriptions.foa_code = part.foa_code(+)
+   AND codes_and_descriptions.partition_code = part.partition_code(+)
+   AND pw.partition_code_list LIKE '%' || codes_and_descriptions.partition_code || '%'
+UNION ALL
+-- No partition in this window: the procedures one dummy row
+SELECT 'dummy', 'dummy', 'dummy', 'dummy', -1, -1, pw.remaining_partitions_count
+  FROM part_window pw
+ WHERE pw.partition_code_list IS NULL
+ ORDER BY foa_sort_order]]>
+	</queryString>
+	<field name="FOA_CODE" class="java.lang.String"/>
+	<field name="FOA_DESCRIPTION" class="java.lang.String"/>
+	<field name="PARTITION_CODE" class="java.lang.String"/>
+	<field name="PARTITION_DESCRIPTION" class="java.lang.String"/>
+	<field name="PARTITION_SUM" class="java.math.BigDecimal"/>
+	<field name="FOA_SORT_ORDER" class="java.math.BigDecimal"/>
+	<field name="REMAINING_PARTITIONS_COUNT" class="java.math.BigDecimal"/>
+	<filterExpression><![CDATA[$F{PARTITION_SUM} != null && $F{PARTITION_SUM}.doubleValue() > 0.0]]></filterExpression>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<summary>
+		<band height="42" splitType="Stretch">
+			<crosstab>
+				<reportElement uuid="2e29571d-9581-4bd2-81c7-9c98235758a2" x="0" y="0" width="572" height="42" isRemoveLineWhenBlank="true"/>
+				<rowGroup name="FOA_SORT_ORDER" width="5" totalPosition="End">
+					<bucket class="java.math.BigDecimal">
+						<bucketExpression><![CDATA[$F{FOA_SORT_ORDER}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents backcolor="#FFFFFF" mode="Opaque">
+							<textField isBlankWhenNull="true">
+								<reportElement uuid="a591306c-c0a4-4a93-877c-704cd26fc909" style="Crosstab Data Text" x="0" y="0" width="1" height="11" forecolor="#FFFFFF"/>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{FOA_SORT_ORDER}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents backcolor="#BFE1FF" mode="Opaque">
+							<staticText>
+								<reportElement uuid="f0ff3036-0894-4936-b109-eaf3d1a308c4" x="0" y="0" width="70" height="11"/>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<text><![CDATA[Total]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="FOA_DESCRIPTION" width="136" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{FOA_DESCRIPTION}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="58e39444-f431-426f-bfb9-ee4731d01c87" style="Crosstab Data Text" x="0" y="0" width="135" height="11" isRemoveLineWhenBlank="true">
+									<printWhenExpression><![CDATA[//$V{PARTITION_SUMMeasure_FOA_DESCRIPTION_PARTITION_CODE_ALL} != null && $V{PARTITION_SUMMeasure_FOA_DESCRIPTION_PARTITION_CODE_ALL}.doubleValue() > 0.0
+true]]></printWhenExpression>
+								</reportElement>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{FOA_DESCRIPTION}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents/>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<columnGroup name="PARTITION_CODE" height="1">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{PARTITION_CODE}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents backcolor="#FFFFFF" mode="Opaque">
+							<textField isBlankWhenNull="true">
+								<reportElement uuid="76509da8-c59f-4300-8a5a-a32a5225f05c" style="Crosstab Data Text" x="0" y="0" width="50" height="1"/>
+								<textElement textAlignment="Right" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{PARTITION_CODE}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents/>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<columnGroup name="PARTITION_DESCRIPTION" height="11" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{PARTITION_DESCRIPTION}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="5628ccc8-093f-4570-a2a1-b9be8315e03e" style="Crosstab Data Text" x="0" y="0" width="65" height="11"/>
+								<textElement textAlignment="Right">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{PARTITION_DESCRIPTION}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents/>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<measure name="PARTITION_SUMMeasure" class="java.math.BigDecimal" calculation="Sum">
+					<measureExpression><![CDATA[$F{PARTITION_SUM}]]></measureExpression>
+				</measure>
+				<crosstabCell width="65" height="11">
+					<cellContents>
+						<textField isStretchWithOverflow="true" pattern="" isBlankWhenNull="true">
+							<reportElement uuid="514e1aba-c644-45e1-a702-290cec6c4705" style="Crosstab Data Text" x="0" y="0" width="65" height="11" isRemoveLineWhenBlank="true">
+								<printWhenExpression><![CDATA[$V{PARTITION_SUMMeasure_FOA_DESCRIPTION_PARTITION_CODE_ALL} != null && $V{PARTITION_SUMMeasure_FOA_DESCRIPTION_PARTITION_CODE_ALL}.doubleValue() > 0.0]]></printWhenExpression>
+							</reportElement>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{PARTITION_SUMMeasure}]]></textFieldExpression>
+							<patternExpression><![CDATA[( $V{PARTITION_DESCRIPTION} != null && !($V{PARTITION_DESCRIPTION}.isEmpty()) && $V{PARTITION_DESCRIPTION}.indexOf( "%" ) >= 0
+    ? "#,##0.00"
+    : "#,##0"
+)
+]]></patternExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="65" height="11" rowTotalGroup="FOA_SORT_ORDER">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isStretchWithOverflow="true" pattern="" isBlankWhenNull="true">
+							<reportElement uuid="63851196-9587-4ecf-8755-4dbeea8d946d" style="Crosstab Data Text" x="0" y="0" width="65" height="11" isRemoveLineWhenBlank="true"/>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{PARTITION_SUMMeasure}]]></textFieldExpression>
+							<patternExpression><![CDATA[( $V{PARTITION_DESCRIPTION} != null && !($V{PARTITION_DESCRIPTION}.isEmpty()) && $V{PARTITION_DESCRIPTION}.indexOf( "%" ) >= 0
+    ? "#,##0.00"
+    : "#,##0"
+)
+]]></patternExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="50" columnTotalGroup="PARTITION_CODE">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isBlankWhenNull="true">
+							<reportElement uuid="afe30e1b-7d33-4b42-9cb2-c64840e23b54" style="Crosstab Data Text" x="0" y="0" width="50" height="25"/>
+							<textElement/>
+							<textFieldExpression><![CDATA[$V{PARTITION_SUMMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell rowTotalGroup="FOA_SORT_ORDER" columnTotalGroup="PARTITION_CODE">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isBlankWhenNull="true">
+							<reportElement uuid="20a27cea-79e9-4a10-99d8-a56eaf4a0897" style="Crosstab Data Text" x="0" y="0" width="50" height="25"/>
+							<textElement/>
+							<textFieldExpression><![CDATA[$V{PARTITION_SUMMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="65" height="0" rowTotalGroup="FOA_DESCRIPTION">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell rowTotalGroup="FOA_DESCRIPTION" columnTotalGroup="PARTITION_CODE">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" columnTotalGroup="PARTITION_DESCRIPTION">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" rowTotalGroup="FOA_SORT_ORDER" columnTotalGroup="PARTITION_DESCRIPTION">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="0" rowTotalGroup="FOA_DESCRIPTION" columnTotalGroup="PARTITION_DESCRIPTION">
+					<cellContents/>
+				</crosstabCell>
+			</crosstab>
+		</band>
+	</summary>
+</jasperReport>

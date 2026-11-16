@@ -68,8 +68,8 @@ export interface AptReportParams {
 const BASE = '/api/fta/apt/reports';
 
 /**
- * GET /api/fta/apt/reports/{code} — the report as a PDF, rendered in the backend. 501 until the
- * report's template has been added; the error carries the backend's message.
+ * GET /api/fta/apt/reports/{code} — the report as a PDF, rendered in the backend from APT2's own
+ * templates. An error carries the backend's message.
  */
 export function getAptReportPdf(code: string, params: AptReportParams = {}): Promise<Blob> {
   return apiGetForBlob(`${BASE}/${encodeURIComponent(code)}${toQuery({ ...params })}`);

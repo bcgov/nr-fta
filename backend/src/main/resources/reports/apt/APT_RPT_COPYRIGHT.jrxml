@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPT_COPYRIGHT" pageWidth="572" pageHeight="752" whenNoDataType="AllSectionsNoDetail" columnWidth="572" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="8ad76964-7456-4965-a8a4-29309d48fa9f">
+	<!-- Was THE.APT_RPT_DUMMY; the same one-row query (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[SELECT 1
+  FROM dual]]>
+	</queryString>
+	<field name="1" class="java.math.BigDecimal"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="279" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="66d90c3d-901d-4a6e-8b90-a94995cc5ffc" x="0" y="0" width="572" height="274"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[COPYRIGHT
+
+Copyright  2003, Province of British Columbia
+All rights reserved
+
+This material is owned by the Government of British Columbia and protected by copyright law.  You are free to use the content provided that you do not modify it and that you retain all copyright, disclaimer and other proprietary notices contained in the content.  For further information on copyright contact the Intellectual Property Program, fax: (250) 356-0846, email: QPIPPCopyright@gov.bc.ca
+
+DISCLAIMERS
+
+Warranty Disclaimer
+This information is provided as a public service by the Ministry of Forests, Lands, Natural Resource Operations and Rural Development, Government of British Columbia.  This report and all of the information it contains are provided "as is" without warranty of any kind, whether express or implied.  All implied warranties, including, without limitation, implied warranties of merchantability, fitness for a particular purpose, and non-infringement, are hereby expressly disclaimed.
+
+While reasonable efforts are made to ensure all information on this report is accurate and current as of the Report Date, such accuracy and currency can not be guaranteed and your reliance thereon is at your own risk.  It may contain errors and omissions.  Any errors and omissions may be reported to: Forests Tenures Branch, PO Box 9510, Stn Prov Gov, Victoria, BC V8W 9C2, ForestTenuresBranch@gov.bc.ca
+
+Limitation of Liabilities
+
+Under no circumstances will the Government of British Columbia be liable to any person or business entity for any direct, indirect, special, incidental, consequential, or other damages based on any use of this report including, without limitation, any lost profits, business interruption, or loss of programs or information, even if the Government of British Columbia has been specifically advised of the possibility of such damages.]]></text>
+			</staticText>
+		</band>
+	</title>
+</jasperReport>

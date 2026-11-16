@@ -16,7 +16,6 @@ export const aptPaths = {
     apportionmentId: number | string,
   ) =>
     `/apt/management-units/${muId}/history/${historyId}/apportionments/${apportionmentId}/commitments`,
-  commitmentHistory: (commitmentId: number | string) => `/apt/commitments/${commitmentId}/history`,
   licences: () => '/apt/licences',
   licenceDetail: (forestFileId: string) => `/apt/licences/${encodeURIComponent(forestFileId)}`,
   linkages: () => '/apt/linkages',

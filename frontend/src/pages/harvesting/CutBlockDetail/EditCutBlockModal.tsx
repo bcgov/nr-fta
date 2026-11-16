@@ -1,4 +1,4 @@
-import { Select, SelectItem, TextArea, TextInput } from '@carbon/react';
+import { Button, Select, SelectItem, TextArea, TextInput } from '@carbon/react';
 import { useEffect, useState, type FC } from 'react';
 
 import DateField from '@/components/DateField';
@@ -247,14 +247,11 @@ const EditCutBlockModal: FC<{
   return (
     <Modal
       open={open}
+      passiveModal
       className="detail-dialog"
       modalHeading={`${HEADINGS[section]} — cut block ${block.cutBlockId ?? ''}`}
-      primaryButtonText={saving ? 'Saving…' : 'Save'}
-      secondaryButtonText="Cancel"
-      primaryButtonDisabled={saving || !valid}
       onRequestClose={onClose}
-      onSecondarySubmit={onClose}
-      onRequestSubmit={submit}
+      preventCloseOnClickOutside
     >
       {section === 'block' ? (
         <div className="detail-dialog__grid">
@@ -299,6 +296,14 @@ const EditCutBlockModal: FC<{
           {dateInput('disturbanceEndDate', 'Logged Complete', rules.disturbanceLocked)}
         </div>
       )}
+      <div className="detail-dialog__actions">
+        <Button kind="tertiary" disabled={saving} onClick={onClose}>
+          Cancel
+        </Button>
+        <Button kind="primary" disabled={saving || !valid} onClick={() => void submit()}>
+          {saving ? 'Saving…' : 'Save'}
+        </Button>
+      </div>
     </Modal>
   );
 };

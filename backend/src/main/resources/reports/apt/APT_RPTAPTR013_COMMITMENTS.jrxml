@@ -1,0 +1,459 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR013_COMMITMENTS" pageWidth="752" pageHeight="572" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="752" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="cfeecab2-dcad-4744-ab21-d0e1e83b907a">
+	<style name="Crosstab Data Text" hAlign="Center"/>
+	<parameter name="p_in_rpt_date" class="java.util.Date"/>
+	<parameter name="p_in_org_unit_no" class="java.math.BigDecimal"/>
+	<parameter name="p_in_first_col" class="java.lang.Integer"/>
+	<parameter name="p_in_col_count" class="java.lang.Integer"/>
+	<!-- Was THE.APT_RPTAPTR013_COMMITMENTS; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[-- The procedure looped over the column list (c_tsa_codes, a UNION, so in sorted order), kept the
+-- columns ranked p_in_first_col .. +p_in_col_count-1 in a comma list, counted the ones after them,
+-- returned a single dummy row when the list was empty, and otherwise returned the rows whose
+-- column number is a substring of that list (LIKE '%' || n || '%'). Here: col_rank numbers the
+-- same UNION in the same order, col_window is the kept columns and the LIKE runs against each of
+-- them (the numbers contain no comma, so a substring of the list is a substring of one entry).
+-- The functions APT_RPT_APTR013_COMM_VOL_M3 / _COMM_COUNT (over APTR.COMMJ_MUNM_FOA_AAC_LIC) and
+-- _COMM_TOTAL_VOL / _COMM_TOTAL_CNT (over APTR.COMMJ_FOA_AAC_LIC) are the grouped CTEs mu_comm and
+-- reg_comm: their 'TSLPA' branch counts type-Z forest uses through the apportionment, every other
+-- FOA the forest use's own management unit; a missing group is 0, as the functions returned.
+WITH
+     munv AS ( -- APT_MGMT_UNIT_NAMES_V
+       SELECT DECODE(clt.column_name, 'TFL_NUMBER', 'T', 'TSA_NUMBER', 'U', 'WL_NUMBER', 'F')
+                                   AS apt_mgmt_unit_st,
+              clt.code_argument     AS mgmt_unit_number,
+              clt.expanded_result   AS mgmt_unit_name
+         FROM the.code_list_table clt
+        WHERE clt.column_name IN ('TFL_NUMBER', 'TSA_NUMBER', 'WL_NUMBER')
+       UNION
+       SELECT DECODE(clt2.column_name, 'MGMT_UNIT_TYPE', 'Z'),
+              NULL,
+              clt2.expanded_result
+         FROM the.code_list_table clt2
+        WHERE clt2.column_name = 'MGMT_UNIT_TYPE'
+          AND clt2.code_argument = 'Z'),
+     afcv AS ( -- APT_FOA_COMM_V
+       SELECT acat.apt_mgmt_unit_st,
+              acat.apt_foa_st,
+              clt.expanded_result,
+              acat.sort_order
+         FROM the.apt_apportionment_categories acat,
+              the.code_list_table clt
+        WHERE acat.commitable_foa_ind = 'Y'
+          AND clt.code_argument = acat.apt_foa_st
+          AND clt.column_name = 'FRM_AGRMNT_CD'),
+     commj AS ( -- APT_UNDELETED_COMMJ_V
+       SELECT cj.*
+         FROM the.apt_commitments_jn cj
+        WHERE cj.id NOT IN (SELECT d.id
+                              FROM the.apt_commitments_jn d
+                             WHERE d.jn_operation = 'DEL')),
+     commj_cur AS ( -- the journal rows the APTR cursors count: in the licence AAC, in effect, latest
+       SELECT c.forest_file_id, c.papt_id, c.allowable_annual_cut
+         FROM commj c
+        WHERE c.include_in_lic_aac_ind = 'Y'
+          AND CAST($P{p_in_rpt_date} AS DATE) BETWEEN c.effective_date AND NVL(c.expiry_date, TO_DATE('2999', 'YYYY'))
+          AND c.jn_datetime = (SELECT MAX(j.jn_datetime)
+                                 FROM commj j
+                                WHERE j.id = c.id
+                                  AND j.jn_datetime <= CAST($P{p_in_rpt_date} AS DATE))),
+     mu_comm AS ( -- APTR.COMMJ_MUNM_FOA_AAC_LIC per (management unit type, number, FOA)
+       SELECT mu.apt_mgmt_unit_st, mu.mgmt_unit_number, lic.apt_foa_st,
+              COUNT(DISTINCT c.forest_file_id) AS count_ffi,
+              SUM(c.allowable_annual_cut)      AS sum_commj_aac
+         FROM the.apt_licences         lic,
+              the.prov_forest_use      pfu,
+              the.tenure_term          tt,
+              commj_cur                c,
+              the.apt_management_units mu
+        WHERE pfu.forest_file_id = lic.forest_file_id
+          AND pfu.file_status_st IN ('HI', 'HS')
+          AND lic.apt_foa_st <> 'TSLPA'
+          AND pfu.forest_file_id = tt.forest_file_id
+          AND NVL(tt.current_expiry_dt, tt.initial_expiry_dt) > CAST($P{p_in_rpt_date} AS DATE)
+          AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE))
+          AND c.forest_file_id = lic.forest_file_id
+          AND mu.apt_mgmt_unit_st = pfu.mgmt_unit_type
+          AND mu.mgmt_unit_number = pfu.mgmt_unit_id
+        GROUP BY mu.apt_mgmt_unit_st, mu.mgmt_unit_number, lic.apt_foa_st
+       UNION ALL
+       SELECT mu.apt_mgmt_unit_st, mu.mgmt_unit_number, lic.apt_foa_st,
+              COUNT(DISTINCT c.forest_file_id),
+              SUM(c.allowable_annual_cut)
+         FROM the.apt_licences            lic,
+              the.prov_forest_use         pfu,
+              the.tenure_term             tt,
+              commj_cur                   c,
+              the.apt_part_apportionments papt,
+              the.apt_partitions          part,
+              the.apt_mgmt_unit_history   muh,
+              the.apt_management_units    mu
+        WHERE pfu.forest_file_id = lic.forest_file_id
+          AND pfu.file_status_st IN ('HI', 'HS')
+          AND lic.apt_foa_st = 'TSLPA'
+          AND pfu.forest_file_id = tt.forest_file_id
+          AND NVL(tt.current_expiry_dt, tt.initial_expiry_dt) > CAST($P{p_in_rpt_date} AS DATE)
+          AND c.forest_file_id = lic.forest_file_id
+          AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE))
+          AND pfu.mgmt_unit_type = 'Z'
+          AND pfu.forest_file_id = c.forest_file_id
+          AND c.papt_id = papt.id
+          AND papt.part_id = part.id
+          AND part.muh_id = muh.id
+          AND muh.mu_id = mu.id
+        GROUP BY mu.apt_mgmt_unit_st, mu.mgmt_unit_number, lic.apt_foa_st),
+     reg_comm AS ( -- APTR.COMMJ_FOA_AAC_LIC for the region, per FOA
+       SELECT lic.apt_foa_st,
+              COUNT(DISTINCT c.forest_file_id) AS count_ffi,
+              SUM(c.allowable_annual_cut)      AS sum_commj_aac
+         FROM the.apt_licences         lic,
+              the.prov_forest_use      pfu,
+              the.tenure_term          tt,
+              commj_cur                c,
+              the.apt_management_units mu
+        WHERE pfu.forest_file_id = lic.forest_file_id
+          AND pfu.file_status_st IN ('HI', 'HS')
+          AND lic.apt_foa_st <> 'TSLPA'
+          AND pfu.forest_file_id = tt.forest_file_id
+          AND NVL(tt.current_expiry_dt, tt.initial_expiry_dt) > CAST($P{p_in_rpt_date} AS DATE)
+          AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE))
+          AND c.forest_file_id = lic.forest_file_id
+          AND mu.apt_mgmt_unit_st = pfu.mgmt_unit_type
+          AND mu.mgmt_unit_number = pfu.mgmt_unit_id
+          AND mu.org_unit_no = $P{p_in_org_unit_no}
+        GROUP BY lic.apt_foa_st
+       UNION ALL
+       SELECT lic.apt_foa_st,
+              COUNT(DISTINCT c.forest_file_id),
+              SUM(c.allowable_annual_cut)
+         FROM the.apt_licences            lic,
+              the.prov_forest_use         pfu,
+              the.tenure_term             tt,
+              commj_cur                   c,
+              the.apt_part_apportionments papt,
+              the.apt_partitions          part,
+              the.apt_mgmt_unit_history   muh,
+              the.apt_management_units    mu
+        WHERE pfu.forest_file_id = lic.forest_file_id
+          AND pfu.file_status_st IN ('HI', 'HS')
+          AND lic.apt_foa_st = 'TSLPA'
+          AND pfu.forest_file_id = tt.forest_file_id
+          AND NVL(tt.current_expiry_dt, tt.initial_expiry_dt) > CAST($P{p_in_rpt_date} AS DATE)
+          AND c.forest_file_id = lic.forest_file_id
+          AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE))
+          AND pfu.mgmt_unit_type = 'Z'
+          AND pfu.forest_file_id = c.forest_file_id
+          AND c.papt_id = papt.id
+          AND papt.part_id = part.id
+          AND part.muh_id = muh.id
+          AND muh.mu_id = mu.id
+          AND mu.org_unit_no = $P{p_in_org_unit_no}
+        GROUP BY lic.apt_foa_st),
+     tsa AS ( -- the region's TSAs on the history row with the latest apportionment effective date
+       -- (a window MAX rather than the procedure's correlated MAX subquery; see APT_RPTAPTR013_APPORT_II_HA)
+       SELECT DISTINCT mgmt_unit_name, mgmt_unit_number
+         FROM (SELECT munv.mgmt_unit_name,
+                      mu.mgmt_unit_number,
+                      muh.apportionment_effective_date,
+                      MAX(CASE WHEN muh.apportionment_effective_date <= CAST($P{p_in_rpt_date} AS DATE)
+                               THEN muh.apportionment_effective_date END)
+                        OVER (PARTITION BY muh.mu_id) AS latest_apportionment_date
+                 FROM munv,
+                      the.apt_management_units  mu,
+                      the.apt_mgmt_unit_history muh
+                WHERE mu.apt_mgmt_unit_st = 'U'
+                  AND mu.mgmt_unit_number = munv.mgmt_unit_number
+                  AND mu.apt_mgmt_unit_st = munv.apt_mgmt_unit_st
+                  AND mu.id = muh.mu_id
+                  AND mu.org_unit_no = $P{p_in_org_unit_no}
+                  AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE)))
+        WHERE apportionment_effective_date = latest_apportionment_date),
+     comm_across AS ( -- COMM_ACROSS_PART1 (= c_tsa_codes)
+       SELECT mgmt_unit_name   AS tsa_sort_order,
+              mgmt_unit_name   AS tsa_mgmt_unit_name,
+              ' m3'            AS tsa_unit,
+              mgmt_unit_number AS tsa_mgmt_unit_number
+         FROM tsa
+       UNION
+       SELECT '0', 'Total', ' m3', 'total' FROM dual
+       UNION
+       SELECT mgmt_unit_name, mgmt_unit_name, '#', mgmt_unit_number || 'cnt' FROM tsa
+       UNION
+       SELECT '0', 'Total', '#', 'totalcnt' FROM dual),
+     col_rank AS (
+       SELECT tsa_mgmt_unit_number,
+              ROW_NUMBER() OVER (ORDER BY tsa_sort_order, tsa_mgmt_unit_name, tsa_unit, tsa_mgmt_unit_number)
+                AS rnk
+         FROM comm_across),
+     col_window AS (
+       SELECT tsa_mgmt_unit_number
+         FROM col_rank
+        WHERE rnk BETWEEN $P{p_in_first_col} AND $P{p_in_first_col} + $P{p_in_col_count} - 1),
+     col_remaining AS (
+       SELECT COUNT(CASE WHEN rnk > $P{p_in_first_col} + $P{p_in_col_count} - 1 THEN 1 END)
+                AS remaining_col_count
+         FROM col_rank),
+     comm_down AS ( -- COMM_DOWN_part1
+       SELECT afcv.sort_order      AS foa_sort_order,
+              afcv.apt_foa_st      AS foa_code,
+              afcv.expanded_result AS foa_description
+         FROM afcv
+        WHERE afcv.apt_mgmt_unit_st = 'U'),
+     comm_body AS ( -- COMM_BODY_PT1
+       SELECT mu.mgmt_unit_number         AS tsa_mgmt_unit_number,
+              afcv.apt_foa_st             AS foa_code,
+              NVL(mc.sum_commj_aac, 0)    AS comm_value
+         FROM the.apt_management_units mu
+        CROSS JOIN afcv
+         LEFT JOIN mu_comm mc
+           ON mc.apt_mgmt_unit_st = mu.apt_mgmt_unit_st
+          AND mc.mgmt_unit_number = mu.mgmt_unit_number
+          AND mc.apt_foa_st = afcv.apt_foa_st
+        WHERE mu.apt_mgmt_unit_st = 'U'
+          AND mu.org_unit_no = $P{p_in_org_unit_no}
+          AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE))
+       UNION
+       SELECT mu.mgmt_unit_number || 'cnt',
+              afcv.apt_foa_st,
+              NVL(mc.count_ffi, 0)
+         FROM the.apt_management_units mu
+        CROSS JOIN afcv
+         LEFT JOIN mu_comm mc
+           ON mc.apt_mgmt_unit_st = mu.apt_mgmt_unit_st
+          AND mc.mgmt_unit_number = mu.mgmt_unit_number
+          AND mc.apt_foa_st = afcv.apt_foa_st
+        WHERE mu.apt_mgmt_unit_st = 'U'
+          AND mu.org_unit_no = $P{p_in_org_unit_no}
+          AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE))
+       UNION
+       SELECT 'total',
+              afcv.apt_foa_st,
+              NVL(rc.sum_commj_aac, 0)
+         FROM afcv
+         LEFT JOIN reg_comm rc ON rc.apt_foa_st = afcv.apt_foa_st
+        WHERE afcv.apt_mgmt_unit_st = 'U'
+       UNION
+       SELECT 'totalcnt',
+              afcv.apt_foa_st,
+              NVL(rc.count_ffi, 0)
+         FROM afcv
+         LEFT JOIN reg_comm rc ON rc.apt_foa_st = afcv.apt_foa_st
+        WHERE afcv.apt_mgmt_unit_st = 'U')
+SELECT cd.foa_sort_order,
+       cd.foa_code,
+       cd.foa_description,
+       ca.tsa_sort_order,
+       ca.tsa_mgmt_unit_name,
+       ca.tsa_unit,
+       cb.comm_value,
+       cr.remaining_col_count
+  FROM comm_down cd
+ CROSS JOIN comm_across ca
+  JOIN comm_body cb
+    ON cb.foa_code = cd.foa_code
+   AND cb.tsa_mgmt_unit_number = ca.tsa_mgmt_unit_number
+ CROSS JOIN col_remaining cr
+ WHERE EXISTS (SELECT 1
+                 FROM col_window cw
+                WHERE cw.tsa_mgmt_unit_number LIKE '%' || ca.tsa_mgmt_unit_number || '%')
+UNION ALL
+-- No column in range: the procedure's single dummy row
+SELECT -1, 'dummy', 'dummy', 'dummy', 'dummy', 'dummy', -1, cr.remaining_col_count
+  FROM col_remaining cr
+ WHERE NOT EXISTS (SELECT 1 FROM col_window)]]>
+	</queryString>
+	<field name="FOA_SORT_ORDER" class="java.math.BigDecimal"/>
+	<field name="FOA_CODE" class="java.lang.String"/>
+	<field name="FOA_DESCRIPTION" class="java.lang.String"/>
+	<field name="TSA_SORT_ORDER" class="java.lang.String"/>
+	<field name="TSA_MGMT_UNIT_NAME" class="java.lang.String"/>
+	<field name="TSA_UNIT" class="java.lang.String"/>
+	<field name="COMM_VALUE" class="java.math.BigDecimal"/>
+	<field name="REMAINING_COL_COUNT" class="java.math.BigDecimal"/>
+	<filterExpression><![CDATA[$F{COMM_VALUE} != null && $F{COMM_VALUE}.doubleValue() > 0.0]]></filterExpression>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<summary>
+		<band height="42" splitType="Stretch">
+			<crosstab>
+				<reportElement uuid="fd4f342c-3a71-400b-8eaa-856e3b77a7e9" x="0" y="0" width="752" height="42" isRemoveLineWhenBlank="true"/>
+				<rowGroup name="FOA_SORT_ORDER" width="2" totalPosition="End">
+					<bucket class="java.math.BigDecimal">
+						<bucketExpression><![CDATA[$F{FOA_SORT_ORDER}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents mode="Opaque">
+							<textField isBlankWhenNull="true">
+								<reportElement uuid="0ce2a28f-6b36-4e20-bb40-e6364b2b5800" style="Crosstab Data Text" x="0" y="0" width="1" height="11" forecolor="#FFFFFF"/>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{FOA_SORT_ORDER}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents backcolor="#BFE1FF" mode="Opaque">
+							<staticText>
+								<reportElement uuid="59a0a599-a56c-443c-ae25-60ea0442e3e5" x="0" y="0" width="126" height="11"/>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<text><![CDATA[Total]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="FOA_DESCRIPTION" width="136" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{FOA_DESCRIPTION}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="ea387b42-ed76-4546-81a8-3d6ec467b1e3" style="Crosstab Data Text" x="0" y="0" width="135" height="11">
+									<printWhenExpression><![CDATA[//$V{COMM_VALUEMeasure_FOA_DESCRIPTION_TSA_SORT_ORDER_ALL} != null && $V{COMM_VALUEMeasure_FOA_DESCRIPTION_TSA_SORT_ORDER_ALL}.doubleValue() > 0.0
+true]]></printWhenExpression>
+								</reportElement>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{FOA_DESCRIPTION}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents/>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<columnGroup name="TSA_SORT_ORDER" height="1">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{TSA_SORT_ORDER}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents mode="Opaque">
+							<textField isBlankWhenNull="true">
+								<reportElement uuid="f6b4075e-06bc-4cb1-a8a2-a5061f7cc50e" style="Crosstab Data Text" x="0" y="0" width="50" height="1" forecolor="#FFFFFF"/>
+								<textElement textAlignment="Right" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{TSA_SORT_ORDER}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents/>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<columnGroup name="TSA_MGMT_UNIT_NAME" height="11" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{TSA_MGMT_UNIT_NAME}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="b17a26cc-6bef-40d9-ae6a-56e06c3da07a" style="Crosstab Data Text" x="0" y="0" width="65" height="11"/>
+								<textElement textAlignment="Right" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{TSA_MGMT_UNIT_NAME}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents/>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<columnGroup name="TSA_UNIT" height="11" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{TSA_UNIT}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="d6340e28-5e77-458d-bd54-bc5bdffca7a7" style="Crosstab Data Text" x="0" y="0" width="65" height="11"/>
+								<textElement textAlignment="Right" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{TSA_UNIT}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents/>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<measure name="COMM_VALUEMeasure" class="java.math.BigDecimal" calculation="Sum">
+					<measureExpression><![CDATA[$F{COMM_VALUE}]]></measureExpression>
+				</measure>
+				<crosstabCell width="65" height="11">
+					<cellContents>
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="a843a4ce-5173-4d5a-ab04-9dbf7ecc4fd4" style="Crosstab Data Text" x="0" y="0" width="65" height="11" isRemoveLineWhenBlank="true">
+								<printWhenExpression><![CDATA[$V{COMM_VALUEMeasure_FOA_DESCRIPTION_TSA_SORT_ORDER_ALL} != null && $V{COMM_VALUEMeasure_FOA_DESCRIPTION_TSA_SORT_ORDER_ALL}.doubleValue() > 0.0]]></printWhenExpression>
+							</reportElement>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{COMM_VALUEMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="65" height="11" rowTotalGroup="FOA_SORT_ORDER">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="ca0a8761-2c50-40c4-8f80-c9e587eeccbe" style="Crosstab Data Text" x="0" y="0" width="65" height="11" isRemoveLineWhenBlank="true"/>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{COMM_VALUEMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="50" columnTotalGroup="TSA_SORT_ORDER">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isBlankWhenNull="true">
+							<reportElement uuid="0d3a9cd1-36d0-44b7-93f6-3833643dc77e" style="Crosstab Data Text" x="0" y="0" width="50" height="25"/>
+							<textElement/>
+							<textFieldExpression><![CDATA[$V{COMM_VALUEMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell rowTotalGroup="FOA_SORT_ORDER" columnTotalGroup="TSA_SORT_ORDER">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isBlankWhenNull="true">
+							<reportElement uuid="e0d3d148-8e96-426f-9188-d5aa998ef6e9" style="Crosstab Data Text" x="0" y="0" width="50" height="25"/>
+							<textElement/>
+							<textFieldExpression><![CDATA[$V{COMM_VALUEMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="65" height="0" rowTotalGroup="FOA_DESCRIPTION">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell rowTotalGroup="FOA_DESCRIPTION" columnTotalGroup="TSA_SORT_ORDER">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" columnTotalGroup="TSA_MGMT_UNIT_NAME">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" rowTotalGroup="FOA_SORT_ORDER" columnTotalGroup="TSA_MGMT_UNIT_NAME">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="0" rowTotalGroup="FOA_DESCRIPTION" columnTotalGroup="TSA_MGMT_UNIT_NAME">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" columnTotalGroup="TSA_UNIT">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" rowTotalGroup="FOA_SORT_ORDER" columnTotalGroup="TSA_UNIT">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="0" rowTotalGroup="FOA_DESCRIPTION" columnTotalGroup="TSA_UNIT">
+					<cellContents/>
+				</crosstabCell>
+			</crosstab>
+		</band>
+	</summary>
+</jasperReport>

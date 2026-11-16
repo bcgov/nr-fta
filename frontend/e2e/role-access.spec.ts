@@ -19,13 +19,25 @@ const HARVEST_DISTRICT = 'FTA_HARVEST_AUTH_DISTRICT_ADMIN';
 const MARK_HQ = 'FTA_TIMBER_MARK_HEADQUARTERS_ADMIN';
 const MARK_DISTRICT = 'FTA_TIMBER_MARK_DISTRICT_ADMIN';
 const APT = 'FTA_APT_ADMIN';
+const APT_VIEWER = 'FTA_APT_VIEWER';
 const VIEWER = 'FTA_VIEWER';
 
-const ALL_ROLES = [ADMIN, HARVEST_SENIOR, HARVEST_DISTRICT, MARK_HQ, MARK_DISTRICT, APT, VIEWER];
+const ALL_ROLES = [
+  ADMIN,
+  HARVEST_SENIOR,
+  HARVEST_DISTRICT,
+  MARK_HQ,
+  MARK_DISTRICT,
+  VIEWER,
+  APT,
+  APT_VIEWER,
+];
 const MARK_ROLES = [MARK_HQ, MARK_DISTRICT];
-const WIDE_READ_ROLES = [HARVEST_SENIOR, HARVEST_DISTRICT, APT, VIEWER];
+/** The APT roles open the Apportionment pages and nothing else, as legacy APT2 was its own app. */
+const APT_ROLES = [APT, APT_VIEWER];
+const WIDE_READ_ROLES = [HARVEST_SENIOR, HARVEST_DISTRICT, VIEWER];
 /** Everyone but FTA_ADMIN and FTA_HARVEST_AUTH_SENIOR_ADMIN (access.canManageHarvest). */
-const NOT_HARVEST_MANAGERS = [HARVEST_DISTRICT, ...MARK_ROLES, APT, VIEWER];
+const NOT_HARVEST_MANAGERS = [HARVEST_DISTRICT, ...MARK_ROLES, VIEWER];
 
 const PERMIT_PATH = `/harvesting-authority/${PERMIT_ID}?forestFileId=${FILE_ID}`;
 const BLOCK_PATH = `/cut-block/${BLOCK_ID}?forestFileId=${FILE_ID}&cuttingPermitId=${PERMIT_ID}`;
@@ -65,7 +77,8 @@ test.describe('the menu', () => {
     [ADMIN]: ['Search', 'Tenures', 'Private Marks', 'Apportionment', 'Administration'],
     [HARVEST_SENIOR]: ['Search', 'Tenures', 'Private Marks', 'Apportionment'],
     [HARVEST_DISTRICT]: ['Search', 'Tenures', 'Private Marks', 'Apportionment'],
-    [APT]: ['Search', 'Tenures', 'Private Marks', 'Apportionment'],
+    [APT]: ['Apportionment'],
+    [APT_VIEWER]: ['Apportionment'],
     [VIEWER]: ['Search', 'Tenures', 'Private Marks', 'Apportionment'],
     [MARK_HQ]: ['Search', 'Private Marks'],
     [MARK_DISTRICT]: ['Search', 'Private Marks'],
@@ -84,10 +97,12 @@ test.describe('the menu', () => {
         await expect(sideNav(page).getByRole('link')).toHaveText(['Tenures', 'Timber Marks']);
       }
 
-      await openNavSection(page, 'Private Marks');
-      await expect(page.getByTestId('side-nav-link-marks-application')).toHaveCount(
-        MARK_CREATORS.includes(role) ? 1 : 0,
-      );
+      if (SECTIONS[role].includes('Private Marks')) {
+        await openNavSection(page, 'Private Marks');
+        await expect(page.getByTestId('side-nav-link-marks-application')).toHaveCount(
+          MARK_CREATORS.includes(role) ? 1 : 0,
+        );
+      }
 
       if (SECTIONS[role].includes('Tenures')) {
         await openNavSection(page, 'Tenures');
@@ -117,6 +132,20 @@ test.describe('the menu', () => {
     ]);
   });
 
+  test('a viewer who is also an APT administrator keeps the viewer menus', async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, [VIEWER, APT]);
+    await gotoProtected(page, '/welcome');
+    await expect(sideNav(page).getByRole('button')).toHaveText([
+      'Search',
+      'Tenures',
+      'Private Marks',
+      'Apportionment',
+    ]);
+  });
+
   test('a role scoped to a district still counts as that role', async ({ page, context }) => {
     await signInAs(context, [`${ADMIN}_DISTRICT-DCC`]);
     await gotoProtected(page, '/welcome');
@@ -125,7 +154,7 @@ test.describe('the menu', () => {
 });
 
 test.describe('the route guard', () => {
-  const GUARDED: { path: string; heading?: RegExp; deniedTo: string[] }[] = [
+  const PAGES: { path: string; heading?: RegExp; deniedTo: string[] }[] = [
     { path: '/admin/audit', deniedTo: [...WIDE_READ_ROLES, ...MARK_ROLES] },
     { path: '/admin/rates-fees', deniedTo: [...WIDE_READ_ROLES, ...MARK_ROLES] },
     { path: '/admin/billing/approval', deniedTo: [...WIDE_READ_ROLES, ...MARK_ROLES] },
@@ -137,7 +166,7 @@ test.describe('the route guard', () => {
     { path: '/tenures/add', deniedTo: ALL_ROLES.filter((r) => r !== ADMIN) },
     {
       path: `/harvesting-authority/${PERMIT_ID}/assign-marks`,
-      deniedTo: [...MARK_ROLES, APT, VIEWER],
+      deniedTo: [...MARK_ROLES, VIEWER],
     },
     {
       path: `/harvesting-authority/${PERMIT_ID}/suspend-blocks`,
@@ -146,7 +175,7 @@ test.describe('the route guard', () => {
     { path: `/cut-block/${BLOCK_ID}`, deniedTo: MARK_ROLES },
     { path: `/cut-block/${BLOCK_ID}/relabel`, deniedTo: NOT_HARVEST_MANAGERS },
     { path: `/cut-block/${BLOCK_ID}/suspension`, deniedTo: NOT_HARVEST_MANAGERS },
-    { path: '/marks/application', deniedTo: [HARVEST_SENIOR, HARVEST_DISTRICT, APT, VIEWER] },
+    { path: '/marks/application', deniedTo: [HARVEST_SENIOR, HARVEST_DISTRICT, VIEWER] },
     { path: '/search/tenure', deniedTo: [] },
     { path: '/search/timber-mark', deniedTo: [] },
     { path: '/marks', deniedTo: [] },
@@ -156,7 +185,15 @@ test.describe('the route guard', () => {
     { path: '/apt/licences', deniedTo: MARK_ROLES },
     { path: '/apt/linkages', deniedTo: MARK_ROLES },
     { path: '/apt/reports', deniedTo: MARK_ROLES },
+    {
+      path: '/apt/management-units/new',
+      deniedTo: ALL_ROLES.filter((r) => r !== ADMIN && r !== APT),
+    },
   ];
+  // Outside /apt, the APT roles are refused everywhere.
+  const GUARDED = PAGES.map((p) =>
+    p.path.startsWith('/apt') ? p : { ...p, deniedTo: [...p.deniedTo, ...APT_ROLES] },
+  );
 
   for (const role of ALL_ROLES) {
     test(`${role}`, async ({ page, context }) => {
@@ -174,7 +211,7 @@ test.describe('the route guard', () => {
 test.describe('harvest authorization actions', () => {
   const EDITORS = [ADMIN, HARVEST_SENIOR, HARVEST_DISTRICT];
 
-  for (const role of [...EDITORS, APT, VIEWER]) {
+  for (const role of [...EDITORS, VIEWER]) {
     const edits = EDITORS.includes(role);
 
     test(`${role} ${edits ? 'can' : 'cannot'} act on a cutting permit`, async ({
@@ -259,6 +296,7 @@ test.describe('apportionment actions', () => {
     [`${MARK_HQ} + ${APT}`, [MARK_HQ, APT], true],
     [HARVEST_SENIOR, [HARVEST_SENIOR], false],
     [VIEWER, [VIEWER], false],
+    [APT_VIEWER, [APT_VIEWER], false],
   ] as const) {
     test(`${name} ${edits ? 'can' : 'cannot'} create management units and relationships`, async ({
       page,

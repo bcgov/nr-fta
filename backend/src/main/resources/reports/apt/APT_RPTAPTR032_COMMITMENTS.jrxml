@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR032_COMMITMENTS" pageWidth="572" pageHeight="752" whenNoDataType="AllSectionsNoDetail" columnWidth="572" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="8cfdcf40-45ae-4e9a-89bc-9008dbad10f1">
+	<parameter name="p_in_rpt_date" class="java.util.Date"/>
+	<!-- Was THE.APT_RPTAPTR032_COMMITMENTS; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[SELECT 'TSA' mgmt_unit_code,
+       acat.sort_order sort_order,
+       foa_view.expanded_result foa_description,
+       SUM(commj.allowable_annual_cut) comm_aac,
+       COUNT(DISTINCT pfu.forest_file_id) lic_count
+  FROM the.prov_forest_use              pfu,
+       the.apt_management_units         mu,
+       the.tenure_term                  tt,
+       the.apt_licences                 lic,
+       the.apt_apportionment_categories acat,
+       the.apt_commitments_jn           commj,
+       (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)              foa_view
+ WHERE pfu.file_status_st IN ('HI', 'HS') AND
+       pfu.mgmt_unit_type = mu.apt_mgmt_unit_st AND
+       pfu.mgmt_unit_id = mu.mgmt_unit_number AND
+       mu.mgmt_unit_status_st = 'ACT' AND
+       pfu.forest_file_id = tt.forest_file_id AND
+       (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+               to_date('9999-12-31',
+                       'YYYY-MM-DD'),
+               tt.initial_expiry_dt,
+               tt.current_expiry_dt) > CAST($P{p_in_rpt_date} AS DATE)) AND
+       pfu.forest_file_id = lic.forest_file_id AND
+       lic.forest_file_id = commj.forest_file_id AND
+       acat.apt_foa_st = lic.apt_foa_st AND
+       acat.apt_mgmt_unit_st = 'U' AND pfu.mgmt_unit_type = 'U' AND
+       commj.effective_date <= CAST($P{p_in_rpt_date} AS DATE) AND
+       nvl(commj.expiry_date,
+           to_date('2999-12-31',
+                   'YYYY-MM-DD')) > CAST($P{p_in_rpt_date} AS DATE) AND
+       commj.jn_datetime =
+       (SELECT MAX(jn_datetime)
+          FROM (SELECT ucj.jn_datetime, ucj.id, ucj.forest_file_id, ucj.apt_partition_st, ucj.commit_type_st, ucj.allowable_annual_cut, ucj.include_in_lic_aac_ind, ucj.determination_date, ucj.effective_date, ucj.expiry_date, ucj.papt_id FROM the.apt_commitments_jn ucj WHERE ucj.id NOT IN (SELECT ucj_del.id FROM the.apt_commitments_jn ucj_del WHERE ucj_del.jn_operation = 'DEL'))
+         WHERE id = commj.id) AND
+       commj.include_in_lic_aac_ind = 'Y' AND
+       acat.apt_foa_st = foa_view.code_argument AND
+           acat.apt_mgmt_unit_st = foa_view.APT_MGMT_UNIT_ST
+ GROUP BY 'TSA',
+          foa_view.expanded_result,
+          acat.sort_order
+UNION
+    -- This subquery selects the TSA row "Pulpwood Agreement TSL", and perhaps
+    -- others in another environment.
+    SELECT 'TSA' mgmt_unit_code,
+           acat.sort_order sort_order,
+           foa_view.expanded_result foa_description,
+           SUM(commj.allowable_annual_cut) comm_aac,
+           COUNT(DISTINCT pfu.forest_file_id) lic_count
+      FROM the.prov_forest_use              pfu,
+           the.tenure_term                  tt,
+           the.apt_licences                 lic,
+           the.apt_apportionment_categories acat,
+           the.apt_commitments_jn           commj,
+           (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)              foa_view
+     WHERE pfu.file_status_st IN ('HI', 'HS') AND
+           pfu.mgmt_unit_type = 'Z' AND
+           pfu.forest_file_id = tt.forest_file_id AND
+           (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                   to_date('9999-12-31',
+                           'YYYY-MM-DD'),
+                   tt.initial_expiry_dt,
+                   tt.current_expiry_dt) > CAST($P{p_in_rpt_date} AS DATE)) AND
+           pfu.forest_file_id = lic.forest_file_id AND
+           lic.forest_file_id = commj.forest_file_id AND
+           acat.apt_foa_st = lic.apt_foa_st AND
+           acat.apt_mgmt_unit_st = 'U' AND pfu.mgmt_unit_type = 'Z' AND
+           commj.effective_date <= CAST($P{p_in_rpt_date} AS DATE) AND
+           nvl(commj.expiry_date,
+               to_date('2999-12-31',
+                       'YYYY-MM-DD')) > CAST($P{p_in_rpt_date} AS DATE) AND
+           commj.jn_datetime =
+           (SELECT MAX(jn_datetime)
+              FROM (SELECT ucj.jn_datetime, ucj.id, ucj.forest_file_id, ucj.apt_partition_st, ucj.commit_type_st, ucj.allowable_annual_cut, ucj.include_in_lic_aac_ind, ucj.determination_date, ucj.effective_date, ucj.expiry_date, ucj.papt_id FROM the.apt_commitments_jn ucj WHERE ucj.id NOT IN (SELECT ucj_del.id FROM the.apt_commitments_jn ucj_del WHERE ucj_del.jn_operation = 'DEL'))
+             WHERE id = commj.id) AND
+           commj.include_in_lic_aac_ind = 'Y' AND
+           acat.apt_foa_st = foa_view.code_argument AND
+           acat.apt_mgmt_unit_st = foa_view.APT_MGMT_UNIT_ST
+     GROUP BY 'TSA',
+              acat.sort_order,
+              foa_view.expanded_result
+    UNION
+        -- This subquery selects the TFL rows.
+        SELECT decode(pfu.mgmt_unit_type,
+                      'T',
+                      'TFL')                   mgmt_unit_code,
+               acat.sort_order          sort_order,
+               foa_view.expanded_result foa_description,
+               SUM(commj.allowable_annual_cut)                      tw_comm_aac,
+               COUNT(DISTINCT pfu.forest_file_id)                    lic_count_tw
+          FROM the.prov_forest_use      pfu,
+               the.apt_management_units mu,
+               the.tenure_term tt,
+               the.apt_licences                 lic,
+               the.apt_apportionment_categories acat,
+               the.apt_commitments_jn           commj,
+               (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)              foa_view
+         WHERE pfu.file_status_st IN ('HI', 'HS') AND
+               pfu.mgmt_unit_type = mu.apt_mgmt_unit_st AND
+               pfu.mgmt_unit_id = mu.mgmt_unit_number AND
+               mu.mgmt_unit_status_st = 'ACT' AND
+               pfu.forest_file_id = tt.forest_file_id AND
+               (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                       to_date('9999-12-31',
+                               'YYYY-MM-DD'),
+                       tt.initial_expiry_dt,
+                       tt.current_expiry_dt) > CAST($P{p_in_rpt_date} AS DATE)) AND
+               pfu.mgmt_unit_type IN ('T') --, 'F') CR10
+               AND pfu.forest_file_id = lic.forest_file_id AND
+               lic.forest_file_id = commj.forest_file_id AND
+               acat.apt_foa_st = lic.apt_foa_st AND
+               acat.apt_mgmt_unit_st = pfu.mgmt_unit_type AND
+               commj.effective_date(+) <= CAST($P{p_in_rpt_date} AS DATE) AND
+               nvl(commj.expiry_date,
+                   to_date('2999-12-31',
+                           'YYYY-MM-DD')) > CAST($P{p_in_rpt_date} AS DATE) AND
+               nvl(commj.jn_datetime,
+                   to_date('18001231',
+                           'YYYYMMDD')) =
+               (SELECT nvl(MAX(jn_datetime),
+                           to_date('18001231',
+                                   'YYYYMMDD'))
+                  FROM (SELECT ucj.jn_datetime, ucj.id, ucj.forest_file_id, ucj.apt_partition_st, ucj.commit_type_st, ucj.allowable_annual_cut, ucj.include_in_lic_aac_ind, ucj.determination_date, ucj.effective_date, ucj.expiry_date, ucj.papt_id FROM the.apt_commitments_jn ucj WHERE ucj.id NOT IN (SELECT ucj_del.id FROM the.apt_commitments_jn ucj_del WHERE ucj_del.jn_operation = 'DEL'))
+                 WHERE id = commj.id) AND
+               commj.include_in_lic_aac_ind = 'Y' AND
+               foa_view.code_argument = acat.apt_foa_st AND
+           acat.apt_mgmt_unit_st = foa_view.APT_MGMT_UNIT_ST
+         GROUP BY decode(pfu.mgmt_unit_type,
+                         'T',
+                         'TFL'), -- 'F', 'WL') CR10
+                  foa_view.expanded_result,
+                  acat.sort_order]]>
+	</queryString>
+	<field name="MGMT_UNIT_CODE" class="java.lang.String"/>
+	<field name="SORT_ORDER" class="java.math.BigDecimal"/>
+	<field name="FOA_DESCRIPTION" class="java.lang.String"/>
+	<field name="COMM_AAC" class="java.math.BigDecimal"/>
+	<field name="LIC_COUNT" class="java.math.BigDecimal"/>
+	<variable name="mgmt_unit_total_COMM_AAC" class="java.math.BigDecimal" resetType="Group" resetGroup="MGMT_UNIT_CODE" calculation="Sum">
+		<variableExpression><![CDATA[$F{COMM_AAC}]]></variableExpression>
+	</variable>
+	<variable name="mgmt_unit_total_LIC_COUNT" class="java.math.BigDecimal" resetType="Group" resetGroup="MGMT_UNIT_CODE" calculation="Sum">
+		<variableExpression><![CDATA[$F{LIC_COUNT}]]></variableExpression>
+	</variable>
+	<variable name="grand_total_COMM_AAC" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{COMM_AAC}]]></variableExpression>
+	</variable>
+	<variable name="grand_total_LIC_COUNT" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{LIC_COUNT}]]></variableExpression>
+	</variable>
+	<group name="MGMT_UNIT_CODE">
+		<groupExpression><![CDATA[$F{MGMT_UNIT_CODE}]]></groupExpression>
+		<groupFooter>
+			<band height="26">
+				<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+					<reportElement uuid="2917a33c-6cfe-472a-bff6-b7a88aa3b11d" x="275" y="11" width="100" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{mgmt_unit_total_COMM_AAC}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+					<reportElement uuid="8658a1d0-c9cc-4bce-971f-af12aca1ed55" x="387" y="11" width="100" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{mgmt_unit_total_LIC_COUNT}]]></textFieldExpression>
+				</textField>
+				<line>
+					<reportElement uuid="95f8a136-c149-48a0-9c8b-1a678df19caa" x="275" y="10" width="212" height="1"/>
+				</line>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement uuid="10c27a6d-261d-4c7e-b6f2-1fe56f54b808" x="158" y="11" width="100" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{MGMT_UNIT_CODE}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="13" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="1f584aa8-6da1-49fe-92e5-c8bd7513dc96" x="0" y="2" width="39" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="9f217996-4ba3-49ce-b78c-01bfd598bdcd" x="49" y="2" width="209" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="229acaf6-b285-463b-8fc9-22135a337517" x="275" y="2" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[m3]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="d3413d29-0196-4636-8b16-975d141c91a9" x="387" y="2" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[#]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="11" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="6e2c91f0-52c0-430b-8f0b-5db0dacc911d" x="0" y="0" width="39" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{MGMT_UNIT_CODE}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="f9efe29f-07ab-488c-965b-b1e6f47f7f5a" x="49" y="0" width="209" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{FOA_DESCRIPTION}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="06e88b30-a476-4f23-b5c9-4ae433c0eed1" x="275" y="0" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{COMM_AAC}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="d39804fc-318d-42cb-907b-21147263d29a" x="387" y="0" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{LIC_COUNT}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="28" splitType="Stretch">
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="08977af8-8533-435f-8f59-295523ff29dd" x="275" y="11" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{grand_total_COMM_AAC}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="56b6cd54-8d7d-450e-bdfa-8877fb729e9b" x="387" y="11" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{grand_total_LIC_COUNT}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement uuid="95f8a136-c149-48a0-9c8b-1a678df19caa" x="275" y="10" width="212" height="1"/>
+			</line>
+			<staticText>
+				<reportElement uuid="15f12b1f-2131-4cb9-95ce-3ec9f1cab455" x="0" y="11" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Total]]></text>
+			</staticText>
+		</band>
+	</summary>
+</jasperReport>

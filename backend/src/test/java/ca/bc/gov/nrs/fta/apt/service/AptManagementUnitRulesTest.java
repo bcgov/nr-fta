@@ -61,11 +61,11 @@ class AptManagementUnitRulesTest {
   }
 
   @Test
-  void aDeterminationNeedsItsDatesAndAac() {
+  void aDeterminationNeedsItsDatesButNotAac() {
     assertThat(AptManagementUnitRules.historyProblem(history(BigDecimal.TEN, null, null)))
         .isNull();
-    assertThat(AptManagementUnitRules.historyProblem(history(null, null, null)))
-        .startsWith("AAC (m³) is required");
+    // AAC (m³) is optional, as in APT2.
+    assertThat(AptManagementUnitRules.historyProblem(history(null, null, null))).isNull();
     assertThat(AptManagementUnitRules.historyProblem(new AptManagementUnitHistoryRequest(null,
         null, DAY, BigDecimal.ONE, null, null, null, null, null, null, null, null, null, null)))
         .startsWith("AAC Determination Date");

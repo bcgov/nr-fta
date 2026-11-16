@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR0033_APT_M3" pageWidth="752" pageHeight="572" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="752" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="7d82b29e-8edd-422a-9dd0-7a34eae3c7df">
+	<style name="Crosstab Data Text" hAlign="Center"/>
+	<parameter name="p_in_rpt_date" class="java.util.Date"/>
+	<!-- Was THE.APT_RPTAPTR033_APT_M3; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[       SELECT decode(foa_body_m3.bb_apt_mgmt_unit_st,
+                     'TFL',
+                     'B',
+                     'TSA',
+                     'A',
+                     foa_body_m3.bb_apt_mgmt_unit_st) apt_mu_sort_order,
+              foa_body_m3.bb_apt_mgmt_unit_st apt_mgmt_unit,
+              foa_body_m3.expanded_result foa_description,
+              foa_body_m3.sort_order foa_sort_order,
+              foa_body_m3.paptb_aac sum_aac,
+              regions_m3.aa_org_unit_code || ' (m3)' org_unit_code,
+              CASE WHEN (SELECT SUM(paptb.allowable_annual_cut_ha) paptb_aac_ha
+ FROM the.apt_management_units    mu,
+      the.apt_mgmt_unit_history   muh,
+      the.apt_partitions          partb,
+      (SELECT clt.code_argument part_type_cd, clt.expanded_result part_type_desc FROM the.code_list_table clt, the.code_subset_tbl cst WHERE cst.code_subset_name = 'APT_PART_RPT_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument)          aprvb,
+      the.apt_part_apportionments paptb,
+      (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)         aftvb
+WHERE (mu.mgmt_unit_status_st = 'ACT' or mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE)) AND --RY U42
+      mu.apt_mgmt_unit_st IN ('U', 'T') AND mu.id = muh.mu_id AND
+      to_char(muh.effective_date,
+              'YYYYMMDD') ||
+      to_char(nvl(muh.apportionment_effective_date,
+                  to_date('29991231',
+                          'YYYYMMDD')),
+              'YYYYMMDD') =
+      (SELECT MAX(to_char(effective_date,
+                          'YYYYMMDD') ||
+                  to_char(nvl(apportionment_effective_date,
+                              to_date('29991231',
+                                      'YYYYMMDD')),
+                          'YYYYMMDD'))
+         FROM the.apt_mgmt_unit_history
+        WHERE mu_id = mu.id AND effective_date <= CAST($P{p_in_rpt_date} AS DATE) AND
+              nvl(apportionment_effective_date,
+                  to_date('1900',
+                          'YYYY')) <= CAST($P{p_in_rpt_date} AS DATE)) AND
+      partb.muh_id = muh.id AND
+      partb.apt_partition_st = aprvb.part_type_cd AND
+      paptb.part_id = partb.id AND
+      aftvb.code_argument = paptb.apt_foa_st AND
+      aftvb.apt_mgmt_unit_st = mu.apt_mgmt_unit_st) IS NULL THEN 'HIDE HA' ELSE 'SHOW HA' END ha_status
+         FROM (-- foa_body_m3
+               -- get the bulk of the report data
+               SELECT DISTINCT decode(mu.apt_mgmt_unit_st,
+                                      'U',
+                                      'TSA',
+                                      'T',
+                                      'TFL') bb_apt_mgmt_unit_st,
+                               aftvb.expanded_result,
+                               aftvb.sort_order sort_order,
+                               mu.org_unit_no,
+                               SUM(paptb.allowable_annual_cut) paptb_aac
+                 FROM the.apt_management_units    mu,
+                      the.apt_mgmt_unit_history   muh,
+                      the.apt_partitions          partb,
+                      (SELECT clt.code_argument part_type_cd, clt.expanded_result part_type_desc FROM the.code_list_table clt, the.code_subset_tbl cst WHERE cst.code_subset_name = 'APT_PART_RPT_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument)          aprvb,
+                      the.apt_part_apportionments paptb,
+                      (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)         aftvb
+                WHERE (mu.mgmt_unit_status_st = 'ACT' or mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE)) AND --RY U42
+                      mu.apt_mgmt_unit_st IN ('U', 'T') AND
+                      mu.id = muh.mu_id AND
+                      to_char(muh.effective_date,
+                              'YYYYMMDD') ||
+                      to_char(nvl(muh.apportionment_effective_date,
+                                  to_date('29991231',
+                                          'YYYYMMDD')),
+                              'YYYYMMDD') =
+                      (SELECT MAX(to_char(effective_date,
+                                          'YYYYMMDD') ||
+                                  to_char(nvl(apportionment_effective_date,
+                                              to_date('29991231',
+                                                      'YYYYMMDD')),
+                                          'YYYYMMDD'))
+                         FROM the.apt_mgmt_unit_history
+                        WHERE mu_id = mu.id AND effective_date <= CAST($P{p_in_rpt_date} AS DATE) AND
+                              nvl(apportionment_effective_date,
+                                  to_date('1900',
+                                          'YYYY')) <= CAST($P{p_in_rpt_date} AS DATE)) AND
+                      partb.muh_id = muh.id AND
+                      partb.apt_partition_st = aprvb.part_type_cd AND
+                      paptb.part_id = partb.id AND
+                      aftvb.code_argument = paptb.apt_foa_st AND
+                      aftvb.apt_mgmt_unit_st = mu.apt_mgmt_unit_st
+                GROUP BY decode(mu.apt_mgmt_unit_st,
+                                'U',
+                                'TSA',
+                                'T',
+                                'TFL'),
+                         aftvb.sort_order,
+                         aftvb.expanded_result,
+                         mu.org_unit_no) foa_body_m3,
+              (-- foa_labels
+               -- Selects which foa labels to display since foa_body_m3
+               -- returns too many.
+               SELECT DISTINCT decode(mu.apt_mgmt_unit_st,
+                                      'U',
+                                      'TSA',
+                                      'T',
+                                      'TFL') b1_apt_mgmt_unit_st,
+                               aftvb.expanded_result,
+                               aftvb.sort_order sort_order
+                 FROM the.apt_management_units    mu,
+                      the.apt_mgmt_unit_history   muh,
+                      the.apt_partitions          partb,
+                      the.apt_part_apportionments paptb,
+                      (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)         aftvb
+                WHERE (mu.mgmt_unit_status_st = 'ACT' or mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE)) AND --RY U42
+                      mu.apt_mgmt_unit_st IN ('U', 'T') --= 'U'
+                      AND mu.id = muh.mu_id AND partb.muh_id = muh.id AND
+                      paptb.part_id = partb.id AND
+                      aftvb.code_argument = paptb.apt_foa_st AND
+                      aftvb.apt_mgmt_unit_st = mu.apt_mgmt_unit_st AND
+                      aftvb.expiry_date > CAST($P{p_in_rpt_date} AS DATE)
+                GROUP BY decode(mu.apt_mgmt_unit_st,
+                                'U',
+                                'TSA',
+                                'T',
+                                'TFL'),
+                         aftvb.sort_order,
+                         aftvb.expanded_result) foa_labels,
+              ( -- regions_m3
+               -- Get the org unit codes for use in the column headings.
+               SELECT ou.org_unit_code aa_org_unit_code,
+                       ou.org_unit_no   org_unit_no
+                 FROM the.org_unit ou
+                WHERE ou.org_unit_code LIKE 'R__' AND
+                      effective_date <= CAST($P{p_in_rpt_date} AS DATE) AND expiry_date >= CAST($P{p_in_rpt_date} AS DATE)) regions_m3
+        WHERE foa_body_m3.org_unit_no = regions_m3.org_unit_no AND
+              foa_body_m3.bb_apt_mgmt_unit_st(+) =
+              foa_labels.b1_apt_mgmt_unit_st AND
+              foa_body_m3.expanded_result(+) = foa_labels.expanded_result AND
+              foa_body_m3.sort_order(+) = foa_labels.sort_order]]>
+	</queryString>
+	<field name="APT_MU_SORT_ORDER" class="java.lang.String"/>
+	<field name="APT_MGMT_UNIT" class="java.lang.String"/>
+	<field name="FOA_DESCRIPTION" class="java.lang.String"/>
+	<field name="FOA_SORT_ORDER" class="java.math.BigDecimal"/>
+	<field name="SUM_AAC" class="java.math.BigDecimal"/>
+	<field name="ORG_UNIT_CODE" class="java.lang.String"/>
+	<field name="HA_STATUS" class="java.lang.String"/>
+	<filterExpression><![CDATA[$F{SUM_AAC} != null && $F{SUM_AAC}.doubleValue() > 0.0]]></filterExpression>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<summary>
+		<band height="42" splitType="Stretch">
+			<crosstab>
+				<reportElement uuid="64c2bde9-7b35-4ad9-9de1-29f4ecc09c74" x="0" y="0" width="752" height="42" isRemoveLineWhenBlank="true"/>
+				<rowGroup name="APT_MU_SORT_ORDER" width="1" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{APT_MU_SORT_ORDER}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents mode="Opaque">
+							<textField isBlankWhenNull="true">
+								<reportElement uuid="8d604a76-6472-403d-beea-92476088d407" style="Crosstab Data Text" mode="Transparent" x="0" y="0" width="0" height="8" forecolor="#FFFFFF"/>
+								<textElement>
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{APT_MU_SORT_ORDER}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents backcolor="#005FB3" mode="Opaque">
+							<staticText>
+								<reportElement uuid="b2965669-0d2d-4987-b8a8-68f900027f20" x="0" y="0" width="170" height="11" forecolor="#FFFFFF"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[TOTALS]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="APT_MGMT_UNIT" width="34" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{APT_MGMT_UNIT}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="aecd3d07-3ab7-4d76-869b-11522cfe8480" style="Crosstab Data Text" x="0" y="0" width="33" height="11"/>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{APT_MGMT_UNIT}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents/>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="FOA_SORT_ORDER" width="2" totalPosition="End">
+					<bucket class="java.math.BigDecimal">
+						<bucketExpression><![CDATA[$F{FOA_SORT_ORDER}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents mode="Opaque">
+							<textField isBlankWhenNull="true">
+								<reportElement uuid="1eecc65b-688e-4a03-9a5f-9316a70b0a34" style="Crosstab Data Text" x="0" y="0" width="1" height="11" forecolor="#FFFFFF"/>
+								<textElement>
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{FOA_SORT_ORDER}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents backcolor="#BFE1FF" mode="Opaque">
+							<staticText>
+								<reportElement uuid="17596a5c-0d99-4917-8c25-efb4f388fd24" x="0" y="0" width="135" height="11"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<text><![CDATA[Totals]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="FOA_DESCRIPTION" width="133" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{FOA_DESCRIPTION}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="278a91f7-3f9a-4bf3-ba86-288617118c5a" style="Crosstab Data Text" x="0" y="0" width="133" height="11">
+									<printWhenExpression><![CDATA[//$V{SUM_AACMeasure_FOA_DESCRIPTION_ORG_UNIT_CODE_ALL} != null && $V{SUM_AACMeasure_FOA_DESCRIPTION_ORG_UNIT_CODE_ALL}.doubleValue() > 0.0
+true]]></printWhenExpression>
+								</reportElement>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{FOA_DESCRIPTION}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents/>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<columnGroup name="ORG_UNIT_CODE" height="11" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{ORG_UNIT_CODE}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents backcolor="#FFFFFF" mode="Opaque">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="ab341f83-28a1-47a6-9acd-012d62b35b35" style="Crosstab Data Text" x="0" y="0" width="62" height="11" isRemoveLineWhenBlank="true"/>
+								<textElement textAlignment="Right" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{ORG_UNIT_CODE}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents backcolor="#BFE1FF" mode="Opaque">
+							<staticText>
+								<reportElement uuid="47d9ff08-ce95-4673-bac8-20e629ef8dba" x="0" y="0" width="60" height="11"/>
+								<textElement textAlignment="Right" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<text><![CDATA[Totals]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<measure name="SUM_AACMeasure" class="java.math.BigDecimal" calculation="Sum">
+					<measureExpression><![CDATA[$F{SUM_AAC}]]></measureExpression>
+				</measure>
+				<crosstabCell width="62" height="11">
+					<cellContents>
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="4dc22a35-807e-4148-b1b5-299c25b75821" style="Crosstab Data Text" x="0" y="0" width="62" height="11" isRemoveLineWhenBlank="true">
+								<printWhenExpression><![CDATA[$V{SUM_AACMeasure_FOA_DESCRIPTION_ORG_UNIT_CODE_ALL} != null && $V{SUM_AACMeasure_FOA_DESCRIPTION_ORG_UNIT_CODE_ALL}.doubleValue() > 0.0]]></printWhenExpression>
+							</reportElement>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{SUM_AACMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="62" height="11" rowTotalGroup="APT_MU_SORT_ORDER">
+					<cellContents backcolor="#005FB3" mode="Opaque">
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="9a0b173c-28bc-4f2b-a7e7-55ae27f50e94" style="Crosstab Data Text" x="0" y="0" width="62" height="11" isRemoveLineWhenBlank="true" forecolor="#FFFFFF"/>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8" isBold="true"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{SUM_AACMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="60" height="11" columnTotalGroup="ORG_UNIT_CODE">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="3a974ae5-710f-4862-ae2f-9a3698e67a06" style="Crosstab Data Text" x="0" y="0" width="60" height="11" isRemoveLineWhenBlank="true">
+								<printWhenExpression><![CDATA[//$V{SUM_AACMeasure_FOA_DESCRIPTION_ORG_UNIT_CODE_ALL} != null && $V{SUM_AACMeasure_FOA_DESCRIPTION_ORG_UNIT_CODE_ALL}.doubleValue() > 0.0
+true]]></printWhenExpression>
+							</reportElement>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{SUM_AACMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="60" height="11" rowTotalGroup="APT_MU_SORT_ORDER" columnTotalGroup="ORG_UNIT_CODE">
+					<cellContents backcolor="#005FB3" mode="Opaque">
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="75aae86c-4a99-412f-a571-0e14b1f1dbab" style="Crosstab Data Text" x="0" y="0" width="60" height="11" isRemoveLineWhenBlank="true" forecolor="#FFFFFF"/>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8" isBold="true"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{SUM_AACMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="62" height="11" rowTotalGroup="FOA_SORT_ORDER">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="f407d4da-96ba-4df7-9bee-8bd4205eb883" style="Crosstab Data Text" x="0" y="0" width="62" height="11" isRemoveLineWhenBlank="true"/>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{SUM_AACMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="60" height="11" rowTotalGroup="FOA_SORT_ORDER" columnTotalGroup="ORG_UNIT_CODE">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="a6603343-2a5b-4de0-90b7-601c37aa9bc3" style="Crosstab Data Text" x="0" y="0" width="60" height="11" isRemoveLineWhenBlank="true"/>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{SUM_AACMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="62" height="0" rowTotalGroup="APT_MGMT_UNIT">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="60" height="0" rowTotalGroup="APT_MGMT_UNIT" columnTotalGroup="ORG_UNIT_CODE">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="62" height="0" rowTotalGroup="FOA_DESCRIPTION">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="60" height="0" rowTotalGroup="FOA_DESCRIPTION" columnTotalGroup="ORG_UNIT_CODE">
+					<cellContents/>
+				</crosstabCell>
+			</crosstab>
+		</band>
+	</summary>
+</jasperReport>

@@ -51,7 +51,6 @@ import AptManagementUnitEdit from './pages/apt/ManagementUnitEdit';
 import AptManagementUnitHistory from './pages/apt/ManagementUnitHistory';
 import AptManagementUnitDetail from './pages/apt/ManagementUnitDetail';
 import AptCommitments from './pages/apt/Commitments';
-import AptCommitmentHistory from './pages/apt/CommitmentHistory';
 import AptLicenceSearch from './pages/apt/LicenceSearch';
 import AptLicenceDetail from './pages/apt/LicenceDetail';
 import AptLinkages from './pages/apt/Linkages';
@@ -231,10 +230,6 @@ export default function App() {
           <Route
             path="/apt/management-units/:muId/history/:historyId/apportionments/:apportionmentId/commitments"
             element={guarded(withLayout(<AptCommitments />))}
-          />
-          <Route
-            path="/apt/commitments/:commitmentId/history"
-            element={guarded(withLayout(<AptCommitmentHistory />))}
           />
           <Route path="/apt/licences" element={guarded(withLayout(<AptLicenceSearch />))} />
           <Route

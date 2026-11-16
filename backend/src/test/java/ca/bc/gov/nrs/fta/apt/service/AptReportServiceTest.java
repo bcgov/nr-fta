@@ -30,6 +30,7 @@ class AptReportServiceTest {
         new AptReportParams(DAY, 42L, 7), "IDIR\\JSMITH"))
         .containsExactly(
             java.util.Map.entry("user", "IDIR\\JSMITH"),
+            java.util.Map.entry("User", "IDIR\\JSMITH"),
             java.util.Map.entry("in_rpt_date", "2026-03-31"),
             java.util.Map.entry("IN_MGMT_UNIT_ID", "42"));
   }

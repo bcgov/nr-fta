@@ -19,6 +19,7 @@ import DefinitionGrid from '@/components/DefinitionGrid';
 import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
 import CommitmentHistoryView from '@/pages/apt/CommitmentHistory/CommitmentHistoryView';
+import { commitmentTotals } from '@/pages/apt/Commitments/totals';
 import { aptPaths } from '@/routes/aptPaths';
 import {
   COMMITMENT_REASON_MAX,
@@ -30,19 +31,6 @@ import { formatDate } from '@/utils/formatDate';
 const nf = new Intl.NumberFormat('en-CA');
 const dash = (v: string | null | undefined) => (v && v.trim() ? v : '—');
 const num = (v: number | null | undefined) => (v == null ? '—' : nf.format(v));
-
-/** Total AAC, and the part of it counted towards the licences' AAC — APT2's two totals. */
-function commitmentTotals(rows: AptCommitment[]) {
-  return rows.reduce(
-    (t, c) => {
-      const aac = c.allowableAnnualCut ?? 0;
-      t.total += aac;
-      if (c.includeInLicAac === 'Y') t.included += aac;
-      return t;
-    },
-    { total: 0, included: 0 },
-  );
-}
 
 interface Props {
   rows: AptCommitment[];
@@ -91,7 +79,7 @@ const CommitmentsTable: FC<Props> = ({ rows, variant, canEdit, onEdit, onDeleted
                 <TableHeader>Effective Date</TableHeader>
                 <TableHeader>Expiry Date</TableHeader>
                 <TableHeader>Incl in AAC</TableHeader>
-                <TableHeader aria-label="Actions" />
+                <TableHeader>Actions</TableHeader>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -151,12 +139,7 @@ const CommitmentsTable: FC<Props> = ({ rows, variant, canEdit, onEdit, onDeleted
         modalHeading={`Commitment history — ${historyOf?.forestFileId ?? ''}`}
         onRequestClose={() => setHistoryOf(null)}
       >
-        {historyOf && (
-          <Stack gap={5}>
-            <CommitmentHistoryView commitmentId={historyOf.id} />
-            <Link to={aptPaths.commitmentHistory(historyOf.id)}>Open as a page</Link>
-          </Stack>
-        )}
+        {historyOf && <CommitmentHistoryView commitmentId={historyOf.id} />}
       </Modal>
 
       {canEdit && (

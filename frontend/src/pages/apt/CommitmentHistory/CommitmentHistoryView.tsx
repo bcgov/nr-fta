@@ -8,6 +8,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSelectRow,
 } from '@carbon/react';
 import { useCallback, useState, type FC } from 'react';
 
@@ -16,7 +17,7 @@ import DefinitionGrid from '@/components/DefinitionGrid';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
 import UserName from '@/components/UserName';
 import { useApiResource } from '@/hooks/useApiResource';
-import { getAptCommitmentHistory, type AptCommitmentHistory } from '@/services/apt/commitments';
+import { getAptCommitmentHistory } from '@/services/apt/commitments';
 import { formatDate } from '@/utils/formatDate';
 
 const nf = new Intl.NumberFormat('en-CA');
@@ -35,23 +36,14 @@ const formatDateTime = (v: string | null | undefined) => {
 
 interface Props {
   commitmentId: number | string;
-  /** Called once the journal has loaded, so a page can link to the licence. */
-  onLoaded?: (rows: AptCommitmentHistory[]) => void;
 }
 
 /**
  * APT2's APTM6200 Commitment History: the journal, newest first, and the commitment as the
- * selected entry left it. Shown as a page and in the commitment lists' History dialog.
+ * selected entry left it. Shown in the commitment lists' History dialog.
  */
-const CommitmentHistoryView: FC<Props> = ({ commitmentId, onLoaded }) => {
-  const fetcher = useCallback(
-    () =>
-      getAptCommitmentHistory(commitmentId).then((rows) => {
-        onLoaded?.(rows);
-        return rows;
-      }),
-    [commitmentId, onLoaded],
-  );
+const CommitmentHistoryView: FC<Props> = ({ commitmentId }) => {
+  const fetcher = useCallback(() => getAptCommitmentHistory(commitmentId), [commitmentId]);
   const { data, loading, error, reload } = useApiResource(fetcher, [fetcher]);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
 
@@ -73,6 +65,7 @@ const CommitmentHistoryView: FC<Props> = ({ commitmentId, onLoaded }) => {
               <Table size="md" useZebraStyles aria-label="Commitment journal">
                 <TableHead>
                   <TableRow>
+                    <TableHeader aria-label="Select" />
                     <TableHeader>Date and time</TableHeader>
                     <TableHeader>Change</TableHeader>
                     <TableHeader>User</TableHeader>
@@ -98,6 +91,14 @@ const CommitmentHistoryView: FC<Props> = ({ commitmentId, onLoaded }) => {
                           }
                         }}
                       >
+                        <TableSelectRow
+                          radio
+                          id={`apt-commitment-history-${r.rowId}`}
+                          name={`apt-commitment-history-${commitmentId}`}
+                          aria-label={`Select the entry of ${formatDateTime(r.jnDatetime)}`}
+                          checked={isSelected}
+                          onSelect={choose}
+                        />
                         <TableCell>{formatDateTime(r.jnDatetime)}</TableCell>
                         <TableCell>{operationLabel(r.jnOperation)}</TableCell>
                         <TableCell>

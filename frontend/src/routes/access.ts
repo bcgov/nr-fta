@@ -23,13 +23,14 @@ import type { FamLoginUser, ROLE_TYPE } from '@/context/auth/types';
  *   FTA_HARVEST_AUTH_       all except Admin              as senior, without suspensions,
  *     DISTRICT_ADMIN                                      conditions, postponements, relabel,
  *                                                         delete, or post-issue terms and rollbacks
- *   FTA_APT_ADMIN           all except Admin              apportionment (APT) writes, any org
- *                                                         unit; read-only elsewhere
  *   FTA_VIEWER              all except Admin              read-only (GET only)
+ *   FTA_APT_ADMIN           Apportionment only            apportionment (APT) writes, any org
+ *                                                         unit (legacy APT2's APT_EDITOR)
+ *   FTA_APT_VIEWER          Apportionment only            read-only (legacy APT2's APT_VIEWER)
  *
- * The one exception to "no stacking" is APT: FTA_APT_ADMIN is checked against every role the
- * user holds (canEditApt, and APT pages in isPathAllowedForUser), so a harvest or timber mark
- * administrator who is also an APT administrator keeps both.
+ * The one exception to "no stacking" is APT: the APT roles are checked against every role the
+ * user holds (canEditApt, holdsAptRole, and APT pages in isPathAllowedForUser), so a harvest or
+ * timber mark administrator who is also an APT administrator keeps both.
  */
 
 /** The user's single effective role (or undefined when none). */
@@ -113,6 +114,24 @@ function isAptPath(pathname: string): boolean {
 }
 
 /**
+ * Whether the user holds an APT role (FTA_APT_ADMIN or FTA_APT_VIEWER) among any of their roles,
+ * not just the effective one. The roles that read all of FTA reach the APT pages by their own
+ * rules; this is what keeps them open to an APT role outranked by a narrower one.
+ */
+export function holdsAptRole(user: FamLoginUser | null | undefined): boolean {
+  const held = user?.privileges ?? {};
+  return 'FTA_APT_ADMIN' in held || 'FTA_APT_VIEWER' in held;
+}
+
+/**
+ * The two APT roles. Legacy APT2 was an application of its own, so they open the APT pages and
+ * the Welcome page, and nothing else in FTA.
+ */
+function isAptRole(role: ROLE_TYPE | undefined): boolean {
+  return role === 'FTA_APT_ADMIN' || role === 'FTA_APT_VIEWER';
+}
+
+/**
  * The two timber mark roles. FTA_TIMBER_MARK_DISTRICT_ADMIN has exactly
  * FTA_TIMBER_MARK_HEADQUARTERS_ADMIN's pages; on a private mark it may change only the
  * marking requirements and instrument, and a cancelled (HX) mark's status to HI — the
@@ -165,6 +184,10 @@ const TIMBER_MARK_ADMIN_EXCLUDED: readonly string[] = ['/tenures/add'];
 export function isPathAllowedForRole(role: ROLE_TYPE | undefined, pathname: string): boolean {
   if (!role) return false;
 
+  if (isAptRole(role)) {
+    return pathname === '/welcome' || isAptPath(pathname);
+  }
+
   if (isTimberMarkRole(role)) {
     if (TIMBER_MARK_ADMIN_EXCLUDED.includes(pathname)) return false;
     return TIMBER_MARK_ADMIN_PAGES.some((pattern) => matchPath(pattern, pathname) !== null);
@@ -207,9 +230,9 @@ export function isPathAllowedForUser(
   pathname: string,
 ): boolean {
   if (!mayOpenWritePage(user, pathname)) return false;
-  // APT pages are open to every role that reads them, and to an APT administrator whatever
-  // role outranks it (a timber mark role's allow-list would otherwise shut them out).
-  if (isAptPath(pathname) && canEditApt(user)) return true;
+  // APT pages are open to every role that reads them, whatever role outranks it (a timber mark
+  // role's allow-list would otherwise shut an APT role out).
+  if (isAptPath(pathname) && holdsAptRole(user)) return true;
   return isPathAllowedForRole(effectiveRole(user), pathname);
 }
 

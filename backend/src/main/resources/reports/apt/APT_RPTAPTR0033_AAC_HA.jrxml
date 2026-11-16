@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR0033_AAC_HA" pageWidth="752" pageHeight="572" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="752" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="1d86cefa-2a84-4a06-b122-0a1093234a92">
+	<style name="Crosstab Data Text" hAlign="Center"/>
+	<parameter name="p_in_rpt_date" class="java.util.Date"/>
+	<!-- Was THE.APT_RPTAPTR033_AAC_HA; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[  SELECT cuts_ha.ab_apt_mgmt_unit_st,
+      regions_ha.aa_org_unit_code || ' (ha)' org_unit_label,
+      cuts_ha.sum_aac_ha sum_aac
+ FROM (-- cuts_ha
+       -- gets the bulk of the data
+       SELECT decode(mu.apt_mgmt_unit_st,
+                     'U',
+                     'Timber Supply Areas (TSA)',
+                     'T',
+                     'Tree Farm Licences (TFL)')         ab_apt_mgmt_unit_st,
+              mu.org_unit_no mu_org_unit_no,
+              SUM(muh.allowable_annual_cut_ha)            sum_aac_ha
+         FROM the.apt_management_units  mu,
+              the.apt_mgmt_unit_history muh
+        WHERE mu.mgmt_unit_status_st = 'ACT' AND
+              mu.apt_mgmt_unit_st IN ('T', 'U') AND mu.id = muh.mu_id AND
+              to_char(muh.effective_date,
+                      'YYYYMMDD') ||
+              to_char(nvl(muh.apportionment_effective_date,
+                          to_date('29991231',
+                                  'YYYYMMDD')),
+                      'YYYYMMDD') =
+              (SELECT MAX(to_char(effective_date,
+                                  'YYYYMMDD') ||
+                          to_char(nvl(apportionment_effective_date,
+                                      to_date('29991231',
+                                              'YYYYMMDD')),
+                                  'YYYYMMDD'))
+                 FROM the.apt_mgmt_unit_history muh
+                WHERE mu_id = mu.id AND effective_date <= SYSDATE AND
+                      nvl(apportionment_effective_date,
+                          to_date('1900',
+                                  'YYYY')) <= SYSDATE)
+        GROUP BY decode(mu.apt_mgmt_unit_st,
+                        'U',
+                        'Timber Supply Areas (TSA)',
+                        'T',
+                        'Tree Farm Licences (TFL)'),
+                 mu.org_unit_no) cuts_ha,
+      (-- regions_ha
+       -- gets the org units of the regions
+       SELECT ou.org_unit_code aa_org_unit_code,
+              ou.org_unit_no   org_unit_no
+         FROM the.org_unit ou
+        WHERE ou.org_unit_code LIKE 'R__' AND effective_date <= CAST($P{p_in_rpt_date} AS DATE)
+              AND expiry_date >= CAST($P{p_in_rpt_date} AS DATE)
+       ) regions_ha
+WHERE cuts_ha.mu_org_unit_no = regions_ha.org_unit_no]]>
+	</queryString>
+	<field name="AB_APT_MGMT_UNIT_ST" class="java.lang.String"/>
+	<field name="ORG_UNIT_LABEL" class="java.lang.String"/>
+	<field name="SUM_AAC" class="java.math.BigDecimal"/>
+	<filterExpression><![CDATA[$F{SUM_AAC} != null && $F{SUM_AAC}.doubleValue() > 0.0]]></filterExpression>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<summary>
+		<band height="42" splitType="Stretch">
+			<crosstab>
+				<reportElement uuid="37bbd766-70ea-460d-ab7b-96b242e9bfa5" x="0" y="0" width="752" height="42" isRemoveLineWhenBlank="true"/>
+				<rowGroup name="AB_APT_MGMT_UNIT_ST" width="112" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{AB_APT_MGMT_UNIT_ST}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents backcolor="#F0F8FF" mode="Opaque">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="40e365ef-546d-40d5-8761-fe145bc5ad4a" style="Crosstab Data Text" stretchType="RelativeToTallestObject" x="0" y="0" width="111" height="11">
+									<printWhenExpression><![CDATA[//$V{SUM_AACMeasure_ORG_UNIT_LABEL_ALL} != null && $V{SUM_AACMeasure_ORG_UNIT_LABEL_ALL}.doubleValue() > 0.0
+true]]></printWhenExpression>
+								</reportElement>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{AB_APT_MGMT_UNIT_ST}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents backcolor="#BFE1FF" mode="Opaque">
+							<staticText>
+								<reportElement uuid="39a9eacd-66b8-4500-b643-a6fd211f1326" x="0" y="0" width="111" height="11"/>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[TOTALS]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<columnGroup name="ORG_UNIT_LABEL" height="11" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{ORG_UNIT_LABEL}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents backcolor="#F0F8FF" mode="Opaque">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="1af77000-f70f-4198-b3d9-c6b79e650f11" style="Crosstab Data Text" x="0" y="0" width="70" height="11" isRemoveLineWhenBlank="true"/>
+								<textElement textAlignment="Right" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{ORG_UNIT_LABEL}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents backcolor="#BFE1FF" mode="Opaque">
+							<staticText>
+								<reportElement uuid="fea873a1-9cb4-485d-9312-47f917af0cb3" x="0" y="0" width="70" height="11"/>
+								<textElement textAlignment="Right" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<text><![CDATA[Total (ha)]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<measure name="SUM_AACMeasure" class="java.math.BigDecimal" calculation="Sum">
+					<measureExpression><![CDATA[$F{SUM_AAC}]]></measureExpression>
+				</measure>
+				<crosstabCell width="70" height="11">
+					<cellContents>
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="1bf85f06-e250-4618-a5cb-e9c58c5c1240" style="Crosstab Data Text" x="0" y="0" width="70" height="11" isRemoveLineWhenBlank="true">
+								<printWhenExpression><![CDATA[$V{SUM_AACMeasure_ORG_UNIT_LABEL_ALL} != null && $V{SUM_AACMeasure_ORG_UNIT_LABEL_ALL}.doubleValue() > 0.0]]></printWhenExpression>
+							</reportElement>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{SUM_AACMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="70" height="11" rowTotalGroup="AB_APT_MGMT_UNIT_ST">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="c0d9ca19-e0ab-4f78-8ffd-266ea307b22a" style="Crosstab Data Text" x="0" y="0" width="70" height="11" isRemoveLineWhenBlank="true"/>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{SUM_AACMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="70" height="11" columnTotalGroup="ORG_UNIT_LABEL">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="85ca9cec-fa57-4865-86b2-daa29bedbd22" style="Crosstab Data Text" x="0" y="0" width="70" height="11" isRemoveLineWhenBlank="true">
+								<printWhenExpression><![CDATA[//$V{SUM_AACMeasure_ORG_UNIT_LABEL_ALL} != null && $V{SUM_AACMeasure_ORG_UNIT_LABEL_ALL}.doubleValue() > 0.0
+true]]></printWhenExpression>
+							</reportElement>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{SUM_AACMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="70" height="11" rowTotalGroup="AB_APT_MGMT_UNIT_ST" columnTotalGroup="ORG_UNIT_LABEL">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+							<reportElement uuid="180f348d-0ad6-447e-8289-a02e4fccb8b8" style="Crosstab Data Text" x="0" y="0" width="70" height="11" isRemoveLineWhenBlank="true"/>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{SUM_AACMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+			</crosstab>
+		</band>
+	</summary>
+</jasperReport>

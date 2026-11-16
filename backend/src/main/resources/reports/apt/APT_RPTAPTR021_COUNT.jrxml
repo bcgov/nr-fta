@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR021_COUNT" pageWidth="752" pageHeight="572" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="752" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="01029382-7e42-49fa-9309-a0fe637a4dd9">
+	<parameter name="p_in_rpt_date" class="java.util.Date"/>
+	<!-- Was THE.APT_RPTAPTR021_COUNT; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[SELECT COUNT(*)
+  FROM the.apt_management_units  mu,
+       the.apt_mgmt_unit_history muh,
+       the.org_unit              ou,
+       the.forest_client         vcp, -- V_CLIENT_PUBLIC
+       the.for_client_link       fcl,
+       the.prov_forest_use       pfu,
+       the.tenure_term           tt
+ WHERE mu.org_unit_no = ou.org_unit_no
+   AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE))
+   AND mu.apt_mgmt_unit_st = 'T'
+   AND mu.id = muh.mu_id
+   AND muh.effective_date = (SELECT MAX(muh2.effective_date)
+                               FROM the.apt_mgmt_unit_history muh2
+                              WHERE mu.id = muh2.mu_id)
+   AND muh.effective_date <= CAST($P{p_in_rpt_date} AS DATE)
+   AND mu.apt_mgmt_unit_st = pfu.mgmt_unit_type
+   AND mu.mgmt_unit_number = pfu.mgmt_unit_id
+   AND pfu.file_status_st IN ('HI', 'HS')
+   AND pfu.forest_file_id = 'TFL' || TRIM(LEADING '0' FROM pfu.mgmt_unit_id)
+   AND pfu.forest_file_id = tt.forest_file_id
+   AND DECODE(NVL(tt.current_expiry_dt, TO_DATE('9999-12-31', 'YYYY-MM-DD')),
+              TO_DATE('9999-12-31', 'YYYY-MM-DD'), tt.initial_expiry_dt,
+              tt.current_expiry_dt) > CAST($P{p_in_rpt_date} AS DATE)
+   AND pfu.forest_file_id = fcl.forest_file_id
+   AND vcp.client_number = fcl.client_number
+   AND fcl.file_client_type = 'A']]>
+	</queryString>
+	<field name="COUNT(*)" class="java.math.BigDecimal"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="12" splitType="Stretch">
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="73578d25-18fe-40ff-b0b9-ec93974f4e12" x="111" y="0" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{COUNT(*)}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="b492fea8-3b95-4b4d-bc6f-c7948531726c" x="0" y="0" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Number of TFLs:  ]]></text>
+			</staticText>
+		</band>
+	</detail>
+</jasperReport>

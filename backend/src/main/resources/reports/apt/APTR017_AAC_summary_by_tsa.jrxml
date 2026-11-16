@@ -1,0 +1,393 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APTR017_AAC_summary_by_tsa.rpt" pageWidth="612" pageHeight="792" whenNoDataType="AllSectionsNoDetail" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="e4f969f4-561b-4101-935b-a6068c5ffd4e">
+	<parameter name="in_report_date" class="java.util.Date"/>
+	<parameter name="User" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_EXT" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[".jrxml"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_id" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["APTR017"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_name" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["AAC SUMMARY BY TSA"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_category" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["APT2"]]></defaultValueExpression>
+	</parameter>
+	<!-- Was THE.APT_RPTAPTR017; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[-- The procedure fetched the grand totals into variables first (same FROM/WHERE as the result),
+-- defaulted them to 0, then divided each row by them; here they are analytic sums over the rows.
+WITH
+     munv AS ( -- APT_MGMT_UNIT_NAMES_V
+       SELECT DECODE(clt.column_name, 'TFL_NUMBER', 'T', 'TSA_NUMBER', 'U', 'WL_NUMBER', 'F')
+                                   AS apt_mgmt_unit_st,
+              clt.code_argument     AS mgmt_unit_number,
+              clt.expanded_result   AS mgmt_unit_name
+         FROM the.code_list_table clt
+        WHERE clt.column_name IN ('TFL_NUMBER', 'TSA_NUMBER', 'WL_NUMBER')
+       UNION
+       SELECT DECODE(clt2.column_name, 'MGMT_UNIT_TYPE', 'Z'),
+              NULL,
+              clt2.expanded_result
+         FROM the.code_list_table clt2
+        WHERE clt2.column_name = 'MGMT_UNIT_TYPE'
+          AND clt2.code_argument = 'Z')
+SELECT RTRIM(region_ou.org_unit_name)   AS region_name,
+       munv.mgmt_unit_name              AS tsa_mgmt_unit_name,
+       muh.effective_date               AS effective_date,
+       muh.allowable_annual_cut         AS aac_m3,
+       DECODE(NVL(SUM(muh.allowable_annual_cut) OVER (), 0), 0, 0,
+              muh.allowable_annual_cut / SUM(muh.allowable_annual_cut) OVER () * 100)
+                                        AS percent_aac_m3,
+       muh.allowable_annual_cut_ha      AS aac_ha,
+       DECODE(NVL(SUM(muh.allowable_annual_cut_ha) OVER (), 0), 0, 0,
+              muh.allowable_annual_cut_ha / SUM(muh.allowable_annual_cut_ha) OVER () * 100)
+                                        AS percent_aac_ha
+  FROM the.apt_management_units  mu,
+       the.apt_mgmt_unit_history muh,
+       the.org_unit              district_ou,
+       the.org_unit              region_ou,
+       munv
+ WHERE munv.apt_mgmt_unit_st = mu.apt_mgmt_unit_st
+   AND munv.mgmt_unit_number = mu.mgmt_unit_number
+   AND mu.mgmt_unit_status_st = 'ACT'
+   AND district_ou.org_unit_no = mu.org_unit_no
+   AND region_ou.org_unit_code = district_ou.rollup_region_code
+   AND munv.apt_mgmt_unit_st = 'U'
+   AND mu.id = muh.mu_id
+   AND TO_CHAR(muh.effective_date, 'YYYYMMDD')
+       || TO_CHAR(NVL(muh.apportionment_effective_date, TO_DATE('29991231', 'YYYYMMDD')), 'YYYYMMDD') =
+       (SELECT MAX(TO_CHAR(h.effective_date, 'YYYYMMDD')
+                   || TO_CHAR(NVL(h.apportionment_effective_date, TO_DATE('29991231', 'YYYYMMDD')), 'YYYYMMDD'))
+          FROM the.apt_mgmt_unit_history h
+         WHERE h.mu_id = mu.id
+           AND h.effective_date <= SYSDATE
+           AND NVL(h.apportionment_effective_date, TO_DATE('1900', 'YYYY')) <= SYSDATE)
+ ORDER BY region_ou.org_unit_name,
+          munv.mgmt_unit_name]]>
+	</queryString>
+	<field name="REGION_NAME" class="java.lang.String"/>
+	<field name="TSA_MGMT_UNIT_NAME" class="java.lang.String"/>
+	<field name="EFFECTIVE_DATE" class="java.sql.Timestamp"/>
+	<field name="AAC_M3" class="java.math.BigDecimal"/>
+	<field name="PERCENT_AAC_M3" class="java.math.BigDecimal"/>
+	<field name="AAC_HA" class="java.math.BigDecimal"/>
+	<field name="PERCENT_AAC_HA" class="java.math.BigDecimal"/>
+	<variable name="region_total_AAC_M3" class="java.math.BigDecimal" resetType="Group" resetGroup="REGION_NAME" calculation="Sum">
+		<variableExpression><![CDATA[$F{AAC_M3}]]></variableExpression>
+	</variable>
+	<variable name="region_total_PERCENT_AAC_M3" class="java.math.BigDecimal" resetType="Group" resetGroup="REGION_NAME" calculation="Sum">
+		<variableExpression><![CDATA[$F{PERCENT_AAC_M3}]]></variableExpression>
+	</variable>
+	<variable name="region_total_AAC_HA" class="java.math.BigDecimal" resetType="Group" resetGroup="REGION_NAME" calculation="Sum">
+		<variableExpression><![CDATA[$F{AAC_HA}]]></variableExpression>
+	</variable>
+	<variable name="region_total_PERCENT_AAC_HA" class="java.math.BigDecimal" resetType="Group" resetGroup="REGION_NAME" calculation="Sum">
+		<variableExpression><![CDATA[$F{PERCENT_AAC_HA}]]></variableExpression>
+	</variable>
+	<variable name="grand_total_AAC_M3" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{AAC_M3}]]></variableExpression>
+	</variable>
+	<variable name="grand_total_PERCENT_AAC_M3" class="java.lang.Number" calculation="Sum">
+		<variableExpression><![CDATA[$F{PERCENT_AAC_M3}]]></variableExpression>
+	</variable>
+	<variable name="grand_total_AAC_HA" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{AAC_HA}]]></variableExpression>
+	</variable>
+	<variable name="grand_total_PERCENT_AAC_HA" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{PERCENT_AAC_HA}]]></variableExpression>
+	</variable>
+	<group name="REGION_NAME">
+		<groupExpression><![CDATA[$F{REGION_NAME}]]></groupExpression>
+		<groupHeader>
+			<band height="11">
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement uuid="3772e7fd-ced7-4ae0-a196-a5cd4d396ce8" x="0" y="0" width="338" height="11"/>
+					<textElement>
+						<font fontName="DejaVu Sans" size="8"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{REGION_NAME}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band height="24">
+				<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+					<reportElement uuid="89a23a31-37a4-4b4a-9831-717fd0e05211" x="262" y="10" width="76" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{region_total_AAC_M3}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+					<reportElement uuid="97a671c6-e470-497c-bd63-57525c0c91ec" x="349" y="10" width="58" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{region_total_PERCENT_AAC_M3}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+					<reportElement uuid="b15908ae-3808-4f3c-92c8-3e4a381f5a75" x="418" y="10" width="76" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{region_total_AAC_HA}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+					<reportElement uuid="dc7f7cad-1e95-4f76-9aff-be38d00137c0" x="512" y="10" width="60" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{region_total_PERCENT_AAC_HA}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement uuid="3fa9a843-dc7f-4383-8612-728eb388d0b5" x="0" y="10" width="200" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{REGION_NAME}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement uuid="e8219839-dff4-4b92-9ebd-3eef9ed794a1" x="200" y="10" width="49" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Total:]]></text>
+				</staticText>
+				<line>
+					<reportElement uuid="24f69e5e-ef7c-4daf-be7a-74512c28a068" x="223" y="6" width="349" height="1"/>
+				</line>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<pageHeader>
+		<band height="69" splitType="Stretch">
+			<subreport>
+				<reportElement uuid="c00be5ef-d287-48d3-a1e1-008b21e3804b" x="0" y="22" width="572" height="28"/>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPT_HEADER" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+			<textField>
+				<reportElement uuid="f51933e3-b7da-45f4-9768-53664068a01f" x="391" y="0" width="80" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Page "+$V{PAGE_NUMBER}+" of"]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report">
+				<reportElement uuid="a24c915e-5d48-4c2c-a963-56741fb17570" x="471" y="0" width="40" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="8387522b-5c00-4846-8af2-c40d19a61890" x="381" y="10" width="89" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Run by:  ]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="1f8309d3-28a8-406d-b314-7c26b4318b9b" x="1" y="11" width="67" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Report Date:  ]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement uuid="30632573-3796-4974-a30f-86b1deceb2cb" x="68" y="11" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="4db222da-b27e-4265-b6af-aafce327cffa" x="484" y="10" width="89" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{User}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="f863ae2b-c4eb-4ad1-bdf3-0fafe570a0f5" x="1" y="0" width="67" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Report ID:]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="c43b42a1-eb3b-4bfd-bf59-9a34d5d0ba3b" x="68" y="0" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_report_id}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="e5a37ca5-696e-4db8-8132-51aef3bae83e" x="1" y="50" width="571" height="13"/>
+				<textElement textAlignment="Center">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_report_name}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+	<columnHeader>
+		<band height="44" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="6843ac83-76f1-4d1a-8eef-e4e6aa4a774c" x="0" y="0" width="100" height="20"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Region]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="649a270c-2bfa-4589-90bb-6c91840dc880" x="100" y="0" width="100" height="20"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[TSA]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="2616516e-68cf-4be8-813f-a4329e932b02" x="200" y="0" width="49" height="44"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[AAC Effective Date]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="ebd392d5-6553-4676-a828-a7a5c6f77357" x="262" y="0" width="76" height="44"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[AAC
+cubic metres]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="96af26d3-4725-4579-8d7a-72f77be4f9ac" x="349" y="0" width="58" height="42"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[% of Total AAC
+(cubic metres)]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="a71c3034-833b-4216-87fa-842bf1515e4b" x="418" y="0" width="76" height="42"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[AAC
+ha]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="8aad6678-82e8-42ec-a9c7-45ca00e78c63" x="512" y="0" width="60" height="42"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[% of Total AAC (ha)]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="11" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="52596b39-e86e-4c3f-a7c9-6b4001fa12d7" x="100" y="0" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{TSA_MGMT_UNIT_NAME}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement uuid="feb61a5c-f2b5-424c-9646-02fb1593b49e" x="200" y="0" width="62" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{EFFECTIVE_DATE}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="3466aa5a-9608-4a48-8bfe-6f655a8d178d" x="262" y="0" width="76" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{AAC_M3}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="c9b525b9-839b-42c5-b133-cd9ebb75f99e" x="349" y="0" width="58" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PERCENT_AAC_M3}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="34bd8187-35a6-4ee9-b504-07a99b58cc1c" x="418" y="0" width="76" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{AAC_HA}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="84568cf0-6847-40de-8e90-9bc17f253936" x="512" y="0" width="60" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PERCENT_AAC_HA}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="82" splitType="Stretch">
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="a6131628-6bf3-468f-9302-c64d75b3941c" x="262" y="13" width="76" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{grand_total_AAC_M3}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="4235d1c7-515c-4073-958f-436cdd3a8584" x="349" y="13" width="58" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{grand_total_PERCENT_AAC_M3}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="dadbc1d3-d04c-4603-b778-646b188811b2" x="418" y="13" width="76" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{grand_total_AAC_HA}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="b54bfe2e-5308-41eb-a197-85520f09cf88" x="512" y="13" width="60" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{grand_total_PERCENT_AAC_HA}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="e8219839-dff4-4b92-9ebd-3eef9ed794a1" x="200" y="13" width="49" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Total:]]></text>
+			</staticText>
+			<line>
+				<reportElement uuid="cc4bd1c5-f8a9-443f-ab70-50877e8d52ef" x="223" y="6" width="349" height="1"/>
+			</line>
+			<subreport>
+				<reportElement uuid="67809768-723c-409c-804e-c41380398e7c" x="0" y="35" width="572" height="44"/>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPT_COPYRIGHT" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+		</band>
+	</summary>
+</jasperReport>

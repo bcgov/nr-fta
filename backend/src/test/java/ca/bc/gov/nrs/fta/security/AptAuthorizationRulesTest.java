@@ -29,14 +29,15 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 /**
  * Pins who reaches the apportionment (APT) endpoints. A 403 is the filter chain refusing; a 404
  * means the request got past it, as no controller is loaded here. Legacy APT2 had two roles:
- * APT_VIEWER (every read and report), now FTA_VIEWER, and APT_EDITOR (every write), now
- * FTA_APT_ADMIN.
+ * APT_VIEWER (every read and report), now FTA_APT_VIEWER, and APT_EDITOR (every write), now
+ * FTA_APT_ADMIN. Both reach APT and nothing else in FTA.
  */
 @SpringJUnitWebConfig(AptAuthorizationRulesTest.Config.class)
 @DisplayName("Unit Test | APT authorization URL rules")
 class AptAuthorizationRulesTest {
 
   private static final String APT = "FTA_APT_ADMIN";
+  private static final String APT_VIEWER = "FTA_APT_VIEWER";
   private static final String VIEWER = "FTA_VIEWER";
   private static final String SENIOR = "FTA_HARVEST_AUTH_SENIOR_ADMIN";
   private static final String TIMBER_MARK = "FTA_TIMBER_MARK_HEADQUARTERS_ADMIN";
@@ -75,15 +76,34 @@ class AptAuthorizationRulesTest {
     "POST, /api/fta/apt/management-units, " + VIEWER + ", 403",
     "PUT, /api/fta/apt/management-units/1, " + SENIOR + ", 403",
     "DELETE, /api/fta/apt/partitions/1, " + TIMBER_MARK + ", 403",
-    // APT reads are a viewer's, and FTA_APT_ADMIN reads everything a viewer does.
+    "POST, /api/fta/apt/management-units, " + APT_VIEWER + ", 403",
+    "PUT, /api/fta/apt/licences/A12345, " + APT_VIEWER + ", 403",
+    "DELETE, /api/fta/apt/commitments/1, " + APT_VIEWER + ", 403",
+    // APT reads and reports: both APT roles, and every role that reads FTA.
+    "GET, /api/fta/apt/management-units, " + APT_VIEWER + ", 404",
+    "GET, /api/fta/apt/reports/APTR011, " + APT_VIEWER + ", 404",
+    "GET, /api/fta/apt/reports/APTR011/csv, " + APT_VIEWER + ", 404",
+    "GET, /api/fta/apt/management-units, " + APT + ", 404",
     "GET, /api/fta/apt/management-units, " + VIEWER + ", 404",
     "GET, /api/fta/apt/management-units, " + SENIOR + ", 404",
-    "GET, /api/fta/apt/management-units, " + APT + ", 404",
-    "GET, /api/fta/tenures, " + APT + ", 404",
-    "GET, /api/fta/harvesting-authorities, " + APT + ", 404",
-    "POST, /api/reports/aptr011, " + APT + ", 404",
+    "GET, /api/fta/apt/management-units, " + ADMIN + ", 404",
+    // The forest client type-ahead, for Create relationship: FTA_APT_ADMIN only of the APT roles.
+    "GET, /api/fta/clients/suggest, " + APT + ", 404",
+    "GET, /api/fta/clients/suggest, " + APT_VIEWER + ", 403",
+    "GET, /api/fta/clients/suggest, " + TIMBER_MARK + ", 404",
+    "GET, /api/fta/clients/suggest, " + VIEWER + ", 404",
+    // Display names for the user ids APT shows.
     "POST, /api/fta/users/resolve, " + APT + ", 404",
-    // FTA_APT_ADMIN gains nothing outside APT.
+    "POST, /api/fta/users/resolve, " + APT_VIEWER + ", 404",
+    // The APT roles read nothing else in FTA, as APT2 was an application of its own.
+    "GET, /api/fta/tenures, " + APT + ", 403",
+    "GET, /api/fta/harvesting-authorities, " + APT + ", 403",
+    "GET, /api/fta/code-lists/districts, " + APT + ", 403",
+    "POST, /api/reports/fta402, " + APT + ", 403",
+    "GET, /api/fta/tenures, " + APT_VIEWER + ", 403",
+    "GET, /api/fta/marks, " + APT_VIEWER + ", 403",
+    "GET, /api/fta/admin/audit, " + APT_VIEWER + ", 403",
+    // Nor write it.
     "POST, /api/fta/tenures, " + APT + ", 403",
     "PUT, /api/fta/cutting-permits/1, " + APT + ", 403",
     "POST, /api/fta/marks, " + APT + ", 403",

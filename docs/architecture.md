@@ -216,11 +216,15 @@ edits permits and blocks, assigns marks and retires permits.
 `FTA_HARVEST_AUTH_SENIOR_ADMIN` also gets legacy's Senior Admin and Feature Admin
 rights: suspensions, permit conditions, postponements, relabelling, deleting, and
 changing terms or rolling back a status after issue.
-**`FTA_APT_ADMIN`** brings in legacy APT2's `APT_EDITOR`: it reads what
-`FTA_VIEWER` reads and makes every apportionment write under `/api/fta/apt/**`, for
-any org unit. APT2's `APT_VIEWER` becomes plain `FTA_VIEWER`. Unlike the other
-roles, the frontend checks it against every role a user holds (`canEditApt`), so a
-higher-ranked role does not hide APT editing.
+Two apportionment roles bring in legacy APT2's own two roles, and like APT2 (an
+application of its own) they open the Apportionment pages and nothing else in FTA.
+**`FTA_APT_ADMIN`** is APT2's `APT_EDITOR`: every apportionment read and write under
+`/api/fta/apt/**`, for any org unit. **`FTA_APT_VIEWER`** is APT2's `APT_VIEWER`:
+every apportionment read, reports included. Every role that reads all of FTA also
+reads APT. Unlike the other roles, the frontend checks the APT roles against every
+role a user holds (`canEditApt`, `holdsAptRole`), so a higher-ranked role does not
+hide them, and they rank below `FTA_VIEWER`, so a viewer who is also an APT
+administrator keeps the viewer's menus.
 All of these must be created as roles on FTA's CSS integration in each environment.
 
 ### Three things that are easy to get wrong

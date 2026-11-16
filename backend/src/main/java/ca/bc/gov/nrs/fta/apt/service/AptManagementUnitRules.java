@@ -85,9 +85,8 @@ public final class AptManagementUnitRules {
     if (r.determinationDate() == null) {
       return "AAC Determination Date is required.";
     }
-    if (r.allowableAnnualCut() == null) {
-      return "AAC (m³) is required.";
-    }
+    // AAC (m³) is optional, as in APT2 (SharedHistoryForm) and the nullable
+    // APT_MGMT_UNIT_HISTORY.ALLOWABLE_ANNUAL_CUT.
     String p = firstNonNull(
         wholeProblem("AAC (m³)", r.allowableAnnualCut()),
         wholeProblem("AAC (ha)", r.allowableAnnualCutHa()),

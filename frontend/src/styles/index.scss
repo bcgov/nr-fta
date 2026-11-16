@@ -65,6 +65,15 @@
   }
 }
 
+// A ghost or icon-only delete button: the trash bin shows in the error red,
+// everywhere in the app. Disabled keeps Carbon's disabled grey.
+.cds--btn.icon-button--delete:not(:disabled) {
+  svg,
+  svg path {
+    fill: var(--cds-support-error);
+  }
+}
+
 // Toast Notification — positions the snackbar at the top-right corner
 // and animates it in / out. Used by src/context/notification/
 // NotificationProvider.tsx. Matches nr-rept's pattern byte-for-byte so

@@ -221,6 +221,7 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
                               kind="ghost"
                               hasIconOnly
                               renderIcon={TrashCan}
+                              className="icon-button--delete"
                               iconDescription="Delete postponement"
                               disabled={!canChangePostponements}
                               onClick={() => setDeleting(p)}

@@ -1,4 +1,4 @@
-import { Apps, Search, Document, Tag } from '@carbon/icons-react';
+import { Apps, ChartPie, Search, Document, Tag } from '@carbon/icons-react';
 import { ClickableTile } from '@carbon/react';
 import { useNavigate } from 'react-router-dom';
 
@@ -23,6 +23,12 @@ const QUICK_LINKS = [
     label: 'Private Marks',
     desc: 'Timber mark applications & amendments',
     Icon: Tag,
+  },
+  {
+    to: '/apt/management-units',
+    label: 'Apportionment',
+    desc: 'Management units, apportionments and commitments',
+    Icon: ChartPie,
   },
 ];
 
