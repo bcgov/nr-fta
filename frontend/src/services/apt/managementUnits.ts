@@ -182,7 +182,7 @@ export interface AptManagementUnitHistoryRequest {
   prevId?: number | null;
   determinationDate: string;
   effectiveDate: string;
-  allowableAnnualCut: number;
+  allowableAnnualCut: number | null;
   allowableAnnualCutHa: number | null;
   inventoryRevDate: string | null;
   apportionmentDeterminationDt: string | null;
@@ -199,7 +199,7 @@ export interface AptPartitionRequest {
   /** Required on create; a partition stays with its determination on update. */
   muhId?: number;
   partitionCode: string;
-  allowableAnnualCut: number;
+  allowableAnnualCut: number | null;
   allowableAnnualCutHa: number | null;
   comments: string | null;
 }
@@ -208,7 +208,7 @@ export interface AptPartitionApportionmentRequest {
   /** Required on create; an apportionment stays with its partition on update. */
   partitionId?: number;
   foaTypeCode: string;
-  allowableAnnualCut: number;
+  allowableAnnualCut: number | null;
   allowableAnnualCutHa: number | null;
   comments: string | null;
 }

@@ -1,0 +1,390 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR032_APPORTIONMENT" pageWidth="572" pageHeight="752" whenNoDataType="AllSectionsNoDetail" columnWidth="572" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="305a223b-0ebe-4ff0-9236-e66f0ff2002e">
+	<parameter name="p_in_rpt_date" class="java.util.Date"/>
+	<!-- Was THE.APT_RPTAPTR032_APPORTIONMENT; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[WITH aac_rows AS ( -- the rows of the AAC subreport (section A)
+SELECT decode(mu.apt_mgmt_unit_st,
+              'U',
+              1,
+              'T',
+              2) sort_order --, 'F', 2) #2
+      ,
+       decode(mu.apt_mgmt_unit_st,
+              'U',
+              'Timber Supply Area (TSA)',
+              'T',
+              'Tree Farm Licences (TFL)') apt_mgmt_unit_st --, 'F', 'WL' #2
+      ,
+       SUM(muh.allowable_annual_cut)    sum_aac,
+       SUM(muh.allowable_annual_cut_ha)    sum_aac_ha
+  FROM the.apt_management_units  mu,
+       the.apt_mgmt_unit_history muh
+ WHERE (mu.mgmt_unit_status_st = 'ACT' or mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE)) --RY U42 --#1
+       AND mu.apt_mgmt_unit_st IN ('T', 'U') --, 'F' #2
+       AND mu.id = muh.mu_id AND
+       to_char(muh.effective_date,
+               'YYYYMMDD') ||
+       to_char(nvl(muh.apportionment_effective_date,
+                   to_date('29991231',
+                           'YYYYMMDD')),
+               'YYYYMMDD') =
+       (SELECT MAX(to_char(effective_date,
+                           'YYYYMMDD') ||
+                   to_char(nvl(apportionment_effective_date,
+                               to_date('29991231',
+                                       'YYYYMMDD')),
+                           'YYYYMMDD'))
+          FROM the.apt_mgmt_unit_history muh
+         WHERE mu_id = mu.id AND effective_date <= CAST($P{p_in_rpt_date} AS DATE) AND
+               nvl(apportionment_effective_date,
+                   to_date('1900',
+                           'YYYY')) <= CAST($P{p_in_rpt_date} AS DATE))
+ GROUP BY decode(mu.apt_mgmt_unit_st,
+                 'U',
+                 1,
+                 'T',
+                 2) --, 'F', 2 #2
+         ,
+          decode(mu.apt_mgmt_unit_st,
+                 'U',
+                 'Timber Supply Area (TSA)',
+                 'T',
+                 'Tree Farm Licences (TFL)')
+),
+aac_totals AS ( -- the PL/SQL loop: 0 plus each row sum, so one NULL row sum makes the total NULL
+SELECT CASE WHEN COUNT(sum_aac) = COUNT(*) THEN NVL(SUM(sum_aac), 0) END sum_aac_m3_total,
+       CASE WHEN COUNT(sum_aac_ha) = COUNT(*) THEN NVL(SUM(sum_aac_ha), 0) END sum_aac_ha_total
+  FROM aac_rows
+)
+        SELECT decode(mu.apt_mgmt_unit_st,
+                      'T',
+                      'TFL')                mgmt_unit_type_cd, --'F', 'WL' #2*
+               aftvb.expanded_result foa_description,
+               aftvb.sort_order      sort_order,
+               SUM(paptb.allowable_annual_cut)                   aac_m3_sum,
+               decode(aac_totals.sum_aac_m3_total,
+                      0,
+                      to_number(NULL),
+                      SUM(paptb.allowable_annual_cut) / aac_totals.sum_aac_m3_total * 100)                percent_aac_m3_sum,
+               SUM(paptb.allowable_annual_cut_ha)                   aac_ha_sum,
+               decode(aac_totals.sum_aac_ha_total,
+                      0,
+                      to_number(NULL),
+                      SUM(paptb.allowable_annual_cut_ha) /
+                      aac_totals.sum_aac_ha_total * 100)                percent_aac_ha_sum
+          FROM the.apt_management_units    mu,
+               the.apt_mgmt_unit_history   muh,
+               the.apt_partitions          partb,
+               (SELECT clt.code_argument part_type_cd, clt.expanded_result part_type_desc FROM the.code_list_table clt, the.code_subset_tbl cst WHERE cst.code_subset_name = 'APT_PART_RPT_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument)          aprvb,
+               the.apt_part_apportionments paptb,
+               (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)         aftvb,
+               aac_totals
+         WHERE mu.mgmt_unit_status_st = 'ACT' --#1
+               AND mu.apt_mgmt_unit_st = 'T' -- IN ('T', 'F') #2
+               AND aftvb.apt_mgmt_unit_st = 'T' AND
+               aftvb.expiry_date > CAST($P{p_in_rpt_date} AS DATE) AND mu.id = muh.mu_id AND
+               to_char(muh.effective_date,
+                       'YYYYMMDD') ||
+               to_char(nvl(muh.apportionment_effective_date,
+                           to_date('29991231',
+                                   'YYYYMMDD')),
+                       'YYYYMMDD') =
+               (SELECT MAX(to_char(effective_date,
+                                   'YYYYMMDD') ||
+                           to_char(nvl(apportionment_effective_date,
+                                       to_date('29991231',
+                                               'YYYYMMDD')),
+                                   'YYYYMMDD'))
+                  FROM the.apt_mgmt_unit_history
+                 WHERE mu_id = mu.id AND effective_date <= CAST($P{p_in_rpt_date} AS DATE) AND
+                       nvl(apportionment_effective_date,
+                           to_date('1900',
+                                   'YYYY')) <= CAST($P{p_in_rpt_date} AS DATE)) AND
+               partb.muh_id = muh.id AND
+               partb.apt_partition_st = aprvb.part_type_cd AND
+               paptb.part_id = partb.id AND
+               aftvb.code_argument = paptb.apt_foa_st AND
+               aftvb.apt_mgmt_unit_st = mu.apt_mgmt_unit_st
+         GROUP BY decode(mu.apt_mgmt_unit_st,
+                         'T',
+                         'TFL'), --'F', 'WL' #2
+                  aftvb.sort_order,
+                  aftvb.expanded_result,
+                  aac_totals.sum_aac_m3_total,
+                  aac_totals.sum_aac_ha_total
+        UNION
+            SELECT decode(mu.apt_mgmt_unit_st,
+                          'U',
+                          'TSA')                mgmt_unit_type_cd,
+                   aftvb.expanded_result foa_description,
+                   aftvb.sort_order      sort_order,
+                   SUM(paptb.allowable_annual_cut)                   aac_m3_sum,
+                   decode(aac_totals.sum_aac_m3_total,
+                          0,
+                          to_number(NULL),
+                          SUM(paptb.allowable_annual_cut) /
+                          aac_totals.sum_aac_m3_total * 100)                percent_aac_m3_sum,
+                   SUM(paptb.allowable_annual_cut_ha)                   aac_ha_sum,
+                   decode(aac_totals.sum_aac_ha_total,
+                          0,
+                          to_number(NULL),
+                          SUM(paptb.allowable_annual_cut_ha) /
+                          aac_totals.sum_aac_ha_total * 100)                percent_ha_sum
+              FROM the.apt_management_units    mu,
+                   the.apt_mgmt_unit_history   muh,
+                   the.apt_partitions          partb,
+                   the.apt_part_apportionments paptb,
+                   (SELECT clt.code_argument part_type_cd, clt.expanded_result part_type_desc FROM the.code_list_table clt, the.code_subset_tbl cst WHERE cst.code_subset_name = 'APT_PART_RPT_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument)          aprvb,
+                   (SELECT clt.code_argument, clt.expanded_result, clt.effective_date, clt.expiry_date, acat.apt_mgmt_unit_st, acat.sort_order FROM the.code_list_table clt, the.code_subset_tbl cst, the.apt_apportionment_categories acat WHERE cst.code_subset_name = 'APT_FOA_ST' AND clt.column_name = cst.column_name AND clt.code_argument = cst.code_argument AND acat.apt_foa_st = clt.code_argument)         aftvb,
+               aac_totals
+             WHERE mu.mgmt_unit_status_st = 'ACT' --#1
+                   AND mu.apt_mgmt_unit_st = 'U' AND
+                   aftvb.apt_mgmt_unit_st = 'U' AND
+                   aftvb.expiry_date > CAST($P{p_in_rpt_date} AS DATE) AND mu.id = muh.mu_id AND
+                   to_char(muh.effective_date,
+                           'YYYYMMDD') ||
+                   to_char(nvl(muh.apportionment_effective_date,
+                               to_date('29991231',
+                                       'YYYYMMDD')),
+                           'YYYYMMDD') =
+                   (SELECT MAX(to_char(effective_date,
+                                       'YYYYMMDD') ||
+                               to_char(nvl(apportionment_effective_date,
+                                           to_date('29991231',
+                                                   'YYYYMMDD')),
+                                       'YYYYMMDD'))
+                      FROM the.apt_mgmt_unit_history
+                     WHERE mu_id = mu.id AND effective_date <= CAST($P{p_in_rpt_date} AS DATE) AND
+                           nvl(apportionment_effective_date,
+                               to_date('1900',
+                                       'YYYY')) <= CAST($P{p_in_rpt_date} AS DATE)) AND
+                   partb.muh_id = muh.id AND
+                   partb.apt_partition_st = aprvb.part_type_cd AND
+                   paptb.part_id = partb.id AND
+                   aftvb.code_argument = paptb.apt_foa_st AND
+                   aftvb.apt_mgmt_unit_st = mu.apt_mgmt_unit_st
+             GROUP BY decode(mu.apt_mgmt_unit_st,
+                             'U',
+                             'TSA'),
+                      aftvb.sort_order,
+                      aftvb.expanded_result,
+                      aac_totals.sum_aac_m3_total,
+                      aac_totals.sum_aac_ha_total
+             ORDER BY mgmt_unit_type_cd DESC,
+                      sort_order]]>
+	</queryString>
+	<field name="MGMT_UNIT_TYPE_CD" class="java.lang.String"/>
+	<field name="FOA_DESCRIPTION" class="java.lang.String"/>
+	<field name="SORT_ORDER" class="java.math.BigDecimal"/>
+	<field name="AAC_M3_SUM" class="java.math.BigDecimal"/>
+	<field name="PERCENT_AAC_M3_SUM" class="java.math.BigDecimal"/>
+	<field name="AAC_HA_SUM" class="java.math.BigDecimal"/>
+	<field name="PERCENT_AAC_HA_SUM" class="java.math.BigDecimal"/>
+	<variable name="mgmt_unit_total_AAC_M3_SUM" class="java.math.BigDecimal" resetType="Group" resetGroup="MGMT_UNIT_TYPE_CD" calculation="Sum">
+		<variableExpression><![CDATA[$F{AAC_M3_SUM}]]></variableExpression>
+	</variable>
+	<variable name="mgmt_unit_total_PERCENT_AAC_M3_SUM" class="java.math.BigDecimal" resetType="Group" resetGroup="MGMT_UNIT_TYPE_CD" calculation="Sum">
+		<variableExpression><![CDATA[$F{PERCENT_AAC_M3_SUM}]]></variableExpression>
+	</variable>
+	<variable name="mgmt_unit_total_AAC_HA_SUM" class="java.math.BigDecimal" resetType="Group" resetGroup="MGMT_UNIT_TYPE_CD" calculation="Sum">
+		<variableExpression><![CDATA[$F{AAC_HA_SUM}]]></variableExpression>
+	</variable>
+	<variable name="mgmt_unit_total_PERCENT_AAC_HA_SUM" class="java.math.BigDecimal" resetType="Group" resetGroup="MGMT_UNIT_TYPE_CD" calculation="Sum">
+		<variableExpression><![CDATA[$F{PERCENT_AAC_HA_SUM}]]></variableExpression>
+	</variable>
+	<variable name="grand_total_AAC_M3_SUM" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{AAC_M3_SUM}]]></variableExpression>
+	</variable>
+	<variable name="grand_total_PERCENT_AAC_M3_SUM" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{PERCENT_AAC_M3_SUM}]]></variableExpression>
+	</variable>
+	<variable name="grand_total_AAC_HA_SUM" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{AAC_HA_SUM}]]></variableExpression>
+	</variable>
+	<variable name="grand_total_PERCENT_AAC_HA_SUM" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{PERCENT_AAC_HA_SUM}]]></variableExpression>
+	</variable>
+	<group name="MGMT_UNIT_TYPE_CD">
+		<groupExpression><![CDATA[$F{MGMT_UNIT_TYPE_CD}]]></groupExpression>
+		<groupFooter>
+			<band height="30">
+				<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+					<reportElement uuid="b4f7b967-7dcc-4bc0-8553-ccaca9baf897" x="245" y="13" width="76" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{mgmt_unit_total_AAC_M3_SUM}]]></textFieldExpression>
+				</textField>
+				<line>
+					<reportElement uuid="5769f52d-4958-43d6-9583-36029a40fdc4" x="245" y="8" width="327" height="1"/>
+				</line>
+				<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+					<reportElement uuid="12159f51-c45e-4d74-8364-d74856b83c3c" x="330" y="13" width="75" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{mgmt_unit_total_PERCENT_AAC_M3_SUM}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+					<reportElement uuid="5baeb456-b592-4725-8faa-8e5cee9aa149" x="413" y="13" width="75" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{mgmt_unit_total_AAC_HA_SUM}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+					<reportElement uuid="27393a38-851c-4445-9768-88012be5dcc6" x="497" y="13" width="75" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{mgmt_unit_total_PERCENT_AAC_HA_SUM}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement uuid="6545e4f2-1514-4df7-b65b-dff6b0eed5d0" x="133" y="13" width="100" height="11"/>
+					<textElement textAlignment="Right">
+						<font fontName="DejaVu Sans" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{MGMT_UNIT_TYPE_CD}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="23" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="5e042dd5-fefd-45c9-a85f-0a1c5e35a09b" x="0" y="0" width="29" height="20"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="9912fd89-8632-4c72-ae51-6cd8a0bc895a" x="41" y="0" width="192" height="20"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="044a5b3e-cfe0-4b42-9e34-36d3af48d4b0" x="245" y="2" width="76" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[m3]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="2692209d-4328-4999-a427-3217c181e86d" x="330" y="2" width="75" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[% of Total AAC(m3)]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="11b91e87-eca0-4e0f-870b-f557f5737826" x="413" y="2" width="75" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[ha]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="a6f062a4-8346-4a58-884c-1d556c9e8070" x="497" y="2" width="75" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[% of Total AAC(ha)]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="11" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="065a1564-2129-4ccb-8061-2bddf6d270b2" x="0" y="0" width="29" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{MGMT_UNIT_TYPE_CD}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="ec42e33a-a784-4f12-bef4-0822df481fdd" x="41" y="0" width="192" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{FOA_DESCRIPTION}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="e0d901e2-2135-40d5-9b9c-8e1896a31fc7" x="245" y="0" width="76" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{AAC_M3_SUM}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="8f43aa4c-c6d2-4861-b21e-c7dc2ab570fb" x="330" y="0" width="75" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PERCENT_AAC_M3_SUM}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="04da9c6b-7931-483b-9d34-0698b3869c74" x="413" y="0" width="75" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{AAC_HA_SUM}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="6b711bf3-b772-4f8b-a463-8ac93be88fdc" x="497" y="0" width="75" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PERCENT_AAC_HA_SUM}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="24" splitType="Stretch">
+			<line>
+				<reportElement uuid="5769f52d-4958-43d6-9583-36029a40fdc4" x="245" y="10" width="327" height="1"/>
+			</line>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="2d4b8826-c485-41cf-bcd8-6a100035f0cb" x="245" y="11" width="76" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{grand_total_AAC_M3_SUM}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="eadf900f-fca6-4611-b340-edd8bdb5299e" x="330" y="11" width="75" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{grand_total_PERCENT_AAC_M3_SUM}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="8531ce9e-ed17-4cdb-9177-144b3adf34ae" x="413" y="11" width="75" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{grand_total_AAC_HA_SUM}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="6565fff7-59fd-4251-861e-f1650010a687" x="497" y="11" width="75" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{grand_total_PERCENT_AAC_HA_SUM}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="3032dcc1-cdda-4399-ae7e-e04ba22d87c4" x="0" y="11" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Total]]></text>
+			</staticText>
+		</band>
+	</summary>
+</jasperReport>

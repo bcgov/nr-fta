@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR032_AAC" pageWidth="572" pageHeight="752" whenNoDataType="AllSectionsNoDetail" columnWidth="572" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="53e6371c-8578-4052-8427-21aef8f80f76">
+	<parameter name="p_in_rpt_date" class="java.util.Date"/>
+	<!-- Was THE.APT_RPTAPTR032_AAC; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[SELECT decode(mu.apt_mgmt_unit_st,
+              'U',
+              1,
+              'T',
+              2)    sort_order --, 'F', 2) #2
+      ,
+      decode(mu.apt_mgmt_unit_st,
+              'U',
+              'Timber Supply Area (TSA)',
+              'T',
+              'Tree Farm Licences (TFL)')    apt_mgmt_unit_st --, 'F', 'WL' #2
+      ,
+       SUM(muh.allowable_annual_cut)       sum_aac,
+       SUM(muh.allowable_annual_cut_ha)       sum_aac_ha,
+       CASE WHEN COUNT(SUM(muh.allowable_annual_cut_ha)) OVER () > 0 THEN 'Y' ELSE 'N' END show_ha_ind
+  FROM the.apt_management_units  mu,
+       the.apt_mgmt_unit_history muh
+ WHERE (mu.mgmt_unit_status_st = 'ACT' or mu.status_effective_date > CAST($P{p_in_rpt_date} AS DATE)) --RY U42 --#1
+       AND mu.apt_mgmt_unit_st IN ('T', 'U') --, 'F' #2
+       AND mu.id = muh.mu_id AND
+       to_char(muh.effective_date,
+               'YYYYMMDD') ||
+       to_char(nvl(muh.apportionment_effective_date,
+                   to_date('29991231',
+                           'YYYYMMDD')),
+               'YYYYMMDD') =
+       (SELECT MAX(to_char(effective_date,
+                           'YYYYMMDD') ||
+                   to_char(nvl(apportionment_effective_date,
+                               to_date('29991231',
+                                       'YYYYMMDD')),
+                           'YYYYMMDD'))
+          FROM the.apt_mgmt_unit_history muh
+         WHERE mu_id = mu.id AND effective_date <= CAST($P{p_in_rpt_date} AS DATE) AND
+               nvl(apportionment_effective_date,
+                   to_date('1900',
+                           'YYYY')) <= CAST($P{p_in_rpt_date} AS DATE))
+ GROUP BY decode(mu.apt_mgmt_unit_st,
+                 'U',
+                 1,
+                 'T',
+                 2) --, 'F', 2 #2
+         ,
+          decode(mu.apt_mgmt_unit_st,
+                 'U',
+                 'Timber Supply Area (TSA)',
+                 'T',
+                 'Tree Farm Licences (TFL)')]]>
+	</queryString>
+	<field name="SORT_ORDER" class="java.math.BigDecimal"/>
+	<field name="APT_MGMT_UNIT_ST" class="java.lang.String"/>
+	<field name="SUM_AAC" class="java.math.BigDecimal"/>
+	<field name="SUM_AAC_HA" class="java.math.BigDecimal"/>
+	<field name="SHOW_HA_IND" class="java.lang.String"/>
+	<variable name="sum_of_SUM_AAC" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{SUM_AAC}]]></variableExpression>
+	</variable>
+	<variable name="sum_of_SUM_AAC_HA" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{SUM_AAC_HA}]]></variableExpression>
+	</variable>
+	<group name="SORT_ORDER">
+		<groupExpression><![CDATA[$F{SORT_ORDER}]]></groupExpression>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="11" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="83fc40bf-6cb8-4b3f-ac45-70f7ebc511f1" x="0" y="0" width="172" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="a9dca7d3-c02a-4e32-a1f7-4959a18b4ba6" x="188" y="0" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[m3]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="052df911-b64a-43b0-bb0f-ec43a470ec16" x="305" y="0" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[ha]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="11" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="4c692045-cb63-435f-a54f-27ae8852f2bb" x="0" y="0" width="172" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{APT_MGMT_UNIT_ST}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="5c21cc57-202b-450e-9c93-20b65c2cd560" x="188" y="0" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{SUM_AAC}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="c4959cde-8f23-43f1-8ad4-a47c710357af" x="305" y="0" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{SUM_AAC_HA}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="22" splitType="Stretch">
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="ae11bd1f-209a-478a-8f50-ba458e483262" x="188" y="8" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{sum_of_SUM_AAC}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="295eb0f4-85c6-46f9-bd0a-afbb9e149679" x="305" y="8" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{sum_of_SUM_AAC_HA}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="876a6286-b6af-4ea6-aa1e-14e16080f515" x="72" y="8" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Total:]]></text>
+			</staticText>
+			<line>
+				<reportElement uuid="e67fc658-7373-4e43-b348-73f2206c72d2" x="187" y="7" width="100" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="225694d9-76fa-4fc4-88cb-41a07ec0892a" x="308" y="7" width="100" height="1"/>
+			</line>
+		</band>
+	</summary>
+</jasperReport>

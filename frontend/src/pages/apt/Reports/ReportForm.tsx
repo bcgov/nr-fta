@@ -1,3 +1,4 @@
+import { DocumentPdf } from '@carbon/icons-react';
 import {
   Button,
   ComboBox,
@@ -10,7 +11,6 @@ import {
 } from '@carbon/react';
 import { useCallback, useState, type FC } from 'react';
 
-import { Modal } from '@/components/Modal';
 import { useApiResource } from '@/hooks/useApiResource';
 import { getAptOrgUnits, type AptOrgUnit } from '@/services/apt/lookups';
 import { searchAptManagementUnits, type AptManagementUnit } from '@/services/apt/managementUnits';
@@ -47,7 +47,6 @@ interface Props {
   report: AptPdfReport;
   /** Whether a report is being generated; the form is locked meanwhile. */
   running: boolean;
-  onClose: () => void;
   /**
    * Runs the report; `chosen` is the picked management unit's or region's name, which the
    * downloaded file is named after.
@@ -58,11 +57,12 @@ interface Props {
 type Errors = Partial<Record<'date' | 'managementUnit' | 'orgUnit', string>>;
 
 /**
- * A PDF report's parameter form (APT2's ReportModal): the report date, management unit and
- * region, each shown only for the reports that take it. The lists it needs are read when it
- * opens. Mounted per report, so each opening starts fresh.
+ * A PDF report's parameter form (APT2's ReportModal), shown in the report's accordion row: the
+ * report date, management unit and region, each only for the reports that take it, and Generate
+ * report. The lists it needs are read when the row opens; mounted only while open, so each
+ * opening starts fresh.
  */
-const ReportModal: FC<Props> = ({ report, running, onClose, onRun }) => {
+const ReportForm: FC<Props> = ({ report, running, onRun }) => {
   const needs = (input: AptPdfReport['inputs'][number]) => report.inputs.includes(input);
   const needsMu = needs('managementUnit');
   const needsOrg = needs('orgUnit');
@@ -117,16 +117,11 @@ const ReportModal: FC<Props> = ({ report, running, onClose, onRun }) => {
   };
 
   return (
-    <Modal
-      open
-      passiveModal
-      size="sm"
-      className="detail-dialog"
-      modalHeading={`${report.code} ${report.name}`}
-      onRequestClose={() => !running && onClose()}
-      preventCloseOnClickOutside
-    >
+    <div className="apt-report-form">
       <Stack gap={5}>
+        {report.inputs.length === 0 && (
+          <p className="apt-report-form__note">This report has no inputs.</p>
+        )}
         {loadError && (
           <InlineNotification
             kind="error"
@@ -137,80 +132,86 @@ const ReportModal: FC<Props> = ({ report, running, onClose, onRun }) => {
           />
         )}
 
-        {needsMu && (
-          <ComboBox<AptManagementUnit>
-            id="apt-report-mu"
-            titleText="Management unit"
-            placeholder={units.loading ? 'Loading…' : 'Choose a management unit'}
-            items={units.data ?? []}
-            itemToString={muLabel}
-            selectedItem={unit}
-            disabled={running || units.loading}
-            invalid={!!errors.managementUnit}
-            invalidText={errors.managementUnit}
-            onChange={({ selectedItem }) => {
-              setUnit(selectedItem ?? null);
-              setErrors((e) => ({ ...e, managementUnit: undefined }));
-            }}
-          />
-        )}
+        {report.inputs.length > 0 && (
+          <div className="apt-report-form__fields">
+            {needsMu && (
+              <ComboBox<AptManagementUnit>
+                id="apt-report-mu"
+                titleText="Management unit"
+                placeholder={units.loading ? 'Loading…' : 'Choose a management unit'}
+                items={units.data ?? []}
+                itemToString={muLabel}
+                selectedItem={unit}
+                disabled={running || units.loading}
+                invalid={!!errors.managementUnit}
+                invalidText={errors.managementUnit}
+                onChange={({ selectedItem }) => {
+                  setUnit(selectedItem ?? null);
+                  setErrors((e) => ({ ...e, managementUnit: undefined }));
+                }}
+              />
+            )}
 
-        {needsOrg && (
-          <Select
-            id="apt-report-region"
-            labelText="Region"
-            value={chosenOrg}
-            disabled={running || regions.loading}
-            invalid={!!errors.orgUnit}
-            invalidText={errors.orgUnit}
-            onChange={(e) => setOrgUnit(e.target.value)}
-          >
-            {regions.loading && <SelectItem value="" text="Loading…" />}
-            {regionList.map((r) => (
-              <SelectItem key={r.orgUnitNo} value={String(r.orgUnitNo)} text={regionLabel(r)} />
-            ))}
-          </Select>
-        )}
+            {needsOrg && (
+              <Select
+                id="apt-report-region"
+                labelText="Region"
+                value={chosenOrg}
+                disabled={running || regions.loading}
+                invalid={!!errors.orgUnit}
+                invalidText={errors.orgUnit}
+                onChange={(e) => setOrgUnit(e.target.value)}
+              >
+                {regions.loading && <SelectItem value="" text="Loading…" />}
+                {regionList.map((r) => (
+                  <SelectItem key={r.orgUnitNo} value={String(r.orgUnitNo)} text={regionLabel(r)} />
+                ))}
+              </Select>
+            )}
 
-        {needs('date') && (
-          <DatePicker
-            datePickerType="single"
-            dateFormat="Y-m-d"
-            className="detail-dialog__date"
-            value={reportDate}
-            invalid={!!errors.date}
-            onChange={(dates: Date[]) => setReportDate(dates[0] ? toIsoDate(dates[0]) : '')}
-          >
-            <DatePickerInput
-              id="apt-report-date"
-              labelText="Report date"
-              placeholder="yyyy-mm-dd"
-              pattern={TYPED_DATE_PATTERN}
-              invalidText={errors.date}
-              disabled={running}
-              onChange={(e) => {
-                const text = e.target.value;
-                if (text.trim() === '') setReportDate('');
-                else {
-                  const typed = parseTypedDate(text);
-                  if (typed) setReportDate(typed);
-                }
-              }}
-            />
-          </DatePicker>
+            {needs('date') && (
+              <DatePicker
+                datePickerType="single"
+                dateFormat="Y-m-d"
+                className="apt-report-form__date"
+                value={reportDate}
+                invalid={!!errors.date}
+                onChange={(dates: Date[]) => setReportDate(dates[0] ? toIsoDate(dates[0]) : '')}
+              >
+                <DatePickerInput
+                  id="apt-report-date"
+                  labelText="Report date"
+                  placeholder="yyyy-mm-dd"
+                  pattern={TYPED_DATE_PATTERN}
+                  invalidText={errors.date}
+                  disabled={running}
+                  onChange={(e) => {
+                    const text = e.target.value;
+                    if (text.trim() === '') setReportDate('');
+                    else {
+                      const typed = parseTypedDate(text);
+                      if (typed) setReportDate(typed);
+                    }
+                  }}
+                />
+              </DatePicker>
+            )}
+          </div>
         )}
       </Stack>
 
-      <div className="detail-dialog__actions">
-        <Button kind="tertiary" disabled={running} onClick={onClose}>
-          Cancel
-        </Button>
-        <Button kind="primary" disabled={running || listsLoading} onClick={() => void submit()}>
+      <div className="apt-report-form__actions">
+        <Button
+          kind="primary"
+          renderIcon={DocumentPdf}
+          disabled={running || listsLoading}
+          onClick={() => void submit()}
+        >
           {running ? 'Generating…' : 'Generate report'}
         </Button>
       </div>
-    </Modal>
+    </div>
   );
 };
 
-export default ReportModal;
+export default ReportForm;

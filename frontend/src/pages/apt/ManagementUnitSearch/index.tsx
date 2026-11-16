@@ -18,10 +18,11 @@ import {
   Tile,
 } from '@carbon/react';
 import { useCallback, useEffect, useMemo, useRef, useState, type FC, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import DateField from '@/components/DateField';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import { useSessionState } from '@/hooks/useSessionState';
@@ -92,7 +93,8 @@ const codeLabel = (o: AptCodeOption) => (o.description ? `${o.code} - ${o.descri
 /**
  * APTM1100 — search for management units (APT2's ManagementUnitSearch). Every criterion is
  * optional; the name is matched on the results, as APT2 did, since the routine has no name
- * filter. A result's name opens its history (APTM1000). APT administrators can start a new unit.
+ * filter. Selecting a result row opens its history (APTM1000). APT administrators can start a
+ * new unit.
  */
 const ManagementUnitSearch: FC = () => {
   const { user } = useAuth();
@@ -220,6 +222,8 @@ const ManagementUnitSearch: FC = () => {
     .slice((page - 1) * pageSize, page * pageSize)
     .map((u) => ({ ...u, id: String(u.id) }));
   const byId = new Map((rows ?? []).map((u) => [String(u.id), u]));
+  // The pill shows the status's description (its colour follows it: Active green, Cancelled red).
+  const statusNames = new Map(lists.statuses.map((st) => [st.code, st.description]));
   const choose = (text: string) => <SelectItem value="" text={listsLoading ? 'Loading…' : text} />;
 
   return (
@@ -259,8 +263,10 @@ const ManagementUnitSearch: FC = () => {
               labelText="MU no."
               value={form.number}
               maxLength={4}
+              inputMode="numeric"
               autoComplete="off"
-              onChange={(e) => set('number', e.target.value)}
+              // Digits only, as APT2 strips anything else while typing.
+              onChange={(e) => set('number', e.target.value.replace(/\D/g, ''))}
             />
             <Select
               id="apt-mu-name"
@@ -388,17 +394,40 @@ const ManagementUnitSearch: FC = () => {
                           <TableBody>
                             {dtRows.map((row) => {
                               const unit = byId.get(row.id)!;
+                              const open = () => navigate(aptPaths.managementUnitHistory(unit.id));
                               return (
-                                <TableRow {...getRowProps({ row })} key={row.id}>
+                                <TableRow
+                                  {...getRowProps({ row })}
+                                  key={row.id}
+                                  className="fsp-search__row--selectable"
+                                  onClick={open}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      open();
+                                    }
+                                  }}
+                                  tabIndex={0}
+                                  role="link"
+                                >
                                   <TableCell>
-                                    <Link to={aptPaths.managementUnitHistory(unit.id)}>
-                                      {unit.mgmtUnitName ||
-                                        `${unit.aptMgmtUnitSt} ${unit.mgmtUnitNumber}`}
-                                    </Link>
+                                    {unit.mgmtUnitName ||
+                                      `${unit.aptMgmtUnitSt} ${unit.mgmtUnitNumber}`}
                                   </TableCell>
                                   <TableCell>{dash(unit.aptMgmtUnitSt)}</TableCell>
                                   <TableCell>{dash(unit.mgmtUnitNumber)}</TableCell>
-                                  <TableCell>{dash(unit.mgmtUnitStatusSt)}</TableCell>
+                                  <TableCell>
+                                    {unit.mgmtUnitStatusSt ? (
+                                      <StatusTag
+                                        status={
+                                          statusNames.get(unit.mgmtUnitStatusSt) ||
+                                          unit.mgmtUnitStatusSt
+                                        }
+                                      />
+                                    ) : (
+                                      '—'
+                                    )}
+                                  </TableCell>
                                   <TableCell className="fsp-search__cell--nowrap">
                                     {day(unit.statusEffectiveDate)}
                                   </TableCell>

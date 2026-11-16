@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APTR041_master" pageWidth="612" pageHeight="792" whenNoDataType="AllSectionsNoDetail" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="2cfe11ad-19f5-4cf6-8124-c6751b082b81">
+	<parameter name="user" class="java.lang.String">
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_EXT" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[".jrxml"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_id" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["APTR041"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_name" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["Linkages and Licences"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_category" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["APT2"]]></defaultValueExpression>
+	</parameter>
+	<!-- Was THE.APT_RPT_DUMMY; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[SELECT 1
+  FROM dual]]>
+	</queryString>
+	<field name="1" class="java.math.BigDecimal"/>
+	<variable name="total_not_joint_aac" class="java.math.BigDecimal">
+		<initialValueExpression><![CDATA[]]></initialValueExpression>
+	</variable>
+	<variable name="total_joint_aac" class="java.math.BigDecimal">
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<pageHeader>
+		<band height="74" splitType="Stretch">
+			<subreport>
+				<reportElement uuid="54b9de0f-755a-4a14-a15d-2a2549d4388c" x="0" y="22" width="572" height="28"/>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPT_HEADER" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+			<textField>
+				<reportElement uuid="d4792980-ceec-46a4-94b1-99f2b7134e40" x="392" y="0" width="80" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Page "+$V{PAGE_NUMBER}+" of"]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report">
+				<reportElement uuid="04956fdd-ecbb-41e9-8f9a-d2e574363d03" x="472" y="0" width="40" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="1f8309d3-28a8-406d-b314-7c26b4318b9b" x="6" y="11" width="67" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Report Date:  ]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement uuid="30632573-3796-4974-a30f-86b1deceb2cb" x="73" y="11" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="c43b42a1-eb3b-4bfd-bf59-9a34d5d0ba3b" x="73" y="0" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_report_id}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="f863ae2b-c4eb-4ad1-bdf3-0fafe570a0f5" x="6" y="0" width="67" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Report ID: ]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="8387522b-5c00-4846-8af2-c40d19a61890" x="372" y="10" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Run by:  ]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="4db222da-b27e-4265-b6af-aafce327cffa" x="484" y="10" width="89" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{user}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="e5a37ca5-696e-4db8-8132-51aef3bae83e" x="1" y="50" width="571" height="13"/>
+				<textElement textAlignment="Center">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_report_name}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+	<detail>
+		<band height="162" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="fd061855-9f5b-4773-8371-b7b3e737f96a" x="0" y="0" width="572" height="158"/>
+				<textElement>
+					<font fontName="DejaVu Sans"/>
+				</textElement>
+				<text><![CDATA[NOTES:
+* This report includes licences with an AAC in timber supply areas, tree farm licences, and pulpwood agreements with apportioned volume only.
+*  Licences are linked to a corporate group or company if the corporate group or company is affiliated with or controls the licence holder, as defined by Section 53 of the Forest Act.
+*  INDEPENDENT MEDIUM licences have an AAC greater than or equal to 25,000 m3 and less than 100,000 m3.
+*  INDEPENDENT SMALL licences have an AAC less than 25,000 m3.
+*  JOINTLY HELD LICENCES are licences held by more than one corporate group or company.
+*  TFL26 is held by the Corporation of the District of Mission.
+* # Indicates Lump Sum Volumes that originated from a licence under-cut or from under-sold units in the competitive program.]]></text>
+			</staticText>
+		</band>
+		<band height="56">
+			<subreport>
+				<reportElement uuid="bd87678c-7c8a-48f9-a0ae-b7d80a487f0c" x="0" y="0" width="285" height="51"/>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPTAPTR041_FOA_DESC" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+			<subreport>
+				<reportElement uuid="eb73e085-2502-4f00-9c3d-f86c4cab350a" x="286" y="0" width="286" height="51"/>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPTAPTR041_REGION_DESC" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="56">
+			<subreport>
+				<reportElement uuid="074df571-6aa5-49e8-bc43-ec18e14c35c6" x="0" y="0" width="572" height="56"/>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<returnValue subreportVariable="grand_total_aac" toVariable="total_not_joint_aac"/>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPTAPTR041_NOT_JOINT_LICS" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="72">
+			<staticText>
+				<reportElement uuid="75bed1b3-881a-49b5-a450-92d125fea8cd" x="0" y="8" width="572" height="13"/>
+				<textElement>
+					<font fontName="DejaVu Sans"/>
+				</textElement>
+				<text><![CDATA[JOINTLY HELD LICENCES]]></text>
+			</staticText>
+			<subreport>
+				<reportElement uuid="d9563e82-5420-4d8b-9342-efcd5eaf306f" x="0" y="27" width="572" height="45"/>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<returnValue subreportVariable="total_aac" toVariable="total_joint_aac"/>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPTAPTR041_JOINT_LICS" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="35">
+			<textField isStretchWithOverflow="true" evaluationTime="Report" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="40c4b7ba-f9cb-44aa-929b-c026fb8230e2" x="472" y="9" width="72" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{total_not_joint_aac}.intValue() + $V{total_joint_aac}.intValue()]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement uuid="db8c1705-a11d-48f5-8c8e-8168d8ff1392" x="472" y="8" width="72" height="1"/>
+			</line>
+		</band>
+		<band height="50">
+			<subreport>
+				<reportElement uuid="b51a76b1-e59b-4577-ae81-82a5114ebbaa" x="0" y="0" width="572" height="50"/>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPT_COPYRIGHT" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+		</band>
+	</detail>
+</jasperReport>

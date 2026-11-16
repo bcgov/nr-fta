@@ -1,0 +1,508 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APTR043_provincial_linkage_aac" pageWidth="612" pageHeight="792" whenNoDataType="AllSectionsNoDetail" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="853540b4-5b4e-4be6-90d5-25694ffc7b86">
+	<parameter name="User" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_EXT" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[".jrxml"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_id" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["APTR043"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_name" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["PROVINCIAL LINKAGE AAC REPORT"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_category" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["APT2"]]></defaultValueExpression>
+	</parameter>
+	<!-- Was THE.APT_RPTAPTR043_PROV_LINK_AAC; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[-- APT_INDEP_SIZE is inlined as a scalar subquery: the summed commitments of the licence rounded
+-- into NUMBER(11), >= 25000 is 1 (medium), else 2 (small); overflow was 0 (WHEN OTHERS).
+WITH grand_total AS (
+    -- c_grand_total of the procedure, NULL set to 0
+    SELECT NVL(SUM(muh.allowable_annual_cut), 0) prov_aac
+      FROM the.apt_management_units  mu,
+           the.apt_mgmt_unit_history muh
+     WHERE mu.mgmt_unit_status_st = 'ACT'
+           AND mu.apt_mgmt_unit_st IN ('T', 'U')
+           AND mu.id = muh.mu_id AND
+           to_char(muh.effective_date, 'YYYYMMDD') ||
+           to_char(nvl(muh.apportionment_effective_date, to_date('29991231', 'YYYYMMDD')), 'YYYYMMDD') =
+           (SELECT MAX(to_char(effective_date, 'YYYYMMDD') ||
+                       to_char(nvl(apportionment_effective_date, to_date('29991231', 'YYYYMMDD')), 'YYYYMMDD'))
+              FROM the.apt_mgmt_unit_history muh
+             WHERE mu_id = mu.id AND effective_date <= SYSDATE AND
+                   nvl(apportionment_effective_date, to_date('1900', 'YYYY')) <= SYSDATE)
+),
+prov_link_sum AS (
+    -- APT_PROV_LINK_SUM_V (its UNION drops duplicate rows; kept)
+    SELECT vcp.client_name client_name,
+           pfu.forest_file_id,
+           comm.allowable_annual_cut total_aac
+      FROM the.apt_licences lic,
+           the.apt_commitments comm,
+           the.prov_forest_use pfu,
+           the.tenure_term tt,
+           the.for_client_link fcl,
+           the.apt_related_clients rel_cli,
+           the.forest_client vcp,
+           the.apt_management_units mu
+     WHERE SYSDATE BETWEEN comm.effective_date AND
+           nvl(comm.expiry_date, to_date('299912312359','yyyymmddhh24mi'))
+       AND comm.include_in_lic_aac_ind = 'Y'
+       AND lic.forest_file_id = comm.forest_file_id
+       AND lic.forest_file_id = pfu.forest_file_id
+       AND pfu.file_status_st IN ('HI','HS')
+       AND pfu.mgmt_unit_type IN ('T', 'U')
+       AND pfu.mgmt_unit_type = mu.apt_mgmt_unit_st
+       AND pfu.mgmt_unit_id = mu.mgmt_unit_number
+       AND mu.mgmt_unit_status_st = 'ACT'
+       AND pfu.forest_file_id = tt.forest_file_id
+       AND (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                   to_date('9999-12-31','YYYY-MM-DD'), tt.initial_expiry_dt, tt.current_expiry_dt) > SYSDATE)
+       AND pfu.forest_file_id = fcl.forest_file_id
+       AND fcl.file_client_type IN ('A','B')
+       AND fcl.client_number = rel_cli.client_number
+       AND vcp.client_number = rel_cli.client_number_parented_by
+    UNION
+    SELECT vcp.client_name client_name,
+           pfu.forest_file_id,
+           comm.allowable_annual_cut
+      FROM the.apt_licences lic,
+           the.apt_commitments comm,
+           the.prov_forest_use pfu,
+           the.tenure_term tt,
+           the.for_client_link fcl,
+           the.apt_related_clients rel_cli,
+           the.forest_client vcp,
+           the.apt_management_units mu,
+           the.apt_mgmt_unit_history muh,
+           the.apt_partitions part,
+           the.apt_part_apportionments papt
+     WHERE SYSDATE BETWEEN comm.effective_date AND
+           nvl(comm.expiry_date, to_date('299912312359','yyyymmddhh24mi'))
+       AND comm.include_in_lic_aac_ind = 'Y'
+       AND lic.forest_file_id = comm.forest_file_id
+       AND lic.forest_file_id = pfu.forest_file_id
+       AND pfu.file_status_st IN ('HI','HS')
+       AND pfu.mgmt_unit_type = 'Z'
+       AND pfu.forest_file_id = tt.forest_file_id
+       AND (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                   to_date('9999-12-31','YYYY-MM-DD'), tt.initial_expiry_dt, tt.current_expiry_dt) > SYSDATE)
+       AND comm.papt_id = papt.id
+       AND papt.part_id = part.id
+       AND part.muh_id = muh.id
+       AND muh.mu_id = mu.id
+       AND mu.mgmt_unit_status_st = 'ACT'
+       AND pfu.forest_file_id = fcl.forest_file_id
+       AND fcl.file_client_type IN ('A','B')
+       AND fcl.client_number = rel_cli.client_number
+       AND vcp.client_number = rel_cli.client_number_parented_by
+),
+jointly_held_ffid AS (
+    -- APT_JOINTLY_HELD_FFID_V
+    SELECT lic.forest_file_id
+      FROM the.apt_licences lic
+     WHERE 1 < (SELECT COUNT(*)
+                  FROM the.for_client_link fcl,
+                       the.prov_forest_use pfu
+                 WHERE fcl.forest_file_id = lic.forest_file_id AND
+                       fcl.file_client_type IN ('A', 'B') AND
+                       pfu.forest_file_id = lic.forest_file_id AND
+                       pfu.file_status_st IN ('HI', 'HS') AND
+                       pfu.mgmt_unit_type IN ('T', 'U', 'Z'))
+)
+-- The procedure held the grand total in a variable; here the four aggregate branches are an inline
+-- view and the percentage and provincial total are added outside it (a scalar subquery inside an
+-- aggregate without GROUP BY is ORA-00937). Each branch still returns its one row when empty.
+SELECT b.sort_order,
+       b.client_name,
+       b.count_ffid,
+       b.aac,
+       decode(g.prov_aac, 0, 0, b.aac / g.prov_aac * 100) percent_of_prov_aac,  --RY U42 0 DIV CHECK
+       g.prov_aac provincial_total_m3
+  FROM (
+SELECT 'A' sort_order,
+       client_name client_name,
+       COUNT(DISTINCT pls.forest_file_id) count_ffid,
+       SUM(total_aac) aac
+  FROM prov_link_sum pls,
+       the.prov_forest_use     pfu
+ WHERE pls.forest_file_id = pfu.forest_file_id AND
+       pfu.forest_file_id NOT IN
+       (SELECT forest_file_id
+          FROM jointly_held_ffid)
+ GROUP BY client_name
+UNION
+/*INDEPENDENT MEDIUM*/
+    SELECT 'B' sort_order,
+           'INDEPENDENT MEDIUM' client_name,
+           COUNT(DISTINCT lic.forest_file_id) count_ffid,
+           SUM(comm.allowable_annual_cut) aac
+      FROM the.apt_licences    lic,
+           the.apt_commitments comm,
+           the.prov_forest_use pfu,
+           the.tenure_term     tt,
+           the.for_client_link fcl
+     WHERE SYSDATE BETWEEN comm.effective_date AND
+           nvl(comm.expiry_date,
+               to_date('299912312359',
+                       'yyyymmddhh24mi')) AND
+           comm.include_in_lic_aac_ind = 'Y' AND
+           lic.forest_file_id = comm.forest_file_id AND
+           lic.forest_file_id = pfu.forest_file_id
+          -- AND PFU.FILE_STATUS_ST <> 'HC'   -- CR7
+           AND pfu.file_status_st IN ('HI', 'HS') -- CR7
+           AND pfu.forest_file_id = tt.forest_file_id --CR13
+           AND (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                       to_date('9999-12-31','YYYY-MM-DD'), -- CR13
+                       tt.initial_expiry_dt,
+                       tt.current_expiry_dt) > SYSDATE) -- CR13
+           AND pfu.mgmt_unit_type IN ('T', 'U', 'Z') -- CR21
+           AND pfu.forest_file_id = fcl.forest_file_id AND
+           fcl.file_client_type IN ('A', 'B') AND
+           fcl.client_number NOT IN
+           (SELECT DISTINCT client_number
+              FROM the.apt_related_clients) AND
+           1 = (SELECT CASE WHEN ABS(ROUND(SUM(isz.allowable_annual_cut))) > 99999999999 THEN 0 WHEN ROUND(SUM(isz.allowable_annual_cut)) >= 25000 THEN 1 ELSE 2 END FROM the.apt_commitments isz WHERE isz.forest_file_id = lic.forest_file_id) AND
+           pfu.forest_file_id NOT IN
+           (SELECT forest_file_id
+              FROM jointly_held_ffid)
+    UNION
+    /*INDEPENDENT SMALL*/
+        SELECT 'C' sort_order,
+               'INDEPENDENT SMALL' client_name,
+               COUNT(DISTINCT lic.forest_file_id) count_ffid,
+               SUM(comm.allowable_annual_cut) aac
+          FROM the.apt_licences    lic,
+               the.apt_commitments comm,
+               the.prov_forest_use pfu,
+               the.tenure_term     tt,
+               the.for_client_link fcl
+         WHERE SYSDATE BETWEEN comm.effective_date AND
+               nvl(comm.expiry_date,
+                   to_date('299912312359',
+                           'yyyymmddhh24mi')) AND
+               comm.include_in_lic_aac_ind = 'Y' AND
+               lic.forest_file_id = comm.forest_file_id AND
+               lic.forest_file_id = pfu.forest_file_id
+              -- AND PFU.FILE_STATUS_ST <> 'HC'   -- CR7
+               AND pfu.file_status_st IN ('HI', 'HS') -- CR7
+               AND pfu.forest_file_id = tt.forest_file_id --CR13
+               AND (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                           to_date('9999-12-31','YYYY-MM-DD'), -- CR13
+                           tt.initial_expiry_dt,
+                           tt.current_expiry_dt) > SYSDATE) -- CR13
+               AND pfu.mgmt_unit_type IN ('T', 'U', 'Z') -- CR21
+               AND pfu.forest_file_id = fcl.forest_file_id AND
+               fcl.file_client_type IN ('A', 'B') AND
+               fcl.client_number NOT IN
+               (SELECT DISTINCT client_number
+                  FROM the.apt_related_clients) AND
+               2 = (SELECT CASE WHEN ABS(ROUND(SUM(isz.allowable_annual_cut))) > 99999999999 THEN 0 WHEN ROUND(SUM(isz.allowable_annual_cut)) >= 25000 THEN 1 ELSE 2 END FROM the.apt_commitments isz WHERE isz.forest_file_id = lic.forest_file_id) AND
+               pfu.forest_file_id NOT IN
+               (SELECT forest_file_id
+                  FROM jointly_held_ffid)
+        UNION
+        /* JOINTLY HELD */
+            SELECT 'D' sort_order,
+                   'JOINTLY HELD LICENCES' client_name,
+                   COUNT(DISTINCT lic.forest_file_id) count_ffid,
+                   SUM(comm.allowable_annual_cut) aac
+              FROM the.apt_licences    lic,
+                   the.tenure_term     tt,
+                   the.apt_commitments comm
+             WHERE SYSDATE BETWEEN comm.effective_date AND
+                   nvl(comm.expiry_date,
+                       to_date('299912312359',
+                               'yyyymmddhh24mi')) AND
+                   comm.include_in_lic_aac_ind = 'Y' AND
+                   lic.forest_file_id = comm.forest_file_id AND
+                   lic.forest_file_id = tt.forest_file_id AND
+                   (decode(NVL(tt.current_expiry_dt,to_date('9999-12-31', 'YYYY-MM-DD')),
+                           to_date('9999-12-31','YYYY-MM-DD'), -- CR13
+                           tt.initial_expiry_dt,
+                           tt.current_expiry_dt) > SYSDATE) -- CR13
+                   AND lic.forest_file_id IN
+                   (SELECT forest_file_id
+                          FROM jointly_held_ffid)
+       ) b,
+       grand_total g
+ ORDER BY b.sort_order,
+          b.aac DESC]]>
+	</queryString>
+	<field name="SORT_ORDER" class="java.lang.String"/>
+	<field name="CLIENT_NAME" class="java.lang.String"/>
+	<field name="COUNT_FFID" class="java.math.BigDecimal"/>
+	<field name="AAC" class="java.math.BigDecimal"/>
+	<field name="PERCENT_OF_PROV_AAC" class="java.math.BigDecimal"/>
+	<field name="PROVINCIAL_TOTAL_M3" class="java.math.BigDecimal"/>
+	<variable name="total_AAC" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{AAC}]]></variableExpression>
+	</variable>
+	<variable name="total_PERCENT_OF_PROV_AAC" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{PERCENT_OF_PROV_AAC}]]></variableExpression>
+	</variable>
+	<variable name="total_COUNT_FFID" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{COUNT_FFID}]]></variableExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<pageHeader>
+		<band height="69">
+			<textField>
+				<reportElement uuid="28f5bdcc-b2b6-4148-8a43-286a2e740c51" x="392" y="0" width="80" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Page "+$V{PAGE_NUMBER}+" of"]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report">
+				<reportElement uuid="766d0805-6720-47ed-8e00-c56243460d9c" x="472" y="0" width="40" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement uuid="5273ad10-444f-4ac5-bfe0-2b984c2ed9f9" x="0" y="22" width="572" height="28"/>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPT_HEADER" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+			<staticText>
+				<reportElement uuid="1f8309d3-28a8-406d-b314-7c26b4318b9b" x="6" y="11" width="67" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Report Date:  ]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="e5a37ca5-696e-4db8-8132-51aef3bae83e" x="0" y="50" width="571" height="13"/>
+				<textElement textAlignment="Center">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_report_name}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement uuid="30632573-3796-4974-a30f-86b1deceb2cb" x="73" y="11" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="4db222da-b27e-4265-b6af-aafce327cffa" x="484" y="11" width="89" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{User}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="f863ae2b-c4eb-4ad1-bdf3-0fafe570a0f5" x="6" y="0" width="67" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Report ID:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="8387522b-5c00-4846-8af2-c40d19a61890" x="372" y="11" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Run by:  ]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="c43b42a1-eb3b-4bfd-bf59-9a34d5d0ba3b" x="73" y="0" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_report_id}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+	<columnHeader>
+		<band height="47" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="22fd15cd-534e-4ba5-87e3-50139402fcd2" x="35" y="2" width="238" height="20"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Corporate Group or Company]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="9b24111b-9c80-4c08-aefa-c9d5e9cde56c" x="283" y="2" width="45" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[No. of Licences]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="2b3fd370-daab-40ed-b14d-9e93c3f5c121" x="338" y="2" width="71" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[AAC (m3)]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="0acdae97-251f-4452-9afd-806149df9d0a" x="419" y="2" width="71" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[% of Prov AAC]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="ccd5005f-2857-4398-9627-6e1817a844b5" x="0" y="2" width="35" height="20"/>
+				<textElement textAlignment="Center">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Rank]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="bd4fb692-b299-44a9-b241-961e273dbe62" x="501" y="2" width="71" height="42"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Accumulated
+% of
+Prov AAC]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="11" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="5fe6dffe-d454-4ae2-a271-4843fcf2499a" x="0" y="0" width="24" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="1ccadf59-f974-4669-b8e7-73044f9a297c" x="35" y="0" width="238" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{CLIENT_NAME}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="51a7a42a-42a3-4f19-b463-11ff3e10461d" x="283" y="0" width="45" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{COUNT_FFID}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="457b211a-a172-4ad5-b733-795355e632a1" x="338" y="0" width="71" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{AAC}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="4ed0cb80-803c-42fc-8411-9c26e96c1ffc" x="419" y="0" width="71" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PERCENT_OF_PROV_AAC}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="36bcc8e2-0d76-4025-bbe6-e3352f5b122f" x="501" y="0" width="71" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{total_PERCENT_OF_PROV_AAC}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="306" splitType="Stretch">
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="1cb03739-5e71-4de4-a509-4cf68b370587" x="283" y="11" width="45" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{total_COUNT_FFID}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="c3d17abf-00d8-422e-bbd2-100863a2f67c" x="338" y="11" width="71" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{total_AAC}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="ee317ad2-1f37-4156-b5fc-78dc56ebecc0" x="419" y="11" width="71" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{total_PERCENT_OF_PROV_AAC}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement uuid="be34699f-df20-4b11-ae1c-bb48e5accd3a" x="282" y="10" width="46" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="baddfd59-a592-4a18-a205-a48cecb04e99" x="338" y="10" width="71" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="a978666b-b466-43f9-a625-1ea099715835" x="419" y="10" width="71" height="1"/>
+			</line>
+			<staticText>
+				<reportElement uuid="a07f5d1b-5801-4d3e-ad24-cee69dca917a" x="173" y="11" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Total]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="a07f5d1b-5801-4d3e-ad24-cee69dca917a" x="173" y="37" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Total]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="a4735c1f-eefe-498a-a54c-d9c5f0ac6017" x="35" y="37" width="118" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[PROVINCIAL AAC]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="b4b519b6-b5db-420d-ad36-cf153ecb6702" x="338" y="37" width="71" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PROVINCIAL_TOTAL_M3}]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement uuid="16d36c7f-5359-49a3-a980-47e3f49abc32" x="0" y="203" width="572" height="100"/>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPT_COPYRIGHT" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+			<staticText>
+				<reportElement uuid="e73e89d1-88fa-4341-b453-1d13bb9558f7" x="0" y="60" width="572" height="131"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Notes
+*       This report includes licences with an AAC in timber supply areas, tree farm licences, and pulpwood agreements derived
+         from apportioned volume.
+*       Licences are linked to a corporate group or company if the corporate group or company is affiliated with or controls the
+         licence holder, as defined by Section 53 of the Forest Act.
+*       A corporate group or company is displayed if they hold 2 or more licences, or if it holds a licence with an AAC greater than
+         or equal to 100,000 m3.
+*       INDEPENDENT MEDIUM licences have an AAC greater than or equal to 25,000 m3 and less than 100,000 m3.
+*       INDEPENDENT SMALL licences have an AAC less than 25,000 m3.
+*       JOINTLY HELD LICENCES are licences held by more than one corporate group or company.
+*       PROVINCIAL AAC Total is the Sum of the TFL and TSA AAC's; excludes issued Woodlot Licences, Community Forest Agreements and 
+         First Nation Woodland Licences.
+]]></text>
+			</staticText>
+		</band>
+	</summary>
+</jasperReport>

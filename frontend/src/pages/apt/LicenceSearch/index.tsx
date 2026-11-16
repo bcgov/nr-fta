@@ -17,9 +17,11 @@ import {
   Tile,
 } from '@carbon/react';
 import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
+import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
 import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { nextColumnSort, sortHeaderProps } from '@/lib/columnSort';
@@ -61,10 +63,11 @@ const SearchingIcon = () => <Loading small withOverlay={false} description="" />
 
 /**
  * APT2's APTM4200 Search for Licences ({@code APT_LICENCES_GET}). The Forest File ID is required,
- * as in APT2; `%` in it matches anything. A licence opens on its APT page, where its FOA type
- * and commitments are kept.
+ * as in APT2; `%` in it matches anything. Selecting a row opens the licence's APT page, where
+ * its FOA type and commitments are kept.
  */
 const AptLicenceSearch: FC = () => {
+  const navigate = useNavigate();
   const { display } = useNotification();
   const [form, setForm] = useSessionState<Criteria>('fta.apt.licences.form', EMPTY);
   const [lastSearch, setLastSearch] = useSessionState<LastSearch<Criteria> | null>(
@@ -113,7 +116,9 @@ const AptLicenceSearch: FC = () => {
       setLoading(true);
       try {
         const data = await searchAptLicences({ ...criteria, page: nextPage, size: nextSize });
-        setRows(data.content);
+        // One row per licence, as APT2 shows (dedupeRows): the query yields a row per licensee
+        // and related client, and the last one wins.
+        setRows(Array.from(new Map(data.content.map((l) => [l.forestFileId, l])).values()));
         setTotal(data.page.totalElements);
         setPage(data.page.number);
         setPageSize(data.page.size);
@@ -281,20 +286,40 @@ const AptLicenceSearch: FC = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {rows.map((l) => (
-                          <TableRow key={l.forestFileId}>
-                            <TableCell>
-                              <Link to={aptPaths.licenceDetail(l.forestFileId)}>
-                                {l.forestFileId}
-                              </Link>
-                            </TableCell>
-                            <TableCell>{dash(l.clientName)}</TableCell>
-                            <TableCell>{dash(l.mgmtUnitName)}</TableCell>
-                            <TableCell>{dash(l.orgUnitName)}</TableCell>
-                            <TableCell>{dash(l.fileStatus)}</TableCell>
-                            <TableCell>{dash(formatDate(l.fileStatusDate))}</TableCell>
-                          </TableRow>
-                        ))}
+                        {rows.map((l) => {
+                          const open = () => navigate(aptPaths.licenceDetail(l.forestFileId));
+                          return (
+                            <TableRow
+                              key={l.forestFileId}
+                              className="fsp-search__row--selectable"
+                              onClick={open}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  open();
+                                }
+                              }}
+                              tabIndex={0}
+                              role="link"
+                            >
+                              <TableCell>{l.forestFileId}</TableCell>
+                              <TableCell>{dash(l.clientName)}</TableCell>
+                              <TableCell>{dash(l.mgmtUnitName)}</TableCell>
+                              <TableCell>{dash(l.orgUnitName)}</TableCell>
+                              <TableCell>
+                                {l.fileStatusSt || l.fileStatus ? (
+                                  <StatusTag
+                                    status={l.fileStatus || l.fileStatusSt || ''}
+                                    variant={statusCodeVariant(l.fileStatusSt)}
+                                  />
+                                ) : (
+                                  '—'
+                                )}
+                              </TableCell>
+                              <TableCell>{dash(formatDate(l.fileStatusDate))}</TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </TableContainer>

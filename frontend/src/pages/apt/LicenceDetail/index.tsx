@@ -1,4 +1,4 @@
-import { Add, ArrowLeft, Catalog, Document, Edit } from '@carbon/icons-react';
+import { Add, ArrowLeft, Catalog, ChartBar, Document, Edit } from '@carbon/icons-react';
 import { Button } from '@carbon/react';
 import { useCallback, useMemo, useState, type FC } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -15,6 +15,7 @@ import CommitmentEditModal, {
   type CommitmentContext,
 } from '@/pages/apt/Commitments/CommitmentEditModal';
 import CommitmentsTable from '@/pages/apt/Commitments/CommitmentsTable';
+import { commitmentTotals } from '@/pages/apt/Commitments/totals';
 import PageLayout from '@/pages/PageLayout';
 import { canEditApt } from '@/routes/access';
 import { aptPaths } from '@/routes/aptPaths';
@@ -23,10 +24,12 @@ import { getAptLicence, getAptLicenceCommitments } from '@/services/apt/licences
 import { formatDate } from '@/utils/formatDate';
 
 import LicenceEditModal from './LicenceEditModal';
+import './LicenceDetail.css';
 
 const dash = (v: string | number | null | undefined) =>
   v === null || v === undefined || v === '' ? '—' : v;
 const date = (v: string | null | undefined) => formatDate(v) || '—';
+const nf = new Intl.NumberFormat('en-CA');
 
 /**
  * APT2's APTM4000 Licence: the tenure's facts, APT's FOA type, replacement and comments for it,
@@ -70,6 +73,17 @@ const AptLicenceDetail: FC = () => {
 
   const mu = l ? [l.aptMgmtUnitSt, l.mgmtUnitNumber].filter(Boolean).join(' ') || null : null;
 
+  // At a glance: the commitment table's two totals and its row count ("—" until they load).
+  const glance = useMemo(() => {
+    if (!commitments.data) return null;
+    return { ...commitmentTotals(commitments.data), count: commitments.data.length };
+  }, [commitments.data]);
+  const stats = [
+    { label: 'Total AAC (m³)', value: glance ? nf.format(glance.total) : '—' },
+    { label: 'Included in AAC (m³)', value: glance ? nf.format(glance.included) : '—' },
+    { label: 'Commitments', value: glance ? nf.format(glance.count) : '—' },
+  ];
+
   return (
     <PageLayout
       title={`Licence ${l?.forestFileId ?? forestFileId}`}
@@ -100,61 +114,73 @@ const AptLicenceDetail: FC = () => {
                 { label: 'FOA Type', value: dash(l.aptFoaSt) },
               ]}
             />
-            <SectionTile
-              title="Licence"
-              icon={Document}
-              actions={
-                canEdit ? (
-                  <Button
-                    kind="tertiary"
-                    size="sm"
-                    renderIcon={Edit}
-                    onClick={() => setLicenceOpen(true)}
-                  >
-                    Edit licence
-                  </Button>
-                ) : undefined
-              }
-            >
-              <DefinitionGrid
-                items={[
-                  { label: 'Management Unit Type', value: dash(l.aptMgmtUnitSt) },
-                  { label: 'Management Unit No.', value: dash(l.mgmtUnitNumber) },
-                  { label: 'File Status Date', value: date(l.fileStatusDate) },
-                  { label: 'Legal Effective Date', value: date(l.legalEffectiveDt) },
-                  { label: 'Initial Expiry Date', value: date(l.initialExpiryDt) },
-                  { label: 'Current Expiry Date', value: date(l.currentExpiryDt) },
-                  { label: 'Tenure Term', value: dash(l.tenureTerm) },
-                  { label: 'FOA Type', value: dash(l.aptFoaSt) },
-                  { label: 'Replacement Date', value: date(l.replacementDate) },
-                  {
-                    label: 'Replacement Term',
-                    value: l.replacementTerm != null ? `${l.replacementTerm} months` : '—',
-                  },
-                  { label: 'Comments', value: dash(l.comments) },
-                  {
-                    label: 'Added',
-                    value: l.addTimestamp ? (
-                      <>
-                        {date(l.addTimestamp)} by <UserName userId={l.addUserid} />
-                      </>
-                    ) : (
-                      '—'
-                    ),
-                  },
-                  {
-                    label: 'Last Updated',
-                    value: l.updateTimestamp ? (
-                      <>
-                        {date(l.updateTimestamp)} by <UserName userId={l.updateUserid} />
-                      </>
-                    ) : (
-                      '—'
-                    ),
-                  },
-                ]}
-              />
-            </SectionTile>
+            <div className="apt-licence__top">
+              <SectionTile
+                title="Licence"
+                icon={Document}
+                actions={
+                  canEdit ? (
+                    <Button
+                      kind="tertiary"
+                      size="sm"
+                      renderIcon={Edit}
+                      onClick={() => setLicenceOpen(true)}
+                    >
+                      Edit licence
+                    </Button>
+                  ) : undefined
+                }
+              >
+                <DefinitionGrid
+                  items={[
+                    { label: 'Management Unit Type', value: dash(l.aptMgmtUnitSt) },
+                    { label: 'Management Unit No.', value: dash(l.mgmtUnitNumber) },
+                    { label: 'File Status Date', value: date(l.fileStatusDate) },
+                    { label: 'Legal Effective Date', value: date(l.legalEffectiveDt) },
+                    { label: 'Initial Expiry Date', value: date(l.initialExpiryDt) },
+                    { label: 'Current Expiry Date', value: date(l.currentExpiryDt) },
+                    { label: 'Tenure Term', value: dash(l.tenureTerm) },
+                    { label: 'FOA Type', value: dash(l.aptFoaSt) },
+                    { label: 'Replacement Date', value: date(l.replacementDate) },
+                    {
+                      label: 'Replacement Term',
+                      value: l.replacementTerm != null ? `${l.replacementTerm} months` : '—',
+                    },
+                    { label: 'Comments', value: dash(l.comments) },
+                    {
+                      label: 'Added',
+                      value: l.addTimestamp ? (
+                        <>
+                          {date(l.addTimestamp)} by <UserName userId={l.addUserid} />
+                        </>
+                      ) : (
+                        '—'
+                      ),
+                    },
+                    {
+                      label: 'Last Updated',
+                      value: l.updateTimestamp ? (
+                        <>
+                          {date(l.updateTimestamp)} by <UserName userId={l.updateUserid} />
+                        </>
+                      ) : (
+                        '—'
+                      ),
+                    },
+                  ]}
+                />
+              </SectionTile>
+              <SectionTile title="At a glance" icon={ChartBar}>
+                <dl className="apt-licence__glance">
+                  {stats.map((st) => (
+                    <div key={st.label} className="apt-licence__stat">
+                      <dt className="apt-licence__stat-label">{st.label}</dt>
+                      <dd className="apt-licence__stat-value">{st.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </SectionTile>
+            </div>
           </>
         )}
       </AsyncBoundary>

@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR011_APPORT_HA" pageWidth="752" pageHeight="572" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="752" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="37f3358a-c750-4a3e-bd35-ed433a0de282">
+	<style name="Crosstab Data Text" hAlign="Center"/>
+	<parameter name="p_in_rpt_date" class="java.util.Date"/>
+	<parameter name="p_in_mu_number" class="java.lang.String"/>
+	<parameter name="p_in_muh_id" class="java.math.BigDecimal"/>
+	<parameter name="p_in_first_col" class="java.lang.Integer"/>
+	<parameter name="p_in_col_count" class="java.lang.Integer"/>
+	<!-- Was THE.APT_RPTAPTR011_APPORT_HA; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[WITH prm AS (
+  SELECT CAST($P{p_in_rpt_date} AS DATE) AS rpt_date,
+         $P{p_in_mu_number}              AS mu_number,
+         $P{p_in_muh_id}                 AS muh_id,
+         $P{p_in_first_col}              AS first_col,
+         $P{p_in_col_count}              AS col_count
+    FROM dual
+),
+-- APT_PART_RPT_V
+part_rpt AS (
+  SELECT clt.code_argument   AS part_type_cd,
+         clt.expanded_result AS part_type_desc
+    FROM the.code_list_table clt,
+         the.code_subset_tbl cst
+   WHERE cst.code_subset_name = 'APT_PART_RPT_ST'
+     AND clt.column_name = cst.column_name
+     AND clt.code_argument = cst.code_argument
+),
+-- APT_FOA_TYPES_V, management unit type U, not expired at the report date
+foa_types AS (
+  SELECT clt.code_argument,
+         clt.expanded_result,
+         acat.sort_order
+    FROM the.code_list_table clt,
+         the.code_subset_tbl cst,
+         the.apt_apportionment_categories acat,
+         prm
+   WHERE cst.code_subset_name = 'APT_FOA_ST'
+     AND clt.column_name = cst.column_name
+     AND clt.code_argument = cst.code_argument
+     AND acat.apt_foa_st = clt.code_argument
+     AND acat.apt_mgmt_unit_st = 'U'
+     AND clt.expiry_date > prm.rpt_date
+),
+-- APTR.TSA_PAPT_FOA_AAC_HA(in_mu_number, in_rpt_date, foa) for every FOA at once
+-- (the function summed into a NUMBER(10), hence ROUND, and returned NVL(..., 0))
+tsa_foa_sum AS (
+  SELECT papt.apt_foa_st,
+         SUM(papt.allowable_annual_cut_ha) AS sum_papt_aac
+    FROM the.apt_part_apportionments papt,
+         the.apt_partitions part,
+         the.apt_mgmt_unit_history muh,
+         the.apt_management_units mu,
+         prm
+   WHERE mu.mgmt_unit_number = prm.mu_number
+     AND mu.apt_mgmt_unit_st = 'U'
+     AND (mu.mgmt_unit_status_st = 'ACT' OR mu.status_effective_date > prm.rpt_date)
+     AND muh.mu_id = mu.id
+     AND muh.id = part.muh_id
+     AND papt.part_id = part.id
+     AND TO_CHAR(muh.effective_date, 'YYYYMMDD')
+         || TO_CHAR(NVL(muh.apportionment_effective_date, TO_DATE('29991231', 'YYYYMMDD')), 'YYYYMMDD')
+         = (SELECT MAX(TO_CHAR(h.effective_date, 'YYYYMMDD')
+                       || TO_CHAR(NVL(h.apportionment_effective_date, TO_DATE('29991231', 'YYYYMMDD')), 'YYYYMMDD'))
+              FROM the.apt_mgmt_unit_history h
+             WHERE h.effective_date <= prm.rpt_date
+               AND NVL(h.apportionment_effective_date, TO_DATE('1900', 'YYYY')) <= prm.rpt_date
+               AND h.mu_id = mu.id)
+   GROUP BY papt.apt_foa_st
+),
+foa_total AS (
+  SELECT aftv.code_argument,
+         NVL((SELECT ROUND(t.sum_papt_aac) FROM tsa_foa_sum t
+               WHERE t.apt_foa_st = aftv.code_argument), 0) AS aac_value
+    FROM foa_types aftv
+),
+-- c_foa_total_total
+foa_total_total AS (
+  SELECT SUM(ft.aac_value) AS total FROM foa_total ft
+),
+-- APT_RPT_APTR011_PART_TOTALS_HA(in_rpt_date, part_id) for every partition at once
+part_total AS (
+  SELECT papt.part_id,
+         SUM(papt.allowable_annual_cut_ha) AS total
+    FROM the.apt_part_apportionments papt
+   WHERE papt.apt_foa_st IN (SELECT aftv.code_argument FROM foa_types aftv)
+     AND papt.part_id IN (SELECT p.id FROM the.apt_partitions p, prm WHERE p.muh_id = prm.muh_id)
+   GROUP BY papt.part_id
+),
+-- c_partition_codes, ranked in its ORDER BY
+part_codes AS (
+  SELECT pc.partition_code,
+         ROW_NUMBER() OVER (ORDER BY pc.partition_code) AS partition_rank
+    FROM (SELECT DISTINCT ptv.part_type_cd AS partition_code
+            FROM the.apt_partitions part_papt, part_rpt ptv, prm
+           WHERE part_papt.muh_id = prm.muh_id
+             AND part_papt.apt_partition_st = ptv.part_type_cd
+          UNION
+          SELECT DISTINCT ptv.part_type_cd || 'X123'
+            FROM the.apt_partitions part_papt, part_rpt ptv, prm
+           WHERE part_papt.muh_id = prm.muh_id
+             AND part_papt.apt_partition_st = ptv.part_type_cd
+          UNION
+          SELECT 'AAA TOTAL' FROM dual
+          UNION
+          SELECT 'AAB TOTAL' FROM dual) pc
+),
+-- The cursor loop: a comma-led list of codes for ranks in_first_col .. in_first_col + in_col_count - 1,
+-- and how many ranks come after that window
+part_window AS (
+  SELECT LISTAGG(CASE WHEN pc.partition_rank BETWEEN prm.first_col
+                                               AND prm.first_col + prm.col_count - 1
+                      THEN ',' || pc.partition_code END)
+           WITHIN GROUP (ORDER BY pc.partition_rank) AS partition_code_list,
+         COUNT(CASE WHEN pc.partition_rank > prm.first_col + prm.col_count - 1
+                    THEN 1 END) AS remaining_partitions_count
+    FROM part_codes pc, prm
+)
+SELECT all_labels.partition_id,
+       all_labels.partition_description,
+       all_labels.partition_code,
+       all_labels.foa_description,
+       all_labels.foa_code,
+       aac_values.aac_value,
+       all_labels.foa_sort_order,
+       all_labels.partition_sort_order,
+       pw.remaining_partitions_count
+  FROM (SELECT partition_labels.partition_id,
+               partition_labels.partition_code,
+               partition_labels.partition_description,
+               partition_labels.partition_sort_order,
+               foa_labels.foa_sort_order,
+               foa_labels.foa_description,
+               foa_labels.foa_code
+          FROM (SELECT part_papt.id       AS partition_id,
+                       ptv.part_type_cd   AS partition_code,
+                       ptv.part_type_desc AS partition_description,
+                       ptv.part_type_cd   AS partition_sort_order
+                  FROM the.apt_partitions part_papt, part_rpt ptv, prm
+                 WHERE part_papt.muh_id = prm.muh_id
+                   AND part_papt.apt_partition_st = ptv.part_type_cd
+                UNION
+                SELECT part_papt.id + .1,
+                       ptv.part_type_cd || 'X123',
+                       '%',
+                       ptv.part_type_cd || 'X123'
+                  FROM the.apt_partitions part_papt, part_rpt ptv, prm
+                 WHERE part_papt.muh_id = prm.muh_id
+                   AND part_papt.apt_partition_st = ptv.part_type_cd
+                UNION
+                SELECT -2, 'AAA TOTAL', 'Total ha', 'AAAAAAAA' FROM dual
+                UNION
+                SELECT -1, 'AAB TOTAL', '%', 'AAAAAAAB' FROM dual) partition_labels,
+               (SELECT aftv.sort_order      AS foa_sort_order,
+                       aftv.expanded_result AS foa_description,
+                       aftv.code_argument   AS foa_code
+                  FROM foa_types aftv) foa_labels) all_labels,
+       (-- 1) AAC per FOA and partition; 2) its percentage of the partition total.
+        -- Only this management unit historys partitions can match a label.
+        SELECT papt.apt_foa_st           AS foa_code,
+               papt.part_id              AS partition_id,
+               papt.allowable_annual_cut_ha AS aac_value
+          FROM the.apt_part_apportionments papt
+         WHERE papt.part_id IN (SELECT p.id FROM the.apt_partitions p, prm WHERE p.muh_id = prm.muh_id)
+        UNION
+        SELECT papt.apt_foa_st,
+               papt.part_id + .1,
+               DECODE(NVL(pt.total, 0), 0, 0,
+                      papt.allowable_annual_cut_ha / NVL(pt.total, 0) * 100)
+          FROM the.apt_part_apportionments papt,
+               part_total pt
+         WHERE pt.part_id(+) = papt.part_id
+           AND papt.part_id IN (SELECT p.id FROM the.apt_partitions p, prm WHERE p.muh_id = prm.muh_id)
+        UNION
+        -- 3) the FOA totals under "Total ha"; 4) their percentage of the total of totals
+        SELECT ft.code_argument, -2, ft.aac_value
+          FROM foa_total ft
+        UNION
+        SELECT ft.code_argument, -1,
+               DECODE(ftt.total, 0, 0, ft.aac_value / ftt.total * 100)
+          FROM foa_total ft, foa_total_total ftt) aac_values,
+       part_window pw
+ WHERE all_labels.partition_id = aac_values.partition_id(+)
+   AND all_labels.foa_code = aac_values.foa_code(+)
+   AND pw.partition_code_list LIKE '%' || all_labels.partition_code || '%'
+UNION ALL
+-- No partition in this window: the procedures one dummy row
+SELECT -1, 'dummy', 'dummy', 'dummy', 'dummy', -1, -1, 'dummy', pw.remaining_partitions_count
+  FROM part_window pw
+ WHERE pw.partition_code_list IS NULL
+ ORDER BY foa_sort_order, foa_code, partition_sort_order]]>
+	</queryString>
+	<field name="PARTITION_ID" class="java.math.BigDecimal"/>
+	<field name="PARTITION_DESCRIPTION" class="java.lang.String"/>
+	<field name="PARTITION_CODE" class="java.lang.String"/>
+	<field name="FOA_DESCRIPTION" class="java.lang.String"/>
+	<field name="FOA_CODE" class="java.lang.String"/>
+	<field name="AAC_VALUE" class="java.math.BigDecimal"/>
+	<field name="FOA_SORT_ORDER" class="java.math.BigDecimal"/>
+	<field name="PARTITION_SORT_ORDER" class="java.lang.String"/>
+	<field name="REMAINING_PARTITIONS_COUNT" class="java.math.BigDecimal"/>
+	<filterExpression><![CDATA[$F{AAC_VALUE} != null && $F{AAC_VALUE}.doubleValue() > 0.0]]></filterExpression>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<summary>
+		<band height="42" splitType="Stretch">
+			<crosstab>
+				<reportElement uuid="b811b7c2-fcc8-4206-a953-c8a12db4ac6e" x="0" y="0" width="752" height="42" isRemoveLineWhenBlank="true"/>
+				<rowGroup name="FOA_SORT_ORDER" width="2" totalPosition="End">
+					<bucket class="java.math.BigDecimal">
+						<bucketExpression><![CDATA[$F{FOA_SORT_ORDER}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents backcolor="#FFFFFF" mode="Opaque">
+							<textField isBlankWhenNull="true">
+								<reportElement uuid="3acaf472-5eb4-4d65-acc1-e51f340d46aa" style="Crosstab Data Text" x="0" y="0" width="1" height="11" forecolor="#FFFFFF"/>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{FOA_SORT_ORDER}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents backcolor="#BFE1FF" mode="Opaque">
+							<staticText>
+								<reportElement uuid="ba9e347f-3d7a-4185-9c96-f861668e0bf8" x="0" y="0" width="134" height="11"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<text><![CDATA[Total]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="FOA_DESCRIPTION" width="132" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{FOA_DESCRIPTION}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="963f89fd-0da7-4152-9e8b-615ecd59544e" style="Crosstab Data Text" x="0" y="0" width="132" height="11" isRemoveLineWhenBlank="true">
+									<printWhenExpression><![CDATA[//$V{AAC_VALUEMeasure_FOA_DESCRIPTION_PARTITION_SORT_ORDER_ALL} != null && $V{AAC_VALUEMeasure_FOA_DESCRIPTION_PARTITION_SORT_ORDER_ALL}.doubleValue() > 0.0
+true]]></printWhenExpression>
+								</reportElement>
+								<textElement textAlignment="Left" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{FOA_DESCRIPTION}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents/>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<columnGroup name="PARTITION_SORT_ORDER" height="2" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{PARTITION_SORT_ORDER}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents backcolor="#FFFFFF" mode="Opaque">
+							<textField isBlankWhenNull="true">
+								<reportElement uuid="44a87832-5bed-4b0f-a652-f7e83fa168bb" style="Crosstab Data Text" x="0" y="0" width="50" height="1"/>
+								<textElement textAlignment="Right" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{PARTITION_SORT_ORDER}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents backcolor="#FFFFFF" mode="Opaque"/>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<columnGroup name="PARTITION_DESCRIPTION" height="11" totalPosition="End">
+					<bucket class="java.lang.String">
+						<bucketExpression><![CDATA[$F{PARTITION_DESCRIPTION}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents>
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement uuid="aeba73a9-2e6a-4f67-a6e0-83fbdf704208" style="Crosstab Data Text" x="0" y="0" width="65" height="11" isRemoveLineWhenBlank="true"/>
+								<textElement textAlignment="Right" verticalAlignment="Middle">
+									<font fontName="DejaVu Sans" size="8"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{PARTITION_DESCRIPTION}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents/>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<measure name="AAC_VALUEMeasure" class="java.math.BigDecimal" calculation="Sum">
+					<measureExpression><![CDATA[$F{AAC_VALUE}]]></measureExpression>
+				</measure>
+				<crosstabCell width="65" height="11">
+					<cellContents>
+						<textField isStretchWithOverflow="true" pattern="" isBlankWhenNull="true">
+							<reportElement uuid="396e3980-f288-4292-aeca-591d46fb5d27" style="Crosstab Data Text" x="0" y="0" width="65" height="11" isRemoveLineWhenBlank="true">
+								<printWhenExpression><![CDATA[$V{AAC_VALUEMeasure_FOA_DESCRIPTION_PARTITION_SORT_ORDER_ALL} != null && $V{AAC_VALUEMeasure_FOA_DESCRIPTION_PARTITION_SORT_ORDER_ALL}.doubleValue() > 0.0]]></printWhenExpression>
+							</reportElement>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{AAC_VALUEMeasure}]]></textFieldExpression>
+							<patternExpression><![CDATA[( $V{PARTITION_DESCRIPTION} != null && !($V{PARTITION_DESCRIPTION}.isEmpty()) && $V{PARTITION_DESCRIPTION}.indexOf( "%" ) >= 0
+    ? "#,##0.00"
+    : "#,##0"
+)]]></patternExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="65" height="11" rowTotalGroup="FOA_SORT_ORDER">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<textField isStretchWithOverflow="true" pattern="" isBlankWhenNull="true">
+							<reportElement uuid="ded47554-dd26-4f31-98e6-26fd21d36be2" style="Crosstab Data Text" x="0" y="0" width="65" height="11" isRemoveLineWhenBlank="true"/>
+							<textElement textAlignment="Right" verticalAlignment="Middle">
+								<font fontName="DejaVu Sans" size="8"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$V{AAC_VALUEMeasure}]]></textFieldExpression>
+							<patternExpression><![CDATA[( $V{PARTITION_DESCRIPTION} != null && !($V{PARTITION_DESCRIPTION}.isEmpty()) && $V{PARTITION_DESCRIPTION}.indexOf( "%" ) >= 0
+    ? "#,##0.00"
+    : "#,##0"
+)]]></patternExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" columnTotalGroup="PARTITION_SORT_ORDER">
+					<cellContents backcolor="#FFFFFF" mode="Opaque"/>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" rowTotalGroup="FOA_SORT_ORDER" columnTotalGroup="PARTITION_SORT_ORDER">
+					<cellContents backcolor="#FFFFFF" mode="Opaque"/>
+				</crosstabCell>
+				<crosstabCell width="65" height="0" rowTotalGroup="FOA_DESCRIPTION">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="0" rowTotalGroup="FOA_DESCRIPTION" columnTotalGroup="PARTITION_SORT_ORDER">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" columnTotalGroup="PARTITION_DESCRIPTION">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="11" rowTotalGroup="FOA_SORT_ORDER" columnTotalGroup="PARTITION_DESCRIPTION">
+					<cellContents/>
+				</crosstabCell>
+				<crosstabCell width="0" height="0" rowTotalGroup="FOA_DESCRIPTION" columnTotalGroup="PARTITION_DESCRIPTION">
+					<cellContents/>
+				</crosstabCell>
+			</crosstab>
+		</band>
+	</summary>
+</jasperReport>

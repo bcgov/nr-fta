@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APT_RPTAPTR011_AAC" pageWidth="752" pageHeight="612" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="752" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="3244ad4a-7a2d-4744-ac80-75d26286262a">
+	<parameter name="p_in_mgmt_unit_hist_id" class="java.math.BigDecimal"/>
+	<!-- Was THE.APT_RPTAPTR011_AAC; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[SELECT ptv.part_type_desc            AS part_type_desc,
+       part.allowable_annual_cut     AS part_aac,
+       DECODE(muh.allowable_annual_cut, 0, 0,
+              part.allowable_annual_cut / muh.allowable_annual_cut * 100) AS part_aac_percent,
+       part.allowable_annual_cut_ha  AS part_aac_ha,
+       muh.effective_date            AS effective_date,
+       muh.determination_date        AS determination_date,
+       muh.allowable_annual_cut      AS aac_m3_total
+  FROM the.apt_partitions part,
+       (SELECT clt.code_argument   AS part_type_cd,
+               clt.expanded_result AS part_type_desc
+          FROM the.code_list_table clt,
+               the.code_subset_tbl cst
+         WHERE cst.code_subset_name = 'APT_PART_RPT_ST'
+           AND clt.column_name = cst.column_name
+           AND clt.code_argument = cst.code_argument) ptv,
+       the.apt_mgmt_unit_history muh
+ WHERE part.muh_id = $P{p_in_mgmt_unit_hist_id}
+   AND ptv.part_type_cd = part.apt_partition_st
+   AND part.muh_id = muh.id
+ ORDER BY ptv.part_type_desc]]>
+	</queryString>
+	<field name="PART_TYPE_DESC" class="java.lang.String"/>
+	<field name="PART_AAC" class="java.math.BigDecimal"/>
+	<field name="PART_AAC_PERCENT" class="java.math.BigDecimal"/>
+	<field name="PART_AAC_HA" class="java.math.BigDecimal"/>
+	<field name="EFFECTIVE_DATE" class="java.sql.Timestamp"/>
+	<field name="DETERMINATION_DATE" class="java.sql.Timestamp"/>
+	<field name="AAC_M3_TOTAL" class="java.math.BigDecimal"/>
+	<variable name="SumPart_AAC" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{PART_AAC}]]></variableExpression>
+	</variable>
+	<variable name="SumPart_AAC_Percentage" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{PART_AAC_PERCENT}]]></variableExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="14" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="8766300a-a8ee-4146-b7a2-e5c6cb561f47" x="0" y="2" width="303" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Partition]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="864f48a8-2d2f-4a94-b919-378b253940c2" x="318" y="2" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[cubic metres]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="231f39f5-4296-4134-a937-ac2f531e97df" x="439" y="2" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[%]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="12" splitType="Stretch">
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="53eda8ad-1157-4199-a486-06081a5dc570" x="0" y="0" width="303" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PART_TYPE_DESC}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="75b2301c-aead-45eb-b137-396cdce1040a" x="318" y="0" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PART_AAC}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="b9d673ee-67d3-4dea-be1d-2187d192e5b6" x="439" y="0" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PART_AAC_PERCENT}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="12" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="2fa23de2-0a26-4344-b570-c09cdf0e49b9" x="203" y="0" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Total]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="b04feaa1-79d9-436c-8072-4d83fdd04ec5" x="318" y="0" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{SumPart_AAC}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="7392ce9a-adec-4458-b2b6-dcd827ebd30c" x="439" y="0" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{SumPart_AAC_Percentage}]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

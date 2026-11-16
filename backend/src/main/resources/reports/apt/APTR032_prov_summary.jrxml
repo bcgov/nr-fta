@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="APTR032_prov_summary" pageWidth="612" pageHeight="792" whenNoDataType="AllSectionsNoDetail" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="2cfe11ad-19f5-4cf6-8124-c6751b082b81">
+	<parameter name="in_rpt_date" class="java.util.Date"/>
+	<parameter name="user" class="java.lang.String">
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_EXT" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[".jrxml"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_id" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["APTR032"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_name" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["PROVINCIAL SUMMARY REPORT"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_category" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["APT2"]]></defaultValueExpression>
+	</parameter>
+	<!-- Was THE.APT_RPT_DUMMY; the same query on the tables (no EXECUTE grant needed). -->
+	<queryString language="sql">
+		<![CDATA[SELECT 1
+  FROM dual]]>
+	</queryString>
+	<field name="1" class="java.math.BigDecimal"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<pageHeader>
+		<band height="93" splitType="Stretch">
+			<subreport>
+				<reportElement uuid="6dfb9ca6-8b9b-457c-92d7-bac2f431ee00" x="0" y="23" width="572" height="28"/>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPT_HEADER" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+			<textField>
+				<reportElement uuid="73f1face-6c72-463e-b327-b76a2999db41" x="392" y="0" width="80" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Page "+$V{PAGE_NUMBER}+" of"]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report">
+				<reportElement uuid="51da8527-ba5d-47de-94d4-41d56f2d0b42" x="472" y="0" width="40" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement uuid="0f87e2b0-10e4-4e3d-9577-7059624b17b7" x="215" y="75" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{in_rpt_date}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="45249a9d-f9b1-40ad-a24d-3e588222ff55" x="115" y="75" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Effective Date]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="8387522b-5c00-4846-8af2-c40d19a61890" x="371" y="12" width="100" height="11"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Run by:  ]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="4db222da-b27e-4265-b6af-aafce327cffa" x="483" y="12" width="89" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{user}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="f863ae2b-c4eb-4ad1-bdf3-0fafe570a0f5" x="3" y="1" width="67" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Report ID:]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement uuid="30632573-3796-4974-a30f-86b1deceb2cb" x="70" y="12" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="c43b42a1-eb3b-4bfd-bf59-9a34d5d0ba3b" x="70" y="1" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_report_id}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement uuid="e5a37ca5-696e-4db8-8132-51aef3bae83e" x="1" y="51" width="571" height="13"/>
+				<textElement textAlignment="Center">
+					<font fontName="DejaVu Sans" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_report_name}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="1f8309d3-28a8-406d-b314-7c26b4318b9b" x="3" y="12" width="67" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Report Date:  ]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="b549d7bf-124c-45b6-b079-4d3c083b480e" x="1" y="75" width="100" height="11"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Parameters]]></text>
+			</staticText>
+		</band>
+	</pageHeader>
+	<detail>
+		<band height="89" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="fd061855-9f5b-4773-8371-b7b3e737f96a" x="0" y="0" width="572" height="13"/>
+				<textElement>
+					<font fontName="DejaVu Sans"/>
+				</textElement>
+				<text><![CDATA[A) ALLOWABLE ANNUAL CUT (AAC):]]></text>
+			</staticText>
+			<subreport>
+				<reportElement uuid="fb5c0bfd-1fd7-465e-bcca-22da34b5ea1d" x="0" y="22" width="572" height="67"/>
+				<subreportParameter name="p_in_rpt_date">
+					<subreportParameterExpression><![CDATA[$P{in_rpt_date}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPTAPTR032_AAC" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="97">
+			<staticText>
+				<reportElement uuid="75bed1b3-881a-49b5-a450-92d125fea8cd" x="0" y="13" width="572" height="13"/>
+				<textElement>
+					<font fontName="DejaVu Sans"/>
+				</textElement>
+				<text><![CDATA[B) APPORTIONMENT OF AAC:]]></text>
+			</staticText>
+			<subreport>
+				<reportElement uuid="7c9a7fe3-b12b-47e6-84b7-29506f7ec6ff" x="0" y="33" width="572" height="64"/>
+				<subreportParameter name="p_in_rpt_date">
+					<subreportParameterExpression><![CDATA[$P{in_rpt_date}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPTAPTR032_APPORTIONMENT" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="94">
+			<staticText>
+				<reportElement uuid="b1ce96b0-9f92-4e55-8da4-c2cbb5dcbabb" x="0" y="15" width="572" height="13"/>
+				<textElement>
+					<font fontName="DejaVu Sans"/>
+				</textElement>
+				<text><![CDATA[C) COMMITMENTS - AAC (m3) & NO. OF LICENCES:]]></text>
+			</staticText>
+			<subreport>
+				<reportElement uuid="c56f8ce3-44be-463e-8aca-a1a2ca298636" x="0" y="35" width="572" height="59"/>
+				<subreportParameter name="p_in_rpt_date">
+					<subreportParameterExpression><![CDATA[$P{in_rpt_date}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPTAPTR032_COMMITMENTS" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="59">
+			<subreport>
+				<reportElement uuid="086adc44-3c1e-450d-8f3f-bcc4a822fcd5" x="0" y="9" width="572" height="50"/>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "APT_RPT_COPYRIGHT" + $P{SUBREPORT_EXT}]]></subreportExpression>
+			</subreport>
+		</band>
+	</detail>
+</jasperReport>

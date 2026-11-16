@@ -14,9 +14,9 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * The nine APT PDF reports, rendered in the backend by {@link AptReportRenderer} from
  * {@code reports/apt/<template>.jrxml}. The template names and parameter names are APT2's
- * (from its {@code ReportService}), so the legacy templates can be dropped in as they are
- * once found. That includes APT2's mix of {@code in_rpt_date} and {@code in_report_date};
- * align these with the templates' declared parameters when they are added.
+ * (from its {@code ReportService}) and match the templates' declared parameters, APT2's mix
+ * of {@code in_rpt_date} and {@code in_report_date} included ({@code AptReportRendererTest}
+ * checks this).
  *
  * <p>APT2 dropped APTR018 (merger impacts), APTR055 (licence AAC credits), APTR060 and
  * APTR065 (TSA exceptions); they are not offered here either.
@@ -48,6 +48,11 @@ public enum AptReportDefinition {
   /** The report's template name: {@code reports/apt/<template>.jrxml} on the classpath. */
   public String template() {
     return template;
+  }
+
+  /** The names of this report's own parameters, in declaration order. */
+  public List<String> paramNames() {
+    return params.stream().map(Param::name).toList();
   }
 
   /** The report for a code such as {@code APTR011} or {@code aptr011}. */

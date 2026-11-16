@@ -73,7 +73,7 @@ const validate = (f: Form): Errors => {
   if (!f.effectiveDate) e.effectiveDate = 'Effective Date is required.';
   if (!f.determinationDate) e.determinationDate = 'AAC Determination Date is required.';
   const checks: [keyof Form, string | null][] = [
-    ['aac', wholeProblem('AAC (m³)', f.aac, true)],
+    ['aac', wholeProblem('AAC (m³)', f.aac)],
     ['aacHa', wholeProblem('AAC (ha)', f.aacHa)],
     ['longTermHarvestLevel', wholeProblem('Long Term Harvest Level', f.longTermHarvestLevel)],
     ['totalArea', areaProblem('Total Area', f.totalArea)],
@@ -101,7 +101,7 @@ const bodyOf = (f: Form, prevId: number | null): AptManagementUnitHistoryRequest
   inventoryRevDate: f.inventoryRevDate || null,
   apportionmentDeterminationDt: f.apportionmentDeterminationDt || null,
   apportionmentEffectiveDate: f.apportionmentEffectiveDate || null,
-  allowableAnnualCut: toNumber(f.aac) ?? 0,
+  allowableAnnualCut: toNumber(f.aac),
   allowableAnnualCutHa: toNumber(f.aacHa),
   longTermHarvestLevel: toNumber(f.longTermHarvestLevel),
   totalArea: toNumber(f.totalArea),

@@ -163,45 +163,47 @@ const ManagementUnitHistoryPage: FC = () => {
                   body="This management unit has no AAC determinations yet."
                 />
               ) : (
-                <TableContainer>
-                  <Table size="md" aria-label="AAC determinations">
-                    <TableHead>
-                      <TableRow>
-                        <TableHeader aria-label="Select" />
-                        {COLUMNS.map((c) => (
-                          <TableHeader key={c}>{c}</TableHeader>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {history.map((h) => {
-                        const isSelected = selected?.id === h.id;
-                        return (
-                          <TableRow
-                            key={h.id}
-                            className={isSelected ? 'cds--data-table--selected' : undefined}
-                            onClick={() => setPicked(h.id)}
-                          >
-                            <TableSelectRow
-                              radio
-                              id={`apt-muh-select-${h.id}`}
-                              name="apt-muh-select"
-                              aria-label={`Select the determination effective ${day(h.effectiveDate)}`}
-                              checked={isSelected}
-                              onSelect={() => setPicked(h.id)}
-                            />
-                            <TableCell>{day(h.effectiveDate)}</TableCell>
-                            <TableCell>{day(h.determinationDate)}</TableCell>
-                            <TableCell>{num(h.allowableAnnualCut)}</TableCell>
-                            <TableCell>{num(h.allowableAnnualCutHa)}</TableCell>
-                            <TableCell>{day(h.apportionmentEffectiveDate)}</TableCell>
-                            <TableCell>{dash(h.comments)}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                <div className="bordered-table">
+                  <TableContainer>
+                    <Table size="md" aria-label="AAC determinations">
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader aria-label="Select" />
+                          {COLUMNS.map((c) => (
+                            <TableHeader key={c}>{c}</TableHeader>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {history.map((h) => {
+                          const isSelected = selected?.id === h.id;
+                          return (
+                            <TableRow
+                              key={h.id}
+                              className={isSelected ? 'cds--data-table--selected' : undefined}
+                              onClick={() => setPicked(h.id)}
+                            >
+                              <TableSelectRow
+                                radio
+                                id={`apt-muh-select-${h.id}`}
+                                name="apt-muh-select"
+                                aria-label={`Select the determination effective ${day(h.effectiveDate)}`}
+                                checked={isSelected}
+                                onSelect={() => setPicked(h.id)}
+                              />
+                              <TableCell>{day(h.effectiveDate)}</TableCell>
+                              <TableCell>{day(h.determinationDate)}</TableCell>
+                              <TableCell>{num(h.allowableAnnualCut)}</TableCell>
+                              <TableCell>{num(h.allowableAnnualCutHa)}</TableCell>
+                              <TableCell>{day(h.apportionmentEffectiveDate)}</TableCell>
+                              <TableCell>{dash(h.comments)}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </div>
               )}
             </SectionTile>
 

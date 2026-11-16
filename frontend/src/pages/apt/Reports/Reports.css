@@ -1,8 +1,125 @@
-/* APT reports: the report table's run buttons and the data-extract buttons. */
+/*
+    APT reports: an accordion laid out as a table, after REPT's Reports page.
+    Closed rows are striped white / grey like every other FTA table
+    (styles/_tables.scss); an open row's form keeps its row's colour.
+*/
 
-.apt-reports__action-cell {
-  inline-size: 10rem;
-  text-align: end;
+.apt-reports__accordion-table {
+  border: 1px solid var(--cds-border-subtle-01);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  --apt-reports-band-a: #ffffff;
+  --apt-reports-band-b: #f3f3f5;
+  --apt-reports-header: #dfdfe1;
+}
+
+:root[data-carbon-theme='g100'] .apt-reports__accordion-table {
+  --apt-reports-band-a: var(--cds-layer-01);
+  --apt-reports-band-b: var(--fsp-zebra-stripe);
+  --apt-reports-header: var(--cds-layer-accent-01);
+}
+
+.apt-reports__accordion-table .cds--accordion {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.apt-reports__accordion-table .cds--accordion__item {
+  border-block: none;
+  background: var(--apt-reports-band-a);
+  color: var(--cds-text-primary);
+}
+
+.apt-reports__accordion-table .cds--accordion__item:nth-of-type(even) {
+  background: var(--apt-reports-band-b);
+}
+
+.apt-reports__accordion-table .cds--accordion__heading {
+  inline-size: 100%;
+  padding-block: 0.5rem;
+  align-items: center;
+  background: transparent;
+  color: inherit;
+}
+
+.apt-reports__accordion-table .cds--accordion__title {
+  inline-size: 100%;
+  margin: 0;
+  padding-inline-end: 0.5rem;
+}
+
+/* The open row's form sits on its row's colour; Carbon would cap its width. */
+.apt-reports__accordion-table .cds--accordion__content {
+  padding-block: 0.5rem 1.5rem;
+  padding-inline: 3rem 1.5rem;
+  max-inline-size: none;
+  background: transparent;
+}
+
+/* Report code and name; the header row lines up with the titles past the chevron. */
+.apt-reports__row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) 5fr;
+  gap: 1rem;
+  align-items: center;
+  inline-size: 100%;
+  font-size: 1rem;
+  color: var(--cds-text-primary);
+}
+
+.apt-reports__row--header {
+  padding: 0.75rem 1.5rem 0.75rem 3rem;
+  background: var(--apt-reports-header);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.apt-reports__cell {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The inputs side by side, three to a row, stacked on a narrow screen. */
+.apt-report-form__fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.apt-report-form__fields > * {
+  min-inline-size: 0;
+}
+
+@media (max-width: 42rem) {
+  .apt-report-form__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Carbon fixes the single date picker's input at 18rem; let it fill its column. */
+.apt-report-form__date,
+.apt-report-form__date .cds--date-picker-container,
+.apt-report-form__date .cds--date-picker-input__wrapper,
+.apt-report-form__date .cds--date-picker-input__wrapper > span {
+  display: block;
+  inline-size: 100%;
+}
+
+.apt-report-form__date.cds--date-picker--single .cds--date-picker__input {
+  inline-size: 100%;
+}
+
+.apt-report-form__note {
+  margin: 0;
+  color: var(--cds-text-primary);
+}
+
+.apt-report-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-start: 1.5rem;
 }
 
 .apt-reports__extracts {

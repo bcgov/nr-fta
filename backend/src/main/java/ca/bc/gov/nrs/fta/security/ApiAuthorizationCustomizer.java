@@ -46,8 +46,12 @@ import org.springframework.stereotype.Component;
  *       district</li>
  *   <li><strong>FTA_HARVEST_AUTH_SENIOR_ADMIN</strong> — all of that, plus suspensions, permit
  *       conditions, postponements, relabelling a block and deleting a permit or block</li>
- *   <li><strong>FTA_APT_ADMIN</strong> — what FTA_VIEWER reads (reports included), plus every
- *       write under {@code /api/fta/apt/**} (apportionment), for any org unit</li>
+ *   <li><strong>FTA_APT_ADMIN</strong> — apportionment only: every read and write under
+ *       {@code /api/fta/apt/**}, for any org unit, plus resolving display names. Nothing else
+ *       (legacy APT2's APT_EDITOR, an application of its own)</li>
+ *   <li><strong>FTA_APT_VIEWER</strong> — apportionment only: every {@code GET} under
+ *       {@code /api/fta/apt/**} (reports included), plus resolving display names (legacy
+ *       APT2's APT_VIEWER)</li>
  *   <li><strong>No recognized role</strong> — rejected (403) for any {@code /api/**} endpoint</li>
  * </ul>
  *
@@ -86,8 +90,7 @@ public class ApiAuthorizationCustomizer implements
         .hasAnyAuthority(
             RoleConstants.ADMIN_AUTHORITY, RoleConstants.VIEWER_AUTHORITY,
             RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
-            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY,
-            RoleConstants.APT_AUTHORITY);
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
 
     // Mark application — FTA_ADMIN or FTA_TIMBER_MARK_HEADQUARTERS_ADMIN. Exact path, so the mark
     // transfer (/api/fta/marks/transfer, an admin screen) stays FTA_ADMIN only.
@@ -109,7 +112,7 @@ public class ApiAuthorizationCustomizer implements
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY,
             RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
             RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY,
-            RoleConstants.APT_AUTHORITY);
+            RoleConstants.APT_AUTHORITY, RoleConstants.APT_VIEWER_AUTHORITY);
 
     // A note on a tenure — FTA_ADMIN, either timber mark role or either harvest role (legacy
     // FTA970 let anyone who could open the file add a note). Must appear BEFORE the generic
@@ -208,6 +211,17 @@ public class ApiAuthorizationCustomizer implements
             RoleConstants.ADMIN_AUTHORITY, RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
             RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
 
+    // Apportionment (APT) reads, reports included — every role that reads FTA, plus the two APT
+    // roles, which read nothing else (legacy APT2 was an application of its own, with APT_VIEWER
+    // and APT_EDITOR). Must appear BEFORE the generic GET /api/** rule, which excludes them.
+    authorize
+        .requestMatchers(HttpMethod.GET, "/api/fta/apt/**")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.VIEWER_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY,
+            RoleConstants.APT_AUTHORITY, RoleConstants.APT_VIEWER_AUTHORITY);
+
     // Apportionment (APT) — FTA_ADMIN or FTA_APT_ADMIN for every write, in any org unit. Legacy
     // APT2 gave all writes to APT_EDITOR, with no finer split. Must appear BEFORE the generic
     // write rules.
@@ -234,13 +248,25 @@ public class ApiAuthorizationCustomizer implements
         .requestMatchers(HttpMethod.DELETE, "/api/**")
         .hasAuthority(RoleConstants.ADMIN_AUTHORITY);
 
+    // The forest client type-ahead, which APT's Create relationship dialog uses too: every role
+    // that reads FTA, plus FTA_APT_ADMIN (the only APT role that creates relationships).
+    authorize
+        .requestMatchers(HttpMethod.GET, "/api/fta/clients/suggest")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY,
+            RoleConstants.VIEWER_AUTHORITY,
+            RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
+            RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY,
+            RoleConstants.APT_AUTHORITY);
+
     // Reads open to FTA_TIMBER_MARK_HEADQUARTERS_ADMIN as well — only what its screens call. Must
     // appear BEFORE the generic GET /api/** rule, which excludes that role.
     authorize
         .requestMatchers(
             HttpMethod.GET,
             "/api/fta/code-lists/**",
-            "/api/fta/clients/suggest",    // client type-ahead on the search screens
             "/api/fta/tenures",            // Tenure Search (+ /export, detail below)
             "/api/fta/tenures/*",
             "/api/fta/tenures/*/**",       // the tenure detail's tabs (cutting permits, cut blocks…)
@@ -258,18 +284,16 @@ public class ApiAuthorizationCustomizer implements
             RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY,
             RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
-            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY,
-            RoleConstants.APT_AUTHORITY);
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
 
-    // Read operations — FTA_ADMIN, FTA_VIEWER, the harvest roles and FTA_APT_ADMIN, which read
-    // what a viewer does
+    // Read operations — FTA_ADMIN, FTA_VIEWER and the harvest roles. The APT roles read only
+    // /api/fta/apt/** (above).
     authorize
         .requestMatchers(HttpMethod.GET, "/api/**")
         .hasAnyAuthority(
             RoleConstants.ADMIN_AUTHORITY, RoleConstants.VIEWER_AUTHORITY,
             RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
-            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY,
-            RoleConstants.APT_AUTHORITY);
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
 
     // ── Infrastructure / public routes (declared last) ──────────────
 

@@ -158,6 +158,7 @@ const PermitConditions: FC<Props> = ({ hvaSkey, canManage }) => {
                               kind="ghost"
                               hasIconOnly
                               renderIcon={TrashCan}
+                              className="icon-button--delete"
                               iconDescription={`Delete condition ${c.themeDescription}`}
                               disabled={!canManage}
                               onClick={() => setDeleting(c)}
