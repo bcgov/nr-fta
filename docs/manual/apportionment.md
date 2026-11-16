@@ -251,11 +251,13 @@ To delete one, select **Delete relationship** (the red bin icon) under
 
 ### Run a report
 
-1. Select **Apportionment › Reports**.
-2. Select **Generate** beside the report.
-3. If the report needs inputs, a dialog asks for them: a **Report date**, a
-   **Management unit** (APTR011 lists only TSAs) or a **Region**. Enter them
-   and select **Generate report**.
+1. Select **Apportionment › Reports**. The **Reports** list shows each
+   report's code and name.
+2. Select a report's row to open it. One report is open at a time.
+3. Enter the inputs it asks for: a **Report date**, a **Management unit**
+   (APTR011 lists only TSAs) or a **Region**. A report with no inputs says
+   so.
+4. Select **Generate report**.
 
 The report downloads as a PDF. The reports are:
 

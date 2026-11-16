@@ -1,14 +1,5 @@
-import { DocumentPdf, Download, Report } from '@carbon/icons-react';
-import {
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@carbon/react';
+import { Download, Report } from '@carbon/icons-react';
+import { Accordion, AccordionItem, Button } from '@carbon/react';
 import { useState, type FC } from 'react';
 
 import SectionTile from '@/components/SectionTile';
@@ -25,18 +16,20 @@ import {
 } from '@/services/apt/reports';
 import { triggerBrowserDownload } from '@/utils/download';
 
-import ReportModal from './ReportModal';
+import ReportForm from './ReportForm';
 
 import './Reports.css';
 
 /**
- * APT reports (APT2's APTM8000): nine PDF reports rendered in the backend, each with the
- * inputs it takes, and two CSV data extracts. Every APT reader may run every report. A
+ * APT reports (APT2's APTM8000): nine PDF reports rendered in the backend, listed as an
+ * accordion (as REPT's Reports page) whose open row holds the inputs the report takes and its
+ * Generate button, and two CSV data extracts. Every APT reader may run every report. A
  * generated PDF is downloaded, named as APT2 names it (see {@link aptReportFileName}).
  */
 const AptReports: FC = () => {
   const { display } = useNotification();
-  const [asking, setAsking] = useState<AptPdfReport | null>(null);
+  // The open report row; one at a time, as in REPT.
+  const [openCode, setOpenCode] = useState<string | null>(null);
   // The report or extract being produced; one at a time, as in APT2.
   const [running, setRunning] = useState<string | null>(null);
 
@@ -53,17 +46,11 @@ const AptReports: FC = () => {
     try {
       const pdf = await getAptReportPdf(report.code, params);
       triggerBrowserDownload(pdf, aptReportFileName(report.code, chosen));
-      setAsking(null);
     } catch (err) {
       failed(`Could not generate ${report.code}`, err);
     } finally {
       setRunning(null);
     }
-  };
-
-  const choose = (report: AptPdfReport) => {
-    if (report.inputs.length === 0) void runPdf(report);
-    else setAsking(report);
   };
 
   const runExtract = async (code: string) => {
@@ -81,39 +68,34 @@ const AptReports: FC = () => {
   return (
     <PageLayout title="APT Reports" subtitle="Apportionment reports and data extracts.">
       <SectionTile title="Reports" icon={Report}>
-        <div className="bordered-table">
-          <TableContainer>
-            <Table size="md" aria-label="APT reports">
-              <TableHead>
-                <TableRow>
-                  <TableHeader>Report</TableHeader>
-                  <TableHeader>Name</TableHeader>
-                  <TableHeader>
-                    <span className="cds--visually-hidden">Actions</span>
-                  </TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {APT_PDF_REPORTS.map((r) => (
-                  <TableRow key={r.code}>
-                    <TableCell>{r.code}</TableCell>
-                    <TableCell>{r.name}</TableCell>
-                    <TableCell className="apt-reports__action-cell">
-                      <Button
-                        kind="ghost"
-                        size="sm"
-                        renderIcon={DocumentPdf}
-                        disabled={running !== null}
-                        onClick={() => choose(r)}
-                      >
-                        {running === r.code && !asking ? 'Generating…' : 'Generate'}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+        <div className="apt-reports__accordion-table">
+          <div className="apt-reports__row apt-reports__row--header" role="presentation">
+            <div className="apt-reports__cell">Report</div>
+            <div className="apt-reports__cell">Name</div>
+          </div>
+          <Accordion className="apt-reports__accordion" align="start">
+            {APT_PDF_REPORTS.map((r) => (
+              <AccordionItem
+                key={r.code}
+                open={openCode === r.code}
+                onHeadingClick={({ isOpen }) => setOpenCode(isOpen ? r.code : null)}
+                title={
+                  <div className="apt-reports__row">
+                    <div className="apt-reports__cell">{r.code}</div>
+                    <div className="apt-reports__cell">{r.name}</div>
+                  </div>
+                }
+              >
+                {openCode === r.code && (
+                  <ReportForm
+                    report={r}
+                    running={running === r.code}
+                    onRun={(params, chosen) => runPdf(r, params, chosen)}
+                  />
+                )}
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       </SectionTile>
 
@@ -133,16 +115,6 @@ const AptReports: FC = () => {
           ))}
         </div>
       </SectionTile>
-
-      {asking && (
-        <ReportModal
-          key={asking.code}
-          report={asking}
-          running={running === asking.code}
-          onClose={() => setAsking(null)}
-          onRun={(params, chosen) => runPdf(asking, params, chosen)}
-        />
-      )}
     </PageLayout>
   );
 };
