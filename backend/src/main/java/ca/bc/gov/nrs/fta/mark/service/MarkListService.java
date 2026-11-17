@@ -6,6 +6,7 @@ import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
+import ca.bc.gov.nrs.fta.shared.sql.SearchIds;
 import java.util.List;
 import java.util.Map;
 import org.springframework.jdbc.core.RowCallbackHandler;
@@ -146,7 +147,7 @@ public class MarkListService {
          AND (:markStatusSt IS NULL OR m.mark_status_st = :markStatusSt
               OR m.amend_status_st = :markStatusSt)
          AND (:orgUnitCode  IS NULL OR m.org_unit_code = :orgUnitCode)
-         AND (:clientName   IS NULL OR UPPER(m.client_name) LIKE UPPER(:clientName) || '%')
+         AND (:clientName   IS NULL OR UPPER(m.client_name) LIKE '%' || UPPER(:clientName) || '%')
          AND (:clientNumber IS NULL OR m.client_number = :clientNumber)
          AND (:clientLocnCode IS NULL OR m.client_locn_code = :clientLocnCode)
       """.replace("{CLIENT_NAME}", ClientNameSql.displayName("cli"));
@@ -322,7 +323,7 @@ public class MarkListService {
       String clientLocnCode) {
     return new MapSqlParameterSource()
         .addValue("hdrDistrict", blankToNull(hdrDistrict))
-        .addValue("timberMark", blankToNull(timberMark))
+        .addValue("timberMark", SearchIds.upper(timberMark))
         .addValue("markStatusSt", blankToNull(markStatusSt))
         .addValue("orgUnitCode", blankToNull(orgUnitCode))
         .addValue("clientName", blankToNull(clientName))

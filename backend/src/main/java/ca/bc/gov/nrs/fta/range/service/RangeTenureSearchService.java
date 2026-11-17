@@ -6,6 +6,7 @@ import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
+import ca.bc.gov.nrs.fta.shared.sql.SearchIds;
 import java.sql.Types;
 import java.util.List;
 import java.util.Map;
@@ -110,7 +111,7 @@ public class RangeTenureSearchService {
          AND (:clientLocnCode IS NULL OR fcl.client_locn_code = :clientLocnCode)
          AND ((:fileClientType IS NULL AND fcl.forest_file_client_type_code = 'A')
               OR fcl.forest_file_client_type_code = :fileClientType)
-         AND (:clientName IS NULL OR UPPER(fc.client_name) LIKE UPPER(:clientName) || '%')
+         AND (:clientName IS NULL OR UPPER(fc.client_name) LIKE '%' || UPPER(:clientName) || '%')
          AND (:provisionYear IS NULL OR rp.calendar_year = :provisionYear)
          AND (:authorizedUseFrom IS NULL OR rp.authorized_use >= :authorizedUseFrom)
          AND (:authorizedUseTo IS NULL OR rp.authorized_use <= :authorizedUseTo)
@@ -433,7 +434,7 @@ public class RangeTenureSearchService {
       String totalAnnualUseFrom,
       String totalAnnualUseTo) {
     MapSqlParameterSource params = new MapSqlParameterSource()
-        .addValue("forestFileId", blankToNull(forestFileId))
+        .addValue("forestFileId", SearchIds.upper(forestFileId))
         .addValue("fileTypeCode", blankToNull(fileTypeCode))
         .addValue("zone", blankToNull(zone))
         .addValue("clientName", blankToNull(clientName))

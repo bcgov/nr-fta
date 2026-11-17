@@ -246,40 +246,39 @@ public class ClientSearchService {
   }
 
   /**
-   * The type-ahead behind the search screens' single client field: up to
-   * {@code limit} client/location rows matching what the user has typed.
+   * The type-ahead behind every forest client autocomplete: up to {@code limit}
+   * client/location rows whose number or name contains what the user has typed.
    *
    * <p>All digits is read as a client number, anything else as a name — rather
-   * than OR-ing both, which would stop Oracle using an index for either. Both
-   * are prefix matches, as the client search screen's are.
+   * than OR-ing both. Both are contains matches, so "PLYWOOD" finds
+   * "ABC PLYWOOD LTD"; rows that start with the text sort first, so a prefix
+   * typist still sees their client at the top.
    *
-   * <p>The name predicate deliberately does not wrap the column in
-   * {@code UPPER()}: {@code FOREST_CLIENT} holds names upper-cased (the legacy
-   * tenure and harvesting searches match them raw for the same reason), and the
-   * unique index on {@code (CLIENT_NAME, ...)} only serves a prefix scan while
-   * the column is left bare. The typed text is upper-cased here instead. If a
-   * mixed-case name ever turns up, the fix is a function-based index on
-   * {@code UPPER(client_name)} plus {@code UPPER()} on both sides here.
+   * <p>A leading {@code %} cannot use the {@code CLIENT_NAME} index, so this is a
+   * scan of {@code FOREST_CLIENT}; the minimum length the field enforces and the
+   * row limit keep it bounded. The name column is left bare because
+   * {@code FOREST_CLIENT} holds names upper-cased (the typed text is upper-cased
+   * here instead).
    */
   public List<ClientSearchDto> suggest(String query, int limit) {
     String text = blankToNull(query);
     if (text == null) {
       return List.of();
     }
-    String prefix = text.trim().toUpperCase(Locale.CANADA) + "%";
-    boolean byNumber = text.trim().chars().allMatch(Character::isDigit);
+    String typed = text.trim().toUpperCase(Locale.CANADA);
+    boolean byNumber = typed.chars().allMatch(Character::isDigit);
 
     MapSqlParameterSource params = new MapSqlParameterSource()
-        .addValue("prefix", prefix)
+        .addValue("typed", typed)
         .addValue("limit", limit);
 
-    String predicate = byNumber
-        ? " WHERE t2.client_number LIKE :prefix\n"
-        : " WHERE t2.client_name LIKE :prefix\n";
+    String column = byNumber ? "t2.client_number" : "t2.client_name";
+    String predicate = " WHERE " + column + " LIKE '%' || :typed || '%'\n";
+    String orderBy = " ORDER BY CASE WHEN " + column + " LIKE :typed || '%' THEN 0 ELSE 1 END,\n"
+        + "          t2.client_name, t2.client_number, t3.client_locn_code\n";
 
     return jdbc.query(
-        SELECT_COLUMNS + SUGGEST_FROM + predicate + SUGGEST_ORDER_BY
-            + " FETCH FIRST :limit ROWS ONLY",
+        SELECT_COLUMNS + SUGGEST_FROM + predicate + orderBy + " FETCH FIRST :limit ROWS ONLY",
         params,
         ROW_MAPPER);
   }
@@ -294,9 +293,6 @@ public class ClientSearchService {
         JOIN the.client_location t3    ON t3.client_number = t2.client_number
         LEFT JOIN the.client_acronym t1 ON t1.client_number = t2.client_number
       """;
-
-  private static final String SUGGEST_ORDER_BY =
-      " ORDER BY t2.client_name, t2.client_number, t3.client_locn_code\n";
 
   private static MapSqlParameterSource criteria(
       String clientNumber,

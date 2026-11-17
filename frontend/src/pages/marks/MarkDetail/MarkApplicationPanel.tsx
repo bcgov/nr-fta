@@ -20,7 +20,7 @@ import { useNotification } from '@/context/notification/useNotification';
 import {
   getAllManagementUnits,
   getCascadeSplits,
-  getDistricts,
+  getThreeLetterDistricts,
   getMarkingInstruments,
   getMarkingMethods,
   getPrivateMarkAmendStatuses,
@@ -183,7 +183,7 @@ const MarkApplicationPanel: FC<Props> = ({
     if (!editing) return;
     let cancelled = false;
     Promise.all([
-      getDistricts(),
+      getThreeLetterDistricts(),
       getMarkingMethods(),
       getMarkingInstruments(),
       getCascadeSplits(),

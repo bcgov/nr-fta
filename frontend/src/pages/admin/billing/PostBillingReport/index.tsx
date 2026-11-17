@@ -16,7 +16,7 @@ import { useNotification } from '@/context/notification/useNotification';
 import { downloadBlob } from '@/lib/downloadBlob';
 import PageLayout from '@/pages/PageLayout';
 import { getPostBillingReport, type PostBillingSort } from '@/services/billing';
-import { getDistricts, type CodeOption } from '@/services/codeLists';
+import { getThreeLetterDistricts, type CodeOption } from '@/services/codeLists';
 
 import '../billing.scss';
 
@@ -42,7 +42,7 @@ const PostBillingReport: FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    getDistricts()
+    getThreeLetterDistricts()
       .then((d) => !cancelled && setDistricts(d))
       .catch(() =>
         notify.display({

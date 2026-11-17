@@ -6,6 +6,7 @@ import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
 import ca.bc.gov.nrs.fta.tenure.dto.TenureSearchCriteria;
 import ca.bc.gov.nrs.fta.tenure.dto.TenureSummaryDto;
+import ca.bc.gov.nrs.fta.shared.sql.SearchIds;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -376,7 +377,7 @@ public class TenureSearchTableSource {
     }
 
     if (notBlank(c.forestFileId())) {
-      p.addValue("forestFileId", c.forestFileId().trim());
+      p.addValue("forestFileId", SearchIds.upper(c.forestFileId()));
       where.append("   AND pfu.forest_file_id LIKE :forestFileId || '%'\n");
     }
 
@@ -433,7 +434,7 @@ public class TenureSearchTableSource {
       // Legacy filters V_CLIENT_PUBLIC here; FOREST_CLIENT is already joined
       // for display and is the same client record, so it serves both.
       p.addValue("clientName", c.clientName().trim());
-      where.append("   AND UPPER(cli.client_name) LIKE UPPER(:clientName) || '%'\n");
+      where.append("   AND UPPER(cli.client_name) LIKE '%' || UPPER(:clientName) || '%'\n");
     }
 
     // Client type: an explicit choice wins. Failing that, a client number
