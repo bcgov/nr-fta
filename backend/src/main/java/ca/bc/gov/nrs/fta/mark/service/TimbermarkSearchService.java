@@ -7,6 +7,7 @@ import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
+import ca.bc.gov.nrs.fta.shared.sql.SearchIds;
 import java.util.List;
 import java.util.Map;
 import org.springframework.jdbc.core.RowCallbackHandler;
@@ -321,11 +322,11 @@ public class TimbermarkSearchService {
       where.append("   AND (tm.district_admn_zone = :districtAdminZone)\n");
     }
     if (notBlank(c.forestFileId())) {
-      p.addValue("forestFileId", c.forestFileId().trim());
+      p.addValue("forestFileId", SearchIds.upper(c.forestFileId()));
       where.append("   AND (pfu.forest_file_id LIKE :forestFileId || '%')\n");
     }
     if (notBlank(c.cuttingPermitId())) {
-      p.addValue("cuttingPermitId", c.cuttingPermitId().trim());
+      p.addValue("cuttingPermitId", SearchIds.upper(c.cuttingPermitId()));
       where.append("   AND (tm.cutting_permit_id = :cuttingPermitId)\n");
     }
     if (notBlank(c.fileTypeCode())) {
@@ -345,7 +346,7 @@ public class TimbermarkSearchService {
       where.append("   AND (pfu.mgmt_unit_id = :mgmtUnitId)\n");
     }
     if (notBlank(c.certificate())) {
-      p.addValue("certificate", c.certificate().trim());
+      p.addValue("certificate", SearchIds.upper(c.certificate()));
       where.append("   AND (tm.certificate = :certificate)\n");
     }
 
@@ -491,7 +492,7 @@ public class TimbermarkSearchService {
                       AND cl.client_number IN (SELECT vcp.client_number
                                                  FROM the.v_client_public vcp
                                                 WHERE UPPER(vcp.client_name)
-                                                      LIKE UPPER(:clientName) || '%')
+                                                      LIKE '%' || UPPER(:clientName) || '%')
           """);
     }
     return sub.toString();

@@ -50,9 +50,9 @@ export function clientSearchExportPath(params: ClientSearchParams): string {
 }
 
 /**
- * GET /api/fta/clients/suggest — type-ahead for the search screens' single
- * client field. Matches the typed text as a client number or name prefix and
- * returns a short list; not cached, since it changes with every keystroke.
+ * GET /api/fta/clients/suggest — type-ahead for every forest client field.
+ * Matches the typed text anywhere in a client number or name and returns a
+ * short list; not cached, since it changes with every keystroke.
  */
 export function suggestClients(query: string): Promise<ClientSearchResult[]> {
   return apiGet<ClientSearchResult[]>(`/api/fta/clients/suggest${toQuery({ q: query })}`);

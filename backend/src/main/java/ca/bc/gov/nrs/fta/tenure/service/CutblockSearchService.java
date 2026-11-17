@@ -6,6 +6,7 @@ import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
 import ca.bc.gov.nrs.fta.tenure.dto.CutblockSearchDto;
+import ca.bc.gov.nrs.fta.shared.sql.SearchIds;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -160,7 +161,7 @@ public class CutblockSearchService {
                    AND ffc.client_number IN (
                         SELECT fc.client_number
                           FROM the.forest_client fc
-                         WHERE fc.client_name LIKE UPPER(:clientName) || '%')))
+                         WHERE fc.client_name LIKE '%' || UPPER(:clientName) || '%')))
       """;
 
   /**
@@ -435,10 +436,10 @@ public class CutblockSearchService {
       String harvestStartDateTo,
       String districtAdminZone) {
     return new MapSqlParameterSource()
-        .addValue("forestFileId", blankToNull(forestFileId))
-        .addValue("cuttingPermitId", blankToNull(cuttingPermitId))
-        .addValue("timberMark", blankToNull(timberMark))
-        .addValue("cutBlockId", blankToNull(cutBlockId))
+        .addValue("forestFileId", SearchIds.upper(forestFileId))
+        .addValue("cuttingPermitId", SearchIds.upper(cuttingPermitId))
+        .addValue("timberMark", SearchIds.upper(timberMark))
+        .addValue("cutBlockId", SearchIds.upper(cutBlockId))
         .addValue("blockStatusSt", blankToNull(blockStatusSt))
         .addValue("orgUnitNo", blankToNull(orgUnitNo))
         .addValue("clientNumber", blankToNull(clientNumber))

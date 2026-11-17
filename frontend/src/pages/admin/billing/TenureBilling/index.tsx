@@ -32,7 +32,7 @@ import {
 } from '@/services/billing';
 import {
   getBillingInstructionCodes,
-  getDistricts,
+  getThreeLetterDistricts,
   getRangeFileTypes,
   type CodeOption,
 } from '@/services/codeLists';
@@ -74,22 +74,24 @@ const TenureBilling: FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled([getDistricts(), getRangeFileTypes(), getBillingInstructionCodes()]).then(
-      ([d, t, i]) => {
-        if (cancelled) return;
-        if (d.status === 'fulfilled') setDistricts(d.value);
-        if (t.status === 'fulfilled') setFileTypes(t.value);
-        if (i.status === 'fulfilled') setInstrCodes(i.value);
-        if ([d, t, i].some((r) => r.status === 'rejected')) {
-          notify.display({
-            kind: 'error',
-            title: 'Could not load the dropdown lists',
-            subtitle: 'Reload the page to try again.',
-            timeout: 6000,
-          });
-        }
-      },
-    );
+    Promise.allSettled([
+      getThreeLetterDistricts(),
+      getRangeFileTypes(),
+      getBillingInstructionCodes(),
+    ]).then(([d, t, i]) => {
+      if (cancelled) return;
+      if (d.status === 'fulfilled') setDistricts(d.value);
+      if (t.status === 'fulfilled') setFileTypes(t.value);
+      if (i.status === 'fulfilled') setInstrCodes(i.value);
+      if ([d, t, i].some((r) => r.status === 'rejected')) {
+        notify.display({
+          kind: 'error',
+          title: 'Could not load the dropdown lists',
+          subtitle: 'Reload the page to try again.',
+          timeout: 6000,
+        });
+      }
+    });
     return () => {
       cancelled = true;
     };

@@ -45,6 +45,12 @@ in the profile panel at the top right.
 4. Choose a **Sort by** order (**District**, **Client name** or **File
    type**) and select **Search**.
 
+**File ID**, **Cutting permit**, **HVA ID** and **Timber mark** match in upper
+or lower case. In **Client**, type at least three characters of a client
+number or name and pick from the list; it lists clients with that text
+anywhere in their number or name. Searching without picking matches every
+client whose name contains the text.
+
 The results list each permit's **District**, **Client name**, **Client
 number**, **File type**, **File ID**, **Cutting permit** and **Timber mark**.
 Select a column heading to sort by it. Select **Export results to CSV** to

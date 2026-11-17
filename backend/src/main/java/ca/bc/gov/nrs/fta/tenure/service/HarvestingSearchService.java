@@ -7,6 +7,7 @@ import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
 import ca.bc.gov.nrs.fta.tenure.dto.HarvestingSearchCriteria;
 import ca.bc.gov.nrs.fta.tenure.dto.HarvestingSearchDto;
+import ca.bc.gov.nrs.fta.shared.sql.SearchIds;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -240,7 +241,7 @@ public class HarvestingSearchService {
               OR ps.invoice_number = :invoiceNumber
               OR sl.invoice_number = :invoiceNumber
               OR :invoiceNumber IS NULL)
-         AND (vcp.client_name LIKE :clientName || '%' OR :clientName IS NULL)
+         AND (vcp.client_name LIKE '%' || UPPER(:clientName) || '%' OR :clientName IS NULL)
       """;
 
   /**
@@ -369,7 +370,7 @@ public class HarvestingSearchService {
         SELECT COUNT(*) FROM dual
          WHERE EXISTS (SELECT 1 FROM the.hauling_authority WHERE timber_mark = :timberMark)
         """,
-        new MapSqlParameterSource("timberMark", timberMark.trim()),
+        new MapSqlParameterSource("timberMark", SearchIds.upper(timberMark)),
         Integer.class);
     return found != null && found > 0;
   }
@@ -529,10 +530,10 @@ public class HarvestingSearchService {
         .addValue("forestDistrict", blankToNull(c.forestDistrict()))
         .addValue("mgmtUnitType", blankToNull(c.mgmtUnitType()))
         .addValue("mgmtUnitId", blankToNull(c.mgmtUnitId()))
-        .addValue("forestFileId", blankToNull(c.forestFileId()))
-        .addValue("cuttingPermitId", blankToNull(c.cuttingPermitId()))
-        .addValue("timberMark", blankToNull(c.timberMark()))
-        .addValue("hvaId", blankToNull(c.hvaId()))
+        .addValue("forestFileId", SearchIds.upper(c.forestFileId()))
+        .addValue("cuttingPermitId", SearchIds.upper(c.cuttingPermitId()))
+        .addValue("timberMark", SearchIds.upper(c.timberMark()))
+        .addValue("hvaId", SearchIds.upper(c.hvaId()))
         .addValue("fileTypeCode", blankToNull(c.fileTypeCode()))
         .addValue("harvestAuthStatusCode", blankToNull(c.harvestAuthStatusCode()))
         .addValue("clientNumber", blankToNull(c.clientNumber()))

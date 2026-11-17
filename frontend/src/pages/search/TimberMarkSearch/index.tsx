@@ -78,6 +78,16 @@ const HEADERS = [
   { key: 'markExpiryDate', header: 'Expiry date' },
 ];
 
+/**
+ * The columns for a search: a private-marks-only search drops Cutting permit and Salvage type,
+ * which a private mark never has.
+ */
+const PRIVATE_MARK_HIDDEN = new Set(['cuttingPermitId', 'salvageInd']);
+const headersFor = (criteria: TimbermarkSearchParams | null | undefined) =>
+  criteria?.privateMarkOnlyInd === 'Y'
+    ? HEADERS.filter((h) => !PRIVATE_MARK_HIDDEN.has(h.key))
+    : HEADERS;
+
 /** A result row carrying the id Carbon's DataTable requires. */
 type Row = TimbermarkSummary & { id: string };
 
@@ -700,7 +710,7 @@ const TimberMarkSearch: FC = () => {
                 </div>
                 <div className="fsp-search__table">
                   <DataTableSkeleton
-                    headers={HEADERS}
+                    headers={headersFor(form)}
                     rowCount={Math.min(pageSize, 10)}
                     showHeader={false}
                     showToolbar={false}
@@ -719,7 +729,7 @@ const TimberMarkSearch: FC = () => {
                 </div>
 
                 <div className="fsp-search__table">
-                  <DataTable rows={rows!} headers={HEADERS}>
+                  <DataTable rows={rows!} headers={headersFor(searched)}>
                     {({ rows: dtRows, headers, getTableProps, getHeaderProps, getRowProps }) => (
                       <TableContainer>
                         <Table {...getTableProps()} size="md">

@@ -28,7 +28,7 @@ import {
   type ArchiveTenuresCriteria,
   type ArchiveTenuresSummary,
 } from '@/services/archive_tenures';
-import { getDistricts, getRegions, type CodeOption } from '@/services/codeLists';
+import { getThreeLetterDistricts, getRegions, type CodeOption } from '@/services/codeLists';
 import './ArchiveTenures.scss';
 
 interface Form {
@@ -63,7 +63,7 @@ const ArchiveTenures: FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled([getRegions(), getDistricts()]).then(([r, d]) => {
+    Promise.allSettled([getRegions(), getThreeLetterDistricts()]).then(([r, d]) => {
       if (cancelled) return;
       if (r.status === 'fulfilled') setRegions(r.value);
       if (d.status === 'fulfilled') setDistricts(d.value);

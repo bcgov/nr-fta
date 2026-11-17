@@ -48,6 +48,12 @@ read-only for you.
 Things to know:
 
 - A valid **Timber mark** ignores every other criterion.
+- **File ID**, **Cutting permit**, **Timber mark** and **Certificate** match
+  in upper or lower case.
+- In **Client**, type at least three characters of a client number or name
+  and pick from the list; it lists clients with that text anywhere in their
+  number or name. If you search without picking, every client whose name
+  contains the text is matched.
 - **Salvage type** **All — has any salvage type** finds marks with any
   salvage type. **Any** doesn't filter on salvage at all.
 - **Amended date** finds marks whose amendment (for example a renewal) was
@@ -60,7 +66,9 @@ Things to know:
 The results show **District**, **Client name**, **Client number**,
 **File type**, **File ID**, **Cutting permit**, **Timber mark**,
 **Salvage type**, **Certificate**, **Timber mark status**,
-**Amendment status**, **Issue date** and **Expiry date**.
+**Amendment status**, **Issue date** and **Expiry date**. With **Only
+private marks** ticked, **Cutting permit** and **Salvage type** are left out,
+since private marks don't have them.
 
 Select a row to open it:
 

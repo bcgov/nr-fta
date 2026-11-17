@@ -9,7 +9,7 @@ import './ClientComboBox.css';
 
 import type { FC } from 'react';
 
-/** Characters typed before the first request — shorter prefixes match far too much. */
+/** Characters typed before the first request — shorter text matches far too much. */
 const MIN_CHARS = 3;
 
 /** Idle time before the request goes out, so a fast typist makes one call, not eight. */
@@ -77,14 +77,14 @@ interface ClientComboBoxProps {
  *   <li>Pick a suggestion — that exact client and location become the criteria,
  *       and the name criterion is cleared so it cannot contradict them.</li>
  *   <li>Type and search without picking — the text becomes the client-name
- *       prefix, which is how the old name field behaved. Searching every client
- *       whose name starts with "canfor" stays possible.</li>
+ *       criterion, matched anywhere in the name. Searching every client whose
+ *       name contains "canfor" stays possible.</li>
  * </ul>
  *
  * Suggestions come from the server: {@code FOREST_CLIENT} is far too large to
  * load into the browser, unlike the code lists behind the other dropdowns. The
- * client number or name is matched as a prefix, after {@link MIN_CHARS}
- * characters and {@link DEBOUNCE_MS} of quiet.
+ * client number or name is matched anywhere (those starting with the text come
+ * first), after {@link MIN_CHARS} characters and {@link DEBOUNCE_MS} of quiet.
  */
 const ClientComboBox: FC<ClientComboBoxProps> = ({
   id,
@@ -92,7 +92,7 @@ const ClientComboBox: FC<ClientComboBoxProps> = ({
   clientLocnCode,
   clientName,
   onChange,
-  helperText = 'Pick a client, or type a name to search every client starting with it',
+  helperText = 'Pick a client, or type part of a name to search every client containing it',
   titleText = 'Client',
   invalid,
   invalidText,
@@ -176,7 +176,7 @@ const ClientComboBox: FC<ClientComboBoxProps> = ({
       // whose label is composed differently from the typed text.
       shouldFilterItem={() => true}
       // Keeps text that matches no suggestion, which is what makes the
-      // name-prefix half of this field work: without it Carbon discards the
+      // name-search half of this field work: without it Carbon discards the
       // typed value and the criterion would vanish on blur.
       allowCustomValue
       onInputChange={(value) => {
