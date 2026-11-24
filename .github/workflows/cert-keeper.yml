@@ -1,4 +1,4 @@
-name: Route TLS
+name: Cert Keeper
 
 on:
   workflow_dispatch:
@@ -19,23 +19,35 @@ concurrency:
 permissions: {}
 
 jobs:
-  route-tls:
-    name: Route TLS (dry_run=${{ inputs.dry_run }})
+  cert-keeper:
+    name: Cert Keeper (dry_run=${{ inputs.dry_run }})
     environment: prod
     permissions:
       contents: read
     runs-on:
       group: bcgov-azure-lz-live-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - uses: bcgov/actions-openshift/route-tls@ea9651011c0bf9d15aad22cf5aa2fae93c096edf # v0.3.2
+      - name: Require pre-supplied TLS secrets
+        env:
+          TLS_CERTIFICATE: ${{ secrets.TLS_CERTIFICATE }}
+          TLS_PRIVATE_KEY: ${{ secrets.TLS_PRIVATE_KEY }}
+          TLS_CA_CERTIFICATE: ${{ secrets.TLS_CA_CERTIFICATE }}
+        run: |
+          if [ -z "$TLS_CERTIFICATE" ] || [ -z "$TLS_PRIVATE_KEY" ] || [ -z "$TLS_CA_CERTIFICATE" ]; then
+            echo "::error::Pre-supplied mode requires non-empty TLS_CERTIFICATE, TLS_PRIVATE_KEY, and TLS_CA_CERTIFICATE secrets in the prod environment."
+            exit 1
+          fi
+
+      - uses: bcgov/actions-openshift/cert-keeper@47805d2fc4e919382757c1fbeb68d39313abe64f # v0.11.0
         with:
           hostname: fta.nrs.gov.bc.ca
+          route_name: nr-fta-vanity-url
           target_service: nr-fta-frontend-prod
           tls_certificate: ${{ secrets.TLS_CERTIFICATE }}
           tls_private_key: ${{ secrets.TLS_PRIVATE_KEY }}
           tls_ca_certificate: ${{ secrets.TLS_CA_CERTIFICATE }}
+          dry_run: ${{ inputs.dry_run }}
           oc_namespace: ${{ secrets.OC_NAMESPACE }}
           oc_server: ${{ vars.OC_SERVER }}
           oc_token: ${{ secrets.OC_TOKEN }}
-          dry_run: ${{ inputs.dry_run }}
