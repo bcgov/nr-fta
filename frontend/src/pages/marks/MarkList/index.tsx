@@ -88,7 +88,7 @@ const EMPTY_FORM: MarkListParams = {};
 const MarkList: FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { display } = useNotification();
+  const { display, clear } = useNotification();
   const { user } = useAuth();
   const mayCreate = canEditMarks(user);
 
@@ -161,6 +161,7 @@ const MarkList: FC = () => {
 
   const runSearch = useCallback(
     async (nextPage: number, nextSize: number, criteria: MarkListParams = form) => {
+      clear();
       setLoading(true);
       setError(null);
       try {
@@ -184,7 +185,7 @@ const MarkList: FC = () => {
         setLoading(false);
       }
     },
-    [form, setLastSearch],
+    [form, clear, setLastSearch],
   );
 
   // Open on the last search from this tab, or else the unfiltered list rather

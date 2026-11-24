@@ -99,7 +99,7 @@ const codeLabel = (o: AptCodeOption) => (o.description ? `${o.code} - ${o.descri
 const ManagementUnitSearch: FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { display } = useNotification();
+  const { display, clear } = useNotification();
   const canEdit = canEditApt(user);
 
   const [form, setForm] = useSessionState<Criteria>('fta.apt.mu.form', EMPTY);
@@ -157,6 +157,7 @@ const ManagementUnitSearch: FC = () => {
 
   const runSearch = useCallback(
     async (criteria: Criteria) => {
+      clear();
       setLoading(true);
       try {
         const data = await searchAptManagementUnits({
@@ -184,7 +185,7 @@ const ManagementUnitSearch: FC = () => {
         setLoading(false);
       }
     },
-    [display, setLastSearch],
+    [display, clear, setLastSearch],
   );
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {

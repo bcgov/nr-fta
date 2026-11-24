@@ -339,7 +339,7 @@ public class CuttingPermitWriteService {
     }
     String location = text(q.location());
     if (location != null && location.length() > MAX_LOCATION) {
-      throw invalid("Location must not exceed " + MAX_LOCATION + " characters.");
+      throw invalid("Geographic Location must not exceed " + MAX_LOCATION + " characters.");
     }
   }
 

@@ -410,6 +410,7 @@ const AssociatedClientsPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
           <p className="detail-dialog__subtitle">All fields are required unless marked optional.</p>
           <ClientComboBox
             id="tenure-client-picker"
+            inDialog
             titleText="Client"
             helperText={
               typeLocked

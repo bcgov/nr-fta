@@ -69,7 +69,7 @@ const EMPTY_FORM: ClientSearchParams = {};
  * `styles/_search.scss`; see TenureSearch for the pattern.
  */
 const ClientSearch: FC = () => {
-  const { display } = useNotification();
+  const { display, clear } = useNotification();
 
   // Criteria and the last search are kept for the browser tab; see TenureSearch.
   const [form, setForm] = useSessionState<ClientSearchParams>('fta.search.client.form', EMPTY_FORM);
@@ -112,6 +112,7 @@ const ClientSearch: FC = () => {
         setError('Enter at least one search criterion.');
         return;
       }
+      clear();
       setLoading(true);
       setError(null);
       try {
@@ -137,7 +138,7 @@ const ClientSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form, setLastSearch],
+    [form, clear, setLastSearch],
   );
 
   const onSubmit = useCallback(

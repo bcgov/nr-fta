@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 
 import Layout from './components/Layout';
 import SessionTimeout from './components/SessionTimeout';
+import NotificationRouteReset from './components/NotificationRouteReset';
 import { useAuth } from './context/auth/useAuth';
 import ArchiveTenures from './pages/admin/ArchiveTenures';
 import AuditReport from './pages/admin/AuditReport';
@@ -101,6 +102,7 @@ export default function App() {
           the no-role gate) so the warning modal + auto-logout apply everywhere
           a session is live. Renders nothing until it fires. */}
       {isLoggedIn && <SessionTimeout />}
+      <NotificationRouteReset />
       {isLoggedIn && !hasFtaRole ? (
         <Routes>
           <Route path="/authCallback" element={<AuthCallback />} />

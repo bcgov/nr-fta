@@ -512,7 +512,7 @@ const DetailsView: FC<{ details: TenureDetails; canEdit: boolean; onSaved: () =>
     layout.showPulpwoodAac &&
       textField('Deciduous', 'deciduousAac', 9, num(v('deciduousAac'), ' m³')),
     layout.showLocationArea &&
-      textField('Location', 'permitBlockLocation', 50, dash(v('permitBlockLocation')), {
+      textField('Geographic Location', 'permitBlockLocation', 50, dash(v('permitBlockLocation')), {
         optional: true,
         wide: false,
       }),

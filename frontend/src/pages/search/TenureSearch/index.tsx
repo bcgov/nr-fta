@@ -31,6 +31,7 @@ import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
+import { useOrgUnitName } from '@/hooks/useOrgUnitName';
 import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { nextColumnSort, sortHeaderProps } from '@/lib/columnSort';
 import { safeErrorMessage } from '@/lib/errorMessage';
@@ -112,7 +113,8 @@ const EMPTY_FORM: TenureSearchParams = { sortBy: 'org' };
  */
 const TenureSearch: FC = () => {
   const navigate = useNavigate();
-  const { display } = useNotification();
+  const { display, clear } = useNotification();
+  const orgUnitName = useOrgUnitName();
 
   // Criteria and the last search are kept for the browser tab, so coming back
   // (e.g. via a detail page's back link) shows the same search again.
@@ -240,6 +242,7 @@ const TenureSearch: FC = () => {
         return;
       }
       scrollPending.current = scrollToResults;
+      clear();
       setLoading(true);
       setError(null);
       try {
@@ -260,7 +263,7 @@ const TenureSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form, setLastSearch],
+    [form, clear, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -702,6 +705,11 @@ const TenureSearch: FC = () => {
                                         <TableCell key={cell.id}>
                                           {formatCellText(formatDate(value))}
                                         </TableCell>
+                                      );
+                                    }
+                                    if (cell.info.header === 'orgUnitCode') {
+                                      return (
+                                        <TableCell key={cell.id}>{orgUnitName(value)}</TableCell>
                                       );
                                     }
                                     return (

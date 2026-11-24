@@ -17,3 +17,11 @@
 .client-combo__option .bc-status-tag {
   flex-shrink: 0;
 }
+
+/*
+ * In a dialog the list floats (autoAlign) and may run past the dialog's bottom edge, so it
+ * stacks above the dialog itself (Carbon's modal sits at z-index 9000).
+ */
+.client-combo--floating .cds--list-box__menu {
+  z-index: 9100;
+}

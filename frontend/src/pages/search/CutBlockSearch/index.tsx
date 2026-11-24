@@ -86,7 +86,7 @@ const EMPTY_FORM: CutblockSearchParams = { sortBy: 'district' };
  */
 const CutBlockSearch: FC = () => {
   const navigate = useNavigate();
-  const { display } = useNotification();
+  const { display, clear } = useNotification();
 
   // Criteria and the last search are kept for the browser tab; see TenureSearch.
   const [form, setForm] = useSessionState<CutblockSearchParams>(
@@ -156,6 +156,7 @@ const CutBlockSearch: FC = () => {
         setError('Managed by cutting permit also needs a managed by file.');
         return;
       }
+      clear();
       setLoading(true);
       setError(null);
       try {
@@ -176,7 +177,7 @@ const CutBlockSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form, setLastSearch],
+    [form, clear, setLastSearch],
   );
 
   const onSubmit = useCallback(

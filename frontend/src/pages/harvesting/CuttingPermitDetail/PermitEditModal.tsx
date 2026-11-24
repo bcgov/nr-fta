@@ -424,7 +424,7 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
         </div>
         <TextInput
           id="cp-edit-location"
-          labelText="Location"
+          labelText="Geographic Location"
           value={form.location}
           maxLength={MAX_LOCATION}
           disabled={saving}

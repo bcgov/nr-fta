@@ -23,6 +23,7 @@ import SectionTile from '@/components/SectionTile';
 import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
+import { useOrgUnitName } from '@/hooks/useOrgUnitName';
 import PageLayout from '@/pages/PageLayout';
 import { canEdit } from '@/routes/access';
 import { getRangeTenureDetail } from '@/services/range_tenure_detail';
@@ -62,6 +63,7 @@ const num = (v: number | null | undefined) => (v === null || v === undefined ? '
  * THE.FTA_100RANGE_TENURE plus its range usage and land base sub-tabs.
  */
 const RangeTenureDetail: FC = () => {
+  const orgUnitName = useOrgUnitName();
   const { agreementId = '' } = useParams();
   const { user } = useAuth();
   const { data, loading, error, reload } = useApiResource(
@@ -106,7 +108,7 @@ const RangeTenureDetail: FC = () => {
                     ),
                   },
                   { label: 'Holder', value: dash(data.licensee) },
-                  { label: 'Organization Unit', value: dash(data.adminOrgUnitNo) },
+                  { label: 'Organization Unit', value: orgUnitName(data.adminOrgUnitNo) },
                   {
                     label: 'Authorized AUMs',
                     value: num(data.rangeUsage[0]?.authorizedUse ?? null),

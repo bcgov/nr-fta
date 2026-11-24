@@ -54,6 +54,12 @@ const list = (name: string) => cached(`/api/fta/code-lists/${name}`);
  */
 export const getOrgUnits = () => list('org-units');
 
+/**
+ * Every org unit, expired ones too, as getOrgUnits: to name the admin org a record stores,
+ * however old the record.
+ */
+export const getAllOrgUnits = () => list('org-units?all=true');
+
 /** District-level org units (code = ORG_UNIT_NO), for the FTA510 District dropdown. */
 export const getDistricts = () => list('districts');
 
@@ -173,6 +179,12 @@ export const getPrimaryIds = () => list('primary-ids');
 
 /** Salvage types, shared by the FTA002 and FTA005 searches. */
 export const getSalvageTypes = () => list('salvage-types');
+
+/** Quota types, to describe a cutting permit's. */
+export const getQuotaTypes = () => list('quota-types');
+
+/** Crown lands regions (Land Region), to describe a cutting permit's. */
+export const getCrownLandsRegions = () => list('crown-lands-regions');
 
 /** Harvest authority statuses — FTA002's "Mark Status" and FTA005's "CP Status". */
 export const getHarvestAuthStatuses = () => list('harvest-auth-statuses');

@@ -419,7 +419,7 @@ const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCod
           </div>
           <TextInput
             id="cp-location"
-            labelText="Location (optional)"
+            labelText="Geographic Location (optional)"
             value={form.location}
             maxLength={MAX_LOCATION}
             invalid={!!errors.location}

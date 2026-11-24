@@ -102,6 +102,7 @@ const CreateRelationshipModal: FC<Props> = ({ open, onClose, onCreated }) => {
         <ClientComboBox
           key={`parent-${round}`}
           id="apt-link-parent"
+          inDialog
           titleText="Parent corporation"
           helperText="The corporation that controls the subsidiary."
           clientNumber={parent.clientNumber}
@@ -115,6 +116,7 @@ const CreateRelationshipModal: FC<Props> = ({ open, onClose, onCreated }) => {
         <ClientComboBox
           key={`child-${round}`}
           id="apt-link-child"
+          inDialog
           titleText="Subsidiary corporation"
           helperText="The corporation the parent controls."
           clientNumber={child.clientNumber}

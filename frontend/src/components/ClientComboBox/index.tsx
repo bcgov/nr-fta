@@ -66,6 +66,12 @@ interface ClientComboBoxProps {
   invalid?: boolean;
   invalidText?: string;
   disabled?: boolean;
+  /**
+   * The field sits in a dialog: the suggestions float over the page (Carbon's autoAlign,
+   * fixed positioning) instead of opening inside the dialog's content, which would clip
+   * them at its bottom edge and make it scroll.
+   */
+  inDialog?: boolean;
 }
 
 /**
@@ -97,6 +103,7 @@ const ClientComboBox: FC<ClientComboBoxProps> = ({
   invalid,
   invalidText,
   disabled,
+  inDialog = false,
 }) => {
   const [options, setOptions] = useState<ClientOption[]>([]);
   const [typed, setTyped] = useState('');
@@ -168,6 +175,8 @@ const ClientComboBox: FC<ClientComboBoxProps> = ({
       invalid={invalid}
       invalidText={invalidText}
       disabled={disabled}
+      autoAlign={inDialog}
+      className={inDialog ? 'client-combo--floating' : undefined}
       items={options}
       itemToString={(item) => item?.label ?? ''}
       itemToElement={(item) => <OptionRow item={item} />}

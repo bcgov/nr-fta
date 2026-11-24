@@ -243,7 +243,7 @@ const ArchiveTenures: FC = () => {
                             <TableCell>{r.hayCount}</TableCell>
                           </TableRow>
                         ))}
-                        <TableRow>
+                        <TableRow className="table-total-row">
                           <TableCell>
                             <strong>Total</strong>
                           </TableCell>

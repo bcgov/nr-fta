@@ -174,7 +174,7 @@ const validate = (criteria: HarvestingSearchParams): string | null => {
  */
 const HarvestingAuthoritySearch: FC = () => {
   const navigate = useNavigate();
-  const { display } = useNotification();
+  const { display, clear } = useNotification();
 
   // Criteria and the last search are kept for the browser tab; see TenureSearch.
   const [form, setForm] = useSessionState<HarvestingSearchParams>(
@@ -272,6 +272,7 @@ const HarvestingAuthoritySearch: FC = () => {
         setError(problem);
         return;
       }
+      clear();
       setLoading(true);
       setError(null);
       // Decided before the request, from the submitted criteria, so the columns
@@ -305,7 +306,7 @@ const HarvestingAuthoritySearch: FC = () => {
         setLoading(false);
       }
     },
-    [form, setLastSearch],
+    [form, clear, setLastSearch],
   );
 
   const onSubmit = useCallback(

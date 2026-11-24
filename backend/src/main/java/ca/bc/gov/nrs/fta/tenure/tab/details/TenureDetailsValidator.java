@@ -399,7 +399,7 @@ final class TenureDetailsValidator {
       required("p_district_admin_zone", "Zone");
     }
     if ("B05".equals(type()) && !"EE".equals(status)) {
-      required("p_permit_block_location", "Location");
+      required("p_permit_block_location", "Geographic Location");
     }
     if (showMark && typeIn("B04", "B05", "B06") && s("p_quota_type_code").isEmpty()) {
       errors.add("Quota type is mandatory if file type is " + type() + ".");

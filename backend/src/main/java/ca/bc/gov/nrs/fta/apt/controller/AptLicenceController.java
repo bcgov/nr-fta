@@ -34,7 +34,7 @@ public class AptLicenceController {
     this.commitments = commitments;
   }
 
-  /** One page of licences ({@code APT_LICENCES_GET}); {@code forestFileId} is required. */
+  /** One page of licences ({@code APT_LICENCES_GET}); any one criterion will do. */
   @GetMapping
   public PagedResponse<AptLicenceDto> search(
       @RequestParam(required = false) String forestFileId,

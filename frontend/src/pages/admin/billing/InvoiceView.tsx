@@ -70,7 +70,7 @@ const InvoiceView: FC<{ invoice: InvoicePreview }> = ({ invoice: v }) => {
                 <TableCell>GST @ {v.taxRate}%</TableCell>
                 <TableCell className="billing__num">{fmt(v.taxAmount)}</TableCell>
               </TableRow>
-              <TableRow>
+              <TableRow className="table-total-row">
                 <TableCell />
                 <TableCell>
                   <strong>Total Charge</strong>

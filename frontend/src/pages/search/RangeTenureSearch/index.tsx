@@ -28,6 +28,7 @@ import ExportCsvButton from '@/components/ExportCsvButton';
 import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
+import { useOrgUnitName } from '@/hooks/useOrgUnitName';
 import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { nextColumnSort, sortHeaderProps } from '@/lib/columnSort';
 import { safeErrorMessage } from '@/lib/errorMessage';
@@ -99,7 +100,8 @@ const MIN_CRITERIA = 2;
  */
 const RangeTenureSearch: FC = () => {
   const navigate = useNavigate();
-  const { display } = useNotification();
+  const { display, clear } = useNotification();
+  const orgUnitName = useOrgUnitName();
 
   // Criteria and the last search are kept for the browser tab; see TenureSearch.
   const [form, setForm] = useSessionState<RangeTenureSearchParams>(
@@ -216,6 +218,7 @@ const RangeTenureSearch: FC = () => {
         setError('Expiry date from must be on or before expiry date to.');
         return;
       }
+      clear();
       setLoading(true);
       setError(null);
       try {
@@ -234,7 +237,7 @@ const RangeTenureSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form, setLastSearch],
+    [form, clear, setLastSearch],
   );
 
   const onSubmit = useCallback(
@@ -651,6 +654,11 @@ const RangeTenureSearch: FC = () => {
                                         >
                                           {formatCellText(formatDate(value))}
                                         </TableCell>
+                                      );
+                                    }
+                                    if (cell.info.header === 'orgUnitCode') {
+                                      return (
+                                        <TableCell key={cell.id}>{orgUnitName(value)}</TableCell>
                                       );
                                     }
                                     return (

@@ -40,16 +40,20 @@ import PartitionModal from './PartitionModal';
 const sum = <T,>(rows: T[], pick: (r: T) => number | null) =>
   rows.reduce((total, r) => total + (pick(r) ?? 0), 0);
 
-/** A total that exceeds what it is apportioned from: shown in the error colour, flagged. */
+/**
+ * A total, flagged in the error colour with a warning icon when it exceeds what it is split
+ * from: the partitions' total against the determination's AAC, the apportionments' against
+ * the partition's.
+ */
 const Total: FC<{ value: number; over?: boolean; label: string }> = ({ value, over, label }) => (
   <strong
     style={over ? { color: 'var(--cds-text-error)' } : undefined}
-    title={over ? `More than the partition's ${label}` : undefined}
+    title={over ? `More than the ${label}` : undefined}
   >
     {over && (
       <WarningFilled
         size={16}
-        aria-label={`More than the partition's ${label}`}
+        aria-label={`More than the ${label}`}
         style={{ verticalAlign: 'text-bottom', marginInlineEnd: '0.25rem' }}
       />
     )}
@@ -240,16 +244,24 @@ const ManagementUnitDetail: FC = () => {
                           </TableRow>
                         );
                       })}
-                      <TableRow>
+                      <TableRow className="table-total-row">
                         <TableCell />
                         <TableCell>
                           <strong>Total</strong>
                         </TableCell>
                         <TableCell>
-                          <strong>{num(partitionAac)}</strong>
+                          <Total
+                            value={partitionAac}
+                            over={partitionAac > (determination?.allowableAnnualCut ?? 0)}
+                            label="determination's AAC (m³)"
+                          />
                         </TableCell>
                         <TableCell>
-                          <strong>{num(partitionAacHa)}</strong>
+                          <Total
+                            value={partitionAacHa}
+                            over={partitionAacHa > (determination?.allowableAnnualCutHa ?? 0)}
+                            label="determination's AAC (ha)"
+                          />
                         </TableCell>
                         <TableCell colSpan={canEdit ? 3 : 2} />
                       </TableRow>
@@ -333,7 +345,7 @@ const ManagementUnitDetail: FC = () => {
                           </TableCell>
                         </TableRow>
                       ))}
-                      <TableRow>
+                      <TableRow className="table-total-row">
                         <TableCell>
                           <strong>Total</strong>
                         </TableCell>
@@ -341,14 +353,14 @@ const ManagementUnitDetail: FC = () => {
                           <Total
                             value={apportionedAac}
                             over={apportionedAac > (active.allowableAnnualCut ?? 0)}
-                            label="AAC (m³)"
+                            label="partition's AAC (m³)"
                           />
                         </TableCell>
                         <TableCell>
                           <Total
                             value={apportionedAacHa}
                             over={apportionedAacHa > (active.allowableAnnualCutHa ?? 0)}
-                            label="AAC (ha)"
+                            label="partition's AAC (ha)"
                           />
                         </TableCell>
                         <TableCell colSpan={3} />

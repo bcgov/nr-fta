@@ -57,6 +57,41 @@ class AptLicenceServiceTest {
         });
   }
 
+  @Test
+  void noCriteriaAtAllIs400() {
+    AptLicenceSearchParams none = new AptLicenceSearchParams(" ", null, "", null, null, null);
+    assertThatThrownBy(() -> service.search(none, 0, 10))
+        .isInstanceOfSatisfying(ResponseStatusException.class, e ->
+            assertThat(e.getReason()).isEqualTo("Enter at least one search criterion."));
+  }
+
+  @Test
+  void aLicenseeNameAloneSearches() {
+    NamedParameterJdbcTemplate db = mock(NamedParameterJdbcTemplate.class);
+    doReturn(List.of(licence("A1", "Acme", null))).when(db)
+        .query(contains("FETCH FIRST :limit ROWS ONLY"), any(SqlParameterSource.class),
+            any(RowMapper.class));
+    AptLicenceSearchParams byName = new AptLicenceSearchParams(null, "acme", null, null, null,
+        null);
+
+    assertThat(new AptLicenceService(db).search(byName, 0, 10).content())
+        .extracting(AptLicenceDto::forestFileId).containsExactly("A1");
+  }
+
+  @Test
+  void criteriaMatchingTooManyRowsAre400() {
+    NamedParameterJdbcTemplate db = mock(NamedParameterJdbcTemplate.class);
+    List<AptLicenceDto> many = java.util.stream.IntStream.rangeClosed(0, AptLicenceService.MAX_ROWS)
+        .mapToObj(i -> licence("A" + i, "x", null)).toList();
+    doReturn(many).when(db).query(anyString(), any(SqlParameterSource.class),
+        any(RowMapper.class));
+    AptLicenceSearchParams byType = new AptLicenceSearchParams(null, null, null, null, "U", null);
+
+    assertThatThrownBy(() -> new AptLicenceService(db).search(byType, 0, 10))
+        .isInstanceOfSatisfying(ResponseStatusException.class, e ->
+            assertThat(e.getReason()).isEqualTo(AptLicenceService.TOO_MANY));
+  }
+
   // ── column sort ──
 
   private static AptLicenceDto licence(String fileId, String clientName, LocalDate statusDate) {

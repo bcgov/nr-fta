@@ -115,7 +115,7 @@ const EMPTY_FORM: TimbermarkSearchParams = { sortBy: 'district' };
  */
 const TimberMarkSearch: FC = () => {
   const navigate = useNavigate();
-  const { display } = useNotification();
+  const { display, clear } = useNotification();
 
   // Criteria and the last search are kept for the browser tab, so coming back
   // (e.g. via a detail page's back link) shows the same search again.
@@ -255,6 +255,7 @@ const TimberMarkSearch: FC = () => {
         return;
       }
       scrollPending.current = scrollToResults;
+      clear();
       setLoading(true);
       setError(null);
       try {
@@ -278,7 +279,7 @@ const TimberMarkSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form, setLastSearch],
+    [form, clear, setLastSearch],
   );
 
   const onSubmit = useCallback(

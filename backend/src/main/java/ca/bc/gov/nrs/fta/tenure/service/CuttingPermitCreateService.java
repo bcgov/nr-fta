@@ -175,7 +175,7 @@ public class CuttingPermitCreateService {
       e.add("District " + district + " is not a current district.");
     }
     if (location != null && location.length() > MAX_LOCATION) {
-      e.add("Location can be at most " + MAX_LOCATION + " characters.");
+      e.add("Geographic Location can be at most " + MAX_LOCATION + " characters.");
     }
     int maxTerm = "A11".equals(fileType) ? 60 : 48;
     if (q.tenureTerm() == null) {

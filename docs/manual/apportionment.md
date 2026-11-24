@@ -121,7 +121,8 @@ From a determination, select **Partitions and apportionments**. The page
 shows the unit and the determination's dates and AAC, then two sections:
 
 - **Partitions**: each partition's **Type**, **AAC (m³)**, **AAC (ha)**,
-  **Apportioned (m³)** and **Comments**, with a **Total** row. Select a
+  **Apportioned (m³)** and **Comments**, with a **Total** row. A total that
+  is more than the determination's AAC is flagged in red. Select a
   partition to show its apportionments.
 - **Apportionments — *partition***: each apportionment's **Form of
   agreement / rights held**, **AAC (m³)**, **AAC (ha)**, **Distributed (m³)**
@@ -177,11 +178,15 @@ To delete a commitment, select **Delete** from its row menu. You can give a
 ### Find a licence
 
 1. Select **Apportionment › Licences**.
-2. Enter the **Forest File ID** (required). Use `%` to match any characters,
-   for example `A13%`.
-3. Narrow it with **Licensee**, **Management Unit Type**, **Management Unit
-   Number**, **Management Unit Name** or **Org. Unit Name** if you need to.
-4. Select **Search**.
+2. Enter any of **Forest File ID**, **Licensee**, **Org. Unit Name**,
+   **Management Unit Name**, **Management Unit Type** and **Management Unit
+   Number**. At least one is needed. In **Forest File ID**, use `%` to match
+   any characters, for example `A13%`. **Licensee**, **Org. Unit Name** and
+   **Management Unit Name** match any part of the name.
+3. Select **Search**.
+
+A search that matches more than 10,000 rows is refused; add criteria to
+narrow it.
 
 The results show **Forest File ID**, **Licensee**, **Management Unit**,
 **Org. Unit**, **File Status** and **File Status Date**. Select a column

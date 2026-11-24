@@ -257,6 +257,19 @@
   .cds--modal-scroll-content {
     mask-image: none;
   }
+
+  // Carbon marks the content as scrolling whenever it overflows, and an open
+  // autocomplete list (ClientComboBox) overflows it. The mark adds a 2px border and
+  // 1.5rem under the last child, which grows the dialog until it no longer
+  // overflows, so the mark comes off, the dialog shrinks, and it repeats: the
+  // dialog shakes as you type. Giving both states the same box stops the loop.
+  .cds--modal-content {
+    border-block-end: 2px solid transparent;
+  }
+
+  .cds--modal-scroll-content > *:last-child {
+    margin-block-end: 0;
+  }
 }
 
 .detail-dialog__subtitle {

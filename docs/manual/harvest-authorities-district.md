@@ -83,7 +83,7 @@ while the browser tab stays open.
    - **District**: starts as the tenure's own organization unit when that is
      a district; otherwise choose one.
    - **Term (months)**: 1 to 48 months (1 to 60 for an A11).
-   - **Area (Hectares) (optional)** and **Location (optional)**, up to 50
+   - **Area (Hectares) (optional)** and **Geographic Location (optional)**, up to 50
      characters.
    - **Compliance Method** and **Marking Instrument**. They start as full
      standard marking with a hammer. The instrument is optional only for
@@ -112,7 +112,7 @@ The tabs are:
 
 | Tab | What it shows |
 |---|---|
-| **Details** | **Permit details**, **Issuance conditions**, and **Term and status** (status, tenure term, issue, expiry and extension dates, extension count). |
+| **Details** | **Permit details** (including **Land Region** and **Geographic Location**), **Issuance conditions**, and **Term and status** (status, tenure term, issue, expiry and extension dates, extension count). |
 | **Cut blocks** | The permit's blocks with their status, salvage type, harvest dates and areas. Select a block to open it. Blocks are added on the tenure's **Cut block** tab. |
 | **Harvest history** | What has been billed to the permit's timber mark, by calendar year. |
 | **Conditions** | The permit's issuance conditions. View only for you. |
@@ -154,7 +154,7 @@ FTA locks the fields that can't change for the permit's status or your role:
   authorizations.
 - **Purpose**: shown only for file type A18.
 
-The other fields (**Quota Type**, **Salvage Type**, **Zone**, **Location**,
+The other fields (**Quota Type**, **Salvage Type**, **Zone**, **Geographic Location**,
 **Land Region**, **Management Unit Type**, **Management Unit** and the
 **Indicators**) can be changed whenever the permit can be saved. If FTA
 saves the permit with warnings, they appear in the confirmation message.
