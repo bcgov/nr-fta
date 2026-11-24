@@ -36,8 +36,9 @@ import org.springframework.web.server.ResponseStatusException;
  * control tables, so the new app and anything else creating files never hand out the same
  * number: {@code FTA_GENERATE_FILE_ID} (file ids), {@code FTC_VALIDATION.handleFFFreeUsePermit}
  * (B10 ids) and {@code FTA_MARK_DESIGNATE} (designates for the mark-designate file types). The
- * woodlot and A06 designates come from {@code ADD_NEW_REC}'s private {@code create_mark_designate},
- * which can't be called, so its counter update is done here, locked {@code FOR UPDATE} as it did.
+ * woodlot and timber licence designates come from the package itself:
+ * {@code FTA_100_TENURE.mainline}'s {@code ASSIGN_MARK_DESIGNATE}, the same routine ADD_NEW_REC
+ * runs, since its counter ({@code MRK_DSG_NUM_CTL}) is one the application may only read.
  *
  * <p><b>The user is Headquarters.</b> Only FTA Admin creates tenures, and the app treats that
  * role as a Headquarters user (as the Details tab does). Legacy gives a Headquarters user's new
@@ -192,9 +193,6 @@ public class TenureWriteService {
       VALUES (:id, :designate, 0, :user, SYSDATE, :user, SYSDATE)
       """;
 
-  private static final String CURRENT_DESIGNATE_SQL =
-      "SELECT mark_designate FROM the.timber_tenure WHERE forest_file_id = :id";
-
   private static final String INSERT_TL_AREA = """
       INSERT INTO the.timber_lic_area (
         forest_file_id, init_licence_area, obligation_area, eliminated_area, non_harvest_area,
@@ -227,15 +225,11 @@ public class TenureWriteService {
         :cedar, :treaty, :fnUsage, :fupType)
       """;
 
-  /** create_mark_designate's counter: key 6 for woodlots (W…), 5 for A06 (T…). */
-  private static final String LOCK_DESIGNATE_CTL = """
-      SELECT mark_desgn_num FROM the.mrk_dsg_num_ctl
-       WHERE dummy_access_key = :key
-         FOR UPDATE
-      """;
-
-  private static final String UPDATE_DESIGNATE_CTL =
-      "UPDATE the.mrk_dsg_num_ctl SET mark_desgn_num = :d WHERE dummy_access_key = :key";
+  /** FTA_100_TENURE.mainline ASSIGN_MARK_DESIGNATE: binds type, file id, user, trace. */
+  private static final String ASSIGN_DESIGNATE_CALL = Fta100TenureMainline.block(
+      "ASSIGN_MARK_DESIGNATE",
+      List.of("p_file_type_code", "p_forest_file_id", "p_userid", "p_trace_ind"),
+      "p_mark_designate");
 
   // FTA_GENERATE_FILE_ID(type, trace, id IN OUT, error IN OUT, payment method, BCTS fund, SFL),
   // with ADD_NEW_REC's defaults for a new file: payment method A, not BCTS-funded, not SFL.
@@ -628,61 +622,37 @@ public class TenureWriteService {
         "No mark designate free of existing timber marks could be generated. Contact APPHELP.");
   }
 
-  /** assign_mark_designate for a new woodlot (A04, A44), A06, A28 or A29. */
-  private void assignWoodlotOrTlDesignate(String type, String forestFileId, String user) {
-    List<String> current = jdbc.query(CURRENT_DESIGNATE_SQL, Map.of("id", forestFileId),
-        (rs, n) -> rs.getString(1));
-    String existing = current.isEmpty() ? null : current.get(0);
-    if (existing != null && !existing.isBlank()) {
-      throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-          "Mark designate " + existing + " has already been assigned to this file.");
-    }
-    if (is("the.fta_valid_minor_tsl_file_type", type)) {
-      // A new file has no cutting permits, so legacy always refused here.
-      throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-          "You have not used up all possible CP id(s) for the file.");
-    }
-    String designate;
-    if ("A28".equals(type) || "A29".equals(type)) {
-      designate = forestFileId; // the designate is the timber mark
-    } else {
-      designate = nextLetterDesignate("A06".equals(type) ? "T" : "W",
-          "A06".equals(type) ? "5" : "6");
-    }
-    saveDesignate(forestFileId, designate, user);
-  }
-
   /**
-   * create_mark_designate's counter, locked until this transaction ends, so it rolls back with
-   * a failed create. Designates a timber mark already starts with are passed over (legacy
-   * refused them and had the user ask again).
+   * ADD_NEW_REC's designate for a new woodlot (A04, A44), A06, A28 or A29: legacy's own
+   * {@code assign_mark_designate}, through {@code FTA_100_TENURE.mainline}. It takes the next
+   * W… or T… designate from {@code MRK_DSG_NUM_CTL} (which the application account may only
+   * read), refuses one an existing timber mark starts with, and saves it on TIMBER_TENURE. It
+   * doesn't commit, so it rolls back with a failed create.
    */
-  private String nextLetterDesignate(String prefix, String key) {
-    List<String> rows = jdbc.query(LOCK_DESIGNATE_CTL, Map.of("key", key),
-        (rs, n) -> rs.getString(1));
-    if (rows.isEmpty() || rows.get(0) == null) {
-      throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-          "Mark designate in control table is corrupt. Contact APPHELP.");
+  private void assignWoodlotOrTlDesignate(String type, String forestFileId, String user) {
+    String[] out = jdbc.getJdbcTemplate().execute(
+        (Connection con) -> con.prepareCall(ASSIGN_DESIGNATE_CALL),
+        (CallableStatement cs) -> {
+          cs.setString(1, type);
+          cs.setString(2, forestFileId);
+          cs.setString(3, user);
+          cs.setString(4, "N");
+          cs.registerOutParameter(5, Types.VARCHAR);
+          cs.registerOutParameter(6, Types.VARCHAR);
+          cs.execute();
+          return new String[] {cs.getString(5), cs.getString(6)};
+        });
+    String error = out == null ? null : out[1];
+    if (error == null || error.isBlank()) {
+      return;
     }
-    String d = rows.get(0).trim();
-    for (int i = 0; i < DESIGNATE_ATTEMPTS; i++) {
-      try {
-        d = TenureCreateRules.nextLetterDesignate(prefix, d);
-      } catch (IllegalStateException e) {
-        throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-            "Mark designate in control table is corrupt. Contact APPHELP.");
-      }
-      if (d == null) {
-        throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-            "Mark designate could not be generated. System has reached maximum.");
-      }
-      if (count(MARK_PREFIX_SQL, Map.of("prefix", d)) == 0) {
-        jdbc.update(UPDATE_DESIGNATE_CTL, Map.of("d", d, "key", key));
-        return d;
-      }
+    if (error.contains("fta.web.usr.database.")) {
+      throw new IllegalStateException("FTA_100_TENURE.ASSIGN_MARK_DESIGNATE failed: " + error);
     }
-    throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-        "No mark designate free of existing timber marks could be generated. Contact APPHELP.");
+    // Legacy's retry hint is for its Assign Mark Designate button, which this dialog hasn't.
+    String message = Fta100TenureMainline.readable(error)
+        .replaceAll("\\s*Please reclick Assign Mark Designate button.*$", "");
+    throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, message);
   }
 
   /** save_mark_designate. */

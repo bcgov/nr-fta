@@ -1,5 +1,5 @@
-import { Download, Report } from '@carbon/icons-react';
-import { Accordion, AccordionItem, Button } from '@carbon/react';
+import { Report } from '@carbon/icons-react';
+import { Accordion, AccordionItem } from '@carbon/react';
 import { useState, type FC } from 'react';
 
 import SectionTile from '@/components/SectionTile';
@@ -23,8 +23,9 @@ import './Reports.css';
 /**
  * APT reports (APT2's APTM8000): nine PDF reports rendered in the backend, listed as an
  * accordion (as REPT's Reports page) whose open row holds the inputs the report takes and its
- * Generate button, and two CSV data extracts. Every APT reader may run every report. A
- * generated PDF is downloaded, named as APT2 names it (see {@link aptReportFileName}).
+ * Generate PDF button; APTR041 and APTR013 also offer their data as CSV. Every APT reader may
+ * run every report. A generated PDF is downloaded, named as APT2 names it (see
+ * {@link aptReportFileName}).
  */
 const AptReports: FC = () => {
   const { display } = useNotification();
@@ -66,7 +67,7 @@ const AptReports: FC = () => {
   };
 
   return (
-    <PageLayout title="APT Reports" subtitle="Apportionment reports and data extracts.">
+    <PageLayout title="APT Reports" subtitle="Apportionment reports.">
       <SectionTile title="Reports" icon={Report}>
         <div className="apt-reports__accordion-table">
           <div className="apt-reports__row apt-reports__row--header" role="presentation">
@@ -90,29 +91,21 @@ const AptReports: FC = () => {
                   <ReportForm
                     report={r}
                     running={running === r.code}
+                    busy={running !== null}
                     onRun={(params, chosen) => runPdf(r, params, chosen)}
+                    csv={
+                      APT_DATA_EXTRACTS.some((x) => x.code === r.code)
+                        ? {
+                            running: running === `${r.code}-csv`,
+                            onRun: () => runExtract(r.code),
+                          }
+                        : undefined
+                    }
                   />
                 )}
               </AccordionItem>
             ))}
           </Accordion>
-        </div>
-      </SectionTile>
-
-      <SectionTile title="Data extracts" icon={Download}>
-        <div className="apt-reports__extracts">
-          {APT_DATA_EXTRACTS.map((x) => (
-            <Button
-              key={x.code}
-              kind="tertiary"
-              size="md"
-              renderIcon={Download}
-              disabled={running !== null}
-              onClick={() => void runExtract(x.code)}
-            >
-              {running === `${x.code}-csv` ? 'Downloading…' : `${x.label} (${x.code})`}
-            </Button>
-          ))}
         </div>
       </SectionTile>
     </PageLayout>

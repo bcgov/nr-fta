@@ -25,7 +25,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     // caller's timeout is ignored for those kinds so an information
     // error doesn't disappear before the user has read it. Success
     // and info toasts still auto-dismiss after their requested
-    // timeout (typical 5-6 s).
+    // timeout (typical 5-6 s), as does a problem toast marked autoDismiss.
     const isProblem =
       content.kind === 'error' || content.kind === 'warning' || content.kind === 'warning-alt';
     // Never let a raw backend/DB error (ORA-…, SQL, stack trace, error
@@ -37,7 +37,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         : content;
     shownAt.current = Date.now();
     setNotificationClass('slide-in');
-    setNotificationContent(isProblem ? { ...safe, timeout: 0 } : safe);
+    setNotificationContent(isProblem && !content.autoDismiss ? { ...safe, timeout: 0 } : safe);
   }, []);
 
   const clear = useCallback(() => setNotificationContent(null), []);

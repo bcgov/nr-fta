@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -69,19 +70,14 @@ class TenureWriteServiceTest {
     when(lookups.mgmtUnitExists("F", "W1234")).thenReturn(true);
     when(lookups.options()).thenReturn(Map.<String, List<CodeOptionDto>>of());
     when(lookups.headquarters()).thenReturn(new String[] {"1", "HQ"});
-    // FTA_GENERATE_FILE_ID gives W1234.
+    // FTA_GENERATE_FILE_ID gives W1234; then FTA_100_TENURE's ASSIGN_MARK_DESIGNATE succeeds.
     when(plain.execute(any(CallableStatementCreator.class), any(CallableStatementCallback.class)))
-        .thenReturn(new String[] {"W1234", null});
+        .thenReturn(new String[] {"W1234", null}).thenReturn(new String[] {null, null});
     // The new id isn't in use, nor any timber mark starting with the next designate.
     when(jdbc.queryForObject(contains("FROM the.prov_forest_use"), anyMap(), eq(Long.class)))
         .thenReturn(0L);
     when(jdbc.queryForObject(contains("timber_mark LIKE"), anyMap(), eq(Long.class)))
         .thenReturn(0L);
-    // No designate yet; the woodlot counter is at WAAA.
-    when(jdbc.query(contains("SELECT mark_designate FROM the.timber_tenure"), anyMap(),
-        any(RowMapper.class))).thenReturn(List.of());
-    when(jdbc.query(contains("FROM the.mrk_dsg_num_ctl"), anyMap(), any(RowMapper.class)))
-        .thenReturn(List.<Object>of("WAAA"));
     when(jdbc.update(anyString(), any(SqlParameterSource.class))).thenReturn(1);
   }
 
@@ -103,10 +99,11 @@ class TenureWriteServiceTest {
         any(SqlParameterSource.class));
     verify(jdbc).update(contains("INSERT INTO the.tenure_term"), any(SqlParameterSource.class));
     verify(jdbc).update(contains("INSERT INTO the.harvest_sale"), any(SqlParameterSource.class));
-    // The W designate: the counter moves on and the file gets it.
-    verify(jdbc).update(contains("UPDATE the.mrk_dsg_num_ctl"),
-        eq(Map.of("d", "WAAB", "key", "6")));
-    verify(jdbc).update(contains("UPDATE the.timber_tenure"), any(SqlParameterSource.class));
+    // The W designate comes from the package (the file id, then the designate), not the
+    // counter table, which the application may only read.
+    verify(plain, times(2)).execute(any(CallableStatementCreator.class),
+        any(CallableStatementCallback.class));
+    verify(jdbc, never()).update(contains("mrk_dsg_num_ctl"), anyMap());
     verify(jdbc, never()).update(contains("INSERT INTO the.harvesting_authority"),
         any(SqlParameterSource.class));
   }
@@ -141,7 +138,41 @@ class TenureWriteServiceTest {
 
     assertThatThrownBy(() -> service.create(woodlot("1867", "W1234"), "IDIR\\USER"))
         .isInstanceOf(DataIntegrityViolationException.class);
-    // Nothing after the failure ran.
-    verify(jdbc, never()).update(contains("UPDATE the.mrk_dsg_num_ctl"), anyMap());
+    // Nothing after the failure ran: only the file id was taken, no designate.
+    verify(plain, times(1)).execute(any(CallableStatementCreator.class),
+        any(CallableStatementCallback.class));
+  }
+
+  @Test
+  void aDesignateThePackageRefusesFailsTheCreate() {
+    when(plain.execute(any(CallableStatementCreator.class), any(CallableStatementCallback.class)))
+        .thenReturn(new String[] {"W1234", null}).thenReturn(new String[] {null,
+            "fta.web.error.user.custom.msg:Assigned Mark designate of WABC may result in"
+                + " duplicate timber marks.  Please reclick Assign Mark Designate button to get"
+                + " another one"});
+
+    assertThatThrownBy(() -> service.create(woodlot("1867", "W1234"), "IDIR\\USER"))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasMessageContaining("Assigned Mark designate of WABC may result in duplicate timber"
+            + " marks.")
+        .hasMessageNotContaining("reclick");
+  }
+
+  @Test
+  void anUnexpectedPackageErrorIsAServerError() {
+    when(plain.execute(any(CallableStatementCreator.class), any(CallableStatementCallback.class)))
+        .thenReturn(new String[] {"W1234", null}).thenReturn(new String[] {null,
+            "fta.web.usr.database.proc.unexpected:FTA_100_TENURE.ASSIGN_MARK_DESIGNATE,ORA-01;"});
+
+    assertThatThrownBy(() -> service.create(woodlot("1867", "W1234"), "IDIR\\USER"))
+        .isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  void theDesignateCallBindsEveryMainlineParameter() {
+    String block = Fta100TenureMainline.block("ASSIGN_MARK_DESIGNATE",
+        List.of("p_file_type_code"), "p_mark_designate");
+    assertThat(Fta100TenureMainline.PARAMS).hasSize(177).doesNotHaveDuplicates();
+    Fta100TenureMainline.PARAMS.forEach(p -> assertThat(block).contains(p + " => v_" + p));
   }
 }

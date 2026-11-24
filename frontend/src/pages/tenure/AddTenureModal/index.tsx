@@ -9,7 +9,8 @@ import {
   getDistricts,
   getFileTypes,
   getManagementUnits,
-  getRegions,
+  getTenureAdminOrgUnits,
+  orgUnitCodeOf,
   type CodeOption,
   type ManagementUnit,
 } from '@/services/codeLists';
@@ -64,8 +65,8 @@ const EMPTY: Form = {
 
 /** The user types the Forest File ID; FTA assigns every other type's, B10's when left blank. */
 const ENTERED_ID_TYPES = new Set(['A02', 'A06', 'A30', 'B40']);
-/** FTA100 shows Admin Org for file types starting A, U or P. */
-const showsAdminOrg = (t: string) => /^[AUP]/.test(t);
+/** FTA100 asks for Admin Org on file types starting A, U or P, except a new U1 or U2. */
+const showsAdminOrg = (t: string) => /^[AUP]/.test(t) && t !== 'U1' && t !== 'U2';
 /** A04, A44 and A11 files need a district as Admin Org, every other a region. */
 const adminOrgIsDistrict = (t: string) => ['A04', 'A44', 'A11'].includes(t);
 /** FTA100 hides District for file types starting A, and P01. */
@@ -96,12 +97,13 @@ const toIsoDate = (d: Date) =>
 interface Lists {
   fileTypes: CodeOption[];
   districts: CodeOption[];
-  regions: CodeOption[];
+  /** FTA100's Admin Org list: current districts, regions, then HQ units. */
+  adminOrgs: CodeOption[];
   units: ManagementUnit[];
   details: Record<string, CodeOption[]>;
 }
 
-const NO_LISTS: Lists = { fileTypes: [], districts: [], regions: [], units: [], details: {} };
+const NO_LISTS: Lists = { fileTypes: [], districts: [], adminOrgs: [], units: [], details: {} };
 
 interface Props {
   open: boolean;
@@ -130,21 +132,21 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
     Promise.allSettled([
       getFileTypes(),
       getDistricts(),
-      getRegions(),
+      getTenureAdminOrgUnits(),
       getManagementUnits(),
       getTenureDetailsOptions(),
-    ]).then(([types, districts, regions, units, details]) => {
+    ]).then(([types, districts, adminOrgs, units, details]) => {
       if (cancelled) return;
       const ok = <T,>(r: PromiseSettledResult<T>, empty: T) =>
         r.status === 'fulfilled' ? r.value : empty;
       setLists({
         fileTypes: ok(types, []),
         districts: ok(districts, []),
-        regions: ok(regions, []),
+        adminOrgs: ok(adminOrgs, []),
         units: ok(units, []),
         details: ok(details, {}),
       });
-      if ([types, districts, regions, units, details].some((r) => r.status === 'rejected')) {
+      if ([types, districts, adminOrgs, units, details].some((r) => r.status === 'rejected')) {
         notify.display({
           kind: 'error',
           title: 'Could not load the lists this dialog needs',
@@ -169,7 +171,10 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
   const entersId = ENTERED_ID_TYPES.has(t);
   const optionalId = t === 'B10';
   const fn = t === 'B10' && form.fupType === 'FN';
-  const adminOrgOptions = adminOrgIsDistrict(t) ? lists.districts : lists.regions;
+  // FTA100's list narrowed to the level Save accepts for this type (the backend checks it too).
+  const adminOrgOptions = lists.adminOrgs.filter((o) =>
+    orgUnitCodeOf(o).startsWith(adminOrgIsDistrict(t) ? 'D' : 'R'),
+  );
   const purposeOptions = lists.details[t === 'B07' ? 'forLicenceToCut' : 'occLicenceToCut'] ?? [];
 
   const chooseType = (fileType: string) =>

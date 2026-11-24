@@ -33,7 +33,9 @@ class TenureCreateRulesTest {
   @Test
   void adminOrgAndDistrictShowAsInFta100() {
     assertThat(TenureCreateRules.showsAdminOrg("A01")).isTrue();
-    assertThat(TenureCreateRules.showsAdminOrg("U1")).isTrue();
+    assertThat(TenureCreateRules.showsAdminOrg("U1")).isFalse();
+    assertThat(TenureCreateRules.showsAdminOrg("U2")).isFalse();
+    assertThat(TenureCreateRules.showsAdminOrg("U3")).isTrue();
     assertThat(TenureCreateRules.showsAdminOrg("P01")).isTrue();
     assertThat(TenureCreateRules.showsAdminOrg("B07")).isFalse();
     assertThat(TenureCreateRules.showsDistrict("A01")).isFalse();
@@ -99,17 +101,6 @@ class TenureCreateRulesTest {
         .isEqualTo(new TenureCreateRules.HarvestSale("D", null, "Y", null));
     assertThat(TenureCreateRules.harvestSale("B02", null).saleType()).isEqualTo("SP");
     assertThat(TenureCreateRules.harvestSale("A23", null).plannedCategory()).isEqualTo("2");
-  }
-
-  @Test
-  void letterDesignatesCountUpAndSkipIandO() {
-    assertThat(TenureCreateRules.nextLetterDesignate("W", "WAAA")).isEqualTo("WAAB");
-    assertThat(TenureCreateRules.nextLetterDesignate("W", "WAAZ")).isEqualTo("WABA");
-    assertThat(TenureCreateRules.nextLetterDesignate("W", "WAZZ")).isEqualTo("WBAA");
-    assertThat(TenureCreateRules.nextLetterDesignate("W", "WAAH")).isEqualTo("WAAJ");
-    assertThat(TenureCreateRules.nextLetterDesignate("W", "WAHZ")).isEqualTo("WAJA");
-    assertThat(TenureCreateRules.nextLetterDesignate("T", "TAAN")).isEqualTo("TAAP");
-    assertThat(TenureCreateRules.nextLetterDesignate("W", "WZZZ")).isNull();
   }
 
   @Test

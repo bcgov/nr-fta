@@ -1,7 +1,7 @@
 /*
     APT reports: an accordion laid out as a table, after REPT's Reports page.
     Closed rows are striped white / grey like every other FTA table
-    (styles/_tables.scss); an open row's form keeps its row's colour.
+    (styles/_tables.scss); an open row's form sits on white, whichever its stripe.
 */
 
 .apt-reports__accordion-table {
@@ -49,12 +49,12 @@
   padding-inline-end: 0.5rem;
 }
 
-/* The open row's form sits on its row's colour; Carbon would cap its width. */
+/* The open row's form sits on white (band A) on every row; Carbon would cap its width. */
 .apt-reports__accordion-table .cds--accordion__content {
-  padding-block: 0.5rem 1.5rem;
+  padding-block: 1rem 1.5rem;
   padding-inline: 3rem 1.5rem;
   max-inline-size: none;
-  background: transparent;
+  background: var(--apt-reports-band-a);
 }
 
 /* Report code and name; the header row lines up with the titles past the chevron. */
@@ -119,11 +119,6 @@
 .apt-report-form__actions {
   display: flex;
   justify-content: flex-end;
-  margin-block-start: 1.5rem;
-}
-
-.apt-reports__extracts {
-  display: flex;
-  flex-wrap: wrap;
   gap: 1rem;
+  margin-block-start: 1.5rem;
 }
