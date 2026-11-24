@@ -108,7 +108,8 @@ jobs:
   backend:
     name: Deploy (backend)
     environment: ${{ inputs.environment }}
-    runs-on: ubuntu-24.04
+    runs-on:
+      group: bcgov-azure-lz-forge-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
     timeout-minutes: 15
     permissions:
       contents: read
@@ -233,7 +234,8 @@ jobs:
     name: Deploy (frontend)
     environment: ${{ inputs.environment }}
     needs: [backend]
-    runs-on: ubuntu-24.04
+    runs-on:
+      group: bcgov-azure-lz-forge-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
     timeout-minutes: 15
     permissions:
       contents: read
