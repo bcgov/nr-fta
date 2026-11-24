@@ -28,7 +28,7 @@ menu is a different screen, not part of apportionment.
 | **Apportionment › Management Units** | Find a management unit, and from it reach its AAC determinations, partitions, apportionments and commitments. Administrators also create management units here. |
 | **Apportionment › Licences** | Find a licence, see its commitments and totals, and (Administrators) keep its FOA type, replacement details and commitments. |
 | **Apportionment › Linkages** | See which parent corporations control which subsidiary corporations, and (Administrators) create or delete those relationships. |
-| **Apportionment › Reports** | Run the apportionment PDF reports and download the data extracts. |
+| **Apportionment › Reports** | Run the apportionment reports as PDF, and two of them as CSV. |
 
 ## How the records fit together
 
@@ -262,9 +262,10 @@ To delete one, select **Delete relationship** (the red bin icon) under
 3. Enter the inputs it asks for: a **Report date**, a **Management unit**
    (APTR011 lists only TSAs) or a **Region**. A report with no inputs says
    so.
-4. Select **Generate report**.
+4. Select **Generate PDF**. The report downloads as a PDF.
 
-The report downloads as a PDF. The reports are:
+APTR041 and APTR013 also have **Generate CSV**, which downloads the report's
+data as a CSV file. The CSV doesn't use the inputs. The reports are:
 
 | Report | Name | Asks for |
 |---|---|---|
@@ -278,16 +279,13 @@ The report downloads as a PDF. The reports are:
 | APTR041 | Linkages and Licences | Nothing |
 | APTR043 | Licencees Annual Commitment | Nothing |
 
-Under **Data extracts**, **Linkages and Licences Data (APTR041)** and **TSA
-Apportionment Data (APTR013)** download the data as CSV files.
-
 ## What you can do
 
 | Task | Apportionment Viewer | Apportionment Administrator |
 |---|---|---|
 | Search management units and licences; view determinations, partitions, apportionments, commitments and their history | Yes | Yes |
 | View linkages | Yes | Yes |
-| Run reports and download data extracts | Yes | Yes |
+| Run reports (PDF and CSV) | Yes | Yes |
 | Create or edit a management unit | No | Yes |
 | Add or edit AAC determinations | No | Yes |
 | Add, edit or delete partitions and apportionments | No | Yes |

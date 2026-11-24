@@ -37,8 +37,14 @@ final class TenureCreateRules {
     return "B10".equals(type);
   }
 
-  /** FTA100 shows Admin Org for file types starting U, P or A. */
+  /**
+   * FTA100 asks for Admin Org on file types starting A, U or P, except a new U1 or U2
+   * (getHideAdminOrgInd), which takes its District.
+   */
   static boolean showsAdminOrg(String type) {
+    if ("U1".equals(type) || "U2".equals(type)) {
+      return false;
+    }
     return type.startsWith("U") || type.startsWith("P") || type.startsWith("A");
   }
 
@@ -242,39 +248,5 @@ final class TenureCreateRules {
   static boolean assignsWoodlotOrTlDesignate(String type, String status) {
     return ("PP".equals(status) || "PL".equals(status))
         && Set.of("A04", "A44", "A06", "A28", "A29").contains(type);
-  }
-
-  /**
-   * create_mark_designate's next designate after {@code current}: the last three letters count
-   * up A–Z (prefix W for woodlots, T for A06), skipping any designate holding I or O. Null when
-   * the counter has reached its maximum.
-   */
-  static String nextLetterDesignate(String prefix, String current) {
-    String d = current;
-    do {
-      if ((prefix + "ZZZ").equals(d)) {
-        return null;
-      }
-      char[] c = d.toCharArray();
-      if (c.length != 4) {
-        throw new IllegalStateException("Mark designate in control table is corrupt.");
-      }
-      if (c[3] == 'Z') {
-        c[3] = 'A';
-        if (c[2] == 'Z') {
-          c[2] = 'A';
-          if (c[1] == 'Z') {
-            return null;
-          }
-          c[1]++;
-        } else {
-          c[2]++;
-        }
-      } else {
-        c[3]++;
-      }
-      d = prefix + c[1] + c[2] + c[3];
-    } while (d.indexOf('I') >= 0 || d.indexOf('O') >= 0);
-    return d;
   }
 }

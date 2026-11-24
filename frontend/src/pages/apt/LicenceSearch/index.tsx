@@ -79,7 +79,6 @@ const AptLicenceSearch: FC = () => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [loading, setLoading] = useState(false);
-  const [criteriaError, setCriteriaError] = useState<string | undefined>();
   const [muTypes, setMuTypes] = useState<AptCodeOption[]>([]);
 
   useEffect(() => {
@@ -104,7 +103,6 @@ const AptLicenceSearch: FC = () => {
 
   const set = <K extends keyof Criteria>(key: K, value: Criteria[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
-    setCriteriaError(undefined);
   };
 
   const runSearch = useCallback(
@@ -118,7 +116,13 @@ const AptLicenceSearch: FC = () => {
         'managementUnitNumber',
       ];
       if (fields.every((k) => !String(criteria[k] ?? '').trim())) {
-        setCriteriaError('Enter at least one search criterion.');
+        clear();
+        display({
+          kind: 'warning',
+          title: 'Enter at least one search criterion.',
+          timeout: 8000,
+          autoDismiss: true,
+        });
         return;
       }
       clear();
@@ -167,7 +171,6 @@ const AptLicenceSearch: FC = () => {
     setRows(null);
     setTotal(0);
     setPage(0);
-    setCriteriaError(undefined);
   };
 
   const searched = lastSearch?.criteria ?? form;
@@ -192,8 +195,6 @@ const AptLicenceSearch: FC = () => {
               id="apt-lic-ffid"
               labelText="Forest File ID"
               value={form.forestFileId}
-              invalid={!!criteriaError}
-              invalidText={criteriaError}
               maxLength={10}
               autoComplete="off"
               onChange={(e) => set('forestFileId', e.target.value)}

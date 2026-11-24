@@ -7,6 +7,11 @@ export type NotificationContent = {
   onCloseButtonClick?: () => void;
   subtitle?: string;
   timeout: number;
+  /**
+   * Lets an error or warning toast still go after `timeout`. Without it those kinds stay until
+   * closed; set it only for a short prompt, not a failure the user needs to read.
+   */
+  autoDismiss?: boolean;
   title: string;
   children?: ReactNode;
 };

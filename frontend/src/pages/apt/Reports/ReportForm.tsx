@@ -1,4 +1,4 @@
-import { DocumentPdf } from '@carbon/icons-react';
+import { DocumentPdf, Download } from '@carbon/icons-react';
 import {
   Button,
   ComboBox,
@@ -45,13 +45,17 @@ const none = <T,>(): Promise<T[]> => Promise.resolve([]);
 
 interface Props {
   report: AptPdfReport;
-  /** Whether a report is being generated; the form is locked meanwhile. */
+  /** Whether this report's PDF is being generated; the form is locked meanwhile. */
   running: boolean;
+  /** Whether any report or CSV is being produced; the buttons wait meanwhile. */
+  busy: boolean;
   /**
    * Runs the report; `chosen` is the picked management unit's or region's name, which the
    * downloaded file is named after.
    */
   onRun: (params: AptReportParams, chosen?: string) => Promise<void>;
+  /** The report's data as CSV (APTR041 and APTR013 only); it takes none of the inputs. */
+  csv?: { running: boolean; onRun: () => Promise<void> };
 }
 
 type Errors = Partial<Record<'date' | 'managementUnit' | 'orgUnit', string>>;
@@ -59,10 +63,10 @@ type Errors = Partial<Record<'date' | 'managementUnit' | 'orgUnit', string>>;
 /**
  * A PDF report's parameter form (APT2's ReportModal), shown in the report's accordion row: the
  * report date, management unit and region, each only for the reports that take it, and Generate
- * report. The lists it needs are read when the row opens; mounted only while open, so each
+ * PDF (and Generate CSV where the report has a data extract). The lists it needs are read when the row opens; mounted only while open, so each
  * opening starts fresh.
  */
-const ReportForm: FC<Props> = ({ report, running, onRun }) => {
+const ReportForm: FC<Props> = ({ report, running, busy, onRun, csv }) => {
   const needs = (input: AptPdfReport['inputs'][number]) => report.inputs.includes(input);
   const needsMu = needs('managementUnit');
   const needsOrg = needs('orgUnit');
@@ -201,13 +205,23 @@ const ReportForm: FC<Props> = ({ report, running, onRun }) => {
       </Stack>
 
       <div className="apt-report-form__actions">
+        {csv && (
+          <Button
+            kind="tertiary"
+            renderIcon={Download}
+            disabled={busy}
+            onClick={() => void csv.onRun()}
+          >
+            {csv.running ? 'Generating…' : 'Generate CSV'}
+          </Button>
+        )}
         <Button
           kind="primary"
           renderIcon={DocumentPdf}
-          disabled={running || listsLoading}
+          disabled={busy || listsLoading}
           onClick={() => void submit()}
         >
-          {running ? 'Generating…' : 'Generate report'}
+          {running ? 'Generating…' : 'Generate PDF'}
         </Button>
       </div>
     </div>
