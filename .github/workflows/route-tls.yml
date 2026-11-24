@@ -25,7 +25,7 @@ jobs:
     permissions:
       contents: read
     runs-on:
-      group: bcgov-azure-lz-forge-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
+      group: bcgov-azure-lz-live-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
     timeout-minutes: 5
     steps:
       - uses: bcgov/actions-openshift/route-tls@ea9651011c0bf9d15aad22cf5aa2fae93c096edf # v0.3.2

@@ -31,7 +31,7 @@ jobs:
   vars:
     name: Variables
     runs-on:
-      group: bcgov-azure-lz-forge-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
+      group: bcgov-azure-lz-live-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
     outputs:
       slot: ${{ steps.calc.outputs.slot }}
     steps:
@@ -51,7 +51,7 @@ jobs:
       id-token: write
       packages: write
     runs-on:
-      group: bcgov-azure-lz-forge-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
+      group: bcgov-azure-lz-live-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
     strategy:
       matrix:
         package: [backend, frontend]
@@ -115,7 +115,7 @@ jobs:
     needs: [builds, deploys, tests]
     if: always()
     runs-on:
-      group: bcgov-azure-lz-forge-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
+      group: bcgov-azure-lz-live-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
     steps:
       - uses: bcgov/actions/workflow-results@79aefe3a7abb2d0d00b1b3ea4cfbf12727a10638 # v0.9.0
         with:

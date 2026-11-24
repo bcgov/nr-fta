@@ -58,7 +58,7 @@ jobs:
       run:
         working-directory: frontend
     runs-on:
-      group: bcgov-azure-lz-forge-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
+      group: bcgov-azure-lz-live-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
     # Up to 2 whole-suite attempts (see "Run Playwright") on top of per-navigation
     # and per-test retries.
     timeout-minutes: 30

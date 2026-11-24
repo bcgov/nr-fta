@@ -15,7 +15,7 @@ jobs:
   stale-branches:
     name: Close Stale Branches & PRs
     runs-on:
-      group: bcgov-azure-lz-forge-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
+      group: bcgov-azure-lz-live-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
     timeout-minutes: 10
     steps:
       - uses: actions/stale@v10
@@ -41,7 +41,7 @@ jobs:
       # https://tecadmin.net/getting-yesterdays-date-in-bash/
       CUTOFF: "1 week ago"
     runs-on:
-      group: bcgov-azure-lz-forge-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
+      group: bcgov-azure-lz-live-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
     timeout-minutes: 10
     steps:
       - name: Clean up PR Deployments
@@ -104,7 +104,7 @@ jobs:
     permissions:
       issues: write
     runs-on:
-      group: bcgov-azure-lz-forge-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
+      group: bcgov-azure-lz-live-github-managed-runners # GitHub Managed Runners injected into an Azure VNet
     steps:
       - name: ZAP Scan
         uses: zaproxy/action-full-scan@3c58388149901b9a03b7718852c5ba889646c27c # v0.13.0
