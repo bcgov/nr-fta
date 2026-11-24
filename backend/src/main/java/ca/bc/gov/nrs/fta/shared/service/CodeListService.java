@@ -82,6 +82,17 @@ public class CodeListService {
        ORDER BY org_unit_code
       """;
 
+  /** Every org unit, expired and HQ/regional ones too: to name the one a record stores. */
+  private static final String ALL_ORG_UNITS_SQL =
+      """
+      SELECT TO_CHAR(org_unit_no)                   AS code,
+             org_unit_code || ' - ' || org_unit_name AS description
+        FROM the.org_unit
+       ORDER BY org_unit_code,
+                CASE WHEN SYSDATE BETWEEN effective_date AND expiry_date THEN 0 ELSE 1 END,
+                expiry_date DESC
+      """;
+
   /**
    * Management units, ported from the legacy {@code SIL_004_MGMT_SRCH} picker
    * screen (SIL004): every unit with its type, spelled-out type and name.
@@ -130,6 +141,15 @@ public class CodeListService {
   @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> orgUnits() {
     return jdbc.query(ORG_UNITS_SQL, MAPPER);
+  }
+
+  /**
+   * Every org unit, expired included, as "CODE - name": what a record's stored admin org is
+   * shown as, however old the record.
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> allOrgUnits() {
+    return jdbc.query(ALL_ORG_UNITS_SQL, MAPPER);
   }
 
   /**
@@ -265,6 +285,19 @@ public class CodeListService {
   @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> salvageTypes() {
     return jdbc.query(codeSql("salvage_type_code", "the.salvage_type_code"), MAPPER);
+  }
+
+  /** Quota types, to describe a cutting permit's (FTA902). */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> quotaTypes() {
+    return jdbc.query(codeSql("quota_type_code", "the.quota_type_code"), MAPPER);
+  }
+
+  /** Crown lands regions (FTA902's Land Region), to describe a cutting permit's. */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> crownLandsRegions() {
+    return jdbc.query(
+        codeSql("crown_lands_region_code", "the.crown_lands_region_code"), MAPPER);
   }
 
   /**

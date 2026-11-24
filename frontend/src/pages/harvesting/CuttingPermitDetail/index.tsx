@@ -26,6 +26,7 @@ import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
 import { useLazyTabs } from '@/hooks/useLazyTabs';
+import { useOrgUnitName } from '@/hooks/useOrgUnitName';
 import PageLayout from '@/pages/PageLayout';
 import { TimberMarkHarvestHistory } from '@/pages/tenure/TenureDetail/HarvestHistoryPanel';
 import { canEditHarvest, isPathAllowedForUser } from '@/routes/access';
@@ -34,6 +35,8 @@ import {
   getMarkingInstruments,
   getMarkingMethods,
   getSalvageTypes,
+  getQuotaTypes,
+  getCrownLandsRegions,
   type CodeOption,
 } from '@/services/codeLists';
 import {
@@ -64,6 +67,8 @@ interface Lookups {
   markingMethods: CodeOption[];
   markingInstruments: CodeOption[];
   salvageTypes: CodeOption[];
+  quotaTypes: CodeOption[];
+  landRegions: CodeOption[];
 }
 
 const NO_LOOKUPS: Lookups = {
@@ -71,6 +76,8 @@ const NO_LOOKUPS: Lookups = {
   markingMethods: [],
   markingInstruments: [],
   salvageTypes: [],
+  quotaTypes: [],
+  landRegions: [],
 };
 
 /** A code's "CODE - description" label from its list, or the bare code. */
@@ -87,6 +94,7 @@ const label = (options: CodeOption[], code: string | null | undefined) =>
  * Legacy's Print CP Approval is not here: FTA902 disabled it permanently.
  */
 const CuttingPermitDetail: FC = () => {
+  const orgUnitName = useOrgUnitName();
   const { cpId = '' } = useParams();
   // A CP id is unique only within its tenure, so links from a tenure say which.
   const [searchParams] = useSearchParams();
@@ -117,7 +125,9 @@ const CuttingPermitDetail: FC = () => {
       getMarkingMethods(),
       getMarkingInstruments(),
       getSalvageTypes(),
-    ]).then(([d, mm, mi, st]) => {
+      getQuotaTypes(),
+      getCrownLandsRegions(),
+    ]).then(([d, mm, mi, st, qt, lr]) => {
       if (cancelled) return;
       const ok = (r: PromiseSettledResult<CodeOption[]>) =>
         r.status === 'fulfilled' ? r.value : [];
@@ -126,6 +136,8 @@ const CuttingPermitDetail: FC = () => {
         markingMethods: ok(mm),
         markingInstruments: ok(mi),
         salvageTypes: ok(st),
+        quotaTypes: ok(qt),
+        landRegions: ok(lr),
       });
     });
     return () => {
@@ -216,7 +228,8 @@ const CuttingPermitDetail: FC = () => {
             ? [cp.mgmtUnitTypeCode, cp.mgmtUnitId].filter(Boolean).join(' ')
             : '—',
         },
-        { label: 'Legal Description', value: dash(cp.location), wide: true },
+        { label: 'Land Region', value: label(lookups.landRegions, cp.crownLandsRegionCode) },
+        { label: 'Geographic Location', value: dash(cp.location), wide: true },
         { label: 'Retired', value: date(cp.retirementDate) },
       ]
     : [];
@@ -231,7 +244,7 @@ const CuttingPermitDetail: FC = () => {
           label: 'Marking Instrument',
           value: label(lookups.markingInstruments, cp.markingInstrumentCode),
         },
-        { label: 'Quota Type', value: dash(cp.quotaTypeCode) },
+        { label: 'Quota Type', value: label(lookups.quotaTypes, cp.quotaTypeCode) },
         { label: 'Salvage Type', value: label(lookups.salvageTypes, cp.salvageTypeCode) },
         {
           label: 'CP Extension Application Fee Waived',
@@ -296,7 +309,7 @@ const CuttingPermitDetail: FC = () => {
                     '—'
                   ),
                 },
-                { label: 'Admin Organization', value: dash(cp.adminOrgCode) },
+                { label: 'Admin Organization', value: orgUnitName(cp.adminOrgCode) },
                 { label: 'Status', value: codeDesc(cp.statusCode, cp.statusDesc) },
                 {
                   label: 'Area (Hectares)',

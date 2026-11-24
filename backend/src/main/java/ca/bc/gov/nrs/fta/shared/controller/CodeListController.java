@@ -39,8 +39,9 @@ public class CodeListController {
   }
 
   @GetMapping("/org-units")
-  public ResponseEntity<List<CodeOptionDto>> orgUnits() {
-    return ResponseEntity.ok(codeListService.orgUnits());
+  public ResponseEntity<List<CodeOptionDto>> orgUnits(
+      @RequestParam(defaultValue = "false") boolean all) {
+    return ResponseEntity.ok(all ? codeListService.allOrgUnits() : codeListService.orgUnits());
   }
 
   @GetMapping("/districts")
@@ -158,6 +159,16 @@ public class CodeListController {
   @GetMapping("/salvage-types")
   public ResponseEntity<List<CodeOptionDto>> salvageTypes() {
     return ResponseEntity.ok(codeListService.salvageTypes());
+  }
+
+  @GetMapping("/quota-types")
+  public ResponseEntity<List<CodeOptionDto>> quotaTypes() {
+    return ResponseEntity.ok(codeListService.quotaTypes());
+  }
+
+  @GetMapping("/crown-lands-regions")
+  public ResponseEntity<List<CodeOptionDto>> crownLandsRegions() {
+    return ResponseEntity.ok(codeListService.crownLandsRegions());
   }
 
   @GetMapping("/harvest-auth-statuses")

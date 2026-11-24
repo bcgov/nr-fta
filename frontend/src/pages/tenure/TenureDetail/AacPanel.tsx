@@ -1,4 +1,4 @@
-import { Add, Area, ChartColumn, Edit } from '@carbon/icons-react';
+import { Add, Area, ChartColumn, Edit, RecentlyViewed } from '@carbon/icons-react';
 import {
   Button,
   DatePicker,
@@ -614,19 +614,25 @@ const AacPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
               )}
             </div>
 
-            {data.rows.length === 0 ? (
-              <EmptyState
-                icon={<ChartColumn size={48} />}
-                title="No AAC history for this tenure"
-                body="Add the tenure's allowable annual cut, by area type and cut type."
-                action={<div className="detail-tab__empty-action">{addButton(true)}</div>}
-              />
-            ) : (
-              <div>
-                <header className="detail-tab__actions">{addButton(false)}</header>
-                {historyTable}
-              </div>
-            )}
+            <section className="fsp-info__tile">
+              <header className="fsp-info__tile-header">
+                <h2 className="fsp-info__section-title">
+                  <RecentlyViewed size={20} />
+                  <span>AAC History</span>
+                </h2>
+                {data.rows.length > 0 && addButton(false)}
+              </header>
+              {data.rows.length === 0 ? (
+                <EmptyState
+                  icon={<ChartColumn size={48} />}
+                  title="No AAC history for this tenure"
+                  body="Add the tenure's allowable annual cut, by area type and cut type."
+                  action={<div className="detail-tab__empty-action">{addButton(true)}</div>}
+                />
+              ) : (
+                historyTable
+              )}
+            </section>
           </>
         )}
       </AsyncBoundary>

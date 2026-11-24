@@ -61,7 +61,7 @@ const EMPTY_FORM: MgmtUnitSearchParams = {};
  * `styles/_search.scss`; see TenureSearch for the pattern.
  */
 const ManagementUnitSearch: FC = () => {
-  const { display } = useNotification();
+  const { display, clear } = useNotification();
 
   // Criteria and the last search are kept for the browser tab; see TenureSearch.
   const [form, setForm] = useSessionState<MgmtUnitSearchParams>(
@@ -94,6 +94,7 @@ const ManagementUnitSearch: FC = () => {
 
   const runSearch = useCallback(
     async (nextPage: number, nextSize: number, criteria: MgmtUnitSearchParams = form) => {
+      clear();
       setLoading(true);
       setError(null);
       try {
@@ -112,7 +113,7 @@ const ManagementUnitSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form, setLastSearch],
+    [form, clear, setLastSearch],
   );
 
   const onSubmit = useCallback(

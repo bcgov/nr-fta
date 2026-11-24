@@ -1,5 +1,5 @@
 import { ComboBox } from '@carbon/react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { ManagementUnit } from '@/services/codeLists';
 
@@ -18,8 +18,49 @@ type MgmtUnitOption = {
   /** Absent on a type entry, which searches every unit of that type. */
   unitId?: string;
   label: string;
-  /** Lowercased haystack the filter matches against. */
-  haystack: string;
+  /** Lowercased words the filter matches typed words against. */
+  words: string[];
+};
+
+/** Lowercased words of a text, split at spaces and punctuation. */
+const wordsOf = (text: string) =>
+  text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+
+/** "T - Timber Supply Area" → "tsa", so a type is found by the acronym people use. */
+const acronymOf = (typeDescription: string) => {
+  const name = typeDescription.replace(/^\s*\S+\s+-\s+/, '');
+  const initials = wordsOf(name)
+    .map((w) => w[0])
+    .join('');
+  return initials.length > 1 ? [initials] : [];
+};
+
+/** Digits compared as numbers, so "1" finds unit "01". */
+const sameNumber = (a: string, b: string) =>
+  /^\d+$/.test(a) && /^\d+$/.test(b) && Number(a) === Number(b);
+
+/**
+ * How well the typed words match an entry, or null when one of them doesn't. Every typed word
+ * must match a word of the entry: whole (or the same number) scores most, then the start of a
+ * word, then anywhere in it. So "tsa 1", "1 tsa" and "arrow" each narrow the list at once, with
+ * the best matches first.
+ */
+const scoreOf = (option: MgmtUnitOption, typed: string[]): number | null => {
+  let total = 0;
+  for (const t of typed) {
+    let best = 0;
+    for (const w of option.words) {
+      if (w === t || sameNumber(w, t)) best = Math.max(best, 3);
+      else if (w.startsWith(t)) best = Math.max(best, 2);
+      else if (w.includes(t)) best = Math.max(best, 1);
+    }
+    if (best === 0) return null;
+    total += best;
+  }
+  return total;
 };
 
 /**
@@ -38,7 +79,10 @@ const buildOptions = (units: ManagementUnit[], typeSuffix: string): MgmtUnitOpti
         id: u.mgmtUnitTypeCode,
         typeCode: u.mgmtUnitTypeCode,
         label: `${u.typeDescription}${typeSuffix}`,
-        haystack: `${u.mgmtUnitTypeCode} ${u.typeDescription} all units`.toLowerCase(),
+        words: [
+          ...wordsOf(`${u.mgmtUnitTypeCode} ${u.typeDescription}`),
+          ...acronymOf(u.typeDescription),
+        ],
       });
     }
 
@@ -56,7 +100,13 @@ const buildOptions = (units: ManagementUnit[], typeSuffix: string): MgmtUnitOpti
       typeCode: u.mgmtUnitTypeCode,
       unitId: u.mgmtUnitId,
       label: `${u.mgmtUnitTypeCode} ${u.mgmtUnitId}${name ? ` — ${name}` : ''}`,
-      haystack: `${u.mgmtUnitTypeCode} ${u.mgmtUnitId} ${name} ${u.typeDescription}`.toLowerCase(),
+      words: [
+        ...wordsOf(`${u.mgmtUnitTypeCode} ${u.mgmtUnitId} ${name} ${u.typeDescription}`),
+        ...acronymOf(u.typeDescription),
+        // "T01" / "tsa01" typed without a space.
+        `${u.mgmtUnitTypeCode}${u.mgmtUnitId}`.toLowerCase(),
+        ...acronymOf(u.typeDescription).map((a) => `${a}${u.mgmtUnitId}`.toLowerCase()),
+      ],
     });
   }
 
@@ -116,14 +166,28 @@ const ManagementUnitComboBox: FC<ManagementUnitComboBoxProps> = ({
   invalidText,
   disabled,
 }) => {
-  const items = useMemo(() => buildOptions(units, typeEntrySuffix), [units, typeEntrySuffix]);
+  const allItems = useMemo(() => buildOptions(units, typeEntrySuffix), [units, typeEntrySuffix]);
+  const [typed, setTyped] = useState('');
 
   const selectedItem = useMemo(
     () =>
-      items.find((o) => o.typeCode === (typeCode ?? '') && (o.unitId ?? '') === (unitId ?? '')) ??
-      null,
-    [items, typeCode, unitId],
+      allItems.find(
+        (o) => o.typeCode === (typeCode ?? '') && (o.unitId ?? '') === (unitId ?? ''),
+      ) ?? null,
+    [allItems, typeCode, unitId],
   );
+
+  // The entries matching what is typed, best first. The selected entry's own label in the
+  // input (as after a pick) lists everything, as an empty input does.
+  const items = useMemo(() => {
+    const words = wordsOf(typed);
+    if (words.length === 0 || (selectedItem && typed === selectedItem.label)) return allItems;
+    return allItems
+      .map((o, i) => ({ o, i, score: scoreOf(o, words) }))
+      .filter((x): x is { o: MgmtUnitOption; i: number; score: number } => x.score !== null)
+      .sort((a, b) => b.score - a.score || a.i - b.i)
+      .map((x) => x.o);
+  }, [allItems, typed, selectedItem]);
 
   return (
     <ComboBox
@@ -131,7 +195,7 @@ const ManagementUnitComboBox: FC<ManagementUnitComboBoxProps> = ({
       // Carbon's ComboBox has no hideLabel; a visually hidden title keeps the
       // field named for screen readers when the screen shows its own label.
       titleText={hideLabel ? <span className="cds--visually-hidden">{titleText}</span> : titleText}
-      placeholder="Search by type, ID or name"
+      placeholder="Type e.g. TSA 1, TFL 48 or a name"
       helperText={helperText}
       invalid={invalid}
       invalidText={invalidText}
@@ -139,9 +203,9 @@ const ManagementUnitComboBox: FC<ManagementUnitComboBoxProps> = ({
       items={items}
       itemToString={(item) => item?.label ?? ''}
       selectedItem={selectedItem}
-      shouldFilterItem={({ item, inputValue }) =>
-        !inputValue || item.haystack.includes(inputValue.toLowerCase())
-      }
+      // Filtered and ranked above, as Carbon's filter can't reorder.
+      shouldFilterItem={() => true}
+      onInputChange={(text) => setTyped(text ?? '')}
       onChange={({ selectedItem: picked }) =>
         onChange({ mgmtUnitType: picked?.typeCode ?? '', mgmtUnitId: picked?.unitId ?? '' })
       }

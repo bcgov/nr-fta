@@ -69,7 +69,7 @@ const EMPTY_FORM: RangeUnitSearchParams = {};
  */
 const RangeUnitSearch: FC = () => {
   const navigate = useNavigate();
-  const { display } = useNotification();
+  const { display, clear } = useNotification();
 
   // Criteria and the last search are kept for the browser tab; see TenureSearch.
   const [form, setForm] = useSessionState<RangeUnitSearchParams>(
@@ -131,6 +131,7 @@ const RangeUnitSearch: FC = () => {
         setError('Administration organization unit is required.');
         return;
       }
+      clear();
       setLoading(true);
       setError(null);
       try {
@@ -149,7 +150,7 @@ const RangeUnitSearch: FC = () => {
         setLoading(false);
       }
     },
-    [form, setLastSearch],
+    [form, clear, setLastSearch],
   );
 
   const onSubmit = useCallback(

@@ -4,7 +4,7 @@ package ca.bc.gov.nrs.fta.apt.dto;
  * The criteria of {@code GET /api/fta/apt/licences}, which are {@code APT_LICENCES_GET}'s
  * arguments, in order.
  *
- * @param forestFileId         required; matched with LIKE, so {@code %} and {@code _} work
+ * @param forestFileId         matched with LIKE, so {@code %} and {@code _} work
  * @param clientName           licensee name contains
  * @param orgUnitName          region name contains
  * @param managementUnitName   management unit name contains

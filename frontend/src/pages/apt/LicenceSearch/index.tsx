@@ -62,13 +62,13 @@ const dash = (v: string | null | undefined) => (v && v.trim() ? v : '—');
 const SearchingIcon = () => <Loading small withOverlay={false} description="" />;
 
 /**
- * APT2's APTM4200 Search for Licences ({@code APT_LICENCES_GET}). The Forest File ID is required,
- * as in APT2; `%` in it matches anything. Selecting a row opens the licence's APT page, where
+ * APT2's APTM4200 Search for Licences ({@code APT_LICENCES_GET}). Any one criterion will do (APT2
+ * required the Forest File ID); `%` in the Forest File ID matches anything. Selecting a row opens the licence's APT page, where
  * its FOA type and commitments are kept.
  */
 const AptLicenceSearch: FC = () => {
   const navigate = useNavigate();
-  const { display } = useNotification();
+  const { display, clear } = useNotification();
   const [form, setForm] = useSessionState<Criteria>('fta.apt.licences.form', EMPTY);
   const [lastSearch, setLastSearch] = useSessionState<LastSearch<Criteria> | null>(
     'fta.apt.licences.last',
@@ -79,7 +79,7 @@ const AptLicenceSearch: FC = () => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [loading, setLoading] = useState(false);
-  const [fileIdError, setFileIdError] = useState<string | undefined>();
+  const [criteriaError, setCriteriaError] = useState<string | undefined>();
   const [muTypes, setMuTypes] = useState<AptCodeOption[]>([]);
 
   useEffect(() => {
@@ -104,15 +104,24 @@ const AptLicenceSearch: FC = () => {
 
   const set = <K extends keyof Criteria>(key: K, value: Criteria[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
-    if (key === 'forestFileId') setFileIdError(undefined);
+    setCriteriaError(undefined);
   };
 
   const runSearch = useCallback(
     async (nextPage: number, nextSize: number, criteria: Criteria) => {
-      if (!criteria.forestFileId.trim()) {
-        setFileIdError('Forest File ID is required.');
+      const fields: (keyof Criteria)[] = [
+        'forestFileId',
+        'clientName',
+        'orgUnitName',
+        'managementUnitName',
+        'managementUnitType',
+        'managementUnitNumber',
+      ];
+      if (fields.every((k) => !String(criteria[k] ?? '').trim())) {
+        setCriteriaError('Enter at least one search criterion.');
         return;
       }
+      clear();
       setLoading(true);
       try {
         const data = await searchAptLicences({ ...criteria, page: nextPage, size: nextSize });
@@ -136,7 +145,7 @@ const AptLicenceSearch: FC = () => {
         setLoading(false);
       }
     },
-    [display, setLastSearch],
+    [display, clear, setLastSearch],
   );
 
   // Back on the page with a search from earlier in this tab: run it again.
@@ -158,7 +167,7 @@ const AptLicenceSearch: FC = () => {
     setRows(null);
     setTotal(0);
     setPage(0);
-    setFileIdError(undefined);
+    setCriteriaError(undefined);
   };
 
   const searched = lastSearch?.criteria ?? form;
@@ -183,8 +192,8 @@ const AptLicenceSearch: FC = () => {
               id="apt-lic-ffid"
               labelText="Forest File ID"
               value={form.forestFileId}
-              invalid={!!fileIdError}
-              invalidText={fileIdError}
+              invalid={!!criteriaError}
+              invalidText={criteriaError}
               maxLength={10}
               autoComplete="off"
               onChange={(e) => set('forestFileId', e.target.value)}
@@ -272,7 +281,7 @@ const AptLicenceSearch: FC = () => {
                 </div>
                 <div className="fsp-search__table">
                   <TableContainer>
-                    <Table size="md" aria-label={`Licences matching ${searched.forestFileId}`}>
+                    <Table size="md" aria-label="Licence search results">
                       <TableHead>
                         <TableRow>
                           {HEADERS.map((h) => (

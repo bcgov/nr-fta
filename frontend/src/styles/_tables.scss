@@ -137,3 +137,11 @@
     background-color: var(--cds-layer-hover-01);
   }
 }
+
+// A table's Total row, and a total shown on its own (APT2's .mu-total-row). Bold
+// set here, because Carbon's reset gives <strong> `font: inherit`, so markup
+// alone renders a total at the body weight.
+.table-total-row td,
+.table-total {
+  font-weight: 700;
+}

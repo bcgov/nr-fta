@@ -38,7 +38,7 @@ export interface AptLicence {
 }
 
 export interface AptLicenceSearchParams {
-  /** Required; `%` and `_` act as wildcards. */
+  /** `%` and `_` act as wildcards. Any one criterion is enough to search. */
   forestFileId: string;
   clientName?: string;
   orgUnitName?: string;

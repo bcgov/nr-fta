@@ -341,6 +341,7 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
         <div className="new-mark__full">
           <ClientComboBox
             id="new-mark-client"
+            inDialog
             titleText="Mark Holder"
             helperText="Pick the client and location."
             clientNumber={form.clientNumber}

@@ -408,6 +408,7 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate, o
             // so each row (and the add) gets a fresh one.
             key={editing?.forClientLinkSkey ?? 'new'}
             id="client-picker"
+            inDialog
             titleText="Client"
             helperText={
               lockedLicensee

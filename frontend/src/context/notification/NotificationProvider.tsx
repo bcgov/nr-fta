@@ -1,5 +1,5 @@
 import { ToastNotification } from '@carbon/react';
-import { useState, useEffect, type ReactNode, useCallback } from 'react';
+import { useState, useEffect, type ReactNode, useCallback, useMemo, useRef } from 'react';
 
 import { safeErrorMessage } from '@/lib/errorMessage';
 
@@ -11,9 +11,14 @@ import { NotificationContext, type NotificationContent } from './NotificationCon
  * stays for `timeout` ms, then slides out. Callers fire it via
  * useNotification().display({ kind, title, subtitle, timeout }).
  */
+// A toast raised this recently survives a page change: it reports the action that navigated
+// (e.g. "Saved", then off to the saved record).
+const NAVIGATION_GRACE_MS = 1500;
+
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [notificationContent, setNotificationContent] = useState<NotificationContent | null>(null);
   const [notificationClass, setNotificationClass] = useState<string>('slide-in');
+  const shownAt = useRef(0);
 
   const display = useCallback((content: NotificationContent) => {
     // Error / warning toasts stay until the user closes them. The
@@ -30,9 +35,16 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       isProblem && content.subtitle !== undefined
         ? { ...content, subtitle: safeErrorMessage(content.subtitle) }
         : content;
+    shownAt.current = Date.now();
     setNotificationClass('slide-in');
     setNotificationContent(isProblem ? { ...safe, timeout: 0 } : safe);
   }, []);
+
+  const clear = useCallback(() => setNotificationContent(null), []);
+  const clearStale = useCallback(() => {
+    if (Date.now() - shownAt.current > NAVIGATION_GRACE_MS) setNotificationContent(null);
+  }, []);
+  const value = useMemo(() => ({ display, clear, clearStale }), [display, clear, clearStale]);
 
   const onClose = useCallback(() => {
     setNotificationClass('slide-out');
@@ -52,7 +64,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   }, [notificationClass, notificationContent]);
 
   return (
-    <NotificationContext.Provider value={{ display }}>
+    <NotificationContext.Provider value={value}>
       {children}
       {notificationContent && (
         <ToastNotification

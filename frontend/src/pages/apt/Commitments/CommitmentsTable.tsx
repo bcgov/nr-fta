@@ -126,8 +126,14 @@ const CommitmentsTable: FC<Props> = ({ rows, variant, canEdit, onEdit, onDeleted
       </div>
       <DefinitionGrid
         items={[
-          { label: 'Total AAC (m³)', value: nf.format(totals.total) },
-          { label: 'Total Incl in AAC (m³)', value: nf.format(totals.included) },
+          {
+            label: 'Total AAC (m³)',
+            value: <span className="table-total">{nf.format(totals.total)}</span>,
+          },
+          {
+            label: 'Total Incl in AAC (m³)',
+            value: <span className="table-total">{nf.format(totals.included)}</span>,
+          },
         ]}
       />
 

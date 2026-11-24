@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -40,6 +41,15 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @Service
 public class AptLicenceService {
+
+  /**
+   * The most rows a search fetches. The query isn't paged in SQL (the rows are de-duplicated and
+   * sorted here), so a search with broad criteria is refused rather than loaded whole.
+   */
+  static final int MAX_ROWS = 10_000;
+
+  static final String TOO_MANY =
+      "More than " + String.format("%,d", MAX_ROWS) + " matches. Narrow the search.";
 
   /** {@code APT_LICENCES_GET}'s cursor. */
   private static final String SEARCH_SQL =
@@ -163,8 +173,9 @@ public class AptLicenceService {
    * One page of licences matching the criteria. The query has no paging, so the whole result
    * is fetched and sliced, as APT2 did.
    *
-   * @throws ResponseStatusException 400 without a forest file id, which APT2 required, or
-   *     with a negative page or a size below 1, which APT2 refuses
+   * @throws ResponseStatusException 400 with no criteria at all, with criteria matching more
+   *     than {@link #MAX_ROWS} rows, or with a negative page or a size below 1, which APT2
+   *     refuses
    */
   public PagedResponse<AptLicenceDto> search(AptLicenceSearchParams p, int page, int size) {
     return search(p, page, size, null);
@@ -184,8 +195,12 @@ public class AptLicenceService {
     if (size < 1) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page size must be at least 1.");
     }
-    if (p.forestFileId() == null || p.forestFileId().isBlank()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Forest File ID is required.");
+    // APT2 required the Forest File ID; any one criterion will do here.
+    if (Stream.of(p.forestFileId(), p.clientName(), p.orgUnitName(), p.managementUnitName(),
+            p.managementUnitType(), p.managementUnitNumber())
+        .allMatch(v -> v == null || v.isBlank())) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+          "Enter at least one search criterion.");
     }
     return PagedResponse.ofFullList(sorted(all(p), sort), page, size);
   }
@@ -299,8 +314,13 @@ public class AptLicenceService {
         .addValue("muNumber", p.managementUnitNumber() == null
             || p.managementUnitNumber().isBlank() ? null : p.managementUnitNumber().trim(),
             Types.VARCHAR);
-    return AptLicenceRules.distinctByForestFileId(
-        jdbc.query(SEARCH_SQL, params, AptLicenceService::licence));
+    params.addValue("limit", MAX_ROWS + 1, Types.NUMERIC);
+    List<AptLicenceDto> rows =
+        jdbc.query(SEARCH_SQL + " FETCH FIRST :limit ROWS ONLY", params, AptLicenceService::licence);
+    if (rows.size() > MAX_ROWS) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, TOO_MANY);
+    }
+    return AptLicenceRules.distinctByForestFileId(rows);
   }
 
   private static AptLicenceDto licence(ResultSet rs, int i) throws SQLException {
