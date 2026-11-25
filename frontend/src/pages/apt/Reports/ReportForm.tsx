@@ -1,4 +1,4 @@
-import { DocumentPdf, Download } from '@carbon/icons-react';
+import { DocumentMultiple_01, DocumentPdf, Download } from '@carbon/icons-react';
 import {
   Button,
   ComboBox,
@@ -11,6 +11,7 @@ import {
 } from '@carbon/react';
 import { useCallback, useState, type FC } from 'react';
 
+import BusyIcon from '@/components/BusyIcon';
 import { useApiResource } from '@/hooks/useApiResource';
 import { getAptOrgUnits, type AptOrgUnit } from '@/services/apt/lookups';
 import { searchAptManagementUnits, type AptManagementUnit } from '@/services/apt/managementUnits';
@@ -56,6 +57,11 @@ interface Props {
   onRun: (params: AptReportParams, chosen?: string) => Promise<void>;
   /** The report's data as CSV (APTR041 and APTR013 only); it takes none of the inputs. */
   csv?: { running: boolean; onRun: () => Promise<void> };
+  /**
+   * The report for every management unit or region at once (APTR011, APTR012, APTR013), as a
+   * zip of PDFs; it takes only the report date.
+   */
+  batch?: { label: string; running: boolean; onRun: (reportDate: string) => Promise<void> };
 }
 
 type Errors = Partial<Record<'date' | 'managementUnit' | 'orgUnit', string>>;
@@ -66,7 +72,7 @@ type Errors = Partial<Record<'date' | 'managementUnit' | 'orgUnit', string>>;
  * PDF (and Generate CSV where the report has a data extract). The lists it needs are read when the row opens; mounted only while open, so each
  * opening starts fresh.
  */
-const ReportForm: FC<Props> = ({ report, running, busy, onRun, csv }) => {
+const ReportForm: FC<Props> = ({ report, running, busy, onRun, csv, batch }) => {
   const needs = (input: AptPdfReport['inputs'][number]) => report.inputs.includes(input);
   const needsMu = needs('managementUnit');
   const needsOrg = needs('orgUnit');
@@ -120,6 +126,16 @@ const ReportForm: FC<Props> = ({ report, running, busy, onRun, csv }) => {
     );
   };
 
+  const submitBatch = async () => {
+    if (!batch) return;
+    if (!reportDate) {
+      setErrors({ date: 'Enter the report date.' });
+      return;
+    }
+    setErrors({});
+    await batch.onRun(reportDate);
+  };
+
   return (
     <div className="apt-report-form">
       <Stack gap={5}>
@@ -131,7 +147,7 @@ const ReportForm: FC<Props> = ({ report, running, busy, onRun, csv }) => {
             kind="error"
             lowContrast
             hideCloseButton
-            title="Couldn’t load the choices"
+            title="Couldn’t load the choices."
             subtitle={loadError}
           />
         )}
@@ -208,16 +224,26 @@ const ReportForm: FC<Props> = ({ report, running, busy, onRun, csv }) => {
         {csv && (
           <Button
             kind="tertiary"
-            renderIcon={Download}
+            renderIcon={csv.running ? BusyIcon : Download}
             disabled={busy}
             onClick={() => void csv.onRun()}
           >
             {csv.running ? 'Generating…' : 'Generate CSV'}
           </Button>
         )}
+        {batch && (
+          <Button
+            kind="secondary"
+            renderIcon={batch.running ? BusyIcon : DocumentMultiple_01}
+            disabled={busy}
+            onClick={() => void submitBatch()}
+          >
+            {batch.running ? 'Generating…' : batch.label}
+          </Button>
+        )}
         <Button
           kind="primary"
-          renderIcon={DocumentPdf}
+          renderIcon={running ? BusyIcon : DocumentPdf}
           disabled={busy || listsLoading}
           onClick={() => void submit()}
         >

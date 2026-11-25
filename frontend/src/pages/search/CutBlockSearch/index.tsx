@@ -303,13 +303,15 @@ const CutBlockSearch: FC = () => {
               autoComplete="off"
             />
 
-            <ClientComboBox
-              id="cb-client"
-              clientNumber={form.clientNumber}
-              clientLocnCode={form.clientLocnCode}
-              clientName={form.clientName}
-              onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
-            />
+            <div className="fsp-search__wide-cell">
+              <ClientComboBox
+                id="cb-client"
+                clientNumber={form.clientNumber}
+                clientLocnCode={form.clientLocnCode}
+                clientName={form.clientName}
+                onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
+              />
+            </div>
 
             <Select
               id="cb-status"

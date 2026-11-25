@@ -6,11 +6,21 @@
   max-width: 56rem;
 }
 
+/* Bold label over a plain value, spaced as FSP's read-only field lists (and the detail
+   tiles' .fsp-info__field): a 0.5rem gap between them. */
 .fta-facts__label {
-  font-size: 0.75rem;
-  color: var(--cds-text-secondary);
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--cds-text-primary);
 }
 
 .fta-facts__value {
-  font-weight: 600;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+.fta-facts__item--wide {
+  grid-column: 1 / -1;
 }

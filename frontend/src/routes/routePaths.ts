@@ -38,20 +38,12 @@ import type { ComponentType } from 'react';
 // and so on) are reached contextually from a search result, not from the nav,
 // so they do not appear here.
 
-/** The dialogs a nav entry can open in place. */
-export type MenuModal = 'new-mark-application' | 'add-tenure';
-
 /** One destination in the nav. */
 export type MenuLeaf = {
   id: string;
   label: string;
   path: string;
   roles?: string[];
-  /**
-   * Opens a dialog over the current page instead of navigating. `path` still
-   * names the screen for the role check and for a direct link.
-   */
-  modal?: MenuModal;
 };
 
 /** A heading with its destinations. */
@@ -123,10 +115,7 @@ const NAV: MenuSection[] = [
     id: 'tenures',
     label: 'Tenures',
     icon: Document,
-    items: [
-      { id: 'tenure-add', label: 'Add Tenure', path: '/tenures/add', modal: 'add-tenure' },
-      { id: 'tenure-detail', label: 'Tenure List', path: '/tenures' },
-    ],
+    items: [{ id: 'tenure-detail', label: 'Tenure List', path: '/tenures' }],
   },
   {
     id: 'private-marks',
@@ -135,13 +124,8 @@ const NAV: MenuSection[] = [
     items: [
       // Legacy labels these "Application/Amendment List" and "Mark Application";
       // shortened here, as the section heading already says Private Marks.
+      // A new tenure and a new application are started from their list pages, not the menu.
       { id: 'marks-list', label: 'Application List', path: '/marks' },
-      {
-        id: 'marks-application',
-        label: 'New Application',
-        path: '/marks/application',
-        modal: 'new-mark-application',
-      },
     ],
   },
   // Not in legacy FTA: the APT2 application (nr-apt2), folded in. Its four top-level screens,

@@ -5,8 +5,6 @@
  */
 export const aptPaths = {
   managementUnits: () => '/apt/management-units',
-  newManagementUnit: () => '/apt/management-units/new',
-  editManagementUnit: (muId: number | string) => `/apt/management-units/${muId}/edit`,
   managementUnitHistory: (muId: number | string) => `/apt/management-units/${muId}/history`,
   managementUnitDetail: (muId: number | string, historyId: number | string) =>
     `/apt/management-units/${muId}/history/${historyId}`,

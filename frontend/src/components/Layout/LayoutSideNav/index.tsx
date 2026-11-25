@@ -1,16 +1,13 @@
 import { SideNav, SideNavItems, SideNavLink, SideNavMenu, SideNavMenuItem } from '@carbon/react';
-import { useEffect, useState, type FC, type MouseEvent } from 'react';
+import { useEffect, useState, type FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { useAuth } from '@/context/auth/useAuth';
 import { useLayout } from '@/context/layout/useLayout';
-import NewMarkApplicationModal from '@/pages/marks/NewMarkApplicationModal';
-import AddTenureModal from '@/pages/tenure/AddTenureModal';
 import {
   getMenuSections,
   sectionIdForPath,
   type MenuLeaf,
-  type MenuModal,
   type MenuSection,
 } from '@/routes/routePaths';
 import './LayoutSideNav.css';
@@ -42,9 +39,6 @@ export const LayoutSideNav: FC = () => {
   const { user } = useAuth();
   const roles = user?.roles ?? [];
   const heldRoles = Object.keys(user?.privileges ?? {});
-  // "New Application" and "Add Tenure" pop their dialogs over whatever page is open. The menu
-  // lists them only for a role that may use them (routes/access.ts WRITE_PAGES).
-  const [openModal, setOpenModal] = useState<MenuModal | undefined>(undefined);
 
   // Note: the drawer no longer auto-closes on link click or outside
   // pointer-down. The only way to dismiss it is the header X button,
@@ -101,18 +95,7 @@ export const LayoutSideNav: FC = () => {
         key={route.id}
         as={Link}
         to={route.path}
-        isActive={!route.modal && route.path === location.pathname}
-        // A dialog item keeps the link (and its look) but opens the dialog in place;
-        // a new-tab click still follows the link.
-        onClick={
-          route.modal
-            ? (e: MouseEvent) => {
-                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                e.preventDefault();
-                setOpenModal(route.modal);
-              }
-            : undefined
-        }
+        isActive={route.path === location.pathname}
       >
         <span className="side-nav-item__label" title={route.label}>
           {route.label}
@@ -150,12 +133,6 @@ export const LayoutSideNav: FC = () => {
             : getMenuSections(roles, heldRoles).map(renderRailSection)}
         </SideNavItems>
       </SideNav>
-      {/* Outside the nav, whose drawer styles would clip a fixed dialog. */}
-      <NewMarkApplicationModal
-        open={openModal === 'new-mark-application'}
-        onClose={() => setOpenModal(undefined)}
-      />
-      <AddTenureModal open={openModal === 'add-tenure'} onClose={() => setOpenModal(undefined)} />
     </>
   );
 };

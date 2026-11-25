@@ -20,6 +20,7 @@ import Tombstone from '@/components/Tombstone';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import { dash, day, num } from '@/pages/apt/ManagementUnitHistory/shared';
+import { useMuTypeName } from '@/pages/apt/muTypes';
 import PageLayout from '@/pages/PageLayout';
 import { canEditApt } from '@/routes/access';
 import { aptPaths } from '@/routes/aptPaths';
@@ -73,6 +74,7 @@ type Editing<T> = { item: T | null } | null;
  * nothing, so it is not here.
  */
 const ManagementUnitDetail: FC = () => {
+  const muTypeLabel = useMuTypeName();
   const { muId = '', historyId = '' } = useParams();
   const { user } = useAuth();
   const canEdit = canEditApt(user);
@@ -152,8 +154,8 @@ const ManagementUnitDetail: FC = () => {
               ariaLabel="AAC determination summary"
               items={[
                 { label: 'Name', value: dash(unit.mgmtUnitName) },
-                { label: 'MU type', value: dash(unit.aptMgmtUnitSt) },
-                { label: 'MU no.', value: dash(unit.mgmtUnitNumber) },
+                { label: 'Management unit type', value: dash(muTypeLabel(unit.aptMgmtUnitSt)) },
+                { label: 'Management unit no.', value: dash(unit.mgmtUnitNumber) },
                 { label: 'AAC determination date', value: day(determination.determinationDate) },
                 { label: 'Effective date', value: day(determination.effectiveDate) },
                 { label: 'AAC (m³)', value: num(determination.allowableAnnualCut) },
@@ -191,83 +193,87 @@ const ManagementUnitDetail: FC = () => {
                   body="This AAC determination has not been partitioned."
                 />
               ) : (
-                <TableContainer>
-                  <Table size="md" aria-label="Partitions">
-                    <TableHead>
-                      <TableRow>
-                        <TableHeader aria-label="Select" />
-                        <TableHeader>Type</TableHeader>
-                        <TableHeader>AAC (m³)</TableHeader>
-                        <TableHeader>AAC (ha)</TableHeader>
-                        <TableHeader>Apportioned (m³)</TableHeader>
-                        <TableHeader>Comments</TableHeader>
-                        {canEdit && <TableHeader aria-label="Actions" />}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {partitions.map((p) => {
-                        const isActive = active?.id === p.id;
-                        return (
-                          <TableRow
-                            key={p.id}
-                            className={isActive ? 'cds--data-table--selected' : undefined}
-                            onClick={() => setPicked(p.id)}
-                          >
-                            <TableSelectRow
-                              radio
-                              id={`apt-part-select-${p.id}`}
-                              name="apt-part-select"
-                              aria-label={`Show the apportionments of ${p.partitionDescription ?? p.partitionCode}`}
-                              checked={isActive}
-                              onSelect={() => setPicked(p.id)}
-                            />
-                            <TableCell>{dash(p.partitionDescription ?? p.partitionCode)}</TableCell>
-                            <TableCell>{num(p.allowableAnnualCut)}</TableCell>
-                            <TableCell>{num(p.allowableAnnualCutHa)}</TableCell>
-                            <TableCell>{num(p.totalApportionmentAac)}</TableCell>
-                            <TableCell>{dash(p.comments)}</TableCell>
-                            {canEdit && (
+                <div className="bordered-table">
+                  <TableContainer>
+                    <Table size="md" aria-label="Partitions">
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader aria-label="Select" />
+                          <TableHeader>Type</TableHeader>
+                          <TableHeader>AAC (m³)</TableHeader>
+                          <TableHeader>AAC (ha)</TableHeader>
+                          <TableHeader>Apportioned (m³)</TableHeader>
+                          <TableHeader>Comments</TableHeader>
+                          {canEdit && <TableHeader aria-label="Actions" />}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {partitions.map((p) => {
+                          const isActive = active?.id === p.id;
+                          return (
+                            <TableRow
+                              key={p.id}
+                              className={isActive ? 'cds--data-table--selected' : undefined}
+                              onClick={() => setPicked(p.id)}
+                            >
+                              <TableSelectRow
+                                radio
+                                id={`apt-part-select-${p.id}`}
+                                name="apt-part-select"
+                                aria-label={`Show the apportionments of ${p.partitionDescription ?? p.partitionCode}`}
+                                checked={isActive}
+                                onSelect={() => setPicked(p.id)}
+                              />
                               <TableCell>
-                                <Button
-                                  size="sm"
-                                  kind="ghost"
-                                  renderIcon={Edit}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setPartitionEdit({ item: p });
-                                  }}
-                                >
-                                  Edit
-                                </Button>
+                                {dash(p.partitionDescription ?? p.partitionCode)}
                               </TableCell>
-                            )}
-                          </TableRow>
-                        );
-                      })}
-                      <TableRow className="table-total-row">
-                        <TableCell />
-                        <TableCell>
-                          <strong>Total</strong>
-                        </TableCell>
-                        <TableCell>
-                          <Total
-                            value={partitionAac}
-                            over={partitionAac > (determination?.allowableAnnualCut ?? 0)}
-                            label="determination's AAC (m³)"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Total
-                            value={partitionAacHa}
-                            over={partitionAacHa > (determination?.allowableAnnualCutHa ?? 0)}
-                            label="determination's AAC (ha)"
-                          />
-                        </TableCell>
-                        <TableCell colSpan={canEdit ? 3 : 2} />
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                              <TableCell>{num(p.allowableAnnualCut)}</TableCell>
+                              <TableCell>{num(p.allowableAnnualCutHa)}</TableCell>
+                              <TableCell>{num(p.totalApportionmentAac)}</TableCell>
+                              <TableCell>{dash(p.comments)}</TableCell>
+                              {canEdit && (
+                                <TableCell>
+                                  <Button
+                                    size="sm"
+                                    kind="ghost"
+                                    renderIcon={Edit}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPartitionEdit({ item: p });
+                                    }}
+                                  >
+                                    Edit
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          );
+                        })}
+                        <TableRow className="table-total-row">
+                          <TableCell />
+                          <TableCell>
+                            <strong>Total</strong>
+                          </TableCell>
+                          <TableCell>
+                            <Total
+                              value={partitionAac}
+                              over={partitionAac > (determination?.allowableAnnualCut ?? 0)}
+                              label="determination's AAC (m³)"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Total
+                              value={partitionAacHa}
+                              over={partitionAacHa > (determination?.allowableAnnualCutHa ?? 0)}
+                              label="determination's AAC (ha)"
+                            />
+                          </TableCell>
+                          <TableCell colSpan={canEdit ? 3 : 2} />
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </div>
               )}
             </SectionTile>
 
@@ -303,71 +309,73 @@ const ManagementUnitDetail: FC = () => {
                   body="This partition has not been apportioned."
                 />
               ) : (
-                <TableContainer>
-                  <Table size="md" aria-label="Apportionments">
-                    <TableHead>
-                      <TableRow>
-                        <TableHeader>Form of agreement / rights held</TableHeader>
-                        <TableHeader>AAC (m³)</TableHeader>
-                        <TableHeader>AAC (ha)</TableHeader>
-                        <TableHeader>Distributed (m³)</TableHeader>
-                        <TableHeader>Comments</TableHeader>
-                        <TableHeader aria-label="Actions" />
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {apportionments.map((a) => (
-                        <TableRow key={a.id}>
-                          <TableCell>{dash(a.foaTypeName ?? a.foaTypeCode)}</TableCell>
-                          <TableCell>{num(a.allowableAnnualCut)}</TableCell>
-                          <TableCell>{num(a.allowableAnnualCutHa)}</TableCell>
-                          <TableCell>{num(a.totalDistributionVolume)}</TableCell>
-                          <TableCell>{dash(a.comments)}</TableCell>
-                          <TableCell className="fsp-search__cell--nowrap">
-                            {canEdit && (
+                <div className="bordered-table">
+                  <TableContainer>
+                    <Table size="md" aria-label="Apportionments">
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader>Form of agreement / rights held</TableHeader>
+                          <TableHeader>AAC (m³)</TableHeader>
+                          <TableHeader>AAC (ha)</TableHeader>
+                          <TableHeader>Distributed (m³)</TableHeader>
+                          <TableHeader>Comments</TableHeader>
+                          <TableHeader aria-label="Actions" />
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {apportionments.map((a) => (
+                          <TableRow key={a.id}>
+                            <TableCell>{dash(a.foaTypeName ?? a.foaTypeCode)}</TableCell>
+                            <TableCell>{num(a.allowableAnnualCut)}</TableCell>
+                            <TableCell>{num(a.allowableAnnualCutHa)}</TableCell>
+                            <TableCell>{num(a.totalDistributionVolume)}</TableCell>
+                            <TableCell>{dash(a.comments)}</TableCell>
+                            <TableCell className="fsp-search__cell--nowrap">
+                              {canEdit && (
+                                <Button
+                                  size="sm"
+                                  kind="ghost"
+                                  renderIcon={Edit}
+                                  onClick={() => setApportionmentEdit({ item: a })}
+                                >
+                                  Edit
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 kind="ghost"
-                                renderIcon={Edit}
-                                onClick={() => setApportionmentEdit({ item: a })}
+                                as={Link}
+                                to={aptPaths.commitments(muId, historyId, a.id)}
                               >
-                                Edit
+                                Commitments
                               </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              kind="ghost"
-                              as={Link}
-                              to={aptPaths.commitments(muId, historyId, a.id)}
-                            >
-                              Commitments
-                            </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="table-total-row">
+                          <TableCell>
+                            <strong>Total</strong>
                           </TableCell>
+                          <TableCell>
+                            <Total
+                              value={apportionedAac}
+                              over={apportionedAac > (active.allowableAnnualCut ?? 0)}
+                              label="partition's AAC (m³)"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Total
+                              value={apportionedAacHa}
+                              over={apportionedAacHa > (active.allowableAnnualCutHa ?? 0)}
+                              label="partition's AAC (ha)"
+                            />
+                          </TableCell>
+                          <TableCell colSpan={3} />
                         </TableRow>
-                      ))}
-                      <TableRow className="table-total-row">
-                        <TableCell>
-                          <strong>Total</strong>
-                        </TableCell>
-                        <TableCell>
-                          <Total
-                            value={apportionedAac}
-                            over={apportionedAac > (active.allowableAnnualCut ?? 0)}
-                            label="partition's AAC (m³)"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Total
-                            value={apportionedAacHa}
-                            over={apportionedAacHa > (active.allowableAnnualCutHa ?? 0)}
-                            label="partition's AAC (ha)"
-                          />
-                        </TableCell>
-                        <TableCell colSpan={3} />
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </div>
               )}
             </SectionTile>
           </>

@@ -1,4 +1,4 @@
-import { ComboBox } from '@carbon/react';
+import { ComboBox, type ComboBoxProps } from '@carbon/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { clientStatus } from '@/components/StatusTag/clientStatus';
@@ -115,6 +115,17 @@ const ClientComboBox: FC<ClientComboBoxProps> = ({
   // Recognising the text as one of the offered labels is order-independent.
   const offeredLabels = useMemo(() => new Set(options.map((o) => o.label)), [options]);
 
+  // Enter picks the first suggestion, as on FSP's search. Carbon highlights a row only
+  // as a key is pressed, before these suggestions have arrived, and with nothing
+  // highlighted its Enter keeps the typed text as a name search instead. So the first
+  // suggestion is highlighted whenever a fresh list arrives for typed text.
+  const actions: ComboBoxProps<ClientOption>['downshiftActions'] = useRef(undefined);
+  useEffect(() => {
+    if (typed.trim().length >= MIN_CHARS && options.length > 0) {
+      actions.current?.setHighlightedIndex(0);
+    }
+  }, [options, typed]);
+
   useEffect(() => {
     const text = typed.trim();
     if (text.length < MIN_CHARS) {
@@ -178,6 +189,7 @@ const ClientComboBox: FC<ClientComboBoxProps> = ({
       autoAlign={inDialog}
       className={inDialog ? 'client-combo--floating' : undefined}
       items={options}
+      downshiftActions={actions}
       itemToString={(item) => item?.label ?? ''}
       itemToElement={(item) => <OptionRow item={item} />}
       selectedItem={selectedItem}

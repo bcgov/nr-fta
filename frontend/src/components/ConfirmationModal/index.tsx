@@ -1,6 +1,7 @@
-import { Button, Loading } from '@carbon/react';
+import { Button } from '@carbon/react';
 import { useState, type FC, type ReactNode } from 'react';
 
+import BusyIcon from '@/components/BusyIcon';
 import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
 
@@ -95,8 +96,5 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
     </Modal>
   );
 };
-
-// Same Carbon spinner shape as the other dialog Save buttons.
-const BusyIcon = () => <Loading small withOverlay={false} description="" />;
 
 export default ConfirmationModal;

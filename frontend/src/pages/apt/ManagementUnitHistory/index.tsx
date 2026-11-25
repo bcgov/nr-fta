@@ -21,9 +21,12 @@ import Tombstone from '@/components/Tombstone';
 import UserName from '@/components/UserName';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
+import ManagementUnitEditModal from '@/pages/apt/ManagementUnitEdit/ManagementUnitEditModal';
+import { useMuTypeName } from '@/pages/apt/muTypes';
 import PageLayout from '@/pages/PageLayout';
 import { canEditApt } from '@/routes/access';
 import { aptPaths } from '@/routes/aptPaths';
+import { getManagementUnitStatuses, type AptCodeOption } from '@/services/apt/lookups';
 import {
   getAptManagementUnit,
   getAptManagementUnitHistory,
@@ -33,14 +36,7 @@ import {
 import HistoryModal from './HistoryModal';
 import { dash, day, num } from './shared';
 
-const COLUMNS = [
-  'Effective date',
-  'AAC determination date',
-  'AAC (m³)',
-  'AAC (ha)',
-  'Apportionment effective date',
-  'Comments',
-];
+const COLUMNS = ['Effective date', 'AAC (m³)', 'AAC (ha)', 'Comment'];
 
 /** The determination's facts, for the detail panel. */
 const detailItems = (h: AptManagementUnitHistory) => [
@@ -68,20 +64,32 @@ const detailItems = (h: AptManagementUnitHistory) => [
  * (starting from the selected one) and edit the selected one.
  */
 const ManagementUnitHistoryPage: FC = () => {
+  const muType = useMuTypeName();
   const { muId = '' } = useParams();
   const { user } = useAuth();
   const canEdit = canEditApt(user);
 
   const fetcher = useCallback(
-    () => Promise.all([getAptManagementUnit(muId), getAptManagementUnitHistory(muId)]),
+    () =>
+      Promise.all([
+        getAptManagementUnit(muId),
+        getAptManagementUnitHistory(muId),
+        // Only to describe the status; if it fails the code shows instead.
+        getManagementUnitStatuses().catch(() => [] as AptCodeOption[]),
+      ]),
     [muId],
   );
   const { data, loading, error, reload, refresh } = useApiResource(fetcher, [muId]);
   const unit = data?.[0];
   const history = data?.[1] ?? [];
+  const statuses = data?.[2] ?? [];
+  const statusName = unit?.mgmtUnitStatusSt
+    ? statuses.find((st) => st.code === unit.mgmtUnitStatusSt)?.description || unit.mgmtUnitStatusSt
+    : null;
 
   const [picked, setPicked] = useState<number | null>(null);
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
+  const [editingUnit, setEditingUnit] = useState(false);
   // Newest first, as the routine orders them; the newest is shown until one is picked.
   const selected = history.find((h) => h.id === picked) ?? history[0] ?? null;
 
@@ -98,13 +106,7 @@ const ManagementUnitHistoryPage: FC = () => {
       }
       actions={
         unit && canEdit ? (
-          <Button
-            size="md"
-            kind="tertiary"
-            renderIcon={Edit}
-            as={Link}
-            to={aptPaths.editManagementUnit(unit.id)}
-          >
+          <Button size="md" kind="tertiary" renderIcon={Edit} onClick={() => setEditingUnit(true)}>
             Edit management unit
           </Button>
         ) : undefined
@@ -122,9 +124,9 @@ const ManagementUnitHistoryPage: FC = () => {
               ariaLabel="Management unit summary"
               items={[
                 { label: 'Name', value: dash(unit.mgmtUnitName) },
-                { label: 'MU type', value: dash(unit.aptMgmtUnitSt) },
-                { label: 'MU no.', value: dash(unit.mgmtUnitNumber) },
-                { label: 'Status', value: dash(unit.mgmtUnitStatusSt) },
+                { label: 'Management unit type', value: dash(muType(unit.aptMgmtUnitSt)) },
+                { label: 'Management unit no.', value: dash(unit.mgmtUnitNumber) },
+                { label: 'Status', value: dash(statusName) },
                 { label: 'Status effective', value: day(unit.statusEffectiveDate) },
                 { label: 'Org unit', value: dash(unit.orgUnitName) },
                 {
@@ -137,7 +139,6 @@ const ManagementUnitHistoryPage: FC = () => {
                     '—'
                   ),
                 },
-                { label: 'ORCS file #', value: dash(unit.orcsFileNumber) },
               ]}
             />
 
@@ -192,10 +193,8 @@ const ManagementUnitHistoryPage: FC = () => {
                                 onSelect={() => setPicked(h.id)}
                               />
                               <TableCell>{day(h.effectiveDate)}</TableCell>
-                              <TableCell>{day(h.determinationDate)}</TableCell>
                               <TableCell>{num(h.allowableAnnualCut)}</TableCell>
                               <TableCell>{num(h.allowableAnnualCutHa)}</TableCell>
-                              <TableCell>{day(h.apportionmentEffectiveDate)}</TableCell>
                               <TableCell>{dash(h.comments)}</TableCell>
                             </TableRow>
                           );
@@ -254,6 +253,14 @@ const ManagementUnitHistoryPage: FC = () => {
             setPicked(saved.id);
             refresh();
           }}
+        />
+      )}
+      {unit && canEdit && (
+        <ManagementUnitEditModal
+          open={editingUnit}
+          unitId={unit.id}
+          onClose={() => setEditingUnit(false)}
+          onSaved={() => refresh()}
         />
       )}
     </PageLayout>

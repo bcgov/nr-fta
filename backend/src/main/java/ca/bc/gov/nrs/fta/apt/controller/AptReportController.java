@@ -1,12 +1,16 @@
 package ca.bc.gov.nrs.fta.apt.controller;
 
 import ca.bc.gov.nrs.fta.apt.dto.AptReportParams;
+import ca.bc.gov.nrs.fta.apt.service.AptReportBatchService;
 import ca.bc.gov.nrs.fta.apt.service.AptReportDefinition;
 import ca.bc.gov.nrs.fta.apt.service.AptReportExtract;
 import ca.bc.gov.nrs.fta.apt.service.AptReportService;
 import ca.bc.gov.nrs.fta.shared.csv.CsvExport;
 import ca.bc.gov.nrs.fta.util.JwtPrincipalUtil;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
@@ -30,6 +34,8 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
  * <ul>
  *   <li>{@code /{code}} — a PDF report ({@code APTR011} … {@code APTR043}), rendered in the
  *       backend; 501 until the report's template has been added.</li>
+ *   <li>{@code /{code}/zip} — the report for every management unit ({@code APTR011}) or
+ *       region ({@code APTR012}, {@code APTR013}), one PDF each, zipped.</li>
  *   <li>{@code /{code}/csv} — a CSV data extract ({@code APTR013}, {@code APTR041}).</li>
  * </ul>
  */
@@ -37,10 +43,14 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 @RequestMapping("/api/fta/apt/reports")
 public class AptReportController {
 
-  private final AptReportService reports;
+  private static final ZoneId PACIFIC = ZoneId.of("America/Vancouver");
 
-  public AptReportController(AptReportService reports) {
+  private final AptReportService reports;
+  private final AptReportBatchService batches;
+
+  public AptReportController(AptReportService reports, AptReportBatchService batches) {
     this.reports = reports;
+    this.batches = batches;
   }
 
   /**
@@ -67,6 +77,41 @@ public class AptReportController {
         ContentDisposition.inline().filename(report.name() + ".pdf").build());
     headers.setCacheControl("no-store");
     return ResponseEntity.ok().headers(headers).body(pdf);
+  }
+
+  /**
+   * The report for every management unit or region, as a zip of PDFs. Written straight to the
+   * response, each PDF as it is rendered, so a long batch keeps the connection busy rather than
+   * waiting on an async timeout. The inputs are checked before anything is written, so a bad
+   * request is still an HTTP error.
+   */
+  @GetMapping("/{code}/zip")
+  public void zip(
+      @PathVariable String code,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+          LocalDate reportDate,
+      JwtAuthenticationToken principal,
+      HttpServletResponse response) throws IOException {
+    AptReportDefinition report = AptReportDefinition.of(code)
+        .filter(AptReportBatchService::batchable)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+            "No batch of APT report " + code + "."));
+    if (reportDate == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+          report.name() + " needs a report date (reportDate).");
+    }
+    List<AptReportBatchService.Item> items = batches.items(report, reportDate);
+    if (items.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+          "There is nothing to run " + report.name() + " for.");
+    }
+    String user = JwtPrincipalUtil.getAuditUserId(principal);
+    response.setContentType("application/zip");
+    response.setHeader(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+        .filename(AptReportBatchService.zipName(report, LocalDate.now(PACIFIC))).build()
+        .toString());
+    response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
+    batches.writeZip(report, items, user, response.getOutputStream());
   }
 
   /** One CSV data extract, as a {@code text/csv} attachment. */

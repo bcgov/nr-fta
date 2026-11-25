@@ -1,5 +1,5 @@
-import { ComboBox } from '@carbon/react';
-import { useMemo, useState } from 'react';
+import { ComboBox, type ComboBoxProps } from '@carbon/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ManagementUnit } from '@/services/codeLists';
 
@@ -189,6 +189,16 @@ const ManagementUnitComboBox: FC<ManagementUnitComboBoxProps> = ({
       .map((x) => x.o);
   }, [allItems, typed, selectedItem]);
 
+  // Enter picks the best match, as on FSP's search. Carbon's own Enter only finds an
+  // entry whose label contains the typed text as is, and these entries also match word
+  // by word ("tsa 1" finds "T 01 — …"); and the row Carbon highlights while typing is
+  // worked out before this ranking. So the top-ranked entry is highlighted instead.
+  const actions: ComboBoxProps<MgmtUnitOption>['downshiftActions'] = useRef(undefined);
+  const searching = typed.trim() !== '' && !(selectedItem && typed === selectedItem.label);
+  useEffect(() => {
+    if (searching && items.length > 0) actions.current?.setHighlightedIndex(0);
+  }, [items, searching]);
+
   return (
     <ComboBox
       id={id}
@@ -201,6 +211,7 @@ const ManagementUnitComboBox: FC<ManagementUnitComboBoxProps> = ({
       invalidText={invalidText}
       disabled={disabled}
       items={items}
+      downshiftActions={actions}
       itemToString={(item) => item?.label ?? ''}
       selectedItem={selectedItem}
       // Filtered and ranked above, as Carbon's filter can't reorder.

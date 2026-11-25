@@ -16,6 +16,8 @@ interface DateFieldProps {
   onChange: (value: string) => void;
   invalidText?: string | null;
   disabled?: boolean;
+  /** Keeps the label for screen readers only, where the screen shows its own (inline edit). */
+  hideLabel?: boolean;
 }
 
 /** A single date, picked from the calendar or typed as `yyyy-mm-dd`, filling its column. */
@@ -26,6 +28,7 @@ const DateField: FC<DateFieldProps> = ({
   onChange,
   invalidText,
   disabled,
+  hideLabel,
 }) => (
   <DatePicker
     datePickerType="single"
@@ -38,6 +41,7 @@ const DateField: FC<DateFieldProps> = ({
     <DatePickerInput
       id={id}
       labelText={labelText}
+      hideLabel={hideLabel}
       placeholder="yyyy-mm-dd"
       pattern={TYPED_DATE_PATTERN}
       invalidText={invalidText ?? undefined}

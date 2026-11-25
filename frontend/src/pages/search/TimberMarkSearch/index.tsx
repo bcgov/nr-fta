@@ -423,13 +423,15 @@ const TimberMarkSearch: FC = () => {
               {codeItems(markStatuses)}
             </Select>
 
-            <ClientComboBox
-              id="tm-client"
-              clientNumber={form.clientNumber}
-              clientLocnCode={form.clientLocnCode}
-              clientName={form.clientName}
-              onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
-            />
+            <div className="fsp-search__wide-cell">
+              <ClientComboBox
+                id="tm-client"
+                clientNumber={form.clientNumber}
+                clientLocnCode={form.clientLocnCode}
+                clientName={form.clientName}
+                onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
+              />
+            </div>
 
             <Select
               id="tm-client-type"

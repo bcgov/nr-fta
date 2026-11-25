@@ -215,6 +215,11 @@ objects:
       labels:
         app: ${NAME}-frontend-${ZONE}
         app.kubernetes.io/instance: ${ZONE}
+      annotations:
+        # The router drops a request whose server side is silent for this long (default 30s).
+        # The APT reports render before their first byte is sent (a single PDF), and a batch
+        # zip streams one PDF at a time, so allow a slow database day well past 30s.
+        haproxy.router.openshift.io/timeout: 180s
     spec:
       host: ${NAME}-${SLOT}.${DOMAIN}
       to:

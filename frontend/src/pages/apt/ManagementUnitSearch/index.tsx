@@ -22,25 +22,28 @@ import { useNavigate } from 'react-router-dom';
 
 import DateField from '@/components/DateField';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import { useSessionState } from '@/hooks/useSessionState';
 import { nextColumnSort, sortHeaderProps, sortRows } from '@/lib/columnSort';
 import { safeErrorMessage } from '@/lib/errorMessage';
+import ManagementUnitEditModal from '@/pages/apt/ManagementUnitEdit/ManagementUnitEditModal';
 import { dash, day, unitLabel } from '@/pages/apt/ManagementUnitHistory/shared';
+import { loadMuTypes, muTypeName } from '@/pages/apt/muTypes';
 import PageLayout from '@/pages/PageLayout';
 import { canEditApt } from '@/routes/access';
 import { aptPaths } from '@/routes/aptPaths';
 import {
   getAptOrgUnits,
   getManagementUnitStatuses,
-  getManagementUnitTypes,
   type AptCodeOption,
   type AptOrgUnit,
 } from '@/services/apt/lookups';
 import { searchAptManagementUnits, type AptManagementUnit } from '@/services/apt/managementUnits';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
+import { downloadRowsAsCsv } from '@/utils/csvDownload';
 
 /** The search criteria as typed; all optional. */
 interface Criteria {
@@ -52,7 +55,6 @@ interface Criteria {
   sourceId: string;
   status: string;
   effectiveDate: string;
-  orcs: string;
 }
 
 const EMPTY: Criteria = {
@@ -63,17 +65,15 @@ const EMPTY: Criteria = {
   sourceId: '',
   status: '',
   effectiveDate: '',
-  orcs: '',
 };
 
 const HEADERS = [
+  { key: 'aptMgmtUnitSt', header: 'Management unit type' },
+  { key: 'mgmtUnitNumber', header: 'Management unit no.' },
   { key: 'mgmtUnitName', header: 'Name' },
-  { key: 'aptMgmtUnitSt', header: 'MU type' },
-  { key: 'mgmtUnitNumber', header: 'MU no.' },
   { key: 'mgmtUnitStatusSt', header: 'Status' },
   { key: 'statusEffectiveDate', header: 'Effective date' },
   { key: 'orgUnitName', header: 'Org unit' },
-  { key: 'orcsFileNumber', header: 'ORCS file #' },
 ];
 
 interface Lists {
@@ -87,9 +87,6 @@ const NO_LISTS: Lists = { types: [], statuses: [], orgUnits: [], units: [] };
 
 const SearchingIcon = () => <Loading small withOverlay={false} description="" />;
 
-/** `CODE - description`, or whichever is known. */
-const codeLabel = (o: AptCodeOption) => (o.description ? `${o.code} - ${o.description}` : o.code);
-
 /**
  * APTM1100 — search for management units (APT2's ManagementUnitSearch). Every criterion is
  * optional; the name is matched on the results, as APT2 did, since the routine has no name
@@ -99,6 +96,7 @@ const codeLabel = (o: AptCodeOption) => (o.description ? `${o.code} - ${o.descri
 const ManagementUnitSearch: FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [adding, setAdding] = useState(false);
   const { display, clear } = useNotification();
   const canEdit = canEditApt(user);
 
@@ -117,7 +115,7 @@ const ManagementUnitSearch: FC = () => {
   useEffect(() => {
     let cancelled = false;
     Promise.allSettled([
-      getManagementUnitTypes(),
+      loadMuTypes(),
       getManagementUnitStatuses(),
       getAptOrgUnits(),
       searchAptManagementUnits(),
@@ -166,7 +164,6 @@ const ManagementUnitSearch: FC = () => {
           status: criteria.status || undefined,
           effectiveDate: criteria.effectiveDate || undefined,
           orgUnitNumber: criteria.orgUnitNo ? Number(criteria.orgUnitNo) : undefined,
-          orcsFileNumber: criteria.orcs.trim() || undefined,
           sourceManagementUnitId: criteria.sourceId ? Number(criteria.sourceId) : undefined,
         });
         const unique = Array.from(new Map(data.map((u) => [u.id, u])).values());
@@ -215,16 +212,33 @@ const ManagementUnitSearch: FC = () => {
   };
 
   // The Name column falls back to "<type> <number>" for a unit with no name; sort on what shows.
-  const paged = sortRows(rows ?? [], sort, (u, key) =>
+  const sortedRows = sortRows(rows ?? [], sort, (u, key) =>
     key === 'mgmtUnitName'
       ? u.mgmtUnitName || `${u.aptMgmtUnitSt} ${u.mgmtUnitNumber}`
-      : u[key as keyof AptManagementUnit],
-  )
+      : key === 'aptMgmtUnitSt'
+        ? muTypeName(lists.types, u.aptMgmtUnitSt)
+        : u[key as keyof AptManagementUnit],
+  );
+  const paged = sortedRows
     .slice((page - 1) * pageSize, page * pageSize)
     .map((u) => ({ ...u, id: String(u.id) }));
   const byId = new Map((rows ?? []).map((u) => [String(u.id), u]));
   // The pill shows the status's description (its colour follows it: Active green, Cancelled red).
   const statusNames = new Map(lists.statuses.map((st) => [st.code, st.description]));
+  // Every unit found, in the table's sort, with the table's columns as shown.
+  const exportCsv = () =>
+    downloadRowsAsCsv(
+      'apt-management-units',
+      HEADERS.map((h) => h.header),
+      sortedRows.map((u) => [
+        muTypeName(lists.types, u.aptMgmtUnitSt),
+        u.mgmtUnitNumber,
+        u.mgmtUnitName || `${u.aptMgmtUnitSt} ${u.mgmtUnitNumber}`,
+        u.mgmtUnitStatusSt ? statusNames.get(u.mgmtUnitStatusSt) || u.mgmtUnitStatusSt : null,
+        u.statusEffectiveDate?.slice(0, 10),
+        u.orgUnitName,
+      ]),
+    );
   const choose = (text: string) => <SelectItem value="" text={listsLoading ? 'Loading…' : text} />;
 
   return (
@@ -233,13 +247,8 @@ const ManagementUnitSearch: FC = () => {
       subtitle="Find a management unit to see its AAC determinations, partitions and apportionments"
       actions={
         canEdit ? (
-          <Button
-            size="md"
-            kind="primary"
-            renderIcon={Add}
-            onClick={() => navigate(aptPaths.newManagementUnit())}
-          >
-            New management unit
+          <Button size="md" kind="tertiary" renderIcon={Add} onClick={() => setAdding(true)}>
+            Add management unit
           </Button>
         ) : undefined
       }
@@ -247,28 +256,6 @@ const ManagementUnitSearch: FC = () => {
       <Tile className="fsp-search__tile">
         <form className="fsp-search__form" onSubmit={onSubmit}>
           <div className="fsp-search__field-grid">
-            <Select
-              id="apt-mu-type"
-              labelText="MU type"
-              value={form.type}
-              disabled={listsLoading}
-              onChange={(e) => set('type', e.target.value)}
-            >
-              {choose('Any type')}
-              {lists.types.map((t) => (
-                <SelectItem key={t.code} value={t.code} text={codeLabel(t)} />
-              ))}
-            </Select>
-            <TextInput
-              id="apt-mu-number"
-              labelText="MU no."
-              value={form.number}
-              maxLength={4}
-              inputMode="numeric"
-              autoComplete="off"
-              // Digits only, as APT2 strips anything else while typing.
-              onChange={(e) => set('number', e.target.value.replace(/\D/g, ''))}
-            />
             <Select
               id="apt-mu-name"
               labelText="Name"
@@ -279,6 +266,40 @@ const ManagementUnitSearch: FC = () => {
               {choose('Any name')}
               {names.map((n) => (
                 <SelectItem key={n} value={n} text={n} />
+              ))}
+            </Select>
+            <Select
+              id="apt-mu-type"
+              labelText="Management unit type"
+              value={form.type}
+              disabled={listsLoading}
+              onChange={(e) => set('type', e.target.value)}
+            >
+              {choose('Any type')}
+              {lists.types.map((t) => (
+                <SelectItem key={t.code} value={t.code} text={t.description || t.code} />
+              ))}
+            </Select>
+            <TextInput
+              id="apt-mu-number"
+              labelText="Management unit no."
+              value={form.number}
+              maxLength={4}
+              inputMode="numeric"
+              autoComplete="off"
+              // Digits only, as APT2 strips anything else while typing.
+              onChange={(e) => set('number', e.target.value.replace(/\D/g, ''))}
+            />
+            <Select
+              id="apt-mu-status"
+              labelText="Status"
+              value={form.status}
+              disabled={listsLoading}
+              onChange={(e) => set('status', e.target.value)}
+            >
+              {choose('Any status')}
+              {lists.statuses.map((s) => (
+                <SelectItem key={s.code} value={s.code} text={s.description || s.code} />
               ))}
             </Select>
             <Select
@@ -309,31 +330,11 @@ const ManagementUnitSearch: FC = () => {
                 <SelectItem key={u.id} value={String(u.id)} text={unitLabel(u)} />
               ))}
             </Select>
-            <Select
-              id="apt-mu-status"
-              labelText="Status"
-              value={form.status}
-              disabled={listsLoading}
-              onChange={(e) => set('status', e.target.value)}
-            >
-              {choose('Any status')}
-              {lists.statuses.map((s) => (
-                <SelectItem key={s.code} value={s.code} text={codeLabel(s)} />
-              ))}
-            </Select>
             <DateField
               id="apt-mu-effective"
               labelText="Status effective date"
               value={form.effectiveDate}
               onChange={(v) => set('effectiveDate', v)}
-            />
-            <TextInput
-              id="apt-mu-orcs"
-              labelText="ORCS file #"
-              value={form.orcs}
-              maxLength={13}
-              autoComplete="off"
-              onChange={(e) => set('orcs', e.target.value)}
             />
           </div>
 
@@ -373,6 +374,7 @@ const ManagementUnitSearch: FC = () => {
                     {rows.length.toLocaleString()}{' '}
                     {rows.length === 1 ? 'management unit' : 'management units'} found
                   </span>
+                  <ExportCsvButton onExport={exportCsv} />
                 </div>
                 <div className="fsp-search__table">
                   <DataTable rows={paged} headers={HEADERS}>
@@ -412,11 +414,13 @@ const ManagementUnitSearch: FC = () => {
                                   role="link"
                                 >
                                   <TableCell>
+                                    {dash(muTypeName(lists.types, unit.aptMgmtUnitSt))}
+                                  </TableCell>
+                                  <TableCell>{dash(unit.mgmtUnitNumber)}</TableCell>
+                                  <TableCell>
                                     {unit.mgmtUnitName ||
                                       `${unit.aptMgmtUnitSt} ${unit.mgmtUnitNumber}`}
                                   </TableCell>
-                                  <TableCell>{dash(unit.aptMgmtUnitSt)}</TableCell>
-                                  <TableCell>{dash(unit.mgmtUnitNumber)}</TableCell>
                                   <TableCell>
                                     {unit.mgmtUnitStatusSt ? (
                                       <StatusTag
@@ -433,7 +437,6 @@ const ManagementUnitSearch: FC = () => {
                                     {day(unit.statusEffectiveDate)}
                                   </TableCell>
                                   <TableCell>{dash(unit.orgUnitName)}</TableCell>
-                                  <TableCell>{dash(unit.orcsFileNumber)}</TableCell>
                                 </TableRow>
                               );
                             })}
@@ -463,6 +466,13 @@ const ManagementUnitSearch: FC = () => {
             )}
           </div>
         </div>
+      )}
+      {canEdit && (
+        <ManagementUnitEditModal
+          open={adding}
+          onClose={() => setAdding(false)}
+          onSaved={(saved) => navigate(aptPaths.managementUnitHistory(saved.id))}
+        />
       )}
     </PageLayout>
   );

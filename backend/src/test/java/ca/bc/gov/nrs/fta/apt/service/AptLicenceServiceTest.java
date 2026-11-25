@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.web.server.ResponseStatusException;
@@ -204,5 +206,60 @@ class AptLicenceServiceTest {
     assertThatThrownBy(() -> writer.update("A12345", CHANGE, USER))
         .isInstanceOfSatisfying(ResponseStatusException.class,
             e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+  }
+
+  // ── search efficiency ──
+
+  @Test
+  void onlyTheCriteriaGivenBecomePredicates() {
+    String sql = AptLicenceService.criteria(new MapSqlParameterSource()
+        .addValue("forestFileId", "A1%")
+        .addValue("clientName", null)
+        .addValue("orgUnitName", null)
+        .addValue("muName", null)
+        .addValue("muType", "U")
+        .addValue("muNumber", null));
+
+    assertThat(sql)
+        .contains("UPPER(pfu.forest_file_id) LIKE UPPER(:forestFileId)")
+        .contains("UPPER(pfu.mgmt_unit_type) = UPPER(:muType)")
+        .doesNotContain(":clientName").doesNotContain(":orgUnitName")
+        .doesNotContain(":muName").doesNotContain(":muNumber")
+        .doesNotContain("IS NULL");
+  }
+
+  @Test
+  void pagingAndSortingReuseTheSearchesRows() {
+    NamedParameterJdbcTemplate db = mock(NamedParameterJdbcTemplate.class);
+    doReturn(List.of(licence("A1", "Acme", null), licence("A2", "Beta", null))).when(db)
+        .query(contains("FETCH FIRST :limit ROWS ONLY"), any(SqlParameterSource.class),
+            any(RowMapper.class));
+    AptLicenceService search = new AptLicenceService(db);
+    AptLicenceSearchParams byName = new AptLicenceSearchParams(null, "a", null, null, null, null);
+
+    search.search(byName, 0, 1);
+    search.search(byName, 1, 1);
+    search.search(byName, 0, 1, "clientName,desc");
+    search.search(new AptLicenceSearchParams(null, " A ", null, null, null, null), 0, 1);
+
+    verify(db, times(1)).query(contains("FETCH FIRST :limit ROWS ONLY"),
+        any(SqlParameterSource.class), any(RowMapper.class));
+  }
+
+  @Test
+  void savingALicenceForgetsRecentSearches() {
+    given(true, true, true);
+    doReturn(List.of(licence())).when(jdbc)
+        .query(contains("FETCH FIRST :limit ROWS ONLY"), any(SqlParameterSource.class),
+            any(RowMapper.class));
+    AptLicenceSearchParams byId = new AptLicenceSearchParams("A12345", null, null, null, null,
+        null);
+
+    writer.search(byId, 0, 10);
+    writer.update("A12345", CHANGE, USER);
+    writer.search(byId, 0, 10);
+
+    verify(jdbc, times(2)).query(contains("FETCH FIRST :limit ROWS ONLY"),
+        any(SqlParameterSource.class), any(RowMapper.class));
   }
 }

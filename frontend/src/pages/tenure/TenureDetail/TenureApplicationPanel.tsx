@@ -221,101 +221,103 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
       'Prof dec',
     ];
     return (
-      <Table size="md" useZebraStyles>
-        <TableHead>
-          <TableRow>
-            {headers.map((h) => (
-              <TableHeader key={h}>{h}</TableHeader>
-            ))}
-            <TableHeader aria-label="Actions" />
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {rows.length === 0 ? (
+      <div className="bordered-table">
+        <Table size="md" useZebraStyles>
+          <TableHead>
             <TableRow>
-              <TableCell colSpan={headers.length + 1} className="fsp-info__empty-cell">
-                No spatial submissions for this tenure.
-              </TableCell>
+              {headers.map((h) => (
+                <TableHeader key={h}>{h}</TableHeader>
+              ))}
+              <TableHeader aria-label="Actions" />
             </TableRow>
-          ) : (
-            rows.map((r, i) => (
-              <TableRow key={rowKey(r, i)}>
-                <TableCell>{dash(r.submissionId)}</TableCell>
-                <TableCell>{date(r.submissionDate)}</TableCell>
-                <TableCell title={r.orgUnitName ?? undefined}>{dash(r.orgUnitCode)}</TableCell>
-                <TableCell>{dash(r.tenureAppId)}</TableCell>
-                {cols.status && (
-                  <TableCell>
-                    {r.statusCode ? (
-                      <StatusTag
-                        status={r.statusDesc ?? r.statusCode}
-                        variant={STATE_VARIANTS[r.statusCode]}
-                      />
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                )}
-                {cols.applicationType && (
-                  <TableCell>{codeDesc(r.applicationTypeCode, r.applicationTypeDesc)}</TableCell>
-                )}
-                <TableCell>{dash(r.description)}</TableCell>
-                <TableCell>{dash(r.purposeDesc)}</TableCell>
-                {cols.featureType && <TableCell>{dash(r.featureTypeDesc)}</TableCell>}
-                {cols.chart && <TableCell>{dash(r.chartAreaId)}</TableCell>}
-                {cols.chart && <TableCell>{dash(r.chartBlockId)}</TableCell>}
-                {cols.cuttingPermit && (
-                  <TableCell>
-                    {r.cuttingPermitId
-                      ? cols.cpLinksToPermit
-                        ? cpLink(r.cuttingPermitId, r.cuttingPermitId)
-                        : r.cuttingPermitId
-                      : '—'}
-                  </TableCell>
-                )}
-                {cols.timberMark && <TableCell>{markCell(r, cols)}</TableCell>}
-                {cols.location && <TableCell>{dash(r.location)}</TableCell>}
-                {cols.pointOfCommencement && <TableCell>{dash(r.pointOfCommencement)}</TableCell>}
-                {cols.chart && <TableCell>{num(r.chartVolume)}</TableCell>}
-                {cols.length && <TableCell>{num(r.objectLength)}</TableCell>}
-                {cols.area && <TableCell>{num(r.objectArea)}</TableCell>}
-                <TableCell>{date(r.decisionDate)}</TableCell>
-                <TableCell>{date(r.issuanceDate)}</TableCell>
-                <TableCell>{yesNo(r.statusNotificationClearance)}</TableCell>
-                <TableCell>{yesNo(r.exhibitAImage)}</TableCell>
-                <TableCell>
-                  {r.professionalDeclaration ? (
-                    <Button kind="ghost" size="sm" onClick={() => openProfDec(r)}>
-                      View
-                    </Button>
-                  ) : (
-                    'No'
-                  )}
-                </TableCell>
-                <TableCell>
-                  <OverflowMenu
-                    size="sm"
-                    flipped
-                    iconDescription={`Application ${r.tenureAppId ?? ''} actions`}
-                  >
-                    <OverflowMenuItem
-                      itemText="Issue permit"
-                      disabled={!canEdit || !r.issuePermitAllowed}
-                      title={canEdit ? (r.issuePermitReason ?? undefined) : undefined}
-                      onClick={() => openIssue(r)}
-                    />
-                    <OverflowMenuItem
-                      itemText="Professional declaration"
-                      disabled={!r.professionalDeclaration}
-                      onClick={() => openProfDec(r)}
-                    />
-                  </OverflowMenu>
+          </TableHead>
+          <TableBody>
+            {rows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={headers.length + 1} className="fsp-info__empty-cell">
+                  No spatial submissions for this tenure.
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              rows.map((r, i) => (
+                <TableRow key={rowKey(r, i)}>
+                  <TableCell>{dash(r.submissionId)}</TableCell>
+                  <TableCell>{date(r.submissionDate)}</TableCell>
+                  <TableCell title={r.orgUnitName ?? undefined}>{dash(r.orgUnitCode)}</TableCell>
+                  <TableCell>{dash(r.tenureAppId)}</TableCell>
+                  {cols.status && (
+                    <TableCell>
+                      {r.statusCode ? (
+                        <StatusTag
+                          status={r.statusDesc ?? r.statusCode}
+                          variant={STATE_VARIANTS[r.statusCode]}
+                        />
+                      ) : (
+                        '—'
+                      )}
+                    </TableCell>
+                  )}
+                  {cols.applicationType && (
+                    <TableCell>{codeDesc(r.applicationTypeCode, r.applicationTypeDesc)}</TableCell>
+                  )}
+                  <TableCell>{dash(r.description)}</TableCell>
+                  <TableCell>{dash(r.purposeDesc)}</TableCell>
+                  {cols.featureType && <TableCell>{dash(r.featureTypeDesc)}</TableCell>}
+                  {cols.chart && <TableCell>{dash(r.chartAreaId)}</TableCell>}
+                  {cols.chart && <TableCell>{dash(r.chartBlockId)}</TableCell>}
+                  {cols.cuttingPermit && (
+                    <TableCell>
+                      {r.cuttingPermitId
+                        ? cols.cpLinksToPermit
+                          ? cpLink(r.cuttingPermitId, r.cuttingPermitId)
+                          : r.cuttingPermitId
+                        : '—'}
+                    </TableCell>
+                  )}
+                  {cols.timberMark && <TableCell>{markCell(r, cols)}</TableCell>}
+                  {cols.location && <TableCell>{dash(r.location)}</TableCell>}
+                  {cols.pointOfCommencement && <TableCell>{dash(r.pointOfCommencement)}</TableCell>}
+                  {cols.chart && <TableCell>{num(r.chartVolume)}</TableCell>}
+                  {cols.length && <TableCell>{num(r.objectLength)}</TableCell>}
+                  {cols.area && <TableCell>{num(r.objectArea)}</TableCell>}
+                  <TableCell>{date(r.decisionDate)}</TableCell>
+                  <TableCell>{date(r.issuanceDate)}</TableCell>
+                  <TableCell>{yesNo(r.statusNotificationClearance)}</TableCell>
+                  <TableCell>{yesNo(r.exhibitAImage)}</TableCell>
+                  <TableCell>
+                    {r.professionalDeclaration ? (
+                      <Button kind="ghost" size="sm" onClick={() => openProfDec(r)}>
+                        View
+                      </Button>
+                    ) : (
+                      'No'
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <OverflowMenu
+                      size="sm"
+                      flipped
+                      iconDescription={`Application ${r.tenureAppId ?? ''} actions`}
+                    >
+                      <OverflowMenuItem
+                        itemText="Issue permit"
+                        disabled={!canEdit || !r.issuePermitAllowed}
+                        title={canEdit ? (r.issuePermitReason ?? undefined) : undefined}
+                        onClick={() => openIssue(r)}
+                      />
+                      <OverflowMenuItem
+                        itemText="Professional declaration"
+                        disabled={!r.professionalDeclaration}
+                        onClick={() => openProfDec(r)}
+                      />
+                    </OverflowMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     );
   };
 
@@ -346,7 +348,7 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
                   kind="warning"
                   lowContrast
                   hideCloseButton
-                  title="Note"
+                  title="Note:"
                   subtitle={data.warning.replace(/^NOTE:\s*/, '')}
                 />
               )}
@@ -359,56 +361,58 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
                   icon={Stamp}
                   count={data.cpRequests.length}
                 >
-                  <Table size="md" useZebraStyles>
-                    <TableHead>
-                      <TableRow>
-                        <TableHeader>Cutting Permit ID</TableHeader>
-                        <TableHeader>Submitted</TableHeader>
-                        <TableHeader>Request type</TableHeader>
-                        <TableHeader>State</TableHeader>
-                        <TableHeader>Accepted by</TableHeader>
-                        <TableHeader>Completion date</TableHeader>
-                        <TableHeader>Rationale</TableHeader>
-                        <TableHeader>Rationale doc</TableHeader>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {data.cpRequests.length === 0 ? (
+                  <div className="bordered-table">
+                    <Table size="md" useZebraStyles>
+                      <TableHead>
                         <TableRow>
-                          <TableCell colSpan={8} className="fsp-info__empty-cell">
-                            No smart form applications for this tenure.
-                          </TableCell>
+                          <TableHeader>Cutting Permit ID</TableHeader>
+                          <TableHeader>Submitted</TableHeader>
+                          <TableHeader>Request type</TableHeader>
+                          <TableHeader>State</TableHeader>
+                          <TableHeader>Accepted by</TableHeader>
+                          <TableHeader>Completion date</TableHeader>
+                          <TableHeader>Rationale</TableHeader>
+                          <TableHeader>Rationale doc</TableHeader>
                         </TableRow>
-                      ) : (
-                        data.cpRequests.map((q, i) => (
-                          <TableRow key={`${q.requestGuid ?? ''}-${i}`}>
-                            <TableCell>
-                              {q.cuttingPermitId
-                                ? cpLink(q.cuttingPermitId, q.cuttingPermitId)
-                                : '—'}
+                      </TableHead>
+                      <TableBody>
+                        {data.cpRequests.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={8} className="fsp-info__empty-cell">
+                              No smart form applications for this tenure.
                             </TableCell>
-                            <TableCell>{date(q.requestDate)}</TableCell>
-                            <TableCell>{codeDesc(q.requestCode, q.requestDesc)}</TableCell>
-                            <TableCell>
-                              {q.statusCode ? (
-                                <StatusTag status={q.statusDesc ?? q.statusCode} />
-                              ) : (
-                                '—'
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <UserName userId={q.acceptedUserId} />
-                            </TableCell>
-                            <TableCell>{date(q.acceptedDate)}</TableCell>
-                            <TableCell className="detail-tab__long-text">
-                              {dash(q.rationaleDetail)}
-                            </TableCell>
-                            <TableCell>{yesNo(q.rationaleDocument)}</TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                        ) : (
+                          data.cpRequests.map((q, i) => (
+                            <TableRow key={`${q.requestGuid ?? ''}-${i}`}>
+                              <TableCell>
+                                {q.cuttingPermitId
+                                  ? cpLink(q.cuttingPermitId, q.cuttingPermitId)
+                                  : '—'}
+                              </TableCell>
+                              <TableCell>{date(q.requestDate)}</TableCell>
+                              <TableCell>{codeDesc(q.requestCode, q.requestDesc)}</TableCell>
+                              <TableCell>
+                                {q.statusCode ? (
+                                  <StatusTag status={q.statusDesc ?? q.statusCode} />
+                                ) : (
+                                  '—'
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <UserName userId={q.acceptedUserId} />
+                              </TableCell>
+                              <TableCell>{date(q.acceptedDate)}</TableCell>
+                              <TableCell className="detail-tab__long-text">
+                                {dash(q.rationaleDetail)}
+                              </TableCell>
+                              <TableCell>{yesNo(q.rationaleDocument)}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </Section>
               )}
               {(data.cpRejections.length > 0 || (data.fileTypeCode ?? '').startsWith('A')) && (
@@ -417,38 +421,40 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
                   icon={Misuse}
                   count={data.cpRejections.length}
                 >
-                  <Table size="md" useZebraStyles>
-                    <TableHead>
-                      <TableRow>
-                        <TableHeader>Cutting Permit ID</TableHeader>
-                        <TableHeader>Submission ID</TableHeader>
-                        <TableHeader>Submitted</TableHeader>
-                        <TableHeader>Rejected</TableHeader>
-                        <TableHeader>Rejection message</TableHeader>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {data.cpRejections.length === 0 ? (
+                  <div className="bordered-table">
+                    <Table size="md" useZebraStyles>
+                      <TableHead>
                         <TableRow>
-                          <TableCell colSpan={5} className="fsp-info__empty-cell">
-                            No rejected CP submissions for this tenure.
-                          </TableCell>
+                          <TableHeader>Cutting Permit ID</TableHeader>
+                          <TableHeader>Submission ID</TableHeader>
+                          <TableHeader>Submitted</TableHeader>
+                          <TableHeader>Rejected</TableHeader>
+                          <TableHeader>Rejection message</TableHeader>
                         </TableRow>
-                      ) : (
-                        data.cpRejections.map((j, i) => (
-                          <TableRow key={`${j.submissionId ?? ''}-${i}`}>
-                            <TableCell>{dash(j.cuttingPermitId)}</TableCell>
-                            <TableCell>{dash(j.submissionId)}</TableCell>
-                            <TableCell>{date(j.submissionDate)}</TableCell>
-                            <TableCell>{date(j.rejectionDate)}</TableCell>
-                            <TableCell className="detail-tab__long-text">
-                              {dash(j.rejectionMessage)}
+                      </TableHead>
+                      <TableBody>
+                        {data.cpRejections.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="fsp-info__empty-cell">
+                              No rejected CP submissions for this tenure.
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                        ) : (
+                          data.cpRejections.map((j, i) => (
+                            <TableRow key={`${j.submissionId ?? ''}-${i}`}>
+                              <TableCell>{dash(j.cuttingPermitId)}</TableCell>
+                              <TableCell>{dash(j.submissionId)}</TableCell>
+                              <TableCell>{date(j.submissionDate)}</TableCell>
+                              <TableCell>{date(j.rejectionDate)}</TableCell>
+                              <TableCell className="detail-tab__long-text">
+                                {dash(j.rejectionMessage)}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </Section>
               )}
             </>

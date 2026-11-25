@@ -8,7 +8,10 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.Duration;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -16,6 +19,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -51,7 +55,12 @@ public class AptLicenceService {
   static final String TOO_MANY =
       "More than " + String.format("%,d", MAX_ROWS) + " matches. Narrow the search.";
 
-  /** {@code APT_LICENCES_GET}'s cursor. */
+  /**
+   * {@code APT_LICENCES_GET}'s cursor, without its criteria: {@link #criteria} adds a
+   * predicate for each one given. The function wrote each as {@code (... OR :x IS NULL)},
+   * which leaves Oracle one plan for every combination; leaving out the ones not given
+   * returns the same rows and lets it use the indexes that suit the ones that are.
+   */
   private static final String SEARCH_SQL =
       """
       WITH mgmt_unit_names AS (
@@ -109,16 +118,20 @@ public class AptLicenceService {
         LEFT JOIN the.apt_licences al ON pfu.forest_file_id = al.forest_file_id
        WHERE fcl.file_client_type IN ('A', 'B')
          AND cst.code_subset_name = 'FILE_STATUS_ST'
-         AND (UPPER(ou.org_unit_name) LIKE '%' || UPPER(:orgUnitName) || '%'
-              OR :orgUnitName IS NULL)
-         AND (UPPER(pfu.forest_file_id) LIKE UPPER(:forestFileId) OR :forestFileId IS NULL)
-         AND (UPPER(fc.client_name) LIKE '%' || UPPER(:clientName) || '%'
-              OR :clientName IS NULL)
-         AND (UPPER(pfu.mgmt_unit_type) = UPPER(:muType) OR :muType IS NULL)
-         AND (pfu.mgmt_unit_id = :muNumber OR :muNumber IS NULL)
-         AND (UPPER(amunv.mgmt_unit_name) LIKE '%' || UPPER(:muName) || '%'
-              OR :muName IS NULL)
       """;
+
+  /** One licence: the search for exactly this forest file id. */
+  private static final String ONE_SQL =
+      SEARCH_SQL + "   AND UPPER(pfu.forest_file_id) = :forestFileId\n";
+
+  /** Rows read per database round trip; the Oracle driver's own default is 10. */
+  static final int FETCH_SIZE = 500;
+
+  /** How long a search's rows serve its page changes and column sorts. */
+  static final Duration CACHE_TTL = Duration.ofSeconds(60);
+
+  /** The most searches kept at once; the oldest goes first. */
+  static final int CACHE_SIZE = 50;
 
   private static final String EXISTS_SQL =
       "SELECT COUNT(*) FROM the.apt_licences WHERE forest_file_id = :forestFileId";
@@ -164,9 +177,36 @@ public class AptLicenceService {
   static final String NO_FOA = "The Licence Form of Agreement does not exist.";
 
   private final NamedParameterJdbcTemplate jdbc;
+  /** {@link #jdbc} reading {@link #FETCH_SIZE} rows a round trip, for the search. */
+  private final NamedParameterJdbcTemplate searchJdbc;
+
+  /**
+   * Recent searches' rows by their criteria. The results table asks again for every page
+   * change and column sort, and the query reads up to {@link #MAX_ROWS} rows, so those reuse
+   * the rows for {@link #CACHE_TTL} rather than querying again. A licence update clears it.
+   */
+  private final Map<List<String>, Cached> recent = new LinkedHashMap<>(16, 0.75f, true) {
+    @Override
+    protected boolean removeEldestEntry(Map.Entry<List<String>, Cached> eldest) {
+      return size() > CACHE_SIZE;
+    }
+  };
+
+  private record Cached(List<AptLicenceDto> rows, long at) {}
 
   public AptLicenceService(NamedParameterJdbcTemplate jdbc) {
     this.jdbc = jdbc;
+    this.searchJdbc = withFetchSize(jdbc);
+  }
+
+  private static NamedParameterJdbcTemplate withFetchSize(NamedParameterJdbcTemplate jdbc) {
+    JdbcTemplate plain = jdbc == null ? null : jdbc.getJdbcTemplate();
+    if (plain == null || plain.getDataSource() == null) {
+      return jdbc;
+    }
+    JdbcTemplate fetching = new JdbcTemplate(plain.getDataSource());
+    fetching.setFetchSize(FETCH_SIZE);
+    return new NamedParameterJdbcTemplate(fetching);
   }
 
   /**
@@ -195,14 +235,29 @@ public class AptLicenceService {
     if (size < 1) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page size must be at least 1.");
     }
-    // APT2 required the Forest File ID; any one criterion will do here.
+    requireCriteria(p);
+    return PagedResponse.ofFullList(sorted(all(p), sort), page, size);
+  }
+
+  /**
+   * Every licence the search finds, in its column sort: the CSV download of the results.
+   *
+   * @throws ResponseStatusException 400 with no criteria at all, or more than
+   *     {@link #MAX_ROWS} matches, as the search
+   */
+  public List<AptLicenceDto> export(AptLicenceSearchParams p, String sort) {
+    requireCriteria(p);
+    return sorted(all(p), sort);
+  }
+
+  /** APT2 required the Forest File ID; any one criterion will do here. */
+  private static void requireCriteria(AptLicenceSearchParams p) {
     if (Stream.of(p.forestFileId(), p.clientName(), p.orgUnitName(), p.managementUnitName(),
             p.managementUnitType(), p.managementUnitNumber())
         .allMatch(v -> v == null || v.isBlank())) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
           "Enter at least one search criterion.");
     }
-    return PagedResponse.ofFullList(sorted(all(p), sort), page, size);
   }
 
   /**
@@ -252,7 +307,10 @@ public class AptLicenceService {
    */
   public AptLicenceDto get(String forestFileId) {
     String id = forestFileId == null ? "" : forestFileId.trim();
-    return all(new AptLicenceSearchParams(id, null, null, null, null, null)).stream()
+    MapSqlParameterSource p = new MapSqlParameterSource()
+        .addValue("forestFileId", id.toUpperCase(Locale.ROOT), Types.VARCHAR);
+    return AptLicenceRules.distinctByForestFileId(
+            searchJdbc.query(ONE_SQL, p, AptLicenceService::licence)).stream()
         .filter(l -> id.equalsIgnoreCase(l.forestFileId()))
         .findFirst()
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
@@ -296,6 +354,9 @@ public class AptLicenceService {
     } catch (DataAccessException e) {
       throw AptCommitmentRules.refusal(e);
     }
+    synchronized (recent) {
+      recent.clear();
+    }
     return get(id);
   }
 
@@ -304,23 +365,71 @@ public class AptLicenceService {
     return n == null ? 0 : n;
   }
 
+  /** The search's rows, de-duplicated: recent ones for the same criteria, or a fresh query. */
   private List<AptLicenceDto> all(AptLicenceSearchParams p) {
+    String forestFileId = upper(p.forestFileId());
+    String clientName = upper(p.clientName());
+    String orgUnitName = upper(p.orgUnitName());
+    String muName = upper(p.managementUnitName());
+    String muType = upper(p.managementUnitType());
+    String muNumber = p.managementUnitNumber() == null || p.managementUnitNumber().isBlank()
+        ? null : p.managementUnitNumber().trim();
+    List<String> key = Arrays.asList(
+        forestFileId, clientName, orgUnitName, muName, muType, muNumber);
+    long now = System.nanoTime();
+    synchronized (recent) {
+      Cached hit = recent.get(key);
+      if (hit != null && now - hit.at() < CACHE_TTL.toNanos()) {
+        return hit.rows();
+      }
+    }
+
     MapSqlParameterSource params = new MapSqlParameterSource()
-        .addValue("forestFileId", upper(p.forestFileId()), Types.VARCHAR)
-        .addValue("clientName", upper(p.clientName()), Types.VARCHAR)
-        .addValue("orgUnitName", upper(p.orgUnitName()), Types.VARCHAR)
-        .addValue("muName", upper(p.managementUnitName()), Types.VARCHAR)
-        .addValue("muType", upper(p.managementUnitType()), Types.VARCHAR)
-        .addValue("muNumber", p.managementUnitNumber() == null
-            || p.managementUnitNumber().isBlank() ? null : p.managementUnitNumber().trim(),
-            Types.VARCHAR);
+        .addValue("forestFileId", forestFileId, Types.VARCHAR)
+        .addValue("clientName", clientName, Types.VARCHAR)
+        .addValue("orgUnitName", orgUnitName, Types.VARCHAR)
+        .addValue("muName", muName, Types.VARCHAR)
+        .addValue("muType", muType, Types.VARCHAR)
+        .addValue("muNumber", muNumber, Types.VARCHAR);
     params.addValue("limit", MAX_ROWS + 1, Types.NUMERIC);
-    List<AptLicenceDto> rows =
-        jdbc.query(SEARCH_SQL + " FETCH FIRST :limit ROWS ONLY", params, AptLicenceService::licence);
+    List<AptLicenceDto> rows = searchJdbc.query(
+        SEARCH_SQL + criteria(params) + " FETCH FIRST :limit ROWS ONLY", params,
+        AptLicenceService::licence);
     if (rows.size() > MAX_ROWS) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, TOO_MANY);
     }
-    return AptLicenceRules.distinctByForestFileId(rows);
+    List<AptLicenceDto> distinct = AptLicenceRules.distinctByForestFileId(rows);
+    synchronized (recent) {
+      recent.put(key, new Cached(distinct, now));
+    }
+    return distinct;
+  }
+
+  /**
+   * The predicates for the criteria given, each as {@code APT_LICENCES_GET} wrote it less its
+   * {@code OR :x IS NULL} arm.
+   */
+  static String criteria(MapSqlParameterSource p) {
+    StringBuilder sql = new StringBuilder();
+    if (p.getValue("orgUnitName") != null) {
+      sql.append("   AND UPPER(ou.org_unit_name) LIKE '%' || UPPER(:orgUnitName) || '%'\n");
+    }
+    if (p.getValue("forestFileId") != null) {
+      sql.append("   AND UPPER(pfu.forest_file_id) LIKE UPPER(:forestFileId)\n");
+    }
+    if (p.getValue("clientName") != null) {
+      sql.append("   AND UPPER(fc.client_name) LIKE '%' || UPPER(:clientName) || '%'\n");
+    }
+    if (p.getValue("muType") != null) {
+      sql.append("   AND UPPER(pfu.mgmt_unit_type) = UPPER(:muType)\n");
+    }
+    if (p.getValue("muNumber") != null) {
+      sql.append("   AND pfu.mgmt_unit_id = :muNumber\n");
+    }
+    if (p.getValue("muName") != null) {
+      sql.append("   AND UPPER(amunv.mgmt_unit_name) LIKE '%' || UPPER(:muName) || '%'\n");
+    }
+    return sql.toString();
   }
 
   private static AptLicenceDto licence(ResultSet rs, int i) throws SQLException {

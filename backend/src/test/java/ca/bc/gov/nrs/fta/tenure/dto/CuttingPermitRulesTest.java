@@ -141,4 +141,17 @@ class CuttingPermitRulesTest {
         .isEqualTo(CuttingPermitRules.MSG_RESCIND_TERM);
     assertThat(CuttingPermitRules.rescindProblem(true, start, TODAY, TODAY)).isNull();
   }
+
+  @Test
+  void catastrophicIsMandatoryOnFilesAwardedBeforeApril2006UnlessEeOrHx() {
+    LocalDate before = LocalDate.of(2006, 3, 31);
+    LocalDate after = LocalDate.of(2006, 4, 1);
+    assertThat(CuttingPermitRules.catastrophicProblem("HI", before, null))
+        .isEqualTo(CuttingPermitRules.MSG_CATASTROPHIC);
+    assertThat(CuttingPermitRules.catastrophicProblem("HI", before, "N")).isNull();
+    assertThat(CuttingPermitRules.catastrophicProblem("EE", before, null)).isNull();
+    assertThat(CuttingPermitRules.catastrophicProblem("HX", before, "")).isNull();
+    assertThat(CuttingPermitRules.catastrophicProblem("HI", after, null)).isNull();
+    assertThat(CuttingPermitRules.catastrophicProblem("HI", null, null)).isNull();
+  }
 }

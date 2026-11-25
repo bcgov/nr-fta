@@ -63,6 +63,11 @@ public class CuttingPermitWriteService {
     }
     checkFormats(q);
     Map<String, String> call = current(permit, caller, userId, "SAVE");
+    String catastrophic = CuttingPermitRules.catastrophicProblem(
+        status, date(call.get("p_hdr_award_date")), q.catastrophicInd());
+    if (catastrophic != null) {
+      throw invalid(catastrophic);
+    }
 
     String problem = CuttingPermitRules.statusChangeProblem(
         permit.statusCode(), status, HarvestAccess.isSenior(caller),
@@ -387,6 +392,18 @@ public class CuttingPermitWriteService {
   private static void require(boolean allowed) {
     if (!allowed) {
       throw forbidden();
+    }
+  }
+
+  /** A package date (yyyy-mm-dd), or null when absent or unreadable. */
+  private static LocalDate date(String value) {
+    if (value == null || value.length() < 10) {
+      return null;
+    }
+    try {
+      return LocalDate.parse(value.substring(0, 10));
+    } catch (DateTimeParseException e) {
+      return null;
     }
   }
 

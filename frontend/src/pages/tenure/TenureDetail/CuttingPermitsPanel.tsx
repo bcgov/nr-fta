@@ -1,7 +1,6 @@
 import { Add, Stamp } from '@carbon/icons-react';
 import {
   Button,
-  Checkbox,
   Select,
   SelectItem,
   Stack,
@@ -261,6 +260,18 @@ const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCod
   };
 
   const listsLoading = open && !lists;
+  const noYes = (key: 'deciduous' | 'catastrophic' | 'cruiseBased', label: string) => (
+    <Select
+      id={`cp-${key}`}
+      labelText={label}
+      value={form[key] ? 'Y' : 'N'}
+      disabled={saving}
+      onChange={(e) => set(key, e.target.value === 'Y')}
+    >
+      <SelectItem value="N" text="No" />
+      <SelectItem value="Y" text="Yes" />
+    </Select>
+  );
   const options = (items: CodeOption[] | undefined) =>
     (items ?? []).map((o) => (
       <SelectItem key={o.code} value={o.code} text={o.description || o.code} />
@@ -478,30 +489,12 @@ const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCod
               {options(lists?.cascades)}
             </Select>
           </div>
-          <fieldset className="detail-dialog__checks">
-            <legend className="cds--label">Indicators</legend>
-            <Checkbox
-              id="cp-deciduous"
-              labelText="Deciduous"
-              checked={form.deciduous}
-              disabled={saving}
-              onChange={(_, { checked }) => set('deciduous', checked)}
-            />
-            <Checkbox
-              id="cp-catastrophic"
-              labelText="Catastrophic"
-              checked={form.catastrophic}
-              disabled={saving}
-              onChange={(_, { checked }) => set('catastrophic', checked)}
-            />
-            <Checkbox
-              id="cp-cruise"
-              labelText="Cruise based"
-              checked={form.cruiseBased}
-              disabled={saving}
-              onChange={(_, { checked }) => set('cruiseBased', checked)}
-            />
-          </fieldset>
+          {/* FTA902's No/Yes lists; a new permit starts at No on all three, as in legacy. */}
+          <div className="detail-dialog__pair">
+            {noYes('deciduous', 'Deciduous')}
+            {noYes('catastrophic', 'Catastrophic')}
+          </div>
+          {noYes('cruiseBased', 'Cruise Based')}
         </Stack>
         <div className="detail-dialog__actions">
           <Button kind="tertiary" disabled={saving} onClick={closeDialog}>

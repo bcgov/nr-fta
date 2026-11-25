@@ -459,22 +459,24 @@ const HarvestingAuthoritySearch: FC = () => {
               {codeItems(cpStatuses)}
             </Select>
 
-            <ClientComboBox
-              id="ha-client"
-              clientNumber={form.clientNumber}
-              clientLocnCode={form.clientLocationCode}
-              clientName={form.clientName}
-              helperText="Pick a client, or type a name. Defaults to the cutting permit licensee."
-              onChange={(next) =>
-                setForm((prev) => ({
-                  ...prev,
-                  clientNumber: next.clientNumber,
-                  // This screen's criterion is clientLocationCode, not clientLocnCode.
-                  clientLocationCode: next.clientLocnCode,
-                  clientName: next.clientName,
-                }))
-              }
-            />
+            <div className="fsp-search__wide-cell">
+              <ClientComboBox
+                id="ha-client"
+                clientNumber={form.clientNumber}
+                clientLocnCode={form.clientLocationCode}
+                clientName={form.clientName}
+                helperText="Pick a client, or type a name. Defaults to the cutting permit licensee."
+                onChange={(next) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    clientNumber: next.clientNumber,
+                    // This screen's criterion is clientLocationCode, not clientLocnCode.
+                    clientLocationCode: next.clientLocnCode,
+                    clientName: next.clientName,
+                  }))
+                }
+              />
+            </div>
 
             <Select
               id="ha-client-type"

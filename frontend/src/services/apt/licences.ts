@@ -63,6 +63,14 @@ export interface AptLicenceUpdateRequest {
 const BASE = '/api/fta/apt/licences';
 const one = (forestFileId: string) => `${BASE}/${encodeURIComponent(forestFileId)}`;
 
+/**
+ * GET /api/fta/apt/licences/export — every licence the search finds, in its column sort, as
+ * CSV (for ExportCsvButton). Paging is ignored.
+ */
+export function aptLicenceExportPath(params: AptLicenceSearchParams): string {
+  return `${BASE}/export${toQuery({ ...params, page: undefined, size: undefined })}`;
+}
+
 /** GET /api/fta/apt/licences — APT_LICENCES_GET, one page. */
 export function searchAptLicences(
   params: AptLicenceSearchParams,

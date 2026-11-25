@@ -93,8 +93,7 @@ const MarkList: FC = () => {
   const mayCreate = canEditMarks(user);
 
   // The New Mark Application modal opens over this list from its button. A
-  // direct link to /marks/application renders this page with it open too; the
-  // menu's "New Application" opens its own copy over whatever page is showing.
+  // direct link to /marks/application renders this page with it open too.
   const onNewRoute = location.pathname === '/marks/application';
   const [newOpen, setNewOpen] = useState(false);
   const modalOpen = mayCreate && (newOpen || onNewRoute);
@@ -292,14 +291,16 @@ const MarkList: FC = () => {
               autoComplete="off"
             />
 
-            <ClientComboBox
-              id="mk-holder"
-              titleText="Client / holder"
-              clientNumber={form.clientNumber}
-              clientLocnCode={form.clientLocnCode}
-              clientName={form.clientName}
-              onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
-            />
+            <div className="fsp-search__wide-cell">
+              <ClientComboBox
+                id="mk-holder"
+                titleText="Client / holder"
+                clientNumber={form.clientNumber}
+                clientLocnCode={form.clientLocnCode}
+                clientName={form.clientName}
+                onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
+              />
+            </div>
 
             <Select
               id="mk-status"

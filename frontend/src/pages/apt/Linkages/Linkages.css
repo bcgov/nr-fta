@@ -1,8 +1,18 @@
 /* APT linkages: the related clients list. */
 
-.apt-linkages__filter {
-  max-inline-size: 28rem;
+/* The filter on the left, the CSV export on the right; wraps on a narrow screen. */
+.apt-linkages__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
   margin-block-end: 1rem;
+}
+
+.apt-linkages__filter {
+  flex: 1 1 18rem;
+  max-inline-size: 28rem;
 }
 
 .apt-linkages__action-cell {

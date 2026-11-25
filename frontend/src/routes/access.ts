@@ -215,8 +215,6 @@ const WRITE_PAGES: ReadonlyArray<{
   { pattern: '/cut-block/:blockId/relabel', mayOpen: canManageHarvest },
   { pattern: '/cut-block/:blockId/suspension', mayOpen: canManageHarvest },
   { pattern: '/marks/application', mayOpen: canEditMarks },
-  { pattern: '/apt/management-units/new', mayOpen: canEditApt },
-  { pattern: '/apt/management-units/:muId/edit', mayOpen: canEditApt },
 ];
 
 /** False when `pathname` is a write-only page the user may not use. */
