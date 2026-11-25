@@ -97,12 +97,17 @@ test.describe('the menu', () => {
 
       if (SECTIONS[role].includes('Private Marks')) {
         await openNavSection(page, 'Private Marks');
-        await expect(sideNav(page).getByRole('link')).toHaveText(['Application List']);
+        // Sections stay open once opened, so check the entries, not every link in the nav.
+        // New Application is started from the list, not the menu.
+        await expect(page.getByTestId('side-nav-link-marks-list')).toBeVisible();
+        await expect(page.getByTestId('side-nav-link-marks-application')).toHaveCount(0);
       }
 
       if (SECTIONS[role].includes('Tenures')) {
         await openNavSection(page, 'Tenures');
-        await expect(sideNav(page).getByRole('link')).toHaveText(['Tenure List']);
+        // Add Tenure is started from the Tenure List, not the menu.
+        await expect(page.getByTestId('side-nav-link-tenure-detail')).toBeVisible();
+        await expect(page.getByTestId('side-nav-link-tenure-add')).toHaveCount(0);
       }
     });
   }
