@@ -55,6 +55,8 @@ export interface CuttingPermitDetail {
   markingInstrumentCode: string | null;
   districtAdmnZone: string | null;
   harvestArea: number | null;
+  /** Schedule A (ha), the private-land blocks: A02, A04, A44, A28 and A29 only. */
+  scheduleAArea: number | null;
   location: string | null;
   mgmtUnitId: string | null;
   mgmtUnitTypeCode: string | null;
@@ -129,6 +131,14 @@ export interface PermitPostponementRequest {
 }
 
 /** The edit dialog's lists that the shared code-list API does not carry. */
+/** FTA902: only these file types have a Schedule B area (and a Schedule A one beside it). */
+export const hasScheduleB = (fileTypeCode: string | null | undefined) =>
+  ['A02', 'A04', 'A44', 'A28', 'A29'].includes(fileTypeCode ?? '');
+
+/** FTA902's area label for a file type. */
+export const areaLabel = (fileTypeCode: string | null | undefined) =>
+  hasScheduleB(fileTypeCode) ? 'Schedule B (ha)' : 'Area (ha)';
+
 export interface PermitLookups {
   quotaTypes: CodeOption[];
   extendReasons: CodeOption[];

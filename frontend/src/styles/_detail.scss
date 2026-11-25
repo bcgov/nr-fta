@@ -322,20 +322,6 @@
   }
 }
 
-// A row of checkboxes in a dialog (the cutting permit's indicators).
-.detail-dialog__checks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 1.5rem;
-  border: 0;
-  margin: 0;
-  padding: 0;
-
-  legend {
-    inline-size: 100%;
-  }
-}
-
 // ── Inline edit of a detail tab (private-mark Mark application, tenure Details…) —
 // the nr-fsp-new
 // FSP Information edit treatment: inputs take the place of values inside the

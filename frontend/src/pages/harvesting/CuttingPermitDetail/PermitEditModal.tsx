@@ -1,4 +1,4 @@
-import { Button, Checkbox, Select, SelectItem, Stack, TextInput } from '@carbon/react';
+import { Button, Select, SelectItem, Stack, TextInput } from '@carbon/react';
 import { useEffect, useState, type FC } from 'react';
 
 import DateField from '@/components/DateField';
@@ -13,6 +13,7 @@ import {
   type CodeOption,
 } from '@/services/codeLists';
 import {
+  areaLabel,
   getPermitLookups,
   savePermit,
   type CuttingPermitDetail,
@@ -48,10 +49,10 @@ interface Form {
   method: string;
   instrument: string;
   region: string;
-  deciduous: boolean;
-  catastrophic: boolean;
-  cruiseBased: boolean;
-  frz: boolean;
+  deciduous: string;
+  catastrophic: string;
+  cruiseBased: string;
+  frz: string;
 }
 
 type Errors = Partial<Record<keyof Form, string>>;
@@ -83,10 +84,12 @@ const formOf = (cp: CuttingPermitDetail): Form => ({
   method: str(cp.markingMethodCode),
   instrument: str(cp.markingInstrumentCode),
   region: str(cp.crownLandsRegionCode),
-  deciduous: cp.deciduousInd === 'Y',
-  catastrophic: cp.catastrophicInd === 'Y',
-  cruiseBased: cp.cruiseBasedInd === 'Y',
-  frz: cp.withinFibreRecoveryZone === 'Y',
+  // FTA902's lists: Deciduous and Cruise Based have no blank (so show No when unset),
+  // Catastrophic may be blank, and Within Fibre Recovery Zone stores its blank as U.
+  deciduous: cp.deciduousInd === 'Y' ? 'Y' : 'N',
+  catastrophic: str(cp.catastrophicInd),
+  cruiseBased: cp.cruiseBasedInd === 'Y' ? 'Y' : 'N',
+  frz: str(cp.withinFibreRecoveryZone) || 'U',
 });
 
 const validate = (f: Form): Errors => {
@@ -107,8 +110,19 @@ const validate = (f: Form): Errors => {
   return e;
 };
 
+/** FTA902's yes/no lists, in its order; a blank that is stored as U has the value U. */
 const FEE_OPTIONS = [
-  { code: 'U', text: 'Unknown' },
+  { code: 'U', text: '' },
+  { code: 'N', text: 'No' },
+  { code: 'Y', text: 'Yes' },
+];
+const NO_YES = [
+  { code: 'N', text: 'No' },
+  { code: 'Y', text: 'Yes' },
+];
+const BLANK_NO_YES = [{ code: '', text: '' }, ...NO_YES];
+const FRZ_OPTIONS = [
+  { code: 'U', text: '' },
   { code: 'Y', text: 'Yes' },
   { code: 'N', text: 'No' },
 ];
@@ -227,9 +241,9 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
         termMonths: orNull(form.termMonths),
         quotaTypeCode: orNull(form.quota),
         salvageTypeCode: orNull(form.salvage),
-        deciduousInd: form.deciduous ? 'Y' : 'N',
-        catastrophicInd: form.catastrophic ? 'Y' : 'N',
-        cruiseBasedInd: form.cruiseBased ? 'Y' : 'N',
+        deciduousInd: form.deciduous,
+        catastrophicInd: form.catastrophic,
+        cruiseBasedInd: form.cruiseBased,
         crownLandsRegionCode: orNull(form.region),
         markingMethodCode: orNull(form.method),
         markingInstrumentCode: orNull(form.instrument),
@@ -241,7 +255,7 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
         purposeCode: orNull(form.purpose),
         extAppFeeWaived: orNull(form.feeWaived),
         extAppFeePaid: orNull(form.feePaid),
-        withinFibreRecoveryZone: form.frz ? 'Y' : 'N',
+        withinFibreRecoveryZone: form.frz,
       });
       display({
         kind: warnings.length > 0 ? 'warning' : 'success',
@@ -284,6 +298,23 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
     />
   );
   const termsOff = rules.termsLocked;
+  const yesNo = (
+    key: 'deciduous' | 'catastrophic' | 'cruiseBased' | 'frz',
+    label: string,
+    items: { code: string; text: string }[],
+  ) => (
+    <Select
+      id={`cp-edit-${key}`}
+      labelText={label}
+      value={form[key]}
+      disabled={saving}
+      onChange={(e) => set(key, e.target.value)}
+    >
+      {items.map((o) => (
+        <SelectItem key={o.code} value={o.code} text={o.text} />
+      ))}
+    </Select>
+  );
 
   return (
     <Modal
@@ -433,7 +464,7 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
         <div className="detail-dialog__pair">
           <TextInput
             id="cp-edit-area"
-            labelText="Area (Hectares)"
+            labelText={areaLabel(cp.fileTypeCode)}
             inputMode="decimal"
             value={form.area}
             invalid={!!errors.area}
@@ -502,37 +533,14 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
             {options(lists?.purposes)}
           </Select>
         )}
-        <fieldset className="detail-dialog__checks">
-          <legend className="cds--label">Indicators</legend>
-          <Checkbox
-            id="cp-edit-deciduous"
-            labelText="Deciduous"
-            checked={form.deciduous}
-            disabled={saving}
-            onChange={(_, { checked }) => set('deciduous', checked)}
-          />
-          <Checkbox
-            id="cp-edit-catastrophic"
-            labelText="Catastrophic"
-            checked={form.catastrophic}
-            disabled={saving}
-            onChange={(_, { checked }) => set('catastrophic', checked)}
-          />
-          <Checkbox
-            id="cp-edit-cruise"
-            labelText="Cruise based"
-            checked={form.cruiseBased}
-            disabled={saving}
-            onChange={(_, { checked }) => set('cruiseBased', checked)}
-          />
-          <Checkbox
-            id="cp-edit-frz"
-            labelText="Within Fibre Recovery Zone"
-            checked={form.frz}
-            disabled={saving}
-            onChange={(_, { checked }) => set('frz', checked)}
-          />
-        </fieldset>
+        <div className="detail-dialog__pair">
+          {yesNo('deciduous', 'Deciduous', NO_YES)}
+          {yesNo('catastrophic', 'Catastrophic', BLANK_NO_YES)}
+        </div>
+        <div className="detail-dialog__pair">
+          {yesNo('cruiseBased', 'Cruise Based', NO_YES)}
+          {yesNo('frz', 'Within Fibre Recovery Zone', FRZ_OPTIONS)}
+        </div>
       </Stack>
       <div className="detail-dialog__actions">
         <Button kind="tertiary" disabled={saving} onClick={close}>

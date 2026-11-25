@@ -40,8 +40,11 @@ import {
   type CodeOption,
 } from '@/services/codeLists';
 import {
+  areaLabel,
   deletePermit,
   getCuttingPermitDetail,
+  getPermitLookups,
+  hasScheduleB,
   retirePermit,
 } from '@/services/cutting_permit_detail';
 import { formatDate } from '@/utils/formatDate';
@@ -58,6 +61,9 @@ const dash = (v: string | number | null | undefined) =>
 
 const date = (v: string | null | undefined) => formatDate(v) || '—';
 
+/** FTA902's yes/no answers; U (and nothing) is its blank. */
+const yesNo = (v: string | null | undefined) => (v === 'Y' ? 'Yes' : v === 'N' ? 'No' : '—');
+
 /** "CODE - description" when both are known, else whichever is. */
 const codeDesc = (code: string | null | undefined, desc: string | null | undefined) =>
   code && desc ? `${code} - ${desc}` : dash(desc || code);
@@ -69,6 +75,7 @@ interface Lookups {
   salvageTypes: CodeOption[];
   quotaTypes: CodeOption[];
   landRegions: CodeOption[];
+  extendReasons: CodeOption[];
 }
 
 const NO_LOOKUPS: Lookups = {
@@ -78,6 +85,7 @@ const NO_LOOKUPS: Lookups = {
   salvageTypes: [],
   quotaTypes: [],
   landRegions: [],
+  extendReasons: [],
 };
 
 /** A code's "CODE - description" label from its list, or the bare code. */
@@ -127,7 +135,8 @@ const CuttingPermitDetail: FC = () => {
       getSalvageTypes(),
       getQuotaTypes(),
       getCrownLandsRegions(),
-    ]).then(([d, mm, mi, st, qt, lr]) => {
+      getPermitLookups(),
+    ]).then(([d, mm, mi, st, qt, lr, pl]) => {
       if (cancelled) return;
       const ok = (r: PromiseSettledResult<CodeOption[]>) =>
         r.status === 'fulfilled' ? r.value : [];
@@ -138,6 +147,7 @@ const CuttingPermitDetail: FC = () => {
         salvageTypes: ok(st),
         quotaTypes: ok(qt),
         landRegions: ok(lr),
+        extendReasons: pl.status === 'fulfilled' ? pl.value.extendReasons : [],
       });
     });
     return () => {
@@ -148,7 +158,7 @@ const CuttingPermitDetail: FC = () => {
   // Each tab is rendered only once opened.
   const tabs = useLazyTabs(`${cpId}|${forestFileId ?? ''}`);
 
-  const area = cp?.harvestArea != null ? `${nf.format(cp.harvestArea)} ha` : '—';
+  const hectares = (v: number | null | undefined) => (v != null ? nf.format(v) : '—');
   const permitId = cp?.cuttingPermitId ?? cpId;
 
   const permitQuery = forestFileId ? `?forestFileId=${encodeURIComponent(forestFileId)}` : '';
@@ -221,7 +231,11 @@ const CuttingPermitDetail: FC = () => {
         { label: 'File Type', value: codeDesc(cp.fileTypeCode, cp.fileTypeDescription) },
         { label: 'Licensee', value: dash(cp.licensee) },
         { label: 'Forest District', value: label(lookups.districts, cp.forestDistrict) },
-        { label: 'Authorized Area', value: area },
+        { label: areaLabel(cp.fileTypeCode), value: hectares(cp.harvestArea) },
+        ...(hasScheduleB(cp.fileTypeCode)
+          ? [{ label: 'Schedule A (ha)', value: hectares(cp.scheduleAArea) }]
+          : []),
+        { label: 'Zone', value: dash(cp.districtAdmnZone) },
         {
           label: 'Management Unit',
           value: cp.mgmtUnitTypeCode
@@ -248,10 +262,13 @@ const CuttingPermitDetail: FC = () => {
         { label: 'Salvage Type', value: label(lookups.salvageTypes, cp.salvageTypeCode) },
         {
           label: 'CP Extension Application Fee Waived',
-          value: dash(cp.extAppFeeWaived),
+          value: yesNo(cp.extAppFeeWaived),
         },
-        { label: 'CP Extension Application Fee Paid', value: dash(cp.extAppFeePaid) },
-        { label: 'Within Fibre Recovery Zone', value: dash(cp.withinFibreRecoveryZone) },
+        { label: 'CP Extension Application Fee Paid', value: yesNo(cp.extAppFeePaid) },
+        { label: 'Within Fibre Recovery Zone', value: yesNo(cp.withinFibreRecoveryZone) },
+        { label: 'Deciduous', value: yesNo(cp.deciduousInd) },
+        { label: 'Catastrophic', value: yesNo(cp.catastrophicInd) },
+        { label: 'Cruise Based', value: yesNo(cp.cruiseBasedInd) },
       ]
     : [];
 
@@ -269,6 +286,10 @@ const CuttingPermitDetail: FC = () => {
         { label: 'Issued', value: date(cp.issueDate) },
         { label: 'Expires', value: date(cp.expiryDate) },
         { label: 'Extended', value: date(cp.extendDate) },
+        {
+          label: 'Extension Reason',
+          value: label(lookups.extendReasons, cp.extendReasonCode),
+        },
         { label: 'Extension Count', value: dash(cp.extendCount) },
       ]
     : [];
@@ -311,10 +332,7 @@ const CuttingPermitDetail: FC = () => {
                 },
                 { label: 'Admin Organization', value: orgUnitName(cp.adminOrgCode) },
                 { label: 'Status', value: codeDesc(cp.statusCode, cp.statusDesc) },
-                {
-                  label: 'Area (Hectares)',
-                  value: cp.harvestArea != null ? nf.format(cp.harvestArea) : '—',
-                },
+                { label: areaLabel(cp.fileTypeCode), value: hectares(cp.harvestArea) },
                 { label: 'Issued', value: date(cp.issueDate) },
                 { label: 'Expires', value: date(cp.expiryDate) },
               ]}

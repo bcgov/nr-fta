@@ -84,8 +84,6 @@ test.describe('the menu', () => {
     [MARK_DISTRICT]: ['Search', 'Private Marks'],
   };
 
-  const MARK_CREATORS = [ADMIN, MARK_HQ, MARK_DISTRICT];
-
   for (const role of ALL_ROLES) {
     test(`${role} sees its sections and allowed menu entries`, async ({ page, context }) => {
       await signInAs(context, [role]);
@@ -99,16 +97,12 @@ test.describe('the menu', () => {
 
       if (SECTIONS[role].includes('Private Marks')) {
         await openNavSection(page, 'Private Marks');
-        await expect(page.getByTestId('side-nav-link-marks-application')).toHaveCount(
-          MARK_CREATORS.includes(role) ? 1 : 0,
-        );
+        await expect(sideNav(page).getByRole('link')).toHaveText(['Application List']);
       }
 
       if (SECTIONS[role].includes('Tenures')) {
         await openNavSection(page, 'Tenures');
-        await expect(page.getByTestId('side-nav-link-tenure-add')).toHaveCount(
-          role === ADMIN ? 1 : 0,
-        );
+        await expect(sideNav(page).getByRole('link')).toHaveText(['Tenure List']);
       }
     });
   }
@@ -185,10 +179,6 @@ test.describe('the route guard', () => {
     { path: '/apt/licences', deniedTo: MARK_ROLES },
     { path: '/apt/linkages', deniedTo: MARK_ROLES },
     { path: '/apt/reports', deniedTo: MARK_ROLES },
-    {
-      path: '/apt/management-units/new',
-      deniedTo: ALL_ROLES.filter((r) => r !== ADMIN && r !== APT),
-    },
   ];
   // Outside /apt, the APT roles are refused everywhere.
   const GUARDED = PAGES.map((p) =>
@@ -305,7 +295,7 @@ test.describe('apportionment actions', () => {
       await signInAs(context, [...roles]);
       await gotoProtected(page, '/apt/management-units');
       await expect(pageHeading(page, 'Management Units')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'New management unit' })).toHaveCount(
+      await expect(page.getByRole('button', { name: 'Add management unit' })).toHaveCount(
         edits ? 1 : 0,
       );
 

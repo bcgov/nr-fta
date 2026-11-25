@@ -92,7 +92,8 @@ while the browser tab stays open.
      SSS when the forest licence is for salvage.
    - **Cascade Split (optional)**. Leave it as **District's default** unless
      told otherwise.
-   - **Indicators**: **Deciduous**, **Catastrophic**, **Cruise based**.
+   - **Deciduous**, **Catastrophic** and **Cruise Based**: **No** or **Yes**.
+     They start as **No**.
 5. Select **Add cutting permit**.
 
 FTA generates the permit's timber mark from the tenure and confirms it in the
@@ -105,14 +106,14 @@ message. The new permit starts in status **PE**.
 Open a permit from **Search › Harvesting Authorities**, from the tenure's
 **Cutting permit / mark** tab, or from a cut block. The summary at the top
 shows the **Cutting Permit**, **Timber Mark**, **Forest File** (a link to
-the tenure), **Admin Organization**, **Status**, **Area (Hectares)**,
+the tenure), **Admin Organization**, **Status**, the area (**Schedule B (ha)** or **Area (ha)**),
 **Issued** and **Expires**. The coloured bar on its left matches the status.
 
 The tabs are:
 
 | Tab | What it shows |
 |---|---|
-| **Details** | **Permit details** (including **Land Region** and **Geographic Location**), **Issuance conditions**, and **Term and status** (status, tenure term, issue, expiry and extension dates, extension count). |
+| **Details** | **Permit details** (including the area, **Zone**, **Land Region** and **Geographic Location**), **Issuance conditions** (including the fee, **Within Fibre Recovery Zone**, **Deciduous**, **Catastrophic** and **Cruise Based** answers), and **Term and status** (status, tenure term, issue, expiry and extension dates, extension reason and count). The area is **Schedule B (ha)** on file types A02, A04, A44, A28 and A29, with **Schedule A (ha)** (private land) beside it, and **Area (ha)** on the rest. |
 | **Cut blocks** | The permit's blocks with their status, salvage type, harvest dates and areas. Select a block to open it. Blocks are added on the tenure's **Cut block** tab. |
 | **Harvest history** | What has been billed to the permit's timber mark, by calendar year. |
 | **Conditions** | The permit's issuance conditions. View only for you. |
@@ -146,17 +147,20 @@ FTA locks the fields that can't change for the permit's status or your role:
   are locked for you.
 - **Extended Date** and **Extension Reason**: only on an issued permit
   (status starting with H) that is not **HP**. A new extended date resets
-  the two **CP Extension Application Fee** answers to **Unknown**. Setting
+  the two **CP Extension Application Fee** answers to blank. Setting
   **Waived** to **Yes** sets **Paid** to **No**.
-- **Area (Hectares)**: only while the permit is **PP**, **PL** or **PI** and
+- **Schedule B (ha)** or **Area (ha)**: only while the permit is **PP**, **PL** or **PI** and
   has no mapped area.
 - **Compliance Method** and **Marking Instrument**: not on Fort St. John
   authorizations.
 - **Purpose**: shown only for file type A18.
 
 The other fields (**Quota Type**, **Salvage Type**, **Zone**, **Geographic Location**,
-**Land Region**, **Management Unit Type**, **Management Unit** and the
-**Indicators**) can be changed whenever the permit can be saved. If FTA
+**Land Region**, **Management Unit Type**, **Management Unit**,
+**Deciduous**, **Catastrophic**, **Cruise Based** and **Within Fibre Recovery
+Zone**) can be changed whenever the permit can be saved. **Catastrophic** is
+required on a tenure awarded before April 1, 2006, unless you save the permit
+as **EE** or **HX**. If FTA
 saves the permit with warnings, they appear in the confirmation message.
 
 ![The Edit cutting permit dialog](images/ha-edit-cutting-permit.png)

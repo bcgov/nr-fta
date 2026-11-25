@@ -48,7 +48,6 @@ import ClientSearch from './pages/search/ClientSearch';
 import ManagementUnitSearch from './pages/search/ManagementUnitSearch';
 import ApplicationMetrics from './pages/search/ApplicationMetrics';
 import AptManagementUnitSearch from './pages/apt/ManagementUnitSearch';
-import AptManagementUnitEdit from './pages/apt/ManagementUnitEdit';
 import AptManagementUnitHistory from './pages/apt/ManagementUnitHistory';
 import AptManagementUnitDetail from './pages/apt/ManagementUnitDetail';
 import AptCommitments from './pages/apt/Commitments';
@@ -212,14 +211,6 @@ export default function App() {
           <Route
             path="/apt/management-units"
             element={guarded(withLayout(<AptManagementUnitSearch />))}
-          />
-          <Route
-            path="/apt/management-units/new"
-            element={guarded(withLayout(<AptManagementUnitEdit />))}
-          />
-          <Route
-            path="/apt/management-units/:muId/edit"
-            element={guarded(withLayout(<AptManagementUnitEdit />))}
           />
           <Route
             path="/apt/management-units/:muId/history"

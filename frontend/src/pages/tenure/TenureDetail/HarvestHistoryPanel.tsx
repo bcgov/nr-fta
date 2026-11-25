@@ -114,7 +114,7 @@ const HarvestHistoryView: FC<{ fetcher: () => Promise<TenureHarvestHistory> }> =
                   lowContrast
                   hideCloseButton
                   className="harvest-history__nothing-billed"
-                  title="Nothing billed yet"
+                  title="Nothing billed yet."
                   subtitle={`No harvest has been billed to timber mark ${data.timberMark ?? ''}.`}
                 />
               ) : (

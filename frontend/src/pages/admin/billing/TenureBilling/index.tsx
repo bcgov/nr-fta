@@ -234,7 +234,7 @@ const TenureBilling: FC = () => {
           lowContrast
           hideCloseButton
           className="billing__caution"
-          title="Caution"
+          title="Caution:"
           subtitle="Prepare looks only at the instructions on screen. A prepared but not yet approved instruction that you leave unchanged may be removed. To change one tenure without affecting the others, search for that tenure alone."
         />
       </SectionTile>

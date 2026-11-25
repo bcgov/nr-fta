@@ -12,7 +12,12 @@ import './ExportCsvButton.css';
 
 interface ExportCsvButtonProps {
   /** The export endpoint, criteria already in the querystring. */
-  path: string;
+  path?: string;
+  /**
+   * Saves the file itself instead, for a page that already holds every result (see
+   * utils/csvDownload). Used when there is no `path`.
+   */
+  onExport?: () => void | Promise<void>;
   /** Disabled while a search is in flight, or when there is nothing to export. */
   disabled?: boolean;
 }
@@ -28,14 +33,15 @@ interface ExportCsvButtonProps {
  * The label is fixed rather than naming the records, so every search screen
  * offers the same wording.
  */
-const ExportCsvButton: FC<ExportCsvButtonProps> = ({ path, disabled }) => {
+const ExportCsvButton: FC<ExportCsvButtonProps> = ({ path, onExport: save, disabled }) => {
   const [exporting, setExporting] = useState(false);
   const { display } = useNotification();
 
   const onExport = async () => {
     setExporting(true);
     try {
-      await downloadCsv(path);
+      if (path) await downloadCsv(path);
+      else await save?.();
     } catch (e) {
       display({
         kind: 'error',

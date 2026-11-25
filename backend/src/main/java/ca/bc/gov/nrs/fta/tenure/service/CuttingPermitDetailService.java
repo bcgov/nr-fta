@@ -85,6 +85,16 @@ public class CuttingPermitDetailService {
              haa.marking_instrument_code       AS marking_instrument_code,
              hva.district_admn_zone            AS district_admn_zone,
              hva.harvest_area                  AS harvest_area,
+             -- FTA_GET_SCHED_A_AREA: Schedule A (private land), only these types have it.
+             CASE WHEN pfu.file_type_code IN ('A02', 'A04', 'A44', 'A28', 'A29') THEN
+               (SELECT SUM(cboa.planned_gross_block_area)
+                  FROM the.cut_block_open_admin cboa
+                  JOIN the.cut_block cb ON cb.cb_skey = cboa.cb_skey
+                  JOIN the.private_mark_certificate pmc ON pmc.forest_file_id = cb.timber_mark
+                 WHERE cb.hva_skey = hva.hva_skey
+                   AND pmc.forest_file_id != hva.forest_file_id
+                   AND cb.block_status_st != 'EE')
+             END                               AS sched_a_area,
              hva.location                      AS location,
              hva.mgmt_unit_id                  AS mgmt_unit_id,
              hva.mgmt_unit_type_code           AS mgmt_unit_type_code,
@@ -282,7 +292,8 @@ public class CuttingPermitDetailService {
         p.extendCount(), p.tenureTermYears(), p.tenureTermMonths(), p.forestDistrict(),
         p.quotaTypeCode(), p.salvageTypeCode(), p.deciduousInd(), p.catastrophicInd(),
         p.cruiseBasedInd(), p.crownLandsRegionCode(), p.markingMethodCode(),
-        p.markingInstrumentCode(), p.districtAdmnZone(), p.harvestArea(), p.location(),
+        p.markingInstrumentCode(), p.districtAdmnZone(), p.harvestArea(), p.scheduleAArea(),
+        p.location(),
         p.mgmtUnitId(), p.mgmtUnitTypeCode(), p.licenceToCutCode(), p.extAppFeeWaived(),
         p.extAppFeePaid(), p.withinFibreRecoveryZone(), p.retirementDate(), p.revisionCount(),
         rules);
@@ -330,6 +341,7 @@ public class CuttingPermitDetailService {
         rs.getString("marking_instrument_code"),
         rs.getString("district_admn_zone"),
         getDouble(rs, "harvest_area"),
+        getDouble(rs, "sched_a_area"),
         rs.getString("location"),
         rs.getString("mgmt_unit_id"),
         rs.getString("mgmt_unit_type_code"),

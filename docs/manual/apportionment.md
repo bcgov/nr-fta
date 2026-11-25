@@ -28,7 +28,7 @@ menu is a different screen, not part of apportionment.
 | **Apportionment › Management Units** | Find a management unit, and from it reach its AAC determinations, partitions, apportionments and commitments. Administrators also create management units here. |
 | **Apportionment › Licences** | Find a licence, see its commitments and totals, and (Administrators) keep its FOA type, replacement details and commitments. |
 | **Apportionment › Linkages** | See which parent corporations control which subsidiary corporations, and (Administrators) create or delete those relationships. |
-| **Apportionment › Reports** | Run the apportionment reports as PDF, and two of them as CSV. |
+| **Apportionment › Reports** | Run the apportionment reports as PDF, three of them for every TSA or region at once, and two of them as CSV. |
 
 ## How the records fit together
 
@@ -46,50 +46,53 @@ menu is a different screen, not part of apportionment.
 ### Find a management unit
 
 1. Select **Apportionment › Management Units**.
-2. Enter any of **MU type**, **MU no.** (digits only), **Name**, **Org
-   unit**, **Source management unit**, **Status**, **Status effective date**
-   and **ORCS file #**. All are optional; with none, every unit is listed.
+2. Enter any of **Name**, **Management unit type**, **Management unit no.**
+   (digits only), **Status**, **Org unit**, **Source management unit** and
+   **Status effective date**. All are optional; with none, every unit is
+   listed.
 3. Select **Search**.
 
-The results show **Name**, **MU type**, **MU no.**, **Status**, **Effective
-date**, **Org unit** and **ORCS file #**. Select a column heading to sort by
-it. Select a row to open the unit's history. **Clear all** empties the form
-and the results. FTA remembers your last search while the browser tab stays
+The results show **Management unit type**, **Management unit no.**, **Name**,
+**Status**, **Effective date** and **Org unit**. Select a column heading to
+sort by it. Select **Export results to CSV** to download every unit found, in
+the order shown. Select a row to open the unit's history. **Clear all**
+empties the form and the results. FTA remembers your last search while the browser tab stays
 open.
 
 ### Create a management unit
 
 Administrators only.
 
-1. On **Apportionment › Management Units**, select **New management unit**.
+1. On **Apportionment › Management Units**, select **Add management unit**.
+   The **Add management unit** dialog opens.
 2. Choose the **Management unit** from the list. It lists the units that
    exist in FTA's code tables but not yet in apportionment. If every unit is
-   already there, the page says so.
+   already there, the dialog says there are no management units to add and
+   **Create** stays unavailable.
 3. Choose the **Org unit** and **Status**, and enter the **Status effective
-   date**. **Source management unit**, **ORCS file #** (up to 13 characters)
-   and **Comments** are optional.
-4. Select **Create**.
+   date**. **Source management unit** and **Comments** are optional.
+4. Select **Create**. The new unit opens.
 
 ### Edit a management unit
 
 Administrators only.
 
-1. Open the unit and select **Edit management unit**.
+1. Open the unit and select **Edit management unit**. The **Edit management
+   unit** dialog opens.
 2. Change the **Org unit**, **Source management unit**, **Status**, **Status
-   effective date**, **ORCS file #** or **Comments**. The unit's type, number
+   effective date** or **Comments**. The unit's type, number
    and name can't change.
-3. Select **Save**, or **Cancel** to go back without saving.
+3. Select **Save**, or **Cancel** to close the dialog without saving.
 
 ### Review a management unit's AAC determinations
 
 Open a unit from the search. The page shows the unit's details across the
-top (**Name**, **MU type**, **MU no.**, **Status**, **Status effective**,
-**Org unit**, **Source management unit** and **ORCS file #**). Select the
+top (**Name**, **Management unit type**, **Management unit no.**, **Status**,
+**Status effective**, **Org unit** and **Source management unit**). Select the
 source management unit to open it.
 
 The **AAC determinations** table lists each determination, newest first,
-with its effective date, determination date, AAC in cubic metres and
-hectares, apportionment effective date and comments. Select a row to show
+with its effective date, AAC in cubic metres and hectares, and comment. Select a row to show
 that determination's full details in the tile below it: the AAC and
 apportionment dates, inventory revision date, long term harvest level, the
 total, productive, current net operating and future harvest landbase areas,
@@ -190,7 +193,9 @@ narrow it.
 
 The results show **Forest File ID**, **Licensee**, **Management Unit**,
 **Org. Unit**, **File Status** and **File Status Date**. Select a column
-heading to sort by it, and select a row to open the licence.
+heading to sort by it, and select a row to open the licence. Select **Export
+results to CSV** to download every licence found, in the order shown, with
+its management unit type and number and its controlling company as well.
 
 ### Review a licence
 
@@ -201,8 +206,6 @@ The licence's page shows a summary across the top (**Forest File ID**,
 - **Licence**: the management unit, file status date, legal effective,
   initial and current expiry dates, tenure term, FOA type, replacement date
   and term, comments, and who added and last updated it.
-- **At a glance**: **Total AAC (m³)**, **Included in AAC (m³)** and the
-  number of **Commitments**.
 - **Commitments**: the licence's commitments, with their **Partition**
   instead of the licensee, and the same totals and row menu as on an
   apportionment.
@@ -211,11 +214,12 @@ The licence's page shows a summary across the top (**Forest File ID**,
 
 Administrators only.
 
-1. On the licence, select **Edit licence**.
+1. On the licence, select **Edit licence**. The **Licence** section's
+   editable fields turn into inputs in place.
 2. Choose the **FOA Type** (required). **Replacement Date (optional)**,
    **Replacement Term (months, optional)** (0 to 999) and **Comments
    (optional)** can be left blank.
-3. Select **Save**.
+3. Select **Save changes**, or **Cancel** to leave the licence as it was.
 
 Commitments are added from the licence the same way as from an
 apportionment: select **New commitment**, choose the **Partition** (one the
@@ -233,6 +237,8 @@ licence's management unit uses), and enter the rest. From a licence, a
 3. To narrow the list, type in **Filter by client number or name**. While
    filtering, every matching parent is shown open.
 4. Select the **Client number** or **Corporation** heading to sort by it.
+5. Select **Export results to CSV** to download the relationships shown, one
+   row per parent and subsidiary.
 
 ### Create or delete a linkage
 
@@ -264,6 +270,13 @@ To delete one, select **Delete relationship** (the red bin icon) under
    so.
 4. Select **Generate PDF**. The report downloads as a PDF.
 
+To run APTR011 for every TSA at once, enter the **Report date** and select
+**Generate PDFs for all MUs**. APTR012 and APTR013 have **Generate PDFs for
+all regions** instead. A zip file downloads with one PDF for each TSA or
+region, named as a single report is. The management unit or region you chose
+isn't used. If a PDF can't be generated, the zip leaves it out and lists it,
+with the reason, in **not-generated.txt**.
+
 APTR041 and APTR013 also have **Generate CSV**, which downloads the report's
 data as a CSV file. The CSV doesn't use the inputs. The reports are:
 
@@ -285,7 +298,7 @@ data as a CSV file. The CSV doesn't use the inputs. The reports are:
 |---|---|---|
 | Search management units and licences; view determinations, partitions, apportionments, commitments and their history | Yes | Yes |
 | View linkages | Yes | Yes |
-| Run reports (PDF and CSV) | Yes | Yes |
+| Run reports (PDF, batch PDFs and CSV) | Yes | Yes |
 | Create or edit a management unit | No | Yes |
 | Add or edit AAC determinations | No | Yes |
 | Add, edit or delete partitions and apportionments | No | Yes |

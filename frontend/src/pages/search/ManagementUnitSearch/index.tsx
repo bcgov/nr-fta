@@ -34,7 +34,7 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 import { formatDate } from '@/utils/formatDate';
 
 const HEADERS = [
-  { key: 'mgmtUnitTypeCode', header: 'MU type' },
+  { key: 'mgmtUnitTypeCode', header: 'Management unit type' },
   { key: 'description', header: 'Description' },
   { key: 'effectiveDate', header: 'Effective date' },
   { key: 'expiryDate', header: 'Expiry date' },
@@ -176,7 +176,7 @@ const ManagementUnitSearch: FC = () => {
           <div className="fsp-search__field-grid">
             <TextInput
               id="mu-type"
-              labelText="MU type code"
+              labelText="Management unit type code"
               placeholder="e.g. TS"
               value={form.mgmtUnitTypeCode ?? ''}
               onChange={(e) => set('mgmtUnitTypeCode', e.target.value)}

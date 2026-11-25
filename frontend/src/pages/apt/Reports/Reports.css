@@ -49,10 +49,21 @@
   padding-inline-end: 0.5rem;
 }
 
-/* The open row's form sits on white (band A) on every row; Carbon would cap its width. */
-.apt-reports__accordion-table .cds--accordion__content {
+/*
+    The open row's whole lower part sits on white (band A) on every row: Carbon pads the
+    wrapper and indents the content, which would leave the stripe showing around the form.
+    Carbon would also cap the content's width.
+*/
+.apt-reports__accordion-table .cds--accordion__item--active > .cds--accordion__wrapper {
+  padding: 0;
+  background: var(--apt-reports-band-a);
+}
+
+/* Carbon's start-aligned indent (2rem) moves from margin into padding, so the form stays put. */
+.apt-reports__accordion-table .cds--accordion .cds--accordion__content {
+  margin: 0;
   padding-block: 1rem 1.5rem;
-  padding-inline: 3rem 1.5rem;
+  padding-inline: 5rem 1.5rem;
   max-inline-size: none;
   background: var(--apt-reports-band-a);
 }
@@ -118,6 +129,7 @@
 
 .apt-report-form__actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 1rem;
   margin-block-start: 1.5rem;

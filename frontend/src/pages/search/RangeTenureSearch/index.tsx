@@ -391,13 +391,15 @@ const RangeTenureSearch: FC = () => {
               {codeItems(fileStatuses)}
             </Select>
 
-            <ClientComboBox
-              id="rt-client"
-              clientNumber={form.clientNumber}
-              clientLocnCode={form.clientLocnCode}
-              clientName={form.clientName}
-              onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
-            />
+            <div className="fsp-search__wide-cell">
+              <ClientComboBox
+                id="rt-client"
+                clientNumber={form.clientNumber}
+                clientLocnCode={form.clientLocnCode}
+                clientName={form.clientName}
+                onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
+              />
+            </div>
 
             <Select
               id="rt-client-type"

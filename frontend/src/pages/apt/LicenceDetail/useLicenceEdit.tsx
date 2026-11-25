@@ -1,8 +1,7 @@
-import { Button, Select, SelectItem, Stack, TextArea, TextInput } from '@carbon/react';
-import { useEffect, useState, type FC } from 'react';
+import { Select, SelectItem, TextArea, TextInput } from '@carbon/react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import DateField from '@/components/DateField';
-import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
 import { updateAptLicence, type AptLicence } from '@/services/apt/licences';
 import { getFoaTypes, type AptCodeOption } from '@/services/apt/lookups';
@@ -37,36 +36,41 @@ const validate = (f: Form): Errors => {
   return e;
 };
 
-interface Props {
-  licence: AptLicence;
-  open: boolean;
-  onClose: () => void;
-  /** Called with the licence as stored, after the dialog has closed. */
-  onSaved: (saved: AptLicence) => void;
+export interface LicenceEditor {
+  editing: boolean;
+  saving: boolean;
+  start: () => void;
+  cancel: () => void;
+  save: () => Promise<void>;
+  /** The editable fields' inputs, shown in place of their values while editing. */
+  inputs: {
+    foaType: ReactNode;
+    replacementDate: ReactNode;
+    replacementTerm: ReactNode;
+    comments: ReactNode;
+  };
 }
 
 /**
- * APT2's APTM4000 licence fields: the FOA type, picked from those valid for the licence's
- * management unit type, the replacement date and term, and comments. Saving creates APT's
- * record of the licence if it has none yet.
+ * APT2's APTM4000 licence fields, edited in place on the licence page as FSP edits its
+ * Information tab: the FOA type, picked from those valid for the licence's management unit
+ * type, the replacement date and term, and comments. Saving creates APT's record of the
+ * licence if it has none yet.
  */
-const LicenceEditModal: FC<Props> = ({ licence, open, onClose, onSaved }) => {
+export function useLicenceEdit(
+  licence: AptLicence | null | undefined,
+  onSaved: (saved: AptLicence) => void,
+): LicenceEditor {
   const { display } = useNotification();
-  const [form, setForm] = useState<Form>(() => formOf(licence));
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<Form | null>(null);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [foaTypes, setFoaTypes] = useState<AptCodeOption[] | null>(null);
 
+  const muType = licence?.aptMgmtUnitSt?.trim() || undefined;
   useEffect(() => {
-    if (open) {
-      setForm(formOf(licence));
-      setErrors({});
-    }
-  }, [open, licence]);
-
-  const muType = licence.aptMgmtUnitSt?.trim() || undefined;
-  useEffect(() => {
-    if (!open) return;
+    if (!editing) return;
     let cancelled = false;
     setFoaTypes(null);
     getFoaTypes(muType)
@@ -86,10 +90,23 @@ const LicenceEditModal: FC<Props> = ({ licence, open, onClose, onSaved }) => {
     return () => {
       cancelled = true;
     };
-  }, [open, muType, display]);
+  }, [editing, muType, display]);
+
+  const start = () => {
+    if (!licence) return;
+    setForm(formOf(licence));
+    setErrors({});
+    setEditing(true);
+  };
+
+  const cancel = () => {
+    if (saving) return;
+    setEditing(false);
+    setErrors({});
+  };
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => {
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => (f ? { ...f, [key]: value } : f));
     setErrors((e) => {
       if (!e[key]) return e;
       const next = { ...e };
@@ -98,11 +115,8 @@ const LicenceEditModal: FC<Props> = ({ licence, open, onClose, onSaved }) => {
     });
   };
 
-  const close = () => {
-    if (!saving) onClose();
-  };
-
-  const submit = async () => {
+  const save = async () => {
+    if (!licence || !form) return;
     const found = validate(form);
     if (Object.keys(found).length > 0) {
       setErrors(found);
@@ -117,7 +131,7 @@ const LicenceEditModal: FC<Props> = ({ licence, open, onClose, onSaved }) => {
         comments: form.comments.trim() ? form.comments : null,
       });
       display({ kind: 'success', title: `Licence ${licence.forestFileId} saved`, timeout: 5000 });
-      onClose();
+      setEditing(false);
       onSaved(saved);
     } catch (err) {
       display({
@@ -131,28 +145,22 @@ const LicenceEditModal: FC<Props> = ({ licence, open, onClose, onSaved }) => {
     }
   };
 
-  const loading = open && foaTypes === null;
+  const f = form ?? { foaType: '', replacementDate: '', replacementTerm: '', comments: '' };
+  const loading = editing && foaTypes === null;
   // The licence's own type stays selectable even if its unit's list no longer offers it.
   const options =
-    form.foaType && foaTypes && !foaTypes.some((t) => t.code === form.foaType)
-      ? [{ code: form.foaType, description: null }, ...foaTypes]
+    f.foaType && foaTypes && !foaTypes.some((t) => t.code === f.foaType)
+      ? [{ code: f.foaType, description: null }, ...foaTypes]
       : (foaTypes ?? []);
 
-  return (
-    <Modal
-      open={open}
-      passiveModal
-      size="md"
-      className="detail-dialog"
-      modalHeading={`Edit licence ${licence.forestFileId}`}
-      onRequestClose={close}
-      preventCloseOnClickOutside
-    >
-      <Stack gap={5}>
+  const inputs = {
+    foaType: (
+      <div className="detail-edit__input detail-edit__input--cell">
         <Select
           id="licence-foa"
           labelText="FOA Type"
-          value={form.foaType}
+          hideLabel
+          value={f.foaType}
           invalid={!!errors.foaType}
           invalidText={errors.foaType}
           disabled={saving || loading}
@@ -167,48 +175,52 @@ const LicenceEditModal: FC<Props> = ({ licence, open, onClose, onSaved }) => {
             />
           ))}
         </Select>
-        <div className="detail-dialog__pair">
-          <DateField
-            id="licence-replacement-date"
-            labelText="Replacement Date (optional)"
-            value={form.replacementDate}
-            disabled={saving}
-            onChange={(v) => set('replacementDate', v)}
-          />
-          <TextInput
-            id="licence-replacement-term"
-            labelText="Replacement Term (months, optional)"
-            inputMode="numeric"
-            value={form.replacementTerm}
-            invalid={!!errors.replacementTerm}
-            invalidText={errors.replacementTerm}
-            disabled={saving}
-            onChange={(e) => set('replacementTerm', e.target.value)}
-          />
-        </div>
-        <TextArea
-          id="licence-comments"
-          labelText="Comments (optional)"
-          rows={4}
-          maxCount={MAX_COMMENTS}
-          enableCounter
-          value={form.comments}
-          invalid={!!errors.comments}
-          invalidText={errors.comments}
-          disabled={saving}
-          onChange={(e) => set('comments', e.target.value)}
-        />
-      </Stack>
-      <div className="detail-dialog__actions">
-        <Button kind="tertiary" disabled={saving} onClick={close}>
-          Cancel
-        </Button>
-        <Button kind="primary" disabled={saving || loading} onClick={() => void submit()}>
-          {saving ? 'Saving…' : 'Save'}
-        </Button>
       </div>
-    </Modal>
-  );
-};
+    ),
+    replacementDate: (
+      <div className="detail-edit__input detail-edit__input--cell">
+        <DateField
+          id="licence-replacement-date"
+          labelText="Replacement Date"
+          hideLabel
+          value={f.replacementDate}
+          disabled={saving}
+          onChange={(v) => set('replacementDate', v)}
+        />
+      </div>
+    ),
+    replacementTerm: (
+      <div className="detail-edit__input detail-edit__input--cell">
+        <TextInput
+          id="licence-replacement-term"
+          labelText="Replacement Term (months)"
+          hideLabel
+          inputMode="numeric"
+          value={f.replacementTerm}
+          invalid={!!errors.replacementTerm}
+          invalidText={errors.replacementTerm}
+          disabled={saving}
+          onChange={(e) => set('replacementTerm', e.target.value)}
+        />
+      </div>
+    ),
+    comments: (
+      <TextArea
+        id="licence-comments"
+        labelText="Comments"
+        hideLabel
+        className="detail-edit__textarea"
+        rows={4}
+        maxCount={MAX_COMMENTS}
+        enableCounter
+        value={f.comments}
+        invalid={!!errors.comments}
+        invalidText={errors.comments}
+        disabled={saving}
+        onChange={(e) => set('comments', e.target.value)}
+      />
+    ),
+  };
 
-export default LicenceEditModal;
+  return { editing, saving, start, cancel, save, inputs };
+}

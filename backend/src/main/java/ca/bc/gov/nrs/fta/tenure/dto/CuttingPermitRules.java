@@ -126,6 +126,22 @@ public record CuttingPermitRules(
     return rescinded ? MSG_HP_RESCINDED : null;
   }
 
+  /** Legacy asks Catastrophic of a permit on a file awarded before this. */
+  static final LocalDate CATASTROPHIC_RULE_END = LocalDate.of(2006, 4, 1);
+
+  public static final String MSG_CATASTROPHIC = "Catastrophic is mandatory.";
+
+  /**
+   * FTA902's {@code catastrophicRequired}: Save needs a Catastrophic answer when the file was
+   * awarded before 2006-04-01 and the permit is not being saved in EE or HX
+   * ({@code EERequiredFieldValidator}). Null when fine.
+   */
+  public static String catastrophicProblem(String status, LocalDate awardDate, String answer) {
+    boolean asked = awardDate != null && awardDate.isBefore(CATASTROPHIC_RULE_END)
+        && !"EE".equals(status) && !"HX".equals(status);
+    return asked && (answer == null || answer.isBlank()) ? MSG_CATASTROPHIC : null;
+  }
+
   /**
    * {@code hpStatusCheck} for a status change on Save: null when allowed. Only a change into or
    * out of HP is its concern; {@code Fta_Edit_Status_Change} judges the rest. Saving a status of

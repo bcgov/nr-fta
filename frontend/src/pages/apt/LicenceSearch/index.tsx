@@ -20,20 +20,23 @@ import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react
 import { useNavigate } from 'react-router-dom';
 
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
 import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { nextColumnSort, sortHeaderProps } from '@/lib/columnSort';
 import { safeErrorMessage } from '@/lib/errorMessage';
+import { loadMuTypes } from '@/pages/apt/muTypes';
 import PageLayout from '@/pages/PageLayout';
 import { aptPaths } from '@/routes/aptPaths';
 import {
+  aptLicenceExportPath,
   searchAptLicences,
   type AptLicence,
   type AptLicenceSearchParams,
 } from '@/services/apt/licences';
-import { getManagementUnitTypes, type AptCodeOption } from '@/services/apt/lookups';
+import { type AptCodeOption } from '@/services/apt/lookups';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 import { formatDate } from '@/utils/formatDate';
 
@@ -83,7 +86,7 @@ const AptLicenceSearch: FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    getManagementUnitTypes()
+    loadMuTypes()
       .then((t) => {
         if (!cancelled) setMuTypes(t);
       })
@@ -228,11 +231,7 @@ const AptLicenceSearch: FC = () => {
             >
               <SelectItem value="" text="Any type" />
               {muTypes.map((t) => (
-                <SelectItem
-                  key={t.code}
-                  value={t.code}
-                  text={t.description ? `${t.code} - ${t.description}` : t.code}
-                />
+                <SelectItem key={t.code} value={t.code} text={t.description || t.code} />
               ))}
             </Select>
             <TextInput
@@ -279,6 +278,7 @@ const AptLicenceSearch: FC = () => {
                   <span className="fsp-search__results-count">
                     {total.toLocaleString()} {total === 1 ? 'licence' : 'licences'} found
                   </span>
+                  <ExportCsvButton path={aptLicenceExportPath(searched)} />
                 </div>
                 <div className="fsp-search__table">
                   <TableContainer>

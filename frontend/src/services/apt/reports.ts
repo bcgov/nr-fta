@@ -17,6 +17,11 @@ export interface AptPdfReport {
   inputs: AptReportInput[];
   /** Offer only the TSAs (units whose name includes "TSA") as its management unit. */
   tsaUnitsOnly?: boolean;
+  /**
+   * The label of its batch button, for a report run per management unit or region: one PDF
+   * for each of them, zipped (see {@link getAptReportZip}).
+   */
+  batchLabel?: string;
 }
 
 /** APT2's report list, names and inputs as it has them. */
@@ -26,16 +31,19 @@ export const APT_PDF_REPORTS: AptPdfReport[] = [
     name: 'TSA AAC, Apportionment and Commitments',
     inputs: ['managementUnit', 'date'],
     tsaUnitsOnly: true,
+    batchLabel: 'Generate PDFs for all MUs',
   },
   {
     code: 'APTR012',
     name: 'Region AAC, Apport and Commit - by Partition',
     inputs: ['orgUnit', 'date'],
+    batchLabel: 'Generate PDFs for all regions',
   },
   {
     code: 'APTR013',
     name: 'Region AAC, Apportionment and Commitments - by TSA',
     inputs: ['orgUnit', 'date'],
+    batchLabel: 'Generate PDFs for all regions',
   },
   { code: 'APTR017', name: 'AAC Summary By TSA', inputs: [] },
   { code: 'APTR021', name: 'Tree Farm Licence Summary Report', inputs: ['date'] },
@@ -73,6 +81,20 @@ const BASE = '/api/fta/apt/reports';
  */
 export function getAptReportPdf(code: string, params: AptReportParams = {}): Promise<Blob> {
   return apiGetForBlob(`${BASE}/${encodeURIComponent(code)}${toQuery({ ...params })}`);
+}
+
+/**
+ * GET /api/fta/apt/reports/{code}/zip — the report for every management unit (APTR011) or region
+ * (APTR012, APTR013) the form offers, one PDF each, zipped. A PDF that could not be generated is
+ * listed in the zip's not-generated.txt.
+ */
+export function getAptReportZip(code: string, reportDate: string): Promise<Blob> {
+  return apiGetForBlob(`${BASE}/${encodeURIComponent(code)}/zip${toQuery({ reportDate })}`);
+}
+
+/** A batch's zip name: the report code and the day (`APTR011_20261124.zip`). */
+export function aptReportZipName(code: string, today = new Date()) {
+  return aptReportFileName(code, null, today).replace(/\.pdf$/, '.zip');
 }
 
 /**

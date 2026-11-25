@@ -16,6 +16,7 @@ import { Fragment, useMemo, useState, type FC } from 'react';
 import AsyncBoundary from '@/components/AsyncBoundary';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import ExportCsvButton from '@/components/ExportCsvButton';
 import SectionTile from '@/components/SectionTile';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useAuth } from '@/context/auth/useAuth';
@@ -30,6 +31,7 @@ import {
   getAptRelatedClients,
   type AptRelatedClient,
 } from '@/services/apt/linkages';
+import { downloadRowsAsCsv } from '@/utils/csvDownload';
 
 import CreateRelationshipModal from './CreateRelationshipModal';
 import { groupByParent, matchesFilter } from './grouping';
@@ -88,6 +90,21 @@ const AptLinkages: FC = () => {
     refresh();
   };
 
+  // One row per relationship, as filtered and sorted on screen.
+  const exportCsv = () =>
+    downloadRowsAsCsv(
+      'apt-linkages',
+      [
+        'Parent client number',
+        'Parent corporation',
+        'Subsidiary client number',
+        'Subsidiary corporation',
+      ],
+      parents.flatMap((p) =>
+        p.children.map((c) => [p.clientNumber, p.clientName, c.clientNumber, c.clientName]),
+      ),
+    );
+
   // When filtering, show every match rather than making the user open each group.
   const isOpen = (parentNumber: string) => filter.trim() !== '' || expanded.has(parentNumber);
 
@@ -101,7 +118,7 @@ const AptLinkages: FC = () => {
         icon={Enterprise}
         actions={
           canEdit ? (
-            <Button size="md" kind="primary" renderIcon={Add} onClick={() => setCreating(true)}>
+            <Button size="md" kind="tertiary" renderIcon={Add} onClick={() => setCreating(true)}>
               Create relationship
             </Button>
           ) : undefined
@@ -113,15 +130,18 @@ const AptLinkages: FC = () => {
           onRetry={reload}
           loadingText="Loading related clients…"
         >
-          <div className="apt-linkages__filter">
-            <Search
-              id="apt-linkages-filter"
-              size="md"
-              labelText="Filter by client number or name"
-              placeholder="Filter by client number or name"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            />
+          <div className="apt-linkages__toolbar">
+            <div className="apt-linkages__filter">
+              <Search
+                id="apt-linkages-filter"
+                size="md"
+                labelText="Filter by client number or name"
+                placeholder="Filter by client number or name"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              />
+            </div>
+            {parents.length > 0 && <ExportCsvButton onExport={exportCsv} />}
           </div>
           {parents.length === 0 ? (
             <EmptyState

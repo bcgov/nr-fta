@@ -16,6 +16,8 @@ import java.time.LocalDate;
  *
  * @param hvaSkey         the key every write addresses the permit by
  * @param cuttingPermitId the id shown: the harvesting authority id on an FSJ permit
+ * @param harvestArea     Schedule B (ha) on an A02, A04, A44, A28 or A29, Area (ha) otherwise
+ * @param scheduleAArea   Schedule A (ha), the private-land blocks; those five types only
  * @param revisionCount   HARVESTING_AUTHORITY's, sent back on a write
  * @param rules           what the caller may do to this permit
  */
@@ -49,6 +51,7 @@ public record CuttingPermitDetailDto(
     String markingInstrumentCode,
     String districtAdmnZone,
     Double harvestArea,
+    Double scheduleAArea,
     String location,
     String mgmtUnitId,
     String mgmtUnitTypeCode,

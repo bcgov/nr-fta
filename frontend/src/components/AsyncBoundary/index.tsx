@@ -44,7 +44,7 @@ const AsyncBoundary: FC<AsyncBoundaryProps> = ({
         <InlineNotification
           kind="error"
           lowContrast
-          title="Couldn’t load data"
+          title="Couldn’t load data."
           subtitle={error}
           hideCloseButton
         />

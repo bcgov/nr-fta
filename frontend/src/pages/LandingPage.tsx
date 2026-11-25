@@ -51,7 +51,7 @@ const LandingPage: FC = () => {
                 lowContrast
                 className="landing-session-expired"
                 data-testid="landing-session-expired"
-                title="You've been logged out"
+                title="You've been logged out."
                 subtitle="Your session expired for security reasons and any unsaved changes were lost. Log in again to continue."
                 onClose={() => setSessionExpired(false)}
               />

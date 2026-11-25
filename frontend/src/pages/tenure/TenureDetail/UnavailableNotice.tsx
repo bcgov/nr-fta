@@ -17,7 +17,7 @@ const UnavailableNotice: FC<Props> = ({ notices }) =>
       kind="warning"
       lowContrast
       hideCloseButton
-      title="Some data isn't available"
+      title="Some data isn't available."
       subtitle={notices.join(' ')}
     />
   ) : null;

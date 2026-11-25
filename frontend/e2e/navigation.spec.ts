@@ -42,30 +42,10 @@ test('the section holding the current page opens on load, the others stay closed
   await expect(navSection(page, 'Search')).toHaveAttribute('aria-expanded', 'false');
 });
 
-test('New Application opens its dialog over the current page', async ({ page }) => {
+test('the menu has no Add Tenure or New Application entry', async ({ page }) => {
   await gotoPage(page, PAGES.tenureSearch);
-  await openNavSection(page, 'Private Marks');
-  await page.getByTestId('side-nav-link-marks-application').click();
-
-  const dialog = page.getByRole('dialog', { name: 'New Mark Application' });
-  await expect(dialog).toBeVisible();
-  await expect(page).toHaveURL(new RegExp(`${PAGES.tenureSearch.path}$`));
-
-  await dialog.getByRole('button', { name: 'Close' }).first().click();
-  await expect(dialog).toBeHidden();
-});
-
-test('Add Tenure opens its dialog over the current page', async ({ page }) => {
-  await gotoPage(page, PAGES.tenureSearch);
-  await openNavSection(page, 'Tenures');
-  await page.getByTestId('side-nav-link-tenure-add').click();
-
-  const dialog = page.getByRole('dialog', { name: 'Add New Tenure' });
-  await expect(dialog).toBeVisible();
-  await expect(page).toHaveURL(new RegExp(`${PAGES.tenureSearch.path}$`));
-
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId('side-nav-link-tenure-add')).toHaveCount(0);
+  await expect(page.getByTestId('side-nav-link-marks-application')).toHaveCount(0);
 });
 
 test('a deep link to the new application opens the dialog over the list', async ({ page }) => {

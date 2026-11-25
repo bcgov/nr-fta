@@ -26,7 +26,6 @@ permit pages a search opens are read-only for that role.
 |---|---|---|
 | **Search › Timber Marks** | Find timber marks by district, management unit, file, cutting permit, mark, status, client, salvage type, dates and private mark details. Open a result, or export the results to CSV. | Both |
 | **Private Marks › Application List** | List private mark applications and amendments by district, timber mark, client or status, and open one. | Both |
-| **Private Marks › New Application** | Start a new private mark application. | Both |
 | **Administration › Timber Mark Transfer** | Move a timber mark from one forest file and cutting permit to another. | Administrator only |
 
 ## Common tasks
@@ -111,8 +110,8 @@ that hasn't been issued a timber mark yet opens by its certificate.
 
 ### Start a new private mark application
 
-1. Select **Private Marks › New Application**, or **New Mark Application** at
-   the top of the Application List. The **New Mark Application** dialog
+1. Select **Private Marks › Application List**, then **New Mark
+   Application** at the top of the list. The **New Mark Application** dialog
    opens.
 2. Fill in the fields. All are required unless marked optional:
    - **Application Date**: today by default. It can't be later than today.

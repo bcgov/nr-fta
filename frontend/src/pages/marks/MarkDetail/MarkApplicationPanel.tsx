@@ -11,6 +11,7 @@ import {
 } from '@carbon/react';
 import { useEffect, useState, type FC, type ReactNode } from 'react';
 
+import BusyIcon from '@/components/BusyIcon';
 import DetailTile, { type DetailField } from '@/components/DetailTile';
 import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { Modal } from '@/components/Modal';
@@ -954,7 +955,7 @@ const MarkApplicationPanel: FC<Props> = ({
           {issueConfirm?.mark && (
             <Button
               kind="secondary"
-              renderIcon={Renew}
+              renderIcon={skipping ? BusyIcon : Renew}
               disabled={saving || skipping}
               onClick={() => void onSkip()}
             >
