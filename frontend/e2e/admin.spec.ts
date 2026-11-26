@@ -6,12 +6,17 @@ import { gotoPage, PAGES, settled } from './helpers/nav';
  * rates) change shared records, so they are only checked for being offered.
  */
 
-test('the audit report searches', async ({ page }) => {
+test('the audit report cannot be submitted until a report, region and district are chosen', async ({
+  page,
+}) => {
   await gotoPage(page, PAGES.auditReport);
-  await page.getByLabel('Licensee').fill('E2E-NO-SUCH-LICENSEE');
-  await page.getByRole('button', { name: 'Run report' }).click();
-  await expect(page.getByText('Certificates').first()).toBeVisible({ timeout: 15_000 });
   await settled(page);
+  const submit = page.getByRole('main').getByRole('button', { name: 'Submit' });
+  await expect(submit).toBeDisabled();
+  await page.locator('#audit-report').selectOption('FTA403');
+  await page.locator('#audit-region').selectOption('*');
+  await page.locator('#audit-district').selectOption('*');
+  await expect(submit).toBeEnabled();
 });
 
 test('a timber mark transfer cannot be submitted until it is complete', async ({ page }) => {
