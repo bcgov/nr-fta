@@ -16,28 +16,34 @@ export interface ManageZone {
 }
 
 export interface ManageZoneParams {
-  adminForestDistrictNo?: string;
+  /** ORG_UNIT_NO of the district; required, as legacy's GET required it. */
+  adminForestDistrictNo: string;
   rangeZoneCode?: string;
 }
 
 /** GET /api/fta/admin/range-zones — range zones for a district (FTA_631_RANGE_ZONE). */
-export function searchRangeZones(params: ManageZoneParams = {}): Promise<ManageZone[]> {
+export function searchRangeZones(params: ManageZoneParams): Promise<ManageZone[]> {
   return apiGet<ManageZone[]>(`/api/fta/admin/range-zones${toQuery({ ...params })}`);
 }
 
 // Mirrors the backend ManageZoneAddRequest (ca.bc.gov.nrs.fta.range.dto),
 // which mirrors the SAVE proc of the legacy THE.FTA_631_RANGE_ZONE package.
+// The server upper-cases the zone code and contact, and takes the contact's
+// name from IDIR, so `contact` is not sent.
 export interface ManageZoneAddRequest {
   rangeZoneCode: string;
   zoneDescription: string | null;
-  adminForestDistrictNo: string | null;
-  contact: string | null;
-  contactUserId: string | null;
-  contactPhoneNumber: string | null;
-  contactEmailAddress: string | null;
+  adminForestDistrictNo: string;
+  /** An IDIR user id: `jsmith` or `IDIR\jsmith`. */
+  contactUserId: string;
+  contactPhoneNumber: string;
+  contactEmailAddress: string;
 }
 
-/** POST /api/fta/admin/range-zones — save (insert or update) a range zone (FTA_ADMIN only). */
+/**
+ * POST /api/fta/admin/range-zones — save (insert or update) a range zone. FTA_ADMIN only, and
+ * only in a district the user administers.
+ */
 export function saveRangeZone(
   req: ManageZoneAddRequest,
 ): Promise<{ rangeZoneCode: string; updated: number }> {

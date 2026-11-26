@@ -6,6 +6,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * FTA695's invoice arithmetic, from {@code FTA_695_INVOICEPREVIEW.GET}: the
@@ -23,6 +24,9 @@ final class InvoicePreviewRules {
   private static final Map<String, String> LICENCE_FEE_RATE = Map.of(
       "E01", "GLF", "E02", "GPF", "E03", "NGI",
       "H01", "HLF", "H02", "HPF", "H03", "NHI");
+
+  static final Set<String> GRAZING = Set.of("E01", "E02", "E03");
+  static final Set<String> HAY = Set.of("H01", "H02", "H03");
 
   private InvoicePreviewRules() {}
 
@@ -58,15 +62,19 @@ final class InvoicePreviewRules {
       Provision p,
       BigDecimal taxRatePct) {
     List<Line> lines = new ArrayList<>();
+    String type = fileTypeCode == null ? "" : fileTypeCode;
 
-    BigDecimal fee = rates.get(LICENCE_FEE_RATE.get(fileTypeCode));
+    String feeType = LICENCE_FEE_RATE.get(type);
+    BigDecimal fee = feeType == null ? null : rates.get(feeType);
     lines.add(new Line(null,
         fileTypeDescription + " @ " + rate(fee) + " per Licence / Permit Fee",
         cents(fee)));
 
     BigDecimal authorized = whole(nz(p.authorizedUse()).add(nz(p.tempIncrease())));
     BigDecimal used = whole(nz(p.totalAnnualUse()));
-    if (fileTypeCode.startsWith("E")) {
+    // GET's IF … IN ('E01','E02','E03') … ELSIF … IN ('H01','H02','H03'): any other type gets
+    // the licence fee line only.
+    if (GRAZING.contains(type)) {
       BigDecimal ground = rates.get("GGR");
       lines.add(new Line(qty(authorized),
           "Authorized AUM plus Temp. Increase @ " + rate(ground) + " per AUM Ground Rent",
@@ -85,7 +93,7 @@ final class InvoicePreviewRules {
         lines.add(new Line(p.nonUseNonBillable().stripTrailingZeros().toPlainString(),
             "Non-Util AUM Non-Billable @0.00", cents(BigDecimal.ZERO)));
       }
-    } else {
+    } else if (HAY.contains(type)) {
       BigDecimal ground = rates.get("HGR");
       lines.add(new Line(qty(authorized),
           "Authorized Tonnes plus Temp. Increase @ " + rate(ground) + " per Tonne Ground Rent",

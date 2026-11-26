@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FTA405 Delete EE Audit (FTA675 Audit Report) — ported from the legacy Jasper Server report
+  (fta-archive: JCRS/FTA/Reports/FTA/FTA405-DeleteEEAudit). Changes from legacy:
+   - no query: the backend supplies the rows (AuditReportService ports FTAR405P);
+   - Java expressions rather than Groovy (they are the same text);
+   - the Jasper Server parameters (LoggedInUser, report_cursor) are gone.
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="FTA405_DeleteEEAudit" pageWidth="612" pageHeight="792" whenNoDataType="AllSectionsNoDetail" columnWidth="572" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="98f85625-af8d-4abd-b1fb-7998cee26db0">
+	<property name="ireport.zoom" value="1.7715610000000042"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="p_report_id" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["FTA405R"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_user_id" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_region_code" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_district_code" class="java.lang.String"/>
+	<parameter name="p_from_date" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_to_date" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_file_type_code_1" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_file_type_code_2" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_file_type_code_3" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_file_type_code_4" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_file_type_code_5" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<field name="org_unit_no" class="java.lang.String"/>
+	<field name="org_unit_code" class="java.lang.String"/>
+	<field name="forest_file_id" class="java.lang.String"/>
+	<field name="timber_mark" class="java.lang.String"/>
+	<field name="cutting_permit_id" class="java.lang.String"/>
+	<field name="cut_block_id" class="java.lang.String"/>
+	<field name="file_type_code" class="java.lang.String"/>
+	<field name="delete_option_cd" class="java.lang.String"/>
+	<field name="entry_userid" class="java.lang.String"/>
+	<field name="entry_timestamp" class="java.util.Date"/>
+	<field name="db_name" class="java.lang.String"/>
+	<field name="rep_from_date" class="java.lang.String"/>
+	<field name="rep_to_date" class="java.lang.String"/>
+	<field name="out_message" class="java.lang.String"/>
+	<variable name="current_page_number" class="java.lang.Integer" resetType="Page">
+		<variableExpression><![CDATA[$V{PAGE_NUMBER}]]></variableExpression>
+		<initialValueExpression><![CDATA[1]]></initialValueExpression>
+	</variable>
+	<pageHeader>
+		<band height="161" splitType="Stretch">
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="f15ef2cc-dae6-4d2f-a2a8-bf87ebd64f02" x="436" y="34" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_user_id}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="b16f3837-6075-4811-bcb3-91c583c04555" x="132" y="10" width="252" height="60"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ministry of Forests, Lands, Natural Resource Operations & Rural Development
+Timber Tenure Reporting
+Delete EE Data]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="cf6083f0-db03-451f-821d-9a8ae1719c7e" x="436" y="10" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[FTA405R]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="d5fd0140-bd6a-4e14-8194-c90799b69d51" x="436" y="46" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Column" isBlankWhenNull="true">
+				<reportElement uuid="29d6e7b7-9d8b-4d97-9aa7-ceb934133d4b" isPrintRepeatedValues="false" x="436" y="22" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{db_name}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="b5719ec8-f7f7-4712-9dc4-d12d7483be75" x="132" y="67" width="252" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["From: " + ($P{p_from_date}.isEmpty() ? "*" : $P{p_from_date})
++ "  To: " + ($P{p_to_date}.isEmpty() ? "*" : $P{p_to_date} )]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Auto" isBlankWhenNull="true">
+				<reportElement uuid="9a4fa180-12bc-408d-9e3f-0d3e52f111a6" x="436" y="58" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[($V{current_page_number}).toString() + " of " + ($V{PAGE_NUMBER}).toString()]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Auto" isBlankWhenNull="true">
+				<reportElement uuid="9a4fa180-12bc-408d-9e3f-0d3e52f111a6" x="22" y="108" width="522" height="27"/>
+				<textElement textAlignment="Justified">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Region Code: " + $P{p_region_code} + "   District Code: " + $P{p_district_code}
++ "      File Types: "
++ (($P{p_file_type_code_1}.isEmpty() || "*".equals($P{p_file_type_code_1}) ) ? "All" : $P{p_file_type_code_1} )
++ ($P{p_file_type_code_2}.isEmpty() ? "" : (", " + ($P{p_file_type_code_2})))
++ ($P{p_file_type_code_3}.isEmpty() ? "" : (", " + ($P{p_file_type_code_3})))
++ ($P{p_file_type_code_4}.isEmpty() ? "" : (", " + ($P{p_file_type_code_4})))
++ ($P{p_file_type_code_5}.isEmpty() ? "" : (", " + ($P{p_file_type_code_5})))]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Auto" isBlankWhenNull="true">
+				<reportElement uuid="9a4fa180-12bc-408d-9e3f-0d3e52f111a6" x="23" y="139" width="521" height="15"/>
+				<textElement textAlignment="Justified">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{out_message}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+	<columnHeader>
+		<band height="22" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="832b07d0-e322-4a8f-ae9d-1f79f56152ff" x="13" y="0" width="39" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Org Unit]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="904260d1-2448-4cd3-92fd-5b8a889607b6" x="55" y="1" width="67" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[File Number]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="ae30bf7e-d488-4cc0-aca5-1a04b3b206e6" x="127" y="1" width="45" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[File Type]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="49b8fc04-0a33-47e5-ad89-a08538d0b071" x="175" y="1" width="27" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[CP]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="fe80cf3e-eb05-47dc-a782-e9d8ae0e3d35" x="202" y="1" width="64" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Timber Mark]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="6df4c76f-f169-4691-9c8d-b52c207b30db" x="269" y="1" width="64" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Cut Block]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="d636d6e5-cfce-49ee-a2c0-a9f0466ee22a" x="336" y="1" width="101" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Deleted By]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="8ba98e74-90e5-4be7-abd6-e5f91415eb24" x="448" y="1" width="61" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Date Deleted]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="37ffd68d-f3ae-4749-86bf-b4992aa9cf3c" x="514" y="1" width="30" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Deleted]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="15" splitType="Stretch">
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="f7651787-804b-4290-b9fa-7cb1228f3363" x="12" y="0" width="42" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{org_unit_code}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="b5f6915e-2463-4911-b725-11158bee08ae" x="54" y="0" width="67" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{forest_file_id}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="de75ffd8-fec1-42bc-a0fe-5d72d3866ae2" x="126" y="0" width="45" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{file_type_code}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="8f215e21-6368-4b2a-90bc-be55d53e46c0" x="174" y="0" width="27" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cutting_permit_id}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="65828f77-ccc1-4ab4-b179-fdf366a8e186" x="201" y="0" width="64" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{timber_mark}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="3844eb5c-4428-4885-b380-360afe4e2999" x="268" y="0" width="64" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cut_block_id}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="8006594d-86d2-40a9-be71-ea29eeb76ee5" x="335" y="0" width="101" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{entry_userid}]]></textFieldExpression>
+			</textField>
+			<textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement uuid="9fc38c6e-f634-497e-9a87-fc0a6331a495" x="447" y="0" width="62" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{entry_timestamp}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="90e86de9-f559-49ca-8a7d-1330b21a802a" x="514" y="0" width="30" height="14"/>
+				<textElement>
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{delete_option_cd}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="59" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="7e830df1-f0b3-45a0-b9aa-5f759a923518" x="243" y="34" width="100" height="20"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[End of Report]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="be5a0c99-3e19-4844-9ddf-8b727af194ad" x="12" y="9" width="120" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Total : " + $V{REPORT_COUNT}.intValue()]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

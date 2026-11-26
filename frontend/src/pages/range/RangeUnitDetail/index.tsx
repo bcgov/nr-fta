@@ -1,6 +1,5 @@
-import { ArrowLeft, Edit, Information, Location, Table as TableIcon } from '@carbon/icons-react';
+import { ArrowLeft, Information, Location, Table as TableIcon } from '@carbon/icons-react';
 import {
-  Button,
   Table,
   TableBody,
   TableCell,
@@ -15,10 +14,8 @@ import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
 import SectionTile from '@/components/SectionTile';
 import Tombstone from '@/components/Tombstone';
-import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import PageLayout from '@/pages/PageLayout';
-import { canEdit } from '@/routes/access';
 import { getRangeUnitDetail } from '@/services/range_unit_detail';
 
 import type { FC } from 'react';
@@ -30,7 +27,6 @@ import type { FC } from 'react';
  */
 const RangeUnitDetail: FC = () => {
   const { unitId = '' } = useParams();
-  const { user } = useAuth();
   const {
     data: unit,
     loading,
@@ -42,13 +38,6 @@ const RangeUnitDetail: FC = () => {
     <PageLayout
       title={`Range Unit ${unitId}`}
       subtitle="Range unit details and its pasture breakdown."
-      actions={
-        unit && canEdit(user) ? (
-          <Button size="md" kind="tertiary" renderIcon={Edit}>
-            Edit unit
-          </Button>
-        ) : undefined
-      }
     >
       <Link to="/search/range-unit" className="back-link">
         <ArrowLeft size={16} /> Back to Range Unit Search
@@ -101,7 +90,6 @@ const RangeUnitDetail: FC = () => {
                       <TableRow>
                         <TableHeader>Pasture ID</TableHeader>
                         <TableHeader>Name</TableHeader>
-                        <TableHeader>Revision</TableHeader>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -109,7 +97,6 @@ const RangeUnitDetail: FC = () => {
                         <TableRow key={p.pastureId}>
                           <TableCell>{p.pastureId}</TableCell>
                           <TableCell>{p.pastureName ?? '—'}</TableCell>
-                          <TableCell>{p.pastureRevisionCount ?? '—'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

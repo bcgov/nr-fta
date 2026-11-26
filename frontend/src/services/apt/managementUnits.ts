@@ -175,11 +175,6 @@ export interface AptUnassignedManagementUnit {
 
 /** An AAC determination to create or update. Dates are `YYYY-MM-DD`. */
 export interface AptManagementUnitHistoryRequest {
-  /**
-   * On create only: a determination of the same unit whose partitions, apportionments and BCTS
-   * distributions are copied onto the new one.
-   */
-  prevId?: number | null;
   determinationDate: string;
   effectiveDate: string;
   allowableAnnualCut: number | null;

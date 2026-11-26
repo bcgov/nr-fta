@@ -28,6 +28,7 @@ import { StatusTag } from '@/components/StatusTag/StatusTag';
 import UserName from '@/components/UserName';
 import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
+import { useFormDistrictDefault } from '@/hooks/useDefaultOrgUnit';
 import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { nextColumnSort, sortHeaderProps } from '@/lib/columnSort';
 import { safeErrorMessage } from '@/lib/errorMessage';
@@ -121,6 +122,8 @@ const MarkList: FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [districts, setDistricts] = useState<CodeOption[]>([]);
+  // Legacy started a new or cleared search at the user's default org unit (Org Unit Maintenance).
+  const startForm = useFormDistrictDefault(form, setForm, EMPTY_FORM, 'hdrDistrict', districts);
   const [statuses, setStatuses] = useState<CodeOption[]>([]);
   const [amendStatuses, setAmendStatuses] = useState<CodeOption[]>([]);
   const [codeListsLoading, setCodeListsLoading] = useState(true);
@@ -226,14 +229,14 @@ const MarkList: FC = () => {
   );
 
   const onClear = useCallback(() => {
-    setForm(EMPTY_FORM);
+    setForm(startForm);
     setLastSearch(null);
     setRows(null);
     setSearched(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, [setForm, setLastSearch]);
+  }, [setForm, setLastSearch, startForm]);
 
   const hasResults = rows !== null && rows.length > 0;
   const rowsById = new Map((rows ?? []).map((r) => [r.id, r]));

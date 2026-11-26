@@ -64,7 +64,8 @@ public record SaleInfoRules(
    * @param scheduleBAac        the current AAC period's Schedule B total (A03's rule), or null
    * @param bctsFileType        whether the type is a current {@code BCTS_FILE_TYPE_CODE}
    * @param privateMarkType     whether the type is a private mark type (no sale info)
-   * @param headquartersAuthority whether Headquarters has FILE authority on the type
+   * @param headquartersAuthority whether Headquarters has FILE authority on the type; true for a
+   *                            sale with a BCTS org, for which legacy's GET skips the check
    */
   public record Facts(
       String forestFileId,

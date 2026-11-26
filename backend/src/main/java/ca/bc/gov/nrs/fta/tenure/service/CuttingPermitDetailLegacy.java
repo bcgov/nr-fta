@@ -141,4 +141,16 @@ public class CuttingPermitDetailLegacy {
           return cs.getString(7);
         });
   }
+
+  /**
+   * {@code the.fta_calc_expiry_date}: the issue date plus the term, less a day.
+   *
+   * @return yyyy-mm-dd, or null when the function cannot compute one
+   */
+  public String calcExpiryDate(String issueDate, String termYears, String termMonths) {
+    String expiry = jdbc.queryForObject(
+        "SELECT the.fta_calc_expiry_date(?, ?, ?) FROM dual",
+        String.class, issueDate, termYears, termMonths);
+    return expiry == null || expiry.isBlank() ? null : expiry;
+  }
 }

@@ -53,11 +53,10 @@ import java.util.Set;
  *                          editor, on any mark but a view-only type. The button stays enabled
  *                          for them and, when {@code submit} is false, clicking it shows
  *                          {@code submitReason} instead of submitting
- * @param landIndexUpdate   updating a land index already on the mark (FTA511's save of an
- *                          existing row): Headquarters at any status; a district as it may add
+ * @param landIndexUpdate   updating or deleting a land index already on the mark (FTA511's
+ *                          save of an existing row, and its Delete): where one may be added
  * @param clientsUpdate     updating an associated client already on the mark (FTA513's
- *                          save of an existing row): Headquarters at any status; a district
- *                          as it may add
+ *                          save of an existing row): where one may be added
  * @param notes             adding a note (FTA970) — any editor but a district
  */
 public record MarkEditRules(
@@ -189,8 +188,8 @@ public record MarkEditRules(
    * The rules for {@code mark} and a user who may ({@code userCanEdit}) or may not edit
    * private marks; {@code districtUser} is the {@code FTA_TIMBER_MARK_DISTRICT_ADMIN} role,
    * which may change only its PA application, the marking codes and an HX mark's status to
-   * HI (see {@link #district}). Every other editor is Headquarters, which may always change the
-   * status, and the marking codes once the mark has them.
+   * HI (see {@link #district}). Every other editor is Headquarters, which may change the status
+   * once the mark has a client, and the marking codes once the mark has them.
    */
   public static MarkEditRules of(MarkDetailDto mark, boolean userCanEdit, boolean districtUser) {
     String status = mark.markStatusCode();
@@ -266,10 +265,11 @@ public record MarkEditRules(
           amendmentsReason, submitReason, false, false, true);
     }
     // From here on, Headquarters: the Headquarters timber mark role and FTA_ADMIN.
-    // Correcting a land index or client already on the mark: at any status (legacy held
-    // updates to the add gates).
-    boolean landIndexUpdate = true;
-    boolean clientsUpdate = true;
+    // Correcting a land index or client already on the mark: held to the add gates, as legacy
+    // held them (FTA_511 disables its buttons at HX, DV and DD; FTA_513 opens clients only at
+    // HI, PI and PA).
+    boolean landIndexUpdate = landIndex;
+    boolean clientsUpdate = clients;
     // The marking codes live on HAULING_AUTHORITY, which exists once the mark is issued
     // (HN on); Headquarters may change them at any status from then.
     boolean markingOpen = mark.timberMark() != null;
@@ -311,8 +311,9 @@ public record MarkEditRules(
         && mark.fileTypeCode() == null
         && mark.timberMark() == null
         && ("PI".equals(status) || "PA".equals(status));
-    // Headquarters may always change the status, cancelled (HX) included.
-    boolean statusOpen = statusOptions.size() > 1;
+    // Status opens with a client (setProtectionStates: no client is state1, which protects
+    // Status as well as the branch) — cancelled (HX) included.
+    boolean statusOpen = hasClient && statusOptions.size() > 1;
 
     return new MarkEditRules(
         true,

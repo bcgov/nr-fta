@@ -4,6 +4,7 @@ import ca.bc.gov.nrs.fta.mark.dto.MarkDetailDto;
 import ca.bc.gov.nrs.fta.mark.dto.MarkEditRules;
 import ca.bc.gov.nrs.fta.mark.dto.MarkUpdateRequest;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -159,9 +160,15 @@ public class MarkUpdateService {
    * little changed), and issuing (SAVE's PI-to-HN branch). No other status or amendment-status
    * change touches it — HX to HI included.
    *
-   * <p>Legacy chose UPDATE_REC when neither the status nor the amendment status changed.
+   * <p>Legacy chose UPDATE_REC when neither the status nor the amendment status changed. Unlike
+   * legacy, a save of a cancelled (HX) mark never signs: a cancelled mark isn't re-certified, so
+   * filling in its Cancelled date after cancelling (or any later edit) keeps the signer who
+   * issued it.
    */
   static boolean signsCertificate(String prevStatus, String status, boolean amendChanged) {
+    if ("HX".equals(status)) {
+      return false;
+    }
     boolean dataOnly = Objects.equals(prevStatus, status) && !amendChanged;
     return dataOnly || ("PI".equals(prevStatus) && "HN".equals(status));
   }
@@ -211,13 +218,29 @@ public class MarkUpdateService {
         r.location() ? trim(q.mapReferenceReg()) : c.mapReferenceReg(),
         r.location() ? trim(q.mapReferenceComp()) : c.mapReferenceComp(),
         r.branch() ? q.markIssueDate() : c.markIssueDate(),
-        r.branch() ? q.markExpiryDate() : c.markExpiryDate(),
+        defaultExpiry(
+            r.branch() ? q.markIssueDate() : c.markIssueDate(),
+            r.branch() ? q.markExpiryDate() : c.markExpiryDate(),
+            r.term() ? q.tenureTerm() : c.tenureTerm()),
         r.branch() ? q.markExtendDate() : c.markExtendDate(),
         r.branch() ? q.markCancelDate() : c.markCancelDate(),
         r.branch() ? q.grantedAcqrdDate() : c.grantedAcqrdDate(),
         r.branch() ? trim(q.crownGrantedAcqDesc()) : c.crownGrantedAcqDesc(),
         r.status() ? trim(q.markStatusCode()) : c.markStatusCode(),
         r.amendmentStatus() ? trim(q.amendStatusCode()) : c.outstandingAmendStatus());
+  }
+
+  /**
+   * The form's {@code setDates}, run on every Save at any status: a blank Expired with an
+   * Issued date becomes Issued plus the Initial Term in months — no day taken off (that is
+   * only SAVE's PI-to-HN issue, which recomputes it in the update). A month-end overflow
+   * clamps to the month's last day, as legacy's {@code GregorianCalendar} did.
+   */
+  static LocalDate defaultExpiry(LocalDate issueDate, LocalDate expiryDate, Integer term) {
+    if (expiryDate != null || issueDate == null || term == null || term <= 0) {
+      return expiryDate;
+    }
+    return issueDate.plusMonths(term);
   }
 
   // ─── Validation — the legacy form's "Save" chain ────────────────────────────
@@ -321,14 +344,35 @@ public class MarkUpdateService {
       } else if (!b08 && v.grantedDate().isBefore(CROWN_GRANT_CUTOVER)) {
         e.add("Crown Granted Date must be on or after 1906-03-12 for mark type B09.");
       }
-    } else if (v.grantedDesc().matches("\\d{4}")) {
-      // Legacy reads a four-digit description as the grant year.
-      int year = Integer.parseInt(v.grantedDesc());
+    } else {
+      // Legacy reads any numeric description as the grant year (FTA_510's l_is_year).
+      Long year = crownGrantYear(v.grantedDesc());
+      if (year == null) {
+        return;
+      }
       if (b08 && year > 1906) {
         e.add("Crown Granted year must be 1906 or earlier for mark type B08.");
       } else if (!b08 && year < 1906) {
         e.add("Crown Granted year must be 1906 or later for mark type B09.");
       }
+    }
+  }
+
+  /**
+   * The Crown Granted Description as FTA_510 reads it for the year check: assigned to a
+   * {@code NUMBER(10)}, so any number Oracle can convert counts — rounded to a whole one —
+   * and anything else (or a number too large for it) is skipped, as legacy's
+   * {@code WHEN OTHERS THEN NULL} skipped it. Null when it is not such a number.
+   */
+  static Long crownGrantYear(String desc) {
+    if (desc == null || desc.isBlank()) {
+      return null;
+    }
+    try {
+      BigDecimal n = new BigDecimal(desc.trim()).setScale(0, RoundingMode.HALF_UP);
+      return n.abs().compareTo(BigDecimal.valueOf(9_999_999_999L)) > 0 ? null : n.longValueExact();
+    } catch (NumberFormatException | ArithmeticException e) {
+      return null;
     }
   }
 
@@ -373,14 +417,11 @@ public class MarkUpdateService {
                                                   ELSE private_mark_status_date END,
              private_mark_application_date = :applicationDate,
              private_mark_issue_date       = :issueDate,
-             -- An issued mark with no expiry gets issue date + term, less a day
-             -- (FTA_CALC_EXPIRY_DATE).
+             -- A blank expiry was defaulted before validation (defaultExpiry).
              private_mark_expiry_date      = CASE
                  -- SAVE, PI to HN: issue date + term, less a day, recomputed on issue.
                  WHEN :newTimberMark IS NOT NULL
                  THEN ADD_MONTHS(:issueDate - 1, NVL(:term, 0))
-                 WHEN :expiryDate IS NULL AND :status IN ('HI', 'HN') AND :issueDate IS NOT NULL
-                 THEN ADD_MONTHS(:issueDate, NVL(:term, 0)) - 1
                  ELSE :expiryDate END,
              private_mark_tenure_term      = NVL(:term, 0),
              private_mark_extend_date      = :extendDate,
@@ -434,15 +475,12 @@ public class MarkUpdateService {
     boolean autoApprove = autoApprovesAmendment(
         prevStatus, status, c.outstandingAmendStatus(), amendChanged);
 
-    // A changed extension on an issued mark is counted, with reason P (both procedures).
-    Integer extendCount = c.markExtendCount();
-    String extendReason = null;
-    if (v.extendDate() == null) {
-      extendCount = 0;
-    } else if ("HI".equals(status) && !Objects.equals(v.extendDate(), c.markExtendDate())) {
-      extendCount = (extendCount == null ? 0 : extendCount) + 1;
-      extendReason = "P";
-    }
+    // A changed extension on an issued mark is counted, with reason P (both procedures);
+    // otherwise the stored reason is kept.
+    Integer extendCount = extendCount(
+        c.markExtendCount(), c.markExtendDate(), v.extendDate(), status);
+    String extendReason = extendReason(
+        c.markExtendReasonCode(), c.markExtendDate(), v.extendDate(), status);
 
     // Dates (and the nullable numbers) are bound with their type: Spring binds a null of
     // unknown type as text, and Oracle then rejects a CASE mixing it with a DATE branch
@@ -509,15 +547,15 @@ public class MarkUpdateService {
     }
 
     // SAVE: cancelling an issued mark, or acting on a cancelled one, moves the forest
-    // file's status with it. Legacy's cancel also dropped the pending (PI) amendment; here it
-    // is approved instead (see autoApprovesAmendment).
+    // file's status with it — the status only, not FILE_STATUS_DATE, as legacy. Legacy's
+    // cancel also dropped the pending (PI) amendment; here it is approved instead (see
+    // autoApprovesAmendment).
     if (statusChanged && timberMark != null
         && (("HI".equals(prevStatus) && "HX".equals(status)) || "HX".equals(prevStatus))) {
       jdbc.update(
           """
           UPDATE the.prov_forest_use
              SET file_status_st   = :status,
-                 file_status_date = SYSDATE,
                  update_timestamp = SYSDATE,
                  update_userid    = :userId,
                  revision_count   = revision_count + 1
@@ -607,6 +645,37 @@ public class MarkUpdateService {
     if ((amendChanged || autoApprove) && note != null) {
       markNoteWriteService.add(c.certificate(), true, note, userId);
     }
+  }
+
+  /** Whether this save changes an issued (HI) mark's extension, which legacy counts. */
+  private static boolean extensionChanged(
+      LocalDate storedExtendDate, LocalDate extendDate, String status) {
+    return extendDate != null && "HI".equals(status)
+        && !Objects.equals(extendDate, storedExtendDate);
+  }
+
+  /**
+   * PRIVATE_MARK_EXTEND_COUNT after the save: 0 with no extension (legacy's
+   * {@code DECODE(extend_date, NULL, 0, …)}), one more when an issued mark's extension changes.
+   */
+  static Integer extendCount(
+      Integer storedCount, LocalDate storedExtendDate, LocalDate extendDate, String status) {
+    if (extendDate == null) {
+      return 0;
+    }
+    if (extensionChanged(storedExtendDate, extendDate, status)) {
+      return (storedCount == null ? 0 : storedCount) + 1;
+    }
+    return storedCount;
+  }
+
+  /**
+   * PRIVATE_MARK_EXTEND_REAS_CODE after the save: P when an issued mark's extension changes,
+   * else the stored reason, which legacy read back on GET and saved unchanged.
+   */
+  static String extendReason(
+      String storedReason, LocalDate storedExtendDate, LocalDate extendDate, String status) {
+    return extensionChanged(storedExtendDate, extendDate, status) ? "P" : storedReason;
   }
 
   /**

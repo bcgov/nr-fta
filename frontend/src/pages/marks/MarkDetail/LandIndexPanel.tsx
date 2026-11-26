@@ -1,4 +1,4 @@
-import { Add, DocumentAdd, Edit } from '@carbon/icons-react';
+import { Add, DocumentAdd, Edit, TrashCan } from '@carbon/icons-react';
 import {
   Button,
   DatePicker,
@@ -21,7 +21,12 @@ import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
 import { getLandDistricts, getPrimaryIds, type CodeOption } from '@/services/codeLists';
-import { addLandIndex, updateLandIndex, type MarkLandIndex } from '@/services/mark_detail';
+import {
+  addLandIndex,
+  deleteLandIndex,
+  updateLandIndex,
+  type MarkLandIndex,
+} from '@/services/mark_detail';
 import { formatDate } from '@/utils/formatDate';
 import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
@@ -42,9 +47,9 @@ interface Props {
   rows: MarkLandIndex[];
   /** Whether the user may add (the mark's `editRules.landIndex`). */
   canAdd: boolean;
-  /** Whether the user may update a row (the mark's `editRules.landIndexUpdate`). */
+  /** Whether the user may update or delete a row (the mark's `editRules.landIndexUpdate`). */
   canUpdate: boolean;
-  /** Called after an add or update, to re-read the mark. */
+  /** Called after an add, update or delete, to re-read the mark. */
   onAdded: () => void;
 }
 
@@ -55,8 +60,8 @@ interface Props {
  *
  * Who may add, and when, is the backend's `editRules.landIndex` (FTA_511: not at
  * HX, DV or DD, not for B15/B16, Headquarters only); the backend enforces it too.
- * Each row's Update reopens the dialog on that row, with its Deactivate Date —
- * `editRules.landIndexUpdate`, which Headquarters has at any status.
+ * Each row's Update reopens the dialog on that row, and its Delete removes it after a
+ * confirmation (FTA_511.REMOVE) — both `editRules.landIndexUpdate`, the add's gate.
  */
 const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate, onAdded }) => {
   const { display } = useNotification();
@@ -72,6 +77,8 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate,
   const [districts, setDistricts] = useState<CodeOption[]>([]);
   const [primaryIds, setPrimaryIds] = useState<CodeOption[]>([]);
   const [listsLoading, setListsLoading] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<MarkLandIndex | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // The modal's lists, once it opens (cached app-wide).
   useEffect(() => {
@@ -151,6 +158,31 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate,
     if (!saving) setOpen(false);
   };
 
+  const confirmDelete = async () => {
+    if (pendingDelete?.markLandIndexSkey == null) return;
+    setDeleting(true);
+    try {
+      await deleteLandIndex(
+        id,
+        pendingDelete.markLandIndexSkey,
+        pendingDelete.revisionCount,
+        byCertificate,
+      );
+      display({ kind: 'success', title: 'Land index deleted', timeout: 5000 });
+      setPendingDelete(null);
+      onAdded();
+    } catch (err) {
+      display({
+        kind: 'error',
+        title: 'Could not delete the land index',
+        subtitle: err instanceof Error ? err.message : 'Request failed',
+        timeout: 9000,
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // `another` keeps the dialog open, emptied for the next one.
   const submit = async (another: boolean) => {
     if (!primary) {
@@ -194,6 +226,7 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate,
           primaryLandIndexCode: primary,
           secondaryLandIndexCode: secondary || null,
           markLandIndexDesc: description.trim() || null,
+          indexDeactivateDate: deactivate || null,
         },
         byCertificate,
       );
@@ -285,6 +318,15 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate,
                         >
                           Update
                         </Button>
+                        <Button
+                          kind="danger--ghost"
+                          size="sm"
+                          renderIcon={TrashCan}
+                          disabled={!canUpdate || r.markLandIndexSkey == null}
+                          onClick={() => setPendingDelete(r)}
+                        >
+                          Delete
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -359,31 +401,29 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate,
             disabled={saving}
             onChange={(e) => setDescription(e.target.value)}
           />
-          {editing && (
-            <DatePicker
-              datePickerType="single"
-              dateFormat="Y-m-d"
-              className="detail-dialog__date"
-              value={deactivate}
-              onChange={(dates: Date[]) => setDeactivate(dates[0] ? toIsoDate(dates[0]) : '')}
-            >
-              <DatePickerInput
-                id="land-index-deactivate"
-                labelText="Deactivate date (optional)"
-                placeholder="yyyy-mm-dd"
-                pattern={TYPED_DATE_PATTERN}
-                disabled={saving}
-                onChange={(e) => {
-                  const text = e.target.value;
-                  if (text.trim() === '') setDeactivate('');
-                  else {
-                    const typed = parseTypedDate(text);
-                    if (typed) setDeactivate(typed);
-                  }
-                }}
-              />
-            </DatePicker>
-          )}
+          <DatePicker
+            datePickerType="single"
+            dateFormat="Y-m-d"
+            className="detail-dialog__date"
+            value={deactivate}
+            onChange={(dates: Date[]) => setDeactivate(dates[0] ? toIsoDate(dates[0]) : '')}
+          >
+            <DatePickerInput
+              id="land-index-deactivate"
+              labelText="Deactivate date (optional)"
+              placeholder="yyyy-mm-dd"
+              pattern={TYPED_DATE_PATTERN}
+              disabled={saving}
+              onChange={(e) => {
+                const text = e.target.value;
+                if (text.trim() === '') setDeactivate('');
+                else {
+                  const typed = parseTypedDate(text);
+                  if (typed) setDeactivate(typed);
+                }
+              }}
+            />
+          </DatePicker>
         </Stack>
         <div className="detail-dialog__actions">
           <Button kind="tertiary" disabled={saving} onClick={closeDialog}>
@@ -403,6 +443,39 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate,
               </Button>
             </>
           )}
+        </div>
+      </Modal>
+
+      {/* Delete confirmation — the Associated clients tab's. */}
+      <Modal
+        open={!!pendingDelete}
+        passiveModal
+        size="sm"
+        className="detail-dialog"
+        modalHeading="Delete land index?"
+        onRequestClose={() => {
+          if (!deleting) setPendingDelete(null);
+        }}
+        preventCloseOnClickOutside
+      >
+        {pendingDelete && (
+          <p className="detail-dialog__subtitle">
+            {`This removes ${
+              pendingDelete.primaryLandIndexCodeDesc ?? pendingDelete.primaryLandIndexCode ?? ''
+            }${
+              pendingDelete.secondaryLandIndexCode
+                ? `, ${pendingDelete.secondaryLandIndexCodeDesc ?? pendingDelete.secondaryLandIndexCode}`
+                : ''
+            } from this mark.`}
+          </p>
+        )}
+        <div className="detail-dialog__actions">
+          <Button kind="tertiary" disabled={deleting} onClick={() => setPendingDelete(null)}>
+            Cancel
+          </Button>
+          <Button kind="danger" disabled={deleting} onClick={() => void confirmDelete()}>
+            {deleting ? 'Deleting…' : 'Delete'}
+          </Button>
         </div>
       </Modal>
     </div>

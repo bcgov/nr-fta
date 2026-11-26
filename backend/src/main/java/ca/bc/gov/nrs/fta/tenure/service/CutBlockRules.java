@@ -14,14 +14,17 @@ import java.util.Set;
  * organization levels: a harvest role holder may act on any district's blocks, so only the
  * role, the statuses and the block's own data decide. Oil and gas (A11) files stay read-only.
  *
- * @param canEdit           Save enabled ({@code p_disable_save_ind}, without the org check)
+ * @param canEdit           Save enabled ({@code p_disable_save_ind}, without the org check, and
+ *                          {@code noSaveWhenStatusPE}: not while the tenure file is PE)
  * @param statusLocked      the status can't change: {@code getIsStatusDisabled}
  * @param plannedLocked     planned gross and start can't change: the block has a map feature
  * @param disturbanceLocked logged area and dates can't change: the block has an opening
  * @param spExemptLocked    SP Exempt can't change: the block has an opening
  * @param canRelabel        Re-label shown: {@code getRelabelEnabled}
- * @param canSuspend        Suspend Cut Block shown: {@code getAllowSuspend}
- * @param canEditSuspension Edit Suspension shown: {@code getShowEditSuspend}
+ * @param canSuspend        Suspend Cut Block shown: {@code getAllowSuspend}, which also gates
+ *                          FTA914's Suspend Block
+ * @param canEditSuspension Edit Suspension shown: {@code getShowEditSuspend}, which also gates
+ *                          FTA914's Save, End and Delete Suspension
  * @param seniorAuthority   rollbacks are open to this user, who must then give a reason
  */
 public record CutBlockRules(
@@ -40,6 +43,9 @@ public record CutBlockRules(
   static final String MSG_NOT_EDITABLE = "This cut block cannot be edited.";
   static final String MSG_STATUS_LOCKED = "The status of this cut block cannot be changed.";
   static final String MSG_CANNOT_RELABEL = "This cut block cannot be re-labelled.";
+  public static final String MSG_CANNOT_SUSPEND = "This cut block cannot be suspended.";
+  public static final String MSG_CANNOT_EDIT_SUSPENSION =
+      "This cut block's suspension cannot be changed.";
   static final String MSG_OVERRIDE_REASON = "District Override Reason is mandatory.";
 
   private static final int MAX_DESCRIPTION = 120;
@@ -78,10 +84,13 @@ public record CutBlockRules(
    * @param senior        FTA_ADMIN or the senior harvest role
    */
   public static CutBlockRules of(Facts f, boolean harvestEditor, boolean senior) {
-    boolean canEdit = harvestEditor
+    // Legacy's p_disable_save_ind, which the suspension buttons follow; Save itself is also
+    // refused while the tenure file is PE (noSaveWhenStatusPE), which the package's flag ignores.
+    boolean saveEnabled = harvestEditor
         && f.hasAdminRow()
         && !"PE".equals(f.blockStatusCode())
         && !OIL_AND_GAS_FILE_TYPE.equals(f.fileTypeCode());
+    boolean canEdit = saveEnabled && !"PE".equals(f.fileStatusCode());
     return new CutBlockRules(
         canEdit,
         "PE".equals(f.blockStatusCode())
@@ -90,9 +99,9 @@ public record CutBlockRules(
         f.hasMapFeature(),
         f.hasOpening(),
         f.hasOpening(),
-        senior && canEdit && !"PE".equals(f.fileStatusCode()) && !f.permitRetired(),
-        senior && canEdit && SUSPENDABLE.contains(f.blockStatusCode()) && !f.hasSuspension(),
-        senior && canEdit && "HS".equals(f.blockStatusCode()),
+        senior && canEdit && !f.permitRetired(),
+        senior && saveEnabled && SUSPENDABLE.contains(f.blockStatusCode()) && !f.hasSuspension(),
+        senior && saveEnabled && "HS".equals(f.blockStatusCode()),
         senior);
   }
 

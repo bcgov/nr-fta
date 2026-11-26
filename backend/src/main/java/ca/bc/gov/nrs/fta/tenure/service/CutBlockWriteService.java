@@ -6,6 +6,7 @@ import ca.bc.gov.nrs.fta.tenure.dto.CutBlockRelabelRequest;
 import ca.bc.gov.nrs.fta.tenure.dto.CutBlockSavedDto;
 import ca.bc.gov.nrs.fta.tenure.dto.CutblockDetailDto;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -26,6 +27,28 @@ public class CutBlockWriteService {
 
   private static final String OVERRIDE_NEEDED_SQL =
       "SELECT the.fta904_edit_status_change(:newStatus, :oldStatus) FROM dual";
+
+  /** FTA904's {@code CodeExpiryValidator}s: a code changed on Save must be current. */
+  private static final String STATUS_CURRENT_SQL =
+      "SELECT COUNT(*) FROM the.block_status_code WHERE block_status_code = :code"
+          + " AND SYSDATE BETWEEN effective_date AND expiry_date";
+  private static final String CUT_REGULATION_CURRENT_SQL =
+      "SELECT COUNT(*) FROM the.cut_regulation_code WHERE cut_regulation_code = :code"
+          + " AND SYSDATE BETWEEN effective_date AND expiry_date";
+  private static final String REFOREST_DECLARE_CURRENT_SQL =
+      "SELECT COUNT(*) FROM the.reforest_declare_type_code"
+          + " WHERE reforest_declare_type_code = :code"
+          + " AND SYSDATE BETWEEN effective_date AND expiry_date";
+  private static final String FIRE_REASON_CURRENT_SQL =
+      "SELECT COUNT(*) FROM the.fire_harvesting_reason_code"
+          + " WHERE fire_harvesting_reason_code = :code"
+          + " AND SYSDATE BETWEEN effective_date AND expiry_date";
+
+  /**
+   * The JSP's {@code maxlength} on District Override Reason: the reason is written to
+   * {@code FDC_AUDIT_LOG.CHANGE_COMMENTS}.
+   */
+  static final int MAX_OVERRIDE_REASON = 60;
 
   /** The width of {@code CUT_BLOCK_KEY_EVENT.EVENT_COMMENT}, as the block delete allows. */
   private static final int MAX_REASON = 200;
@@ -56,7 +79,7 @@ public class CutBlockWriteService {
     CutBlockRules rules = block.rules();
     if (!rules.canEdit()) {
       throw new ResponseStatusException(HttpStatus.CONFLICT,
-          "PE".equals(block.blockStatus())
+          "PE".equals(block.blockStatus()) || "PE".equals(block.fileStatusCode())
               ? CutBlockRules.MSG_STATUS_PE
               : CutBlockRules.MSG_NOT_EDITABLE);
     }
@@ -69,7 +92,7 @@ public class CutBlockWriteService {
     // A locked field is checked, and saved, as it stands on the block.
     BigDecimal gross = rules.plannedLocked()
         ? decimal(block.plannedGrossBlockArea()) : q.plannedGrossBlockArea();
-    List<String> problems = CutBlockRules.editProblems(
+    List<String> problems = new ArrayList<>(CutBlockRules.editProblems(
         new CutBlockRules.Edit(
             status,
             block.salvageTypeCode(),
@@ -83,20 +106,30 @@ public class CutBlockWriteService {
             rules.spExemptLocked() ? block.spExemptInd() : trim(q.spExemptInd()),
             q.cutBlockDescription()),
         new CutBlockRules.Facts(
-            block.fileTypeCode(), null, block.markStatusCode(), block.blockStatus(),
-            true, rules.plannedLocked(), rules.disturbanceLocked(), false, false));
+            block.fileTypeCode(), block.fileStatusCode(), block.markStatusCode(),
+            block.blockStatus(), true, rules.plannedLocked(), rules.disturbanceLocked(), false,
+            false)));
+    expired(problems, "Status", status, block.blockStatus(), STATUS_CURRENT_SQL);
+    expired(problems, "Cut Regulation Code", trim(q.cutRegulationCode()),
+        block.cutRegulationCode(), CUT_REGULATION_CURRENT_SQL);
+    expired(problems, "Reforestation Declaration Code", trim(q.reforestDeclareTypeCode()),
+        block.reforestDeclareTypeCode(), REFOREST_DECLARE_CURRENT_SQL);
+    expired(problems, "Fire Harvesting Reason Code", trim(q.fireHarvestingReasonCode()),
+        block.fireHarvestingReasonCode(), FIRE_REASON_CURRENT_SQL);
+
+    // The reason is taken only when FTA904 asks for it; otherwise it is dropped, so the package
+    // writes no FDC_AUDIT_LOG row for it.
+    boolean overrideRequired =
+        rules.seniorAuthority() && overrideRequired(status, block.blockStatus());
+    String overrideReason = overrideRequired ? trim(q.overrideReason()) : null;
+    if (overrideRequired && overrideReason == null) {
+      problems.add(CutBlockRules.MSG_OVERRIDE_REASON);
+    } else if (overrideReason != null && overrideReason.length() > MAX_OVERRIDE_REASON) {
+      problems.add("District Override Reason must not exceed " + MAX_OVERRIDE_REASON
+          + " characters.");
+    }
     if (!problems.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, String.join(" ", problems));
-    }
-
-    String overrideReason = trim(q.overrideReason());
-    if (statusChanged && rules.seniorAuthority() && overrideReason == null
-        && "Y".equals(jdbc.queryForObject(
-            OVERRIDE_NEEDED_SQL,
-            Map.of("newStatus", status, "oldStatus", block.blockStatus()),
-            String.class))) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, CutBlockRules.MSG_OVERRIDE_REASON);
     }
 
     CutBlockLegacy.Outcome outcome = legacy.save(new CutBlockLegacy.SaveParams(
@@ -129,6 +162,21 @@ public class CutBlockWriteService {
         trim(q.spExemptInd())));
     failOn(outcome);
     return new CutBlockSavedDto(block.cutBlockId(), outcome.warnings());
+  }
+
+  /**
+   * {@code fta904_edit_status_change}: whether moving a block from {@code oldStatus} to
+   * {@code newStatus} is a rollback, suspension or cancellation a senior user must give a
+   * District Override Reason for. Never for an unchanged status.
+   */
+  public boolean overrideRequired(String newStatus, String oldStatus) {
+    String next = trim(newStatus);
+    String previous = trim(oldStatus);
+    if (next == null || previous == null || next.equals(previous)) {
+      return false;
+    }
+    return "Y".equals(jdbc.queryForObject(
+        OVERRIDE_NEEDED_SQL, Map.of("newStatus", next, "oldStatus", previous), String.class));
   }
 
   /**
@@ -185,6 +233,18 @@ public class CutBlockWriteService {
   private CutblockDetailDto load(long cbSkey, Authentication authentication) {
     return detail.find(cbSkey, authentication).orElseThrow(() ->
         new ResponseStatusException(HttpStatus.NOT_FOUND, "Cut block not found."));
+  }
+
+  /** Legacy's {@code CodeExpiryValidator}: a changed code must be current. */
+  private void expired(
+      List<String> problems, String label, String value, String stored, String currentSql) {
+    if (value == null || value.equals(stored)) {
+      return;
+    }
+    Integer current = jdbc.queryForObject(currentSql, Map.of("code", value), Integer.class);
+    if (current == null || current == 0) {
+      problems.add(label + " (" + value + ") is an expired code.");
+    }
   }
 
   private static void failOn(CutBlockLegacy.Outcome outcome) {

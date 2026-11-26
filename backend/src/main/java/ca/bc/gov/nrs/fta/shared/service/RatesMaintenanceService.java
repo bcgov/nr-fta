@@ -1,26 +1,24 @@
 package ca.bc.gov.nrs.fta.shared.service;
 
 import ca.bc.gov.nrs.fta.shared.dto.RatesMaintenanceDto;
+import ca.bc.gov.nrs.fta.shared.service.RatesRules.Fold;
+import ca.bc.gov.nrs.fta.shared.service.RatesRules.StoredRow;
 import java.util.List;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * Standard Range Billing rates/fees maintenance business logic.
+ * FTA699 Rates &amp; Fees Maintenance, read side.
  *
- * <p>Ports the {@code GET} path of the legacy Oracle package
- * {@code THE.FTA_699_RATEFEE} (Rates &amp; Fees Maintenance) to a native query
- * against the shared {@code THE} schema. The query mirrors the package's
- * {@code c_rate} cursor: for a given calendar year it returns the most recent
- * generation of {@code RANGE_BILL_RATE} rows (the set sharing the MAX
- * update_timestamp for that year). The {@code p_calendar_year} mainline input
- * is applied only when supplied (NVL-style); when omitted, the latest set for
- * every calendar year is returned.
+ * <p>Ports {@code THE.FTA_699_RATEFEE.get}: for one calendar year, the rows sharing that year's
+ * latest update_timestamp ({@code c_rate}), folded onto the 12 values the screen shows (see
+ * {@link RatesRules#fold}). The year list is legacy's {@code fta.lookup.rangeBillCalendarYear}
+ * ({@code FTA_CODE_LISTS.GET_RANGE_BILL_CALENDAR_YEAR}): every year with rates, and each such
+ * year plus two, latest first.
  *
- * <p>The SQL runs against the BC Gov shared Oracle ({@code THE}) via the
- * configured {@code DataSource}; there is no local database, so it is exercised
- * only in a deployed environment.
+ * <p>Runs against the shared {@code THE} Oracle schema — there is no local database, so it is
+ * exercised only in a deployed environment.
  */
 @Service
 public class RatesMaintenanceService {
@@ -31,44 +29,62 @@ public class RatesMaintenanceService {
     this.jdbc = jdbc;
   }
 
+  private static final String YEARS_SQL =
+      """
+      SELECT DISTINCT calendar_year AS yr FROM the.range_bill_rate
+       UNION
+      SELECT DISTINCT calendar_year + 2 FROM the.range_bill_rate
+       ORDER BY 1 DESC
+      """;
+
+  // c_rate. The timestamp is read to the second, as legacy's TO_CHAR, because it is the
+  // optimistic lock the save matches on.
   private static final String RATES_SQL =
       """
-      SELECT rbr.range_bill_rate_id   AS range_bill_rate_id,
-             rbr.calendar_year        AS calendar_year,
-             rbr.update_timestamp     AS update_timestamp,
+      SELECT TO_CHAR(rbr.update_timestamp, 'YYYY-MM-DD HH24:MI:SS') AS update_timestamp,
              rbr.range_file_type_code AS range_file_type_code,
              rbr.range_rate_type_code AS range_rate_type_code,
              rbr.revenue_classn_code  AS revenue_classn_code,
              rbr.range_rate           AS range_rate,
-             rbr.update_userid        AS update_userid,
-             rbr.rng_tenr_rate_desc   AS rng_tenr_rate_desc
+             rbr.update_userid        AS update_userid
         FROM the.range_bill_rate rbr
-       WHERE (:calendarYear IS NULL OR rbr.calendar_year = :calendarYear)
+       WHERE rbr.calendar_year = :calendarYear
          AND rbr.update_timestamp = (SELECT MAX(sub.update_timestamp)
                                        FROM the.range_bill_rate sub
-                                      WHERE sub.calendar_year = rbr.calendar_year)
-       ORDER BY rbr.calendar_year, rbr.range_rate_type_code, rbr.range_file_type_code
+                                      WHERE sub.calendar_year = :calendarYear)
+       ORDER BY rbr.update_timestamp
       """;
 
-  /**
-   * Retrieve the current set of standard range rates/fees — mirrors
-   * {@code FTA_699_RATEFEE.get}.
-   *
-   * @param calendarYear the calendar year to retrieve, or null for all years
-   */
-  public List<RatesMaintenanceDto> findRates(Integer calendarYear) {
-    MapSqlParameterSource params = new MapSqlParameterSource()
-        .addValue("calendarYear", calendarYear);
+  /** The Calendar Year dropdown: years with rates, and each plus two, latest first. */
+  public List<Integer> years() {
+    return jdbc.queryForList(YEARS_SQL, new MapSqlParameterSource(), Integer.class);
+  }
 
-    return jdbc.query(RATES_SQL, params, (rs, rowNum) -> new RatesMaintenanceDto(
-        rs.getObject("range_bill_rate_id", Long.class),
-        rs.getObject("calendar_year", Integer.class),
-        rs.getObject("update_timestamp", java.time.LocalDate.class),
-        rs.getString("range_file_type_code"),
-        rs.getString("range_rate_type_code"),
-        rs.getString("revenue_classn_code"),
-        rs.getBigDecimal("range_rate"),
-        rs.getString("update_userid"),
-        rs.getString("rng_tenr_rate_desc")));
+  /** One year's 12 values — {@code FTA_699_RATEFEE.get}. */
+  public RatesMaintenanceDto findYear(int calendarYear) {
+    Fold fold = fold(calendarYear);
+    return new RatesMaintenanceDto(
+        calendarYear,
+        fold.updateTimestamp(),
+        fold.updateUserid(),
+        fold.corrupt(),
+        RatesRules.RATE_TYPES.stream()
+            .map(t -> new RatesMaintenanceDto.Rate(t.code(), t.label(), fold.values().get(t.code())))
+            .toList());
+  }
+
+  /** The year's rows as {@code get} reads them; the save checks its lock and corruption here. */
+  Fold fold(int calendarYear) {
+    List<StoredRow> rows = jdbc.query(
+        RATES_SQL,
+        new MapSqlParameterSource("calendarYear", calendarYear),
+        (rs, n) -> new StoredRow(
+            rs.getString("range_file_type_code"),
+            rs.getString("range_rate_type_code"),
+            rs.getString("revenue_classn_code"),
+            rs.getBigDecimal("range_rate"),
+            rs.getString("update_timestamp"),
+            rs.getString("update_userid")));
+    return RatesRules.fold(calendarYear, rows);
   }
 }

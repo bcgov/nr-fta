@@ -32,6 +32,11 @@ final class BillingInstructionRules {
       "Active invoice exists with issuance. Valid Instructions are C, R, RI.";
   static final String PREVIOUSLY_PREPARED =
       "Invoice previously prepared. Instructions not allowed.";
+  /** sil.web.error.usr.code-expired, with the label "Instr". */
+  static final String CODE_EXPIRED = "Instr (%s) is an expired code.";
+
+  /** The grazing range file types; EDIT names every other type's missing provision "Hay". */
+  static final Set<String> GRAZING = Set.of("E01", "E02", "E03");
 
   private static final Set<String> NONE_OR_N = Set.of("N", "");
   private static final Set<String> NEW_BILL = Set.of("Y", "YI", "N", "");
@@ -163,7 +168,7 @@ final class BillingInstructionRules {
     if (!GBS.equals(invoice)) {
       if (!NONE_OR_N.contains(newInstr) && !f.hasProvision()) {
         return Outcome.refused(
-            fileTypeCode != null && fileTypeCode.startsWith("E")
+            fileTypeCode != null && GRAZING.contains(fileTypeCode)
                 ? GRAZING_NOT_FOUND
                 : HAY_NOT_FOUND);
       }
@@ -211,6 +216,23 @@ final class BillingInstructionRules {
       return new Outcome(null, toInsert, false);
     }
     return new Outcome(null, null, !"B".equals(previous));
+  }
+
+  /**
+   * Legacy's CodeExpiryValidator on the instruction ("Instr"): a chosen code must be one the
+   * dropdown offers — not "B", not expired — unless it is the code the row already showed.
+   *
+   * @param chosen the instruction the user chose
+   * @param shown  the instruction GET showed for the row
+   * @param active the codes the dropdown offers
+   * @return the error, or null when the code is allowed
+   */
+  static String codeError(String chosen, String shown, Set<String> active) {
+    String code = blank(chosen);
+    if (code.isEmpty() || code.equals(blank(shown)) || active.contains(code)) {
+      return null;
+    }
+    return CODE_EXPIRED.formatted(code);
   }
 
   private static boolean isBOrBlank(String instr) {

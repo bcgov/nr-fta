@@ -23,17 +23,15 @@ import {
 } from '@/services/apt/lookups';
 import {
   createAptManagementUnit,
-  getAptManagementUnit,
   getAptUnassignedManagementUnits,
   searchAptManagementUnits,
-  updateAptManagementUnit,
   type AptManagementUnit,
   type AptManagementUnitRequest,
   type AptUnassignedManagementUnit,
 } from '@/services/apt/managementUnits';
 
 interface Form {
-  /** Create only: the unassigned unit picked, by its code. */
+  /** The unassigned unit picked, by its code. */
   code: string;
   muType: string;
   muNo: string;
@@ -42,8 +40,6 @@ interface Form {
   sourceId: string;
   status: string;
   effectiveDate: string;
-  /** Not shown; an existing unit's is sent back unchanged so a save keeps it. */
-  orcs: string;
   comments: string;
 }
 
@@ -58,27 +54,13 @@ const EMPTY: Form = {
   sourceId: '',
   status: '',
   effectiveDate: '',
-  orcs: '',
   comments: '',
 };
 
-const formOf = (u: AptManagementUnit): Form => ({
-  code: '',
-  muType: u.aptMgmtUnitSt,
-  muNo: u.mgmtUnitNumber,
-  name: u.mgmtUnitName ?? '',
-  orgUnitNo: u.orgUnitNo == null ? '' : String(u.orgUnitNo),
-  sourceId: u.muId == null ? '' : String(u.muId),
-  status: u.mgmtUnitStatusSt,
-  effectiveDate: u.statusEffectiveDate ?? '',
-  orcs: u.orcsFileNumber ?? '',
-  comments: u.comments ?? '',
-});
-
 /** APT2's checks (APTM1200). */
-const validate = (f: Form, creating: boolean): Errors => {
+const validate = (f: Form): Errors => {
   const e: Errors = {};
-  if (creating && !f.code) e.code = 'Management Unit is required.';
+  if (!f.code) e.code = 'Management Unit is required.';
   if (!f.orgUnitNo) e.orgUnitNo = 'Org Unit is required.';
   if (!f.status) e.status = 'Status is required.';
   if (!f.effectiveDate) e.effectiveDate = 'Status Effective Date is required.';
@@ -87,7 +69,6 @@ const validate = (f: Form, creating: boolean): Errors => {
 };
 
 interface Loaded {
-  unit: AptManagementUnit | null;
   orgUnits: AptOrgUnit[];
   statuses: AptCodeOption[];
   sources: AptManagementUnit[];
@@ -96,23 +77,18 @@ interface Loaded {
 
 interface Props {
   open: boolean;
-  /** The unit to edit; none to add one. */
-  unitId?: number;
   onClose: () => void;
   /** Called with the unit as stored, after the dialog has closed. */
   onSaved: (saved: AptManagementUnit) => void;
 }
 
 /**
- * APTM1200 — add a management unit (picked from the code-table units APT has no record of)
- * or edit one, in a dialog over the search or the unit's page. Only APT administrators are
- * offered it. Type and number identify the unit, so they are fixed once it exists; APT2 let the
- * number be edited while still showing the old name, which could leave the unit nameless and
- * out of every search.
+ * APTM1200 — add a management unit, picked from the code-table units APT has no record of, in a
+ * dialog over the search. Only APT administrators are offered it. A unit is edited in place on
+ * its own page (ManagementUnitHistory/useUnitEdit).
  */
-const ManagementUnitEditModal: FC<Props> = ({ open, unitId, onClose, onSaved }) => {
+const ManagementUnitEditModal: FC<Props> = ({ open, onClose, onSaved }) => {
   const muType = useMuTypeName();
-  const creating = unitId === undefined;
   const { display } = useNotification();
 
   const [data, setData] = useState<Loaded | null>(null);
@@ -121,7 +97,7 @@ const ManagementUnitEditModal: FC<Props> = ({ open, unitId, onClose, onSaved }) 
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
 
-  // The unit and the lists, read each time the dialog opens.
+  // The lists, read each time the dialog opens.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -130,16 +106,14 @@ const ManagementUnitEditModal: FC<Props> = ({ open, unitId, onClose, onSaved }) 
     setForm(EMPTY);
     setErrors({});
     Promise.all([
-      unitId !== undefined ? getAptManagementUnit(unitId) : Promise.resolve(null),
       getAptOrgUnits(),
       getManagementUnitStatuses(),
       searchAptManagementUnits(),
-      unitId !== undefined ? Promise.resolve([]) : getAptUnassignedManagementUnits(),
+      getAptUnassignedManagementUnits(),
     ])
-      .then(([unit, orgUnits, statuses, sources, unassigned]) => {
+      .then(([orgUnits, statuses, sources, unassigned]) => {
         if (cancelled) return;
-        setData({ unit, orgUnits, statuses, sources, unassigned });
-        setForm(unit ? formOf(unit) : EMPTY);
+        setData({ orgUnits, statuses, sources, unassigned });
       })
       .catch((err: unknown) => {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Request failed');
@@ -147,7 +121,7 @@ const ManagementUnitEditModal: FC<Props> = ({ open, unitId, onClose, onSaved }) 
     return () => {
       cancelled = true;
     };
-  }, [open, unitId]);
+  }, [open]);
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -171,15 +145,15 @@ const ManagementUnitEditModal: FC<Props> = ({ open, unitId, onClose, onSaved }) 
     setErrors((e) => ({ ...e, code: undefined }));
   };
 
-  // Adding, with every code-table unit already in apportionment: nothing to pick.
-  const nothingToAdd = creating && !!data && data.unassigned.length === 0;
+  // Every code-table unit already in apportionment: nothing to pick.
+  const nothingToAdd = !!data && data.unassigned.length === 0;
 
   const close = () => {
     if (!saving) onClose();
   };
 
   const submit = async () => {
-    const found = validate(form, creating);
+    const found = validate(form);
     if (Object.keys(found).length > 0) {
       setErrors(found);
       return;
@@ -191,18 +165,15 @@ const ManagementUnitEditModal: FC<Props> = ({ open, unitId, onClose, onSaved }) 
       status: form.status,
       effectiveDate: form.effectiveDate,
       muId: form.sourceId ? Number(form.sourceId) : null,
-      orcsFileNumber: form.orcs.trim() || null,
+      orcsFileNumber: null,
       comments: form.comments.trim() ? form.comments : null,
     };
     setSaving(true);
     try {
-      const saved =
-        unitId !== undefined
-          ? await updateAptManagementUnit(unitId, body)
-          : await createAptManagementUnit(body);
+      const saved = await createAptManagementUnit(body);
       display({
         kind: 'success',
-        title: `Management unit ${saved.mgmtUnitName ?? ''} ${creating ? 'created' : 'saved'}`,
+        title: `Management unit ${saved.mgmtUnitName ?? ''} created`,
         timeout: 5000,
       });
       onClose();
@@ -210,7 +181,7 @@ const ManagementUnitEditModal: FC<Props> = ({ open, unitId, onClose, onSaved }) 
     } catch (err) {
       display({
         kind: 'error',
-        title: `Could not ${creating ? 'create' : 'save'} the management unit`,
+        title: 'Could not create the management unit',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -219,7 +190,7 @@ const ManagementUnitEditModal: FC<Props> = ({ open, unitId, onClose, onSaved }) 
     }
   };
 
-  const sources = (data?.sources ?? []).filter((u) => u.id !== unitId);
+  const sources = data?.sources ?? [];
 
   return (
     <Modal
@@ -227,7 +198,7 @@ const ManagementUnitEditModal: FC<Props> = ({ open, unitId, onClose, onSaved }) 
       passiveModal
       size="lg"
       className="detail-dialog"
-      modalHeading={creating ? 'Add management unit' : 'Edit management unit'}
+      modalHeading="Add management unit"
       onRequestClose={close}
       preventCloseOnClickOutside
     >
@@ -251,27 +222,25 @@ const ManagementUnitEditModal: FC<Props> = ({ open, unitId, onClose, onSaved }) 
         />
       ) : (
         <Stack gap={5}>
-          {creating ? (
-            <Select
-              id="apt-mu-edit-unit"
-              labelText="Management unit"
-              value={form.code}
-              invalid={!!errors.code}
-              invalidText={errors.code}
-              disabled={saving}
-              onChange={(e) => pick(e.target.value)}
-            >
-              <SelectItem value="" text="— Select a management unit —" />
-              {data.unassigned.map((u) => (
-                <SelectItem
-                  key={u.managementUnitCode}
-                  value={u.managementUnitCode}
-                  text={`${u.managementUnitName ?? u.managementUnitCode} (${u.managementUnitCode})`}
-                />
-              ))}
-            </Select>
-          ) : null}
-          {(!creating || form.code) && (
+          <Select
+            id="apt-mu-edit-unit"
+            labelText="Management unit"
+            value={form.code}
+            invalid={!!errors.code}
+            invalidText={errors.code}
+            disabled={saving}
+            onChange={(e) => pick(e.target.value)}
+          >
+            <SelectItem value="" text="— Select a management unit —" />
+            {data.unassigned.map((u) => (
+              <SelectItem
+                key={u.managementUnitCode}
+                value={u.managementUnitCode}
+                text={`${u.managementUnitName ?? u.managementUnitCode} (${u.managementUnitCode})`}
+              />
+            ))}
+          </Select>
+          {form.code && (
             <DefinitionGrid
               items={[
                 { label: 'Management unit type', value: dash(muType(form.muType)) },
@@ -358,7 +327,7 @@ const ManagementUnitEditModal: FC<Props> = ({ open, unitId, onClose, onSaved }) 
           disabled={saving || !data || nothingToAdd}
           onClick={() => void submit()}
         >
-          {saving ? 'Saving…' : creating ? 'Create' : 'Save'}
+          {saving ? 'Saving…' : 'Create'}
         </Button>
       </div>
     </Modal>

@@ -489,7 +489,10 @@ public class SaleInfoService {
         scheduleB,
         count(facts.get("bcts_type")) > 0,
         count(facts.get("mark_type")) > 0,
-        count(facts.get("hq_authority")) > 0));
+        // GET checks FTA_FILE_CP_AUTHORITY only for a sale without a BCTS org; a BCTS org's
+        // sale is gated by that org's ownership instead, which this app doesn't apply.
+        (b.bctsOrgUnitNo() != null && !b.bctsOrgUnitNo().isBlank())
+            || count(facts.get("hq_authority")) > 0));
 
     return new SaleInfoResponse(
         fileId, type, b.fileStatusCode(), b.recordExists(),

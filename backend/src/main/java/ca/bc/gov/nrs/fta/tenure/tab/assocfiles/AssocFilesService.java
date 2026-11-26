@@ -25,9 +25,9 @@ import org.springframework.web.server.ResponseStatusException;
  * duplicates an association in the other direction. SAVE inserts (legacy never updates an
  * association: its three key fields are the key, so a change is a new row); REMOVE deletes, and
  * for source F deletes both directions. The form's checks are in {@link AssocFilesRules}; the
- * package's own checks (the associated FTA file exists, no FTAS association between the two
- * files already, an AAC end date inside the associated file's term too) are here, as is its
- * AAC file-type warning.
+ * package's own checks (the associated FTA file exists and no FTAS association between the two
+ * files already, both skipped for association type R; an AAC end date inside the associated
+ * file's term too) are here, as is its AAC file-type warning.
  *
  * <p>Runs against the shared {@code THE} Oracle schema — there is no local database, so it is
  * exercised only in a deployed environment.
@@ -263,8 +263,8 @@ public class AssocFilesService {
         .addValue("endDate", end, Types.DATE)
         .addValue("userId", userId);
 
-    // FTA_910_ASSOC_FILE.ADD's own checks.
-    if (AssocFilesRules.SOURCE_FTAS.equals(source)) {
+    // FTA_910_ASSOC_FILE.ADD's own checks, which it skips for association type R.
+    if (AssocFilesRules.SOURCE_FTAS.equals(source) && !"R".equals(type)) {
       if (count(FILE_EXISTS_SQL, p) == 0) {
         throw bad(List.of("The Associated File selected is not a valid FTA Forest File ID."));
       }

@@ -230,6 +230,7 @@ public class CutblockDetailService {
           rs.getLong("cb_revision_count"),
           rs.getObject("cboa_revision_count", Long.class),
           rs.getString("file_type_code"),
+          rs.getString("file_status_code"),
           rs.getString("forest_file_id"),
           rs.getString("cutting_permit_id"),
           rs.getString("cut_block_id"),

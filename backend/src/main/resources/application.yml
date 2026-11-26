@@ -50,8 +50,40 @@ fta:
   # on its own database connection. Keep it well under the Hikari pool size (10).
   apt-reports:
     batch-threads: ${APT_REPORT_BATCH_THREADS:4}
+  # Issue Permit (Tenure application tab) files the permit PDF and e-mails the recipients, as
+  # legacy FTA950 did through NRS DMS and CMSG. Here: BC Gov COMS (integration/ComsDocumentStore)
+  # and CHES (integration/ChesEmailSender), each with its own Keycloak client_credentials service
+  # client. All optional so the app starts without them; unset, Issue Permit fails with a message
+  # naming the variables (documents), or issues the permit and reports the e-mail as not sent.
+  # Set token-url/client-id/client-secret together or none; a partial set fails at startup.
+  documents:
+    coms:
+      # COMS API root including the version, e.g. https://coms.api.gov.bc.ca/api/v1
+      base-url: ${COMS_BASE_URL:}
+      bucket-id: ${COMS_BUCKET_ID:}
+      token-url: ${COMS_TOKEN_URL:}
+      client-id: ${COMS_CLIENT_ID:}
+      client-secret: ${COMS_CLIENT_SECRET:}
+      # Optional: prefix the document id is appended to for the e-mailed link (legacy's DMS
+      # viewer URL). Unset, the e-mail links to the COMS object itself.
+      viewer-url: ${COMS_VIEWER_URL:}
+  email:
+    # Legacy CMSG's sender.
+    from: ${FTA_EMAIL_FROM:fta@gov.bc.ca}
+    ches:
+      # CHES API root including the version, e.g. https://ches.api.gov.bc.ca/api/v1
+      base-url: ${CHES_BASE_URL:}
+      token-url: ${CHES_TOKEN_URL:}
+      client-id: ${CHES_CLIENT_ID:}
+      client-secret: ${CHES_CLIENT_SECRET:}
 
 spring:
+  # Issue Permit's upload: legacy refused files of 4 MB (4,194,304 bytes) or more with its own
+  # message, so the servlet limit sits just above that and the app's check speaks first.
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   application:
     name: fta-backend
   autoconfigure:

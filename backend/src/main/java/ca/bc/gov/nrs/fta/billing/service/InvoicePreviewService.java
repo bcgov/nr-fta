@@ -30,6 +30,7 @@ public class InvoicePreviewService {
 
   static final String FILE_REQUIRED = "Tenure Number is required.";
   static final String YEAR_INVALID = "Year must be a four-digit year.";
+  static final String YEAR_IN_FUTURE = "Year must be less than or equal to Current Year.";
   static final String FILE_INVALID = "Invalid Tenure Number.";
   static final String NOT_RANGE = "Tenure must be a Range tenure.";
   static final String BAD_STATUS = "File status must be A or S or AS.";
@@ -115,20 +116,15 @@ public class InvoicePreviewService {
   /**
    * The Go button. A blank year means the current one, as legacy defaulted it.
    *
-   * @throws ResponseStatusException 400 for a missing or invalid tenure, or one
-   *     that cannot be invoiced (not range, wrong status, no client, no provision)
+   * @throws ResponseStatusException 400 for a missing or invalid tenure, a year after this
+   *     one, or a tenure that cannot be invoiced (not range, wrong status, no client, no provision)
    */
   public InvoicePreviewDto preview(String forestFileId, String calendarYear) {
     String file = forestFileId == null ? "" : forestFileId.trim().toUpperCase();
     if (file.isEmpty()) {
       throw bad(FILE_REQUIRED);
     }
-    String year = calendarYear == null || calendarYear.isBlank()
-        ? String.valueOf(Year.now(ZONE).getValue())
-        : calendarYear.trim();
-    if (!year.matches("\\d{4}")) {
-      throw bad(YEAR_INVALID);
-    }
+    String year = year(calendarYear);
     MapSqlParameterSource p = new MapSqlParameterSource()
         .addValue("forestFileId", file)
         .addValue("year", year);
@@ -197,6 +193,24 @@ public class InvoicePreviewService {
         inv.taxRate(),
         inv.taxAmount(),
         inv.total());
+  }
+
+  /**
+   * The year to price: a blank one is the current year, as legacy defaulted it; a later one is
+   * refused, as legacy's calendarYearRange validator did.
+   */
+  static String year(String calendarYear) {
+    int now = Year.now(ZONE).getValue();
+    String year = calendarYear == null || calendarYear.isBlank()
+        ? String.valueOf(now)
+        : calendarYear.trim();
+    if (!year.matches("\\d{4}")) {
+      throw bad(YEAR_INVALID);
+    }
+    if (Integer.parseInt(year) > now) {
+      throw bad(YEAR_IN_FUTURE);
+    }
+    return year;
   }
 
   private static ResponseStatusException bad(String message) {

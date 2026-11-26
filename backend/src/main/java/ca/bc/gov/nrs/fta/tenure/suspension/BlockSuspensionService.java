@@ -1,5 +1,7 @@
 package ca.bc.gov.nrs.fta.tenure.suspension;
 
+import ca.bc.gov.nrs.fta.tenure.service.CutBlockRules;
+import ca.bc.gov.nrs.fta.tenure.service.CutblockDetailService;
 import ca.bc.gov.nrs.fta.tenure.service.HarvestLegacyCall;
 import ca.bc.gov.nrs.fta.tenure.suspension.SuspensionDtos.BlockSuspension;
 import ca.bc.gov.nrs.fta.tenure.suspension.SuspensionDtos.Suspension;
@@ -15,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -27,6 +30,10 @@ import org.springframework.web.server.ResponseStatusException;
  * <p>The package takes no revision for a suspension, so the service locks the row and compares
  * the caller's revision first. It also leaves CUT_BLOCK's update user unset when it deletes a
  * suspension, as legacy did.
+ *
+ * <p>FTA914 opens only from FTA904's Suspend Cut Block and Edit Suspension buttons, so the
+ * block's {@link CutBlockRules} ({@code getAllowSuspend}, {@code getShowEditSuspend}) gate the
+ * writes as well as the status rules here.
  */
 @Service
 public class BlockSuspensionService {
@@ -81,24 +88,29 @@ public class BlockSuspensionService {
         FROM the.block_status_code
        WHERE effective_date <= SYSDATE
          AND expiry_date > SYSDATE
-         AND block_status_code <> 'HS'
        ORDER BY block_status_code
       """;
 
   private final NamedParameterJdbcTemplate jdbc;
   private final HarvestLegacyCall legacy;
   private final PartitionCodes partitionCodes;
+  private final CutblockDetailService cutBlocks;
 
   public BlockSuspensionService(
-      NamedParameterJdbcTemplate jdbc, HarvestLegacyCall legacy, PartitionCodes partitionCodes) {
+      NamedParameterJdbcTemplate jdbc,
+      HarvestLegacyCall legacy,
+      PartitionCodes partitionCodes,
+      CutblockDetailService cutBlocks) {
     this.jdbc = jdbc;
     this.legacy = legacy;
     this.partitionCodes = partitionCodes;
+    this.cutBlocks = cutBlocks;
   }
 
   /** The block, its suspension if it has one, and the lists FTA914's form offers. */
-  public BlockSuspension find(long cbSkey) {
+  public BlockSuspension find(long cbSkey, Authentication authentication) {
     Block block = block(cbSkey);
+    CutBlockRules rules = rules(cbSkey, authentication);
     List<Suspension> suspensions = jdbc.query(
         SUSPENSION_SQL, Map.of("cbSkey", cbSkey), (rs, n) -> suspension(rs, block));
     Suspension suspension = suspensions.isEmpty() ? null : suspensions.get(0);
@@ -114,16 +126,20 @@ public class BlockSuspensionService {
         block.expiryDate(),
         block.extendDate(),
         suspension,
-        SuspensionRules.canSuspendBlock(block.status(), has),
-        SuspensionRules.canEditSuspension(block.status(), has),
+        rules.canSuspend() && SuspensionRules.canSuspendBlock(block.status(), has),
+        rules.canEditSuspension() && SuspensionRules.canEditSuspension(block.status(), has),
         partitionCodes.current(),
         postStatusCodes());
   }
 
   /** Suspend Block: {@code mainline} SAVE with no suspension id reaches ADD. */
   @Transactional
-  public void suspend(long cbSkey, SuspensionCreateRequest q, String userId) {
+  public void suspend(
+      long cbSkey, SuspensionCreateRequest q, Authentication authentication, String userId) {
     Block block = block(cbSkey);
+    if (!rules(cbSkey, authentication).canSuspend()) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, CutBlockRules.MSG_CANNOT_SUSPEND);
+    }
     if (!SuspensionRules.canSuspendBlock(block.status(), hasSuspension(cbSkey))) {
       throw new ResponseStatusException(HttpStatus.CONFLICT,
           "This block cannot be suspended in its current status.");
@@ -135,9 +151,14 @@ public class BlockSuspensionService {
 
   /** Save Suspension, or End Suspension when the request says so. */
   @Transactional
-  public void update(long cbSkey, long suspensionId, SuspensionUpdateRequest q, String userId) {
+  public void update(
+      long cbSkey,
+      long suspensionId,
+      SuspensionUpdateRequest q,
+      Authentication authentication,
+      String userId) {
     Block block = block(cbSkey);
-    editableCheck(block, cbSkey);
+    editableCheck(block, cbSkey, authentication);
     String currentOrder = lockedOrder(cbSkey, suspensionId, q.revisionCount());
     fieldsCheck(q.partitionCode(), q.orderNumber(), q.startDate(), q.endDate());
     if (q.action() == SuspensionUpdateAction.END) {
@@ -158,9 +179,14 @@ public class BlockSuspensionService {
 
   /** Delete Suspension: restores the status the block had before it. */
   @Transactional
-  public void delete(long cbSkey, long suspensionId, SuspensionDeleteRequest q, String userId) {
+  public void delete(
+      long cbSkey,
+      long suspensionId,
+      SuspensionDeleteRequest q,
+      Authentication authentication,
+      String userId) {
     Block block = block(cbSkey);
-    editableCheck(block, cbSkey);
+    editableCheck(block, cbSkey, authentication);
     Long revision = q == null ? null : q.revisionCount();
     String currentOrder = lockedOrder(cbSkey, suspensionId, revision);
     mainline("DELETE_SUSPENSION", block, suspensionId, null, currentOrder, currentOrder,
@@ -177,7 +203,11 @@ public class BlockSuspensionService {
     }
   }
 
-  private void editableCheck(Block block, long cbSkey) {
+  private void editableCheck(Block block, long cbSkey, Authentication authentication) {
+    if (!rules(cbSkey, authentication).canEditSuspension()) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, CutBlockRules.MSG_CANNOT_EDIT_SUSPENSION);
+    }
     if (!SuspensionRules.canEditSuspension(block.status(), hasSuspension(cbSkey))) {
       throw new ResponseStatusException(HttpStatus.CONFLICT,
           "A suspension can only be changed while the block is suspended.");
@@ -234,6 +264,14 @@ public class BlockSuspensionService {
         null, // p_cp_expiry_date
         null, // p_cp_extension_date
         userId);
+  }
+
+  /** FTA904's gating of the block, for the caller. */
+  private CutBlockRules rules(long cbSkey, Authentication authentication) {
+    return cutBlocks.find(cbSkey, authentication)
+        .orElseThrow(() -> new ResponseStatusException(
+            HttpStatus.NOT_FOUND, "Cut block not found."))
+        .rules();
   }
 
   private boolean hasSuspension(long cbSkey) {

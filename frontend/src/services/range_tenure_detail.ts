@@ -2,7 +2,8 @@ import { apiGet } from './http';
 
 // Mirrors the backend RangeTenureDetailDto (ca.bc.gov.nrs.fta.range.dto), which
 // aggregates the legacy THE.FTA_100RANGE_TENURE detail with its range usage
-// (THE.FTA_613R_RANGE_USAGE) and land base (THE.FTA_615_RANGE_LAND_BASE) tabs.
+// and usage history (THE.FTA_613R_RANGE_USAGE) and land base
+// (THE.FTA_615_RANGE_LAND_BASE) tabs.
 
 /** One row of range usage per calendar year (FTA_613R rec_range_usage_results). */
 export interface RangeUsage {
@@ -13,8 +14,10 @@ export interface RangeUsage {
   nonUseNonbillable: number | null;
   nonUseBillable: number | null;
   rangeNonUseReasonCode: string | null;
+  rangeNonUseReasonDesc: string | null;
   tempIncrease: number | null;
   rangeIncreaseReasonCode: string | null;
+  rangeIncreaseReasonDesc: string | null;
   totalAnnualUse: number | null;
   revisionCount: number | null;
 }
@@ -55,11 +58,16 @@ export interface RangeTenureDetail {
   adminOrgUnitNo: string | null;
   forestDistrictNo: string | null;
   districtAdminZone: string | null;
+  /** "client# locn  full name" (FTA_GET_MAIN_LICENSEE). */
   licensee: string | null;
+  secLicenseeInd: string | null;
+  /** "Note(s) Attached", or blank. */
+  notesLabel: string | null;
   fileStatusSt: string | null;
   fileStatusDate: string | null; // ISO date
   mgmtUnitType: string | null;
   mgmtUnitId: string | null;
+  mgmtUnitName: string | null;
   fileName: string | null;
   issueDate: string | null; // ISO date
   expiryDate: string | null; // ISO date
@@ -67,8 +75,17 @@ export interface RangeTenureDetail {
   tenureTermYears: number | null;
   replacementTermYears: number | null;
   replacementCount: number | null;
+  /** "This tenure will be replaced on Jan. 1, YYYY for N years", or null. */
+  replacementLabel: string | null;
+  /** Y for E01/H01: the Historical and Replacement sections apply. */
+  licenceReplaceableInd: string | null;
   rangeInd: string | null;
+  /** The "term is not whole calendar years" warning, or null. */
+  termWarning: string | null;
+  /** Range Usage tab: the years of the tenure term, ascending (FTA_613R GET). */
   rangeUsage: RangeUsage[];
+  /** Every year, newest first (FTA_613R GET_HISTORY). */
+  usageHistory: RangeUsage[];
   landBase: RangeLandBase[];
   specialConditions: RangeSpecialCondition[];
 }

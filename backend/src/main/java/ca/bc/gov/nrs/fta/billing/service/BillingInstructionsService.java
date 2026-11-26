@@ -14,9 +14,11 @@ import java.time.Year;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -36,6 +38,8 @@ import org.springframework.web.server.ResponseStatusException;
  * <p>Legacy wrote GET's rows to a scratch table (FTA680_BILL_INSTR_RESULTS)
  * before returning them; they are returned directly here. Prepare re-runs the
  * search rather than trusting the invoice and lock state the browser sends.
+ *
+ * <p>Both are limited to a district the user administers ({@link BillingDistrictScope}).
  *
  * <p>Runs against the shared {@code THE} Oracle schema — there is no local
  * database, so it is exercised only in a deployed environment.
@@ -225,10 +229,24 @@ public class BillingInstructionsService {
                                 AND billing_instruction_code = 'B')
       """;
 
-  private final NamedParameterJdbcTemplate jdbc;
+  private static final String ORG_UNIT_CODE_SQL =
+      "SELECT org_unit_code FROM the.org_unit WHERE org_unit_no = :orgUnitNo";
 
-  public BillingInstructionsService(NamedParameterJdbcTemplate jdbc) {
+  /** The instructions FTA680's dropdown offers (FTA_CODE_LISTS.GET_BILLING_INSTR_CODE_NOB). */
+  private static final String ACTIVE_CODES_SQL =
+      """
+      SELECT billing_instruction_code
+        FROM the.billing_instruction_code
+       WHERE billing_instruction_code <> 'B'
+         AND expiry_date > SYSDATE
+      """;
+
+  private final NamedParameterJdbcTemplate jdbc;
+  private final BillingDistrictScope scope;
+
+  public BillingInstructionsService(NamedParameterJdbcTemplate jdbc, BillingDistrictScope scope) {
     this.jdbc = jdbc;
+    this.scope = scope;
   }
 
   /** The Go button. */
@@ -261,6 +279,8 @@ public class BillingInstructionsService {
     Map<String, String> chosen = new HashMap<>();
     req.instructions().forEach(i -> chosen.put(i.forestFileId(), i.instructionCode()));
 
+    Set<String> active = new HashSet<>(
+        jdbc.queryForList(ACTIVE_CODES_SQL, Map.of(), String.class));
     List<String> errors = new ArrayList<>();
     List<Runnable> writes = new ArrayList<>();
     boolean created = false;
@@ -269,6 +289,12 @@ public class BillingInstructionsService {
       // A locked row's instruction cannot be changed: legacy's disabled select
       // kept the value GET gave it.
       String instr = row.state.locked() ? row.state.instruction() : chosen.get(row.forestFileId);
+      String codeError = row.state.locked() ? null
+          : BillingInstructionRules.codeError(instr, row.state.instruction(), active);
+      if (codeError != null) {
+        errors.add("Row %d (Tenure %s): %s".formatted(i + 1, row.forestFileId, codeError));
+        continue;
+      }
       MapSqlParameterSource p = new MapSqlParameterSource()
           .addValue("forestFileId", row.forestFileId)
           .addValue("year", c.calendarYear())
@@ -294,6 +320,9 @@ public class BillingInstructionsService {
 
   private List<Row> rows(BillingInstructionsCriteria c) {
     validate(c);
+    // Legacy protected a district user's Org Unit: only the district they administer.
+    scope.requireDistrict(jdbc.queryForList(ORG_UNIT_CODE_SQL,
+        Map.of("orgUnitNo", c.orgUnitNo()), String.class).stream().findFirst().orElse(null));
     MapSqlParameterSource p = new MapSqlParameterSource()
         .addValue("orgUnitNo", c.orgUnitNo())
         .addValue("year", c.calendarYear())

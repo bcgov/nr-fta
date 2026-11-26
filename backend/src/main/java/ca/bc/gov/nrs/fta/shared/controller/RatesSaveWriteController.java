@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Rates &amp; Fees Maintenance write API — {@code PUT /api/fta/admin/rates}
- * (save standard Range Billing rates, FTA699). Ports the {@code SAVE} action of
+ * (save one calendar year of standard Range Billing rates, FTA699). Ports the {@code SAVE} action of
  * the legacy {@code THE.FTA_699_RATEFEE} package. Write access is enforced to
  * {@code FTA_ADMIN} by the URL-level authorization rules; the audit user id is
  * taken from the authenticated JWT.

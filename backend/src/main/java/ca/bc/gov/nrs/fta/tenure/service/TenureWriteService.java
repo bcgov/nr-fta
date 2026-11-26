@@ -70,9 +70,19 @@ public class TenureWriteService {
   // SQL
   // ---------------------------------------------------------------------------------------
 
-  private static final String FILE_TYPE_SQL = """
-      SELECT COUNT(*) FROM the.file_type_code
-       WHERE file_type_code = :t AND SYSDATE BETWEEN effective_date AND expiry_date
+  /** FTA010's list: the current FILE_TYPE_ADDNEW_CODE rows (GET_FILE_TYPE_ADDNEW_CODE). */
+  private static final String ADD_NEW_TYPE_SQL = """
+      SELECT COUNT(*) FROM the.file_type_addnew_code
+       WHERE file_type_addnew_code = :t AND SYSDATE BETWEEN effective_date AND expiry_date
+      """;
+
+  /**
+   * FTA010's fileAuthority: FTA_FILE_CP_AUTHORITY('FILE', type, user org) = 'Y', for
+   * Headquarters (every FTA_ADMIN gets Headquarters' rules, as on the Details tab).
+   */
+  private static final String HQ_FILE_AUTHORITY_SQL = """
+      SELECT COUNT(*) FROM the.fta_file_level_authority
+       WHERE file_type_code = :t AND file_level_type = 'FILE' AND org_level_code = 'H'
       """;
 
   private static final String IS_SQL = "SELECT %s(:t) FROM dual";
@@ -111,7 +121,7 @@ public class TenureWriteService {
         entry_userid, entry_timestamp, update_userid, update_timestamp, revision_count)
       VALUES (
         :id, :status, TRUNC(SYSDATE), :type, TO_NUMBER(:adminOrg),
-        :muType, :muId, NULL, 'N', :zone,
+        :muType, :muId, NULL, :bctsFund, :zone,
         :user, SYSDATE, :user, SYSDATE, 0)
       """;
 
@@ -197,17 +207,18 @@ public class TenureWriteService {
       INSERT INTO the.timber_lic_area (
         forest_file_id, init_licence_area, obligation_area, eliminated_area, non_harvest_area,
         entry_userid, entry_timestamp, update_userid, update_timestamp, revision_count)
-      VALUES (:id, TO_NUMBER(:initial), NULL, NULL, NULL, :user, SYSDATE, :user, SYSDATE, 0)
+      VALUES (:id, TO_NUMBER(:initial), TO_NUMBER(:obligation), TO_NUMBER(:eliminated),
+        TO_NUMBER(:other), :user, SYSDATE, :user, SYSDATE, 0)
       """;
 
-  /** create_harvest_sale: payment method A (not a cash sale), not BCTS-funded. */
+  /** create_harvest_sale: no BCTS Org (Add New doesn't ask it). */
   private static final String INSERT_HARVEST_SALE = """
       INSERT INTO the.harvest_sale (
         forest_file_id, sale_method_code, sale_type_cd, payment_method_cd, salvage_ind,
         sb_fund_ind, bcts_org_unit, plnd_sb_cat_code,
         revision_count, update_userid, update_timestamp, entry_userid, entry_timestamp)
-      VALUES (:id, :method, :saleType, 'A', :salvage,
-        'N', NULL, :category,
+      VALUES (:id, :method, :saleType, :payment, :salvage,
+        :bctsFund, NULL, :category,
         0, :user, SYSDATE, :user, SYSDATE)
       """;
 
@@ -231,10 +242,10 @@ public class TenureWriteService {
       List.of("p_file_type_code", "p_forest_file_id", "p_userid", "p_trace_ind"),
       "p_mark_designate");
 
-  // FTA_GENERATE_FILE_ID(type, trace, id IN OUT, error IN OUT, payment method, BCTS fund, SFL),
-  // with ADD_NEW_REC's defaults for a new file: payment method A, not BCTS-funded, not SFL.
+  // FTA_GENERATE_FILE_ID(type, trace, id IN OUT, error IN OUT, payment method, BCTS fund, SFL):
+  // a B07 cash sale takes the next D id, a BCTS-funded B07 the next BCTS id. Never SFL here.
   private static final String GENERATE_ID_CALL =
-      "{call the.fta_generate_file_id(?, 'N', ?, ?, 'A', 'N', 'N')}";
+      "{call the.fta_generate_file_id(?, 'N', ?, ?, ?, ?, 'N')}";
 
   // FTA_MARK_DESIGNATE(trace, file type, designate IN OUT, error IN OUT).
   private static final String MARK_DESIGNATE_CALL = "{call the.fta_mark_designate('N', ?, ?, ?)}";
@@ -264,16 +275,16 @@ public class TenureWriteService {
   @Transactional
   public Created create(CreateTenureRequest r, String userId) {
     String type = upper(r.fileTypeCode());
-    boolean recreation = !type.isEmpty() && is("the.fta_valid_recreation_file_type", type);
-    String status = type.isEmpty() ? "" : TenureCreateRules.initialStatus(type, recreation);
 
     // 1. Every check first: a refusal writes nothing.
     Checked c = check(r, type);
+    boolean recreation = is("the.fta_valid_recreation_file_type", type);
+    String status = TenureCreateRules.initialStatus(type, "Y".equals(c.spatialLater));
 
     // 2. The id. The generators lock their control table rows until this transaction ends.
     String forestFileId = TenureCreateRules.entersId(type) ? c.typedId
         : TenureCreateRules.optionalId(type) ? freeUsePermitId(c.typedId)
-        : generateFileId(type);
+        : generateFileId(type, c.paymentMethod, c.bctsFund);
     if (count(FILE_EXISTS_SQL, Map.of("id", forestFileId)) > 0) {
       if (TenureCreateRules.entersId(type)) {
         throw new DuplicateDataException(
@@ -296,6 +307,7 @@ public class TenureWriteService {
           .addValue("adminOrg", adminOrg)
           .addValue("muType", c.muType)
           .addValue("muId", emptyToNull(c.muId))
+          .addValue("bctsFund", c.bctsFund)
           .addValue("zone", emptyToNull(c.zone)));
     } catch (DuplicateKeyException e) {
       // Another request took the entered id between the check and here.
@@ -327,14 +339,23 @@ public class TenureWriteService {
     }
 
     if ("A30".equals(type) || "A06".equals(type)) {
+      // FTA100 (initFromRequest) gives an A30 its obligation area from the initial area, and no
+      // eliminated or other area.
+      boolean a30 = "A30".equals(type) && !c.initialArea.isEmpty();
       jdbc.update(INSERT_TL_AREA, params(forestFileId, user)
-          .addValue("initial", emptyToNull(c.initialArea)));
+          .addValue("initial", emptyToNull(c.initialArea))
+          .addValue("obligation", a30 ? c.initialArea : null)
+          .addValue("eliminated", a30 ? "0" : null)
+          .addValue("other", a30 ? "0" : null));
     }
 
     if (!recreation) {
-      TenureCreateRules.HarvestSale sale = TenureCreateRules.harvestSale(type, c.purpose);
+      TenureCreateRules.HarvestSale sale =
+          TenureCreateRules.harvestSale(type, c.purpose, c.salvage);
       jdbc.update(INSERT_HARVEST_SALE, params(forestFileId, user)
           .addValue("method", sale.saleMethod())
+          .addValue("payment", c.paymentMethod)
+          .addValue("bctsFund", c.bctsFund)
           .addValue("saleType", sale.saleType())
           .addValue("salvage", sale.salvageInd())
           .addValue("category", sale.plannedCategory()));
@@ -364,15 +385,19 @@ public class TenureWriteService {
   /** The request's values once checked. */
   private record Checked(String typedId, String adminOrg, String district, String muType,
       String muId, String purpose, String zone, String location, String quota,
-      String initialArea, String fupType) {}
+      String initialArea, String fupType, String bctsFund, String paymentMethod,
+      String spatialLater, String salvage) {}
 
   private Checked check(CreateTenureRequest r, String type) {
     List<String> e = new ArrayList<>();
 
     if (type.isEmpty()) {
       e.add("Type is mandatory.");
-    } else if (count(FILE_TYPE_SQL, Map.of("t", type)) == 0) {
-      e.add("File type " + type + " is not a current file type.");
+    } else if (count(ADD_NEW_TYPE_SQL, Map.of("t", type)) == 0) {
+      e.add("File type " + type + " is not a current file type that can be added.");
+    } else if (TenureCreateRules.RANGE_TYPES.contains(type)
+        || count(HQ_FILE_AUTHORITY_SQL, Map.of("t", type)) == 0) {
+      e.add("You are not authorized to add " + type + " files.");
     }
     if (!e.isEmpty()) {
       throw badRequest(e);
@@ -484,18 +509,58 @@ public class TenureWriteService {
       if (TenureCreateRules.needsQuotaType(type) && quota.isEmpty()) {
         e.add("Quota type is mandatory if file type is " + type + ".");
       }
-      if (!quota.isEmpty()) {
-        if (!has(codes, "quotaTypes", quota) || !lookups.quotaTypeValid(type, quota)) {
-          e.add("Quota Type " + quota + " is not valid for file type " + type + ".");
-        } else if ("D".equals(quota)) {
-          e.add("Quota type should be C-Forest Service Reserve if this sale is not BCTS"
-              + " funded");
-        }
+      if (!quota.isEmpty()
+          && (!has(codes, "quotaTypes", quota) || !lookups.quotaTypeValid(type, quota))) {
+        e.add("Quota Type " + quota + " is not valid for file type " + type + ".");
       }
     } else {
       purpose = "";
       location = "";
       quota = "";
+    }
+
+    // B07's BCTS Fund and Payment Method (FTA100 defaults BCTS Fund to N, payment method to A).
+    String bctsFund = "N";
+    String paymentMethod = "A";
+    if (TenureCreateRules.asksBctsFundAndPayment(type)) {
+      bctsFund = upper(r.bctsFundInd());
+      paymentMethod = upper(r.paymentMethodCode());
+      if (bctsFund.isEmpty()) {
+        e.add("BCTS Fund is mandatory.");
+      } else if (!"Y".equals(bctsFund) && !"N".equals(bctsFund)) {
+        e.add("BCTS Fund is Y or N.");
+      }
+      if (paymentMethod.isEmpty()) {
+        e.add("Payment Method is mandatory.");
+      } else if (!"A".equals(paymentMethod) && !"C".equals(paymentMethod)) {
+        e.add("Payment Method must be A or C.");
+      }
+    }
+    if (TenureCreateRules.licenceToCut(type)) {
+      e.addAll(TenureCreateRules.licenceToCutLinkErrors(type, purpose, quota, bctsFund,
+          paymentMethod));
+    }
+
+    // Submit Spatial Later: a new licence to cut starts in PP, a P status.
+    String spatialLater = "";
+    if (TenureCreateRules.asksSpatialLater(type, TenureCreateRules.initialStatus(type, false))) {
+      spatialLater = upper(r.subSpatialLaterInd());
+      if (spatialLater.isEmpty()) {
+        e.add("Submit Spatial Later is mandatory.");
+      } else if (!"Y".equals(spatialLater) && !"N".equals(spatialLater)) {
+        e.add("Submit Spatial Later is Y or N.");
+      }
+    }
+
+    // Salvage: A01, A18 and A41.
+    String salvage = "";
+    if (TenureCreateRules.asksSalvage(type)) {
+      salvage = upper(r.salvageInd());
+      if (salvage.isEmpty()) {
+        e.add("Salvage is mandatory.");
+      } else if (!"Y".equals(salvage) && !"N".equals(salvage)) {
+        e.add("Salvage is Y or N.");
+      }
     }
     if (TenureCreateRules.needsZone(type)) {
       if (zone.isEmpty()) {
@@ -548,7 +613,7 @@ public class TenureWriteService {
       throw badRequest(e);
     }
     return new Checked(typedId, adminOrg, district, muType, muId, purpose, zone, location,
-        quota, initialArea, fupType);
+        quota, initialArea, fupType, bctsFund, paymentMethod, spatialLater, salvage);
   }
 
   // ---------------------------------------------------------------------------------------
@@ -558,7 +623,7 @@ public class TenureWriteService {
   /** A B05, B06 or B07's harvesting authority, hauling authority and licence to cut. */
   private void createLicenceToCut(String type, String forestFileId, String status, Checked c,
       LocalDate issueDate, String user) {
-    String mark = TenureCreateRules.timberMark(type, forestFileId);
+    String mark = TenureCreateRules.timberMark(type, forestFileId, c.paymentMethod);
     Long skey = jdbc.queryForObject(NEXT_HVA_SQL, Map.of(), Long.class);
     jdbc.update(INSERT_HVA, params(forestFileId, user)
         .addValue("skey", skey)
@@ -572,7 +637,7 @@ public class TenureWriteService {
         .addValue("salvage", TenureCreateRules.salvageType(c.purpose))
         .addValue("location", emptyToNull(c.location)));
 
-    if (TenureCreateRules.createsHaulingAuthority(type, c.purpose)) {
+    if (TenureCreateRules.createsHaulingAuthority(type, c.purpose, c.bctsFund)) {
       if (count(MARK_EXISTS_SQL, Map.of("mark", mark)) > 0) {
         throw new ResponseStatusException(HttpStatus.CONFLICT,
             "Timber mark " + mark + " is already in use.");
@@ -668,7 +733,7 @@ public class TenureWriteService {
   // ---------------------------------------------------------------------------------------
 
   /** The next id for {@code type} from FTA_GENERATE_FILE_ID. */
-  private String generateFileId(String type) {
+  private String generateFileId(String type, String paymentMethod, String bctsFund) {
     String[] out = jdbc.getJdbcTemplate().execute(
         (Connection con) -> con.prepareCall(GENERATE_ID_CALL),
         (CallableStatement cs) -> {
@@ -677,6 +742,8 @@ public class TenureWriteService {
           cs.registerOutParameter(2, Types.VARCHAR);
           cs.setNull(3, Types.VARCHAR);
           cs.registerOutParameter(3, Types.VARCHAR);
+          cs.setString(4, paymentMethod);
+          cs.setString(5, bctsFund);
           cs.execute();
           return new String[] {cs.getString(2), cs.getString(3)};
         });

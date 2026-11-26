@@ -1,5 +1,6 @@
 package ca.bc.gov.nrs.fta.tenure.tab.notes;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,15 +41,20 @@ public record NotesRules(boolean canAdd, String blockedReason) {
   /**
    * The note's validation errors (empty when valid), with legacy's message texts:
    * {@code sil.error.usr.required} ("{0} is mandatory.") and
-   * {@code fta.web.error.string.length} ("{0} must not exceed {1} characters.").
+   * {@code fta.web.error.string.length} ("{0} must not exceed {1} characters."), plus the
+   * column's 4000-byte limit. The note is checked (and stored) as typed, untrimmed.
    */
   public static List<String> validate(String note) {
     List<String> errors = new ArrayList<>();
-    String text = note == null ? "" : note.trim();
-    if (text.isEmpty()) {
+    String text = note == null ? "" : note;
+    if (text.isBlank()) {
       errors.add("Note is mandatory.");
     } else if (text.length() > MAX_NOTE_LENGTH) {
       errors.add("Note must not exceed " + MAX_NOTE_LENGTH + " characters.");
+    } else if (text.getBytes(StandardCharsets.UTF_8).length > MAX_NOTE_LENGTH) {
+      // FOREST_NOTE's column holds 4000 bytes; accented and other non-ASCII characters take
+      // more than one.
+      errors.add("Note must not exceed " + MAX_NOTE_LENGTH + " bytes.");
     }
     return errors;
   }

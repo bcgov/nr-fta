@@ -40,6 +40,8 @@ export interface MarkAmendment {
   permitBlockArea: number | null;
   /** The requested amendment changes (P_OF_C_OR_LEGAL). */
   requestedChanges: string | null;
+  /** When its status last changed; for an HI amendment, its issue. ISO date. */
+  updateDate: string | null;
 }
 
 /** One note on the mark's forest file — PROVFOREST_NOTE, via FTA_970_FOREST_NOTE. */
@@ -96,6 +98,8 @@ export interface MarkDetail {
   mapReferenceComp: string | null;
   markExtendDate: string | null; // ISO date
   markExtendCount: number | null;
+  /** PRIVATE_MARK_EXTEND_REAS_CODE — why the mark was last extended. */
+  markExtendReasonCode: string | null;
   markAmendDate: string | null; // ISO date
   /** The outstanding (PI or HN) amendment's status, if there is one. */
   outstandingAmendStatus: string | null;
@@ -111,16 +115,28 @@ export interface MarkDetail {
   editRules: MarkEditRules | null;
 }
 
+const isOutstanding = (status: string | null) => status === 'PI' || status === 'HN';
+
 /**
- * The amendment whose status the mark shows as its "Amendment Status": the outstanding
- * (PI or HN) one, else the newest — so an issued (HI) amendment still shows once it's done.
- * As the backend's MarkDetailDto.shownAmendment; `amendments` is newest first.
+ * The amendment the Administration details show: the outstanding (PI or HN) one, else the
+ * latest issued (HI) one. A disallowed or otherwise closed amendment stays on the Amendments
+ * tab only. As the backend's MarkDetailDto.shownAmendment; `amendments` is newest first.
  */
 export function shownAmendment(mark: MarkDetail): MarkAmendment | undefined {
   return (
-    mark.amendments.find((a) => a.prvMrkAmdStsSt === 'PI' || a.prvMrkAmdStsSt === 'HN') ??
-    mark.amendments[0]
+    mark.amendments.find((a) => isOutstanding(a.prvMrkAmdStsSt)) ??
+    mark.amendments.find((a) => a.prvMrkAmdStsSt === 'HI')
   );
+}
+
+/**
+ * The "Amended Date" beside {@link shownAmendment}: the certificate's amend date for an
+ * outstanding amendment, the issued amendment's own date for an HI one, else none.
+ */
+export function shownAmendDate(mark: MarkDetail): string | null {
+  const shown = shownAmendment(mark);
+  if (!shown) return null;
+  return isOutstanding(shown.prvMrkAmdStsSt) ? mark.markAmendDate : shown.updateDate;
 }
 
 /** Mirrors the backend MarkEditRules: which groups of fields are open, and to what. */
@@ -233,6 +249,24 @@ export function deleteClient(
   );
 }
 
+/**
+ * DELETE /api/fta/marks/{id}/land-index/{skey} — FTA511's Delete: removes a land index,
+ * where one may be added (`editRules.landIndexUpdate`).
+ */
+export function deleteLandIndex(
+  id: string,
+  skey: number,
+  revisionCount: number | null,
+  byCertificate = false,
+): Promise<void> {
+  const params = new URLSearchParams();
+  if (byCertificate) params.set('by', 'certificate');
+  if (revisionCount != null) params.set('revisionCount', String(revisionCount));
+  return apiDelete<void>(
+    `/api/fta/marks/${encodeURIComponent(id)}/land-index/${skey}?${params.toString()}`,
+  );
+}
+
 /** Mirrors the backend MarkLandIndexRequest — the FTA511 add row. */
 export interface MarkLandIndexRequest {
   /** Land District/Island (PRIMARY_LAND_INDEX_CODE); required. */
@@ -241,6 +275,8 @@ export interface MarkLandIndexRequest {
   secondaryLandIndexCode: string | null;
   /** Up to 40 characters; optional. */
   markLandIndexDesc: string | null;
+  /** Deactivate Date, ISO yyyy-mm-dd; optional. */
+  indexDeactivateDate: string | null;
 }
 
 /** POST /api/fta/marks/{id}/land-index — add a land index to the mark (FTA511). */
@@ -255,8 +291,6 @@ export function addLandIndex(
 
 /** Mirrors the backend MarkLandIndexUpdateRequest — FTA511's save of an existing row. */
 export interface MarkLandIndexUpdateRequest extends MarkLandIndexRequest {
-  /** ISO yyyy-mm-dd; optional. */
-  indexDeactivateDate: string | null;
   revisionCount: number | null;
 }
 
@@ -352,13 +386,19 @@ export async function getNextTimberMark(fileTypeCode: string): Promise<string | 
 }
 
 /**
- * POST /api/fta/marks/skip-timber-mark — passes over the next timber mark (the user
+ * POST /api/fta/marks/{id}/skip-timber-mark — passes over the next timber mark (the user
  * won't issue it) and returns the one after. Takes that number for good, as legacy's
- * repeated Assign Mark did.
+ * repeated Assign Mark did, so only on a mark Assign Mark is open on (`editRules.markType`).
  */
-export async function skipTimberMark(fileTypeCode: string): Promise<string> {
+export async function skipTimberMark(
+  id: string,
+  fileTypeCode: string,
+  byCertificate = false,
+): Promise<string> {
+  const params = new URLSearchParams({ fileType: fileTypeCode });
+  if (byCertificate) params.set('by', 'certificate');
   const { timberMark } = await apiPost<{ timberMark: string }>(
-    `/api/fta/marks/skip-timber-mark?fileType=${encodeURIComponent(fileTypeCode)}`,
+    `/api/fta/marks/${encodeURIComponent(id)}/skip-timber-mark?${params.toString()}`,
   );
   return timberMark;
 }

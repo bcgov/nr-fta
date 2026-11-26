@@ -17,7 +17,8 @@ class MarkDetailDtoTest {
 
   private static MarkDetailDto.Amendment amendment(LocalDate requested, String status) {
     return new MarkDetailDto.Amendment(
-        requested, status, status + " - Description", 1, "IDIR\\JSMITH", null, "Changes");
+        requested, status, status + " - Description", 1, "IDIR\\JSMITH", null, "Changes",
+        requested.plusDays(10));
   }
 
   /** A mark with just its amendments, newest first as MarkDetailService reads them. */
@@ -26,7 +27,7 @@ class MarkDetailDtoTest {
         "12A345", "150557", "12A345", "B01", "HI", null, null, null, null, null, 60, "1867",
         "DVA", "00001", "00", "Holder", "S", "H", null, null, null, null, null, null, null,
         null, null, null, null, null, null, null, null, null, null, null, null, null, 0, null,
-        null, null, 1L, null, true, List.of(), List.of(), amendments, List.of(), null);
+        null, null, null, 1L, null, true, List.of(), List.of(), amendments, List.of(), null);
   }
 
   @Test
@@ -37,12 +38,23 @@ class MarkDetailDtoTest {
   }
 
   @Test
-  void theNewestIsShownWhenNoneIsOutstanding() {
+  void aDisallowedAmendmentGivesWayToTheLatestIssuedOne() {
     MarkDetailDto mark = mark(List.of(
         amendment(LocalDate.of(2025, 3, 1), "DV"),
-        amendment(LocalDate.of(2024, 3, 1), "HI")));
+        amendment(LocalDate.of(2024, 3, 1), "HI"),
+        amendment(LocalDate.of(2023, 3, 1), "HI")));
 
-    assertThat(mark.shownAmendment().prvMrkAmdStsSt()).isEqualTo("DV");
+    assertThat(mark.shownAmendment().amendRequestDate()).isEqualTo(LocalDate.of(2024, 3, 1));
+    // Its own date, not the certificate's (the DV's).
+    assertThat(mark.shownAmendDate()).isEqualTo(LocalDate.of(2024, 3, 11));
+  }
+
+  @Test
+  void onlyClosedAmendmentsShowNothing() {
+    MarkDetailDto mark = mark(List.of(amendment(LocalDate.of(2025, 3, 1), "DV")));
+
+    assertThat(mark.shownAmendment()).isNull();
+    assertThat(mark.shownAmendDate()).isNull();
   }
 
   @Test

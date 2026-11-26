@@ -11,6 +11,7 @@ import ca.bc.gov.nrs.fta.tenure.dto.CuttingPermitWriteDtos.PermitSaveRequest;
 import ca.bc.gov.nrs.fta.tenure.dto.CuttingPermitWriteDtos.PermitWriteResult;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,8 +38,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class CuttingPermitWriteService {
 
   private static final Pattern WHOLE_NUMBER = Pattern.compile("\\d{1,4}");
-  private static final Pattern AREA = Pattern.compile("\\d{1,8}(\\.\\d{1,4})?");
+  /** HARVESTING_AUTHORITY.HARVEST_AREA is NUMBER(11,4): 7 whole digits, 4 decimals. */
+  private static final Pattern AREA = Pattern.compile("\\d{1,7}(\\.\\d{1,4})?");
   private static final int MAX_LOCATION = 50;
+  /** HARVESTING_AUTHORITY's column widths. */
+  private static final int MAX_DISTRICT_ADMN_ZONE = 4;
+  private static final int MAX_MGMT_UNIT_TYPE = 1;
+  private static final int MAX_MGMT_UNIT_ID = 4;
   private static final int MAX_CONDITION = 3000;
 
   private final CuttingPermitDetailService read;
@@ -62,6 +68,14 @@ public class CuttingPermitWriteService {
       throw invalid("Status is mandatory.");
     }
     checkFormats(q);
+    // Fta902CpDetailForm.initFromRequest: a blank Expires is filled from the issue date and a
+    // term above zero. Locked terms are left as the package read them.
+    String expiry = text(q.expiryDate());
+    if (expiry == null && !rules.termsLocked() && text(q.issueDate()) != null
+        && termGiven(q.termYears(), q.termMonths())) {
+      expiry = legacy.calcExpiryDate(
+          text(q.issueDate()), text(q.termYears()), text(q.termMonths()));
+    }
     Map<String, String> call = current(permit, caller, userId, "SAVE");
     String catastrophic = CuttingPermitRules.catastrophicProblem(
         status, date(call.get("p_hdr_award_date")), q.catastrophicInd());
@@ -88,7 +102,7 @@ public class CuttingPermitWriteService {
     call.put("p_mark_status_st", status);
     call.put("p_mark_status_date", text(q.statusDate()));
     call.put("p_mark_issue_date", text(q.issueDate()));
-    call.put("p_mark_expiry_date", text(q.expiryDate()));
+    call.put("p_mark_expiry_date", expiry);
     call.put("p_mark_tenure_term_years", text(q.termYears()));
     call.put("p_mark_tenure_term_months", text(q.termMonths()));
     call.put("p_mark_extend_count", text(q.extendCount()));
@@ -119,7 +133,24 @@ public class CuttingPermitWriteService {
       call.put("p_markng_instrmnt_cd", text(q.markingInstrumentCode()));
     }
     call.put("p_hva_revision_count", revision(q.revisionCount()));
-    return outcome(legacy.mainline(call));
+    PermitWriteResult saved = outcome(legacy.mainline(call));
+    String warning = issuePrecedesAward(
+        date(text(q.issueDate())), date(call.get("p_hdr_award_date")));
+    if (warning == null) {
+      return saved;
+    }
+    List<String> warnings = new ArrayList<>(saved.warnings());
+    warnings.add(warning);
+    return new PermitWriteResult(List.copyOf(warnings));
+  }
+
+  /** Fta902CpDetailAction.addWarning, after a successful Save. */
+  static final String MSG_ISSUE_PRECEDES_AWARD = "Issue Date precedes file issue/award date.";
+
+  /** Legacy's after-save warning when the permit is issued before its file's award, or null. */
+  static String issuePrecedesAward(LocalDate issue, LocalDate award) {
+    return issue != null && award != null && issue.isBefore(award)
+        ? MSG_ISSUE_PRECEDES_AWARD : null;
   }
 
   /** FTA902's Delete, of an EE permit ({@code DELETE_EE_FILE}, level CUTP). */
@@ -152,12 +183,20 @@ public class CuttingPermitWriteService {
   public PermitWriteResult addCondition(
       long hvaSkey, PermitConditionRequest q, Authentication caller, String userId) {
     require(permit(hvaSkey, caller).rules().canManageConditions());
+    String theme = text(q.themeCode());
+    // FTA_902_CP_CONDITIONS.MAINLINE's own text; the screen offers only current themes.
+    if (theme == null) {
+      throw invalid("Permit Issuance Condition is required.");
+    }
+    if (read.conditionThemes().stream().noneMatch(c -> c.code().equals(theme))) {
+      throw invalid("Permit Issuance Condition (" + theme + ") is an expired code.");
+    }
     String description = text(q.description());
     if (description != null && description.length() > MAX_CONDITION) {
       throw invalid("Condition Description must not exceed " + MAX_CONDITION + " characters.");
     }
     return outcome(legacy.condition(
-        "SAVE", hvaSkey, null, text(q.themeCode()), description, userId));
+        "SAVE", hvaSkey, null, theme, description, userId));
   }
 
   /** Deletes one of the permit's conditions; the package would delete any permit's by id. */
@@ -340,11 +379,29 @@ public class CuttingPermitWriteService {
     checkNumber(q.extendCount(), "Extension Count");
     String area = text(q.harvestArea());
     if (area != null && !AREA.matcher(area).matches()) {
-      throw invalid("Area must be hectares, with up to 4 decimal places.");
+      throw invalid(
+          "Area must be hectares, at most 9,999,999.9999, with up to 4 decimal places.");
     }
-    String location = text(q.location());
-    if (location != null && location.length() > MAX_LOCATION) {
-      throw invalid("Geographic Location must not exceed " + MAX_LOCATION + " characters.");
+    checkLength(q.location(), MAX_LOCATION, "Geographic Location");
+    checkLength(q.districtAdmnZone(), MAX_DISTRICT_ADMN_ZONE, "Zone");
+    checkLength(q.mgmtUnitTypeCode(), MAX_MGMT_UNIT_TYPE, "Management Unit Type");
+    checkLength(q.mgmtUnitId(), MAX_MGMT_UNIT_ID, "Management Unit");
+  }
+
+  /** Legacy's test: a term that is not blank or zero in both its parts. */
+  static boolean termGiven(String years, String months) {
+    return !(isZeroOrBlank(years) && isZeroOrBlank(months));
+  }
+
+  private static boolean isZeroOrBlank(String value) {
+    String v = text(value);
+    return v == null || v.equals("0");
+  }
+
+  private static void checkLength(String value, int max, String label) {
+    String v = text(value);
+    if (v != null && v.length() > max) {
+      throw invalid(label + " must not exceed " + max + " characters.");
     }
   }
 

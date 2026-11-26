@@ -11,7 +11,6 @@ test('a range tenure opens from search, with every tab loading', async ({ page }
   await settled(page);
   expect(await walkTabs(page, 'Range tenure sections')).toEqual([
     'Range Usage',
-    'Rotations',
     'Land Base',
     'Usage History',
   ]);

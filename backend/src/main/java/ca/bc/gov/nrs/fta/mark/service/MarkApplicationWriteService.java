@@ -67,7 +67,9 @@ public class MarkApplicationWriteService {
         entry_userid, entry_timestamp, update_userid, update_timestamp, revision_count
       ) VALUES (
         :certificate, TO_NUMBER(:forestDistrict), :applicationDate,
-        :status, :term, TRUNC(SYSDATE),
+        -- No status date: legacy ADD_NEW passed an unset one (create_certificate
+        -- P_MARK_STATUS_DATE); the first status change stamps it.
+        :status, :term, NULL,
         :cascade, :quotaType, :mgmtUnitType, :mgmtUnitId,
         :ltoPid, 'I', 'I', :mapReferenceId,
         :permitBlockLocn, :area, :legal,

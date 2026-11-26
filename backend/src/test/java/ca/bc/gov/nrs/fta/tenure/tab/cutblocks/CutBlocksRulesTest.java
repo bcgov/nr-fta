@@ -38,10 +38,19 @@ class CutBlocksRulesTest {
     }
 
     @Test
-    void singleMarkOfPurposeSsNeedsNoSalvageType() {
-      assertThat(CutBlocksRules.permitProblem("B07", "SS", "HI", null, true)).isNull();
+    void b04NeedsPurposeSsOrASalvagePermit() {
+      assertThat(CutBlocksRules.permitProblem("B04", "SS", "HI", null, true)).isNull();
+      assertThat(CutBlocksRules.permitProblem("B04", "DT", "HI", "SSS", true)).isNull();
       assertThat(CutBlocksRules.permitProblem("B04", "DT", "HI", null, true))
           .isEqualTo(CutBlocksRules.MSG_SALVAGE);
+    }
+
+    @Test
+    void b05B06B07TakeANonSalvagePermitWithoutSs() {
+      // FTA-1732: blocks for waste on any B05/B06/B07 permit.
+      assertThat(CutBlocksRules.permitProblem("B05", null, "HI", null, true)).isNull();
+      assertThat(CutBlocksRules.permitProblem("B06", "DT", "HI", null, true)).isNull();
+      assertThat(CutBlocksRules.permitProblem("B07", "DT", "HI", null, true)).isNull();
     }
 
     @Test
@@ -172,6 +181,19 @@ class CutBlocksRulesTest {
       assertThat(CutBlocksFieldChecks.problems(req("1", "1", "1", "N"), "A01", "BBR"))
           .containsExactly(
               "For salvage blocks the planned gross area cannot be greater than 1 hectare.");
+    }
+
+    @Test
+    void wasteAssessmentMayBeBlankExceptOnB05B06B07() {
+      CutBlockCreateRequest blank = new CutBlockCreateRequest(1L, "1", null, null,
+          new BigDecimal("0.5"), new BigDecimal("0.5"), null, "N", "U", null, null, null);
+      assertThat(CutBlocksFieldChecks.problems(blank, "A01", "SSS")).isEmpty();
+      assertThat(CutBlocksFieldChecks.problems(blank, "B06", null))
+          .containsExactly("Waste Assessment Required is mandatory.");
+      CutBlockCreateRequest bad = new CutBlockCreateRequest(1L, "1", null, null,
+          new BigDecimal("0.5"), new BigDecimal("0.5"), null, "N", "X", null, null, null);
+      assertThat(CutBlocksFieldChecks.problems(bad, "A01", "SSS"))
+          .containsExactly("Waste Assessment Required must be Y or N.");
     }
 
     @Test

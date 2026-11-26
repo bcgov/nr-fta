@@ -23,6 +23,7 @@ import EmptyState from '@/components/EmptyState/EmptyState';
 import SectionTile from '@/components/SectionTile';
 import UserName from '@/components/UserName';
 import { useNotification } from '@/context/notification/useNotification';
+import { useDefaultOrgUnitIn } from '@/hooks/useDefaultOrgUnit';
 import PageLayout from '@/pages/PageLayout';
 import {
   getBillingInstructions,
@@ -32,10 +33,12 @@ import {
 } from '@/services/billing';
 import {
   getBillingInstructionCodes,
-  getThreeLetterDistricts,
+  getDistrictOrgUnits,
   getRangeFileTypes,
   type CodeOption,
 } from '@/services/codeLists';
+
+import { currentYear, useDistrictScope } from '../useDistrictScope';
 
 import InvoicePreviewModal from './InvoicePreviewModal';
 import '../billing.scss';
@@ -62,7 +65,19 @@ const TenureBilling: FC = () => {
   const [districts, setDistricts] = useState<CodeOption[]>([]);
   const [fileTypes, setFileTypes] = useState<CodeOption[]>([]);
   const [instrCodes, setInstrCodes] = useState<CodeOption[]>([]);
-  const [form, setForm] = useState<BillingInstructionsCriteria>(EMPTY);
+  const [form, setForm] = useState<BillingInstructionsCriteria>(() => ({
+    ...EMPTY,
+    // Legacy setDefaults: the current year.
+    calendarYear: currentYear(),
+  }));
+  const scope = useDistrictScope(districts);
+  // A single administered district is preselected and locked, as legacy's protected Org Unit.
+  const orgUnitNo = scope.locked?.code ?? form.orgUnitNo;
+  // Legacy defaulted Org Unit to the user's org unit when blank (Org Unit Maintenance).
+  const defaultDistrict = useDefaultOrgUnitIn(scope.options);
+  useEffect(() => {
+    if (defaultDistrict) setForm((f) => (f.orgUnitNo ? f : { ...f, orgUnitNo: defaultDistrict }));
+  }, [defaultDistrict]);
   const [searched, setSearched] = useState<BillingInstructionsCriteria | null>(null);
   const [rows, setRows] = useState<BillingInstructionRow[] | null>(null);
   const [chosen, setChosen] = useState<Record<string, string>>({});
@@ -75,7 +90,7 @@ const TenureBilling: FC = () => {
   useEffect(() => {
     let cancelled = false;
     Promise.allSettled([
-      getThreeLetterDistricts(),
+      getDistrictOrgUnits(),
       getRangeFileTypes(),
       getBillingInstructionCodes(),
     ]).then(([d, t, i]) => {
@@ -122,7 +137,7 @@ const TenureBilling: FC = () => {
 
   const onGo = (e: FormEvent) => {
     e.preventDefault();
-    void search({ ...form, forestFileId: form.forestFileId?.trim().toUpperCase() });
+    void search({ ...form, orgUnitNo, forestFileId: form.forestFileId?.trim().toUpperCase() });
   };
 
   const onPrepare = async () => {
@@ -153,7 +168,7 @@ const TenureBilling: FC = () => {
     }
   };
 
-  const canGo = form.orgUnitNo !== '' && /^\d{4}$/.test(form.calendarYear);
+  const canGo = orgUnitNo !== '' && /^\d{4}$/.test(form.calendarYear);
 
   return (
     <PageLayout
@@ -167,11 +182,12 @@ const TenureBilling: FC = () => {
               <Select
                 id="bill-org"
                 labelText="Org Unit"
-                value={form.orgUnitNo}
+                value={orgUnitNo}
+                disabled={!!scope.locked}
                 onChange={(e) => set('orgUnitNo')(e.target.value)}
               >
                 <SelectItem value="" text="Choose a district" />
-                {districts.map((d) => (
+                {scope.options.map((d) => (
                   <SelectItem key={d.code} value={d.code} text={d.description} />
                 ))}
               </Select>

@@ -114,7 +114,12 @@ public class TenureDetailsService {
           case "FOR" -> "forLicenceToCut";
           case "SPEC" -> "specialUse";
           default -> "occLicenceToCut";
-        });
+        },
+        deletable(form),
+        retirable(form),
+        assignsMarkDesignate(form),
+        ChangeMarkDesignateRules.changesMarkDesignate(form.type(),
+            form.yes("p_disable_save_ind")));
 
     Map<String, String> values = new LinkedHashMap<>();
     form.values().forEach((p, v) -> {
@@ -166,16 +171,7 @@ public class TenureDetailsService {
     if (read.reason != null) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, read.reason);
     }
-    Map<String, String> sentRevisions =
-        request.revisions() == null ? Map.of() : request.revisions();
-    for (String p : REVISION_PARAMS) {
-      String sent = sentRevisions.getOrDefault(TenureDetailsForm.key(p), "");
-      if (!form.get(p).equals(sent == null ? "" : sent)) {
-        throw new ResponseStatusException(HttpStatus.CONFLICT,
-            "This tenure was changed by someone else since you opened it. Reload it and make"
-                + " your changes again.");
-      }
-    }
+    checkRevisions(form, request.revisions());
 
     // The proposed values: the GET's, with the opened fields the request carries.
     Map<String, String> sent = request.values() == null ? Map.of() : request.values();
@@ -220,6 +216,119 @@ public class TenureDetailsService {
     }
     warnings.addAll(result.warnings());
     return new TenureDetailsSaveResult(warnings);
+  }
+
+  /** The optimistic lock: the revision counts the GET returned must still be the file's. */
+  private static void checkRevisions(TenureDetailsForm form, Map<String, String> revisions) {
+    Map<String, String> sentRevisions = revisions == null ? Map.of() : revisions;
+    for (String p : REVISION_PARAMS) {
+      String sent = sentRevisions.getOrDefault(TenureDetailsForm.key(p), "");
+      if (!form.get(p).equals(sent == null ? "" : sent)) {
+        throw new ResponseStatusException(HttpStatus.CONFLICT,
+            "This tenure was changed by someone else since you opened it. Reload it and make"
+                + " your changes again.");
+      }
+    }
+  }
+
+  /** FTA100's Delete button: enabled unless the package's p_disable_delete_ind says Y. */
+  private static boolean deletable(TenureDetailsForm form) {
+    return !form.yes("p_disable_delete_ind");
+  }
+
+  /** FTA100's Retire button: enabled only when the package's p_disable_retire_ind is N. */
+  private static boolean retirable(TenureDetailsForm form) {
+    return "N".equals(form.get("p_disable_retire_ind"));
+  }
+
+  /** The file types FTA100 shows Assign Mark Designate for (ptweb27178). */
+  private static final Set<String> ASSIGN_DESIGNATE_TYPES =
+      Set.of("A04", "A06", "A44", "A20", "A21", "A22", "A23", "A24");
+
+  /**
+   * FTA100's Assign Mark Designate button: shown for its file types, enabled when Save is and
+   * the package's p_disable_assign_mark_ind is N.
+   */
+  private static boolean assignsMarkDesignate(TenureDetailsForm form) {
+    return ASSIGN_DESIGNATE_TYPES.contains(form.type()) && !form.yes("p_disable_save_ind")
+        && "N".equals(form.get("p_disable_assign_mark_ind"));
+  }
+
+  /**
+   * FTA100's Assign Mark Designate ({@code assignMarkDesignate}): mainline's
+   * ASSIGN_MARK_DESIGNATE, which takes the file type's next designate and saves it on the file.
+   *
+   * @throws ResponseStatusException 409 when the file can't take one or was changed since it was
+   *                                 read; 400 with the package's messages
+   */
+  @Transactional
+  public void assignMarkDesignate(String forestFileId, Map<String, String> revisions,
+      String userId) {
+    Read read = read(forestFileId);
+    if (!assignsMarkDesignate(read.form)) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT,
+          "A mark designate cannot be assigned to this file.");
+    }
+    checkRevisions(read.form, revisions);
+    runAction(read.form, "ASSIGN_MARK_DESIGNATE", userId);
+  }
+
+  /**
+   * FTA100's Delete ({@code handleDelete}): mainline's DELETE, which removes the file and
+   * everything under it ({@code FTA_DELETE_FF_CP_CB} at the FILE level). Rolled back when the
+   * package reports an error.
+   *
+   * @throws ResponseStatusException 409 when the file can't be deleted or was changed since it
+   *                                 was read; 400 with the package's messages
+   */
+  @Transactional
+  public void delete(String forestFileId, Map<String, String> revisions, String userId) {
+    Read read = read(forestFileId);
+    if (!deletable(read.form)) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "This file cannot be deleted.");
+    }
+    checkRevisions(read.form, revisions);
+    runAction(read.form, "DELETE", userId);
+  }
+
+  /**
+   * FTA100's Retire ({@code handleRetire}): mainline's RETIRE, which sets the retirement date
+   * of the file's harvesting authority, special use permit, map notation and free use permit,
+   * and marks its tenure application retired. Rolled back when the package reports an error.
+   *
+   * @throws ResponseStatusException 409 when the file can't be retired or was changed since it
+   *                                 was read; 400 with the package's messages
+   */
+  @Transactional
+  public void retire(String forestFileId, Map<String, String> revisions, String userId) {
+    Read read = read(forestFileId);
+    if (!retirable(read.form)) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "This file cannot be retired.");
+    }
+    checkRevisions(read.form, revisions);
+    runAction(read.form, "RETIRE", userId);
+  }
+
+  /** Runs a mainline action on the file as read, as legacy's action posted its form. */
+  private void runAction(TenureDetailsForm form, String action, String userId) {
+    String[] hq = lookups.headquarters();
+    Map<String, String> in = new HashMap<>(form.values());
+    in.put("p_action", action);
+    in.put("p_userid", userId);
+    in.put("p_user_org_unit_no", hq[0]);
+    in.put("p_user_org_unit_code", hq[1]);
+    in.put("p_is_super_user", "N");
+    in.put("p_district_admin_authority_ind", "Y");
+    in.put("p_trace_ind", "N");
+    in.put("p_error_message", "");
+    TenureDetailsMessages.Parsed result =
+        TenureDetailsMessages.parse(pkg.call(in).get("p_error_message"));
+    if (result.failed()) {
+      // Throwing rolls back whatever the package wrote before it stopped.
+      throw new ResponseStatusException(
+          result.modified() ? HttpStatus.CONFLICT : HttpStatus.BAD_REQUEST,
+          String.join(" ", result.errors()));
+    }
   }
 
   /**

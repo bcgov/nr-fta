@@ -11,7 +11,6 @@ import { transferMark } from '@/services/mark_transfer';
 import './MarkTransfer.scss';
 
 interface TransferForm {
-  timberMark: string;
   sourceForestFileId: string;
   sourceCuttingPermitId: string;
   targetForestFileId: string;
@@ -20,7 +19,6 @@ interface TransferForm {
 }
 
 const EMPTY: TransferForm = {
-  timberMark: '',
   sourceForestFileId: '',
   sourceCuttingPermitId: '',
   targetForestFileId: '',
@@ -29,10 +27,11 @@ const EMPTY: TransferForm = {
 };
 
 /**
- * FTA240 — Timber Mark Transfer. Re-points a timber mark from a source forest
- * file / cutting permit onto a target forest file / cutting permit (the legacy
- * FTA_230_MARKTRANFER move). Gated to FTA_ADMIN; on submit it POSTs to
- * {@code /api/fta/marks/transfer}.
+ * FTA240 — Timber Mark Transfer. Moves the source forest file / cutting permit's
+ * primary timber mark onto a target forest file / cutting permit (the legacy
+ * FTA_230_MARKTRANFER save, which finds the mark itself and validates the move).
+ * Every field is required, as legacy's form. Gated to FTA_ADMIN; on submit it
+ * POSTs to {@code /api/fta/marks/transfer}.
  */
 const MarkTransfer: FC = () => {
   const notify = useNotification();
@@ -40,23 +39,18 @@ const MarkTransfer: FC = () => {
   const [saving, setSaving] = useState(false);
 
   const set = (f: keyof TransferForm) => (v: string) => setForm((s) => ({ ...s, [f]: v }));
-  const canSubmit =
-    form.timberMark.trim() !== '' &&
-    form.sourceForestFileId.trim() !== '' &&
-    form.targetForestFileId.trim() !== '';
+  const canSubmit = Object.values(form).every((v) => v.trim() !== '');
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
       const { timberMark } = await transferMark({
-        timberMark: form.timberMark.trim(),
         sourceForestFileId: form.sourceForestFileId.trim(),
         sourceCuttingPermitId: form.sourceCuttingPermitId.trim(),
         targetForestFileId: form.targetForestFileId.trim(),
         targetCuttingPermitId: form.targetCuttingPermitId.trim(),
         transferEffDate: form.effective,
-        userOrgNo: '', // resolved server-side from the authenticated user's org
       });
       notify.display({
         kind: 'success',
@@ -80,38 +74,30 @@ const MarkTransfer: FC = () => {
   return (
     <PageLayout
       title="Timber Mark Transfer"
-      subtitle="Move a timber mark from a source forest file and cutting permit to a target file and cutting permit."
+      subtitle="Move the primary timber mark of a source forest file and cutting permit to a target file and cutting permit."
     >
       <SectionTile title="Transfer details" icon={ArrowRight}>
         <form className="mark-transfer__form" onSubmit={onSubmit}>
           <Grid narrow>
-            <Column sm={4} md={4} lg={8}>
-              <TextInput
-                id="mt-mark"
-                labelText="Timber Mark"
-                placeholder="e.g. 52/1234"
-                value={form.timberMark}
-                onChange={(e) => set('timberMark')(e.target.value.toUpperCase())}
-                required
-              />
-            </Column>
             <Column sm={4} md={4} lg={4}>
               <TextInput
                 id="mt-src-file"
                 labelText="Source Forest File ID"
                 placeholder="e.g. A19201"
                 value={form.sourceForestFileId}
-                onChange={(e) => set('sourceForestFileId')(e.target.value)}
+                onChange={(e) => set('sourceForestFileId')(e.target.value.toUpperCase())}
                 required
               />
             </Column>
             <Column sm={4} md={4} lg={4}>
               <TextInput
                 id="mt-src-cp"
-                labelText="Source Cutting Permit (optional)"
-                placeholder="e.g. CP-01"
+                labelText="Source Cutting Permit"
+                placeholder="e.g. 01"
                 value={form.sourceCuttingPermitId}
-                onChange={(e) => set('sourceCuttingPermitId')(e.target.value)}
+                onChange={(e) => set('sourceCuttingPermitId')(e.target.value.toUpperCase())}
+                maxLength={3}
+                required
               />
             </Column>
             <Column sm={4} md={4} lg={4}>
@@ -120,23 +106,25 @@ const MarkTransfer: FC = () => {
                 labelText="Target Forest File ID"
                 placeholder="e.g. A20115"
                 value={form.targetForestFileId}
-                onChange={(e) => set('targetForestFileId')(e.target.value)}
+                onChange={(e) => set('targetForestFileId')(e.target.value.toUpperCase())}
                 required
               />
             </Column>
             <Column sm={4} md={4} lg={4}>
               <TextInput
                 id="mt-tgt-cp"
-                labelText="Target Cutting Permit (optional)"
-                placeholder="e.g. CP-02"
+                labelText="Target Cutting Permit"
+                placeholder="e.g. 02"
                 value={form.targetCuttingPermitId}
-                onChange={(e) => set('targetCuttingPermitId')(e.target.value)}
+                onChange={(e) => set('targetCuttingPermitId')(e.target.value.toUpperCase())}
+                maxLength={3}
+                required
               />
             </Column>
             <Column sm={4} md={4} lg={4}>
               <DateField
                 id="mt-eff"
-                labelText="Effective date"
+                labelText="Legal transfer date"
                 value={form.effective}
                 onChange={(v) => set('effective')(v)}
               />

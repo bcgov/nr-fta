@@ -57,6 +57,20 @@ export const apiPost = <T>(path: string, body?: unknown) => writeJson<T>('POST',
 export const apiPut = <T>(path: string, body?: unknown) => writeJson<T>('PUT', path, body);
 export const apiDelete = <T>(path: string, body?: unknown) => writeJson<T>('DELETE', path, body);
 
+/**
+ * A multipart POST (a file upload with its form fields), with the CSRF header. The browser
+ * sets the multipart Content-Type and boundary itself.
+ */
+export async function apiPostForm<T>(path: string, form: FormData): Promise<T> {
+  return parse<T>(
+    await apiFetch(path, {
+      method: 'POST',
+      headers: { 'X-XSRF-TOKEN': readXsrfToken() },
+      body: form,
+    }),
+  );
+}
+
 /** A GET whose response is a file (a generated PDF, say) rather than JSON. */
 export async function apiGetForBlob(path: string): Promise<Blob> {
   const res = await apiFetch(path, { method: 'GET' });

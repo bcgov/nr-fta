@@ -26,7 +26,7 @@ permit pages a search opens are read-only for that role.
 |---|---|---|
 | **Search › Timber Marks** | Find timber marks by district, management unit, file, cutting permit, mark, status, client, salvage type, dates and private mark details. Open a result, or export the results to CSV. | Both |
 | **Private Marks › Application List** | List private mark applications and amendments by district, timber mark, client or status, and open one. | Both |
-| **Administration › Timber Mark Transfer** | Move a timber mark from one forest file and cutting permit to another. | Administrator only |
+| **Administration › Timber Mark Transfer** | Move a forest file and cutting permit's primary timber mark to another file and cutting permit. | Administrator only |
 
 ## Common tasks
 
@@ -48,6 +48,7 @@ permit pages a search opens are read-only for that role.
 
 Things to know:
 
+- **District** starts with your default district, if you have one.
 - A valid **Timber mark** ignores every other criterion.
 - **File ID**, **Cutting permit**, **Timber mark** and **Certificate** match
   in upper or lower case.
@@ -165,16 +166,19 @@ Buttons you can't use right now are disabled.
 
 You can save a mark in status **HI**, **HX**, **PI**, **PA** or **HN**. At
 other statuses you can still change the status where
-[Statuses](#statuses) allows it, and the marking codes. Checks you may see:
+[Statuses](#statuses) allows it, and the marking codes. **Timber Mark
+Status** can't be changed until the mark has a client on the
+**Associated clients** tab. Checks you may see:
 
 - **Issued** is required while the status starts with H.
-- **Expired** must be later than **Issued**. Left blank, it is set from
-  **Issued** and **Initial Term**.
+- **Expired** must be later than **Issued**. Left blank, it is set to
+  **Issued** plus the **Initial Term** when you save.
 - **Extended** must be later than **Expired**, and blank while the status is
   PI.
 - Mark types B08 and B09 need exactly one of **Crown Granted Date** or
-  **Crown Granted Description** (a year). B08 is before 1906-03-12; B09 is on
-  or after it.
+  **Crown Granted Description**. A description that is a number counts as a
+  year. B08 is before 1906-03-12 (a year of 1906 or earlier); B09 is on or
+  after it (a year of 1906 or later).
 - **Cancelled** is required to set the status to HX.
 
 If someone else changed the mark since you opened it, the save is refused.
@@ -218,22 +222,24 @@ district's print moves HN to HI.
 Select **Snapshot** on the **Mark application** tab. A PDF of everything on
 the mark's page downloads, stamped with the date, time and your name.
 
-### Add or update a land index
+### Add, update or delete a land index
 
 The land index records the land district and primary ID the mark may be used
 on.
 
 1. Open the **Land index** tab and select **Add land index**.
-2. Choose the **Land District/Island**. **Primary ID** and **Description**
-   (up to 40 characters, such as a parcel or lot) are optional.
+2. Choose the **Land District/Island**. **Primary ID**, **Description**
+   (up to 40 characters, such as a parcel or lot) and **Deactivate date
+   (optional)** are optional.
 3. Select **Add land index**, or **Add additional** to save and enter
    another.
 
-To change an entry, select **Update** on its row. The update dialog also has
-**Deactivate date (optional)**. Select **Update land index** to save.
+To change an entry, select **Update** on its row, make your changes and
+select **Update land index**. To remove one, select **Delete** on its row,
+then **Delete** in the **Delete land index?** dialog.
 
-A land index can't be added while the mark is HX, DV or DD. An existing one
-can be updated at any status.
+A land index can't be added, updated or deleted while the mark is HX, DV or
+DD.
 
 ### Add the main licensee and other clients
 
@@ -259,8 +265,8 @@ previous main (C) licensee keeps its client and type; only its dates change.
 To remove a previous main licensee, select **Delete** from the row's menu and
 confirm. Only previous main licensees (C) can be deleted.
 
-Clients can be added only while the mark is **HI**, **PI** or **PA**.
-Existing clients can be updated at any status.
+Clients can be added and updated only while the mark is **HI**, **PI** or
+**PA**.
 
 ![A private mark's Associated clients tab, with Add client](images/tm-associated-clients.png)
 
@@ -287,6 +293,10 @@ The request is saved as **PI - Pending Issuance**.
 
 An approved amendment is issued when the district prints the certificate.
 
+A disallowed amendment stays on the **Amendments** tab. The **Administration**
+card then shows the latest issued amendment's status and date, if there is
+one.
+
 ### Cancel or reinstate a mark
 
 To cancel an issued mark:
@@ -297,6 +307,8 @@ To cancel an issued mark:
 
 If the mark has a pending (PI) amendment, cancelling approves it (HN). The
 dialog for an optional note opens before the save.
+
+Saving a cancelled mark doesn't change who signs its certificate.
 
 To reinstate a cancelled mark, select **Edit**, set **Timber Mark Status**
 back to HI (or to PI, DD or DV) and save.
@@ -314,16 +326,30 @@ An application that has no forest file yet can't take notes.
 For **Administrators** only.
 
 1. **Administration › Timber Mark Transfer**.
-2. Enter the **Timber Mark**, **Source Forest File ID** and
-   **Target Forest File ID**, and, if the mark is on a cutting permit,
-   **Source Cutting Permit (optional)** and
-   **Target Cutting Permit (optional)**.
-3. Enter the **Effective date** (required).
-4. Select **Transfer mark**.
+2. Enter the **Source Forest File ID** and **Source Cutting Permit**. The
+   mark transferred is that file and cutting permit's primary timber mark.
+3. Enter the **Target Forest File ID** and **Target Cutting Permit**.
+   Cutting permits are up to 3 characters.
+4. Enter the **Legal transfer date**.
+5. Select **Transfer mark**. It is available once every field is filled in.
 
 The mark and its tenure data (cut blocks, waste assessment areas, harvest
 amendments and so on) move to the target file and cutting permit, and the
-transfer is recorded. **Clear** empties the form.
+transfer is recorded. FTA confirms which mark it moved. **Clear** empties the
+form.
+
+FTA refuses the transfer, and lists every reason, when:
+
+- the source file, or the source file and cutting permit, doesn't exist
+  ("Invalid Source File.", "Invalid Source File/CP."), or the target file
+  doesn't ("Invalid Target File.");
+- the source or target file isn't an A type tenure;
+- spatial data exists for the source file and cutting permit;
+- the target file and cutting permit already exist ("Target File/CP already
+  exists.");
+- the source and target are the same file and cutting permit;
+- the target file is in a different district from the mark (or, for a file
+  administered by a region, a different region).
 
 ## Statuses
 
@@ -371,8 +397,8 @@ Mark types B15 and B16 can only be viewed; no actions are available on them.
 | Edit a mark | At HI, HX, PI, PA or HN | Same |
 | Issue a mark; change its status; approve or disallow an amendment | Yes | Yes |
 | Print the certificate (no status change) | Yes | Yes |
-| Add a land index | Except at HX, DV, DD | Same |
-| Add clients | At HI, PI or PA | Same |
+| Add, update or delete a land index | Except at HX, DV, DD | Same |
+| Add or update clients | At HI, PI or PA | Same |
 | Request an amendment | On an HI mark | Same |
 | Add a note | Yes | Yes |
 | Submit to Headquarters | No; districts do this | No |

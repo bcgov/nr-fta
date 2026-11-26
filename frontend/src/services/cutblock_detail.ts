@@ -33,6 +33,7 @@ export interface CutblockDetail {
   cbRevisionCount: number;
   cboaRevisionCount: number | null;
   fileTypeCode: string | null;
+  fileStatusCode: string | null;
   forestFileId: string | null;
   cuttingPermitId: string | null;
   cutBlockId: string | null;
@@ -122,6 +123,16 @@ export function getCutblockDetail(
 /** PUT /api/fta/cut-blocks/{cbSkey} — FTA904's Save. */
 export function saveCutBlock(cbSkey: number, edit: CutBlockEdit): Promise<CutBlockSaved> {
   return apiPut<CutBlockSaved>(`/api/fta/cut-blocks/${cbSkey}`, edit);
+}
+
+/**
+ * GET /api/fta/cut-blocks/override-required — whether that status change needs a District
+ * Override Reason (fta904_edit_status_change).
+ */
+export function getOverrideRequired(newStatus: string, oldStatus: string): Promise<boolean> {
+  return apiGet<boolean>(
+    `/api/fta/cut-blocks/override-required${toQuery({ newStatus, oldStatus })}`,
+  );
 }
 
 /** POST /api/fta/cut-blocks/{cbSkey}/relabel — FTA231's Save. */

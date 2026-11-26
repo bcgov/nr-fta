@@ -7,11 +7,6 @@ import java.time.LocalDate;
  * An AAC determination to create or update ({@code APT_MGMT_UNIT_HISTORY_INS_UPD}). The
  * management unit and history ids come from the path, the audit user from the token.
  *
- * @param prevId                       on create only: a determination of the same unit whose
- *                                     partitions, apportionments and BCTS distributions are
- *                                     copied onto the new one (as
- *                                     {@code apt_pkg.insert_muh_child_records} did); null
- *                                     copies nothing
  * @param determinationDate            required
  * @param effectiveDate                required
  * @param allowableAnnualCut           AAC in cubic metres; whole, 0 to 999,999,999
@@ -27,7 +22,6 @@ import java.time.LocalDate;
  * @param comments                     up to 2000 characters
  */
 public record AptManagementUnitHistoryRequest(
-    Long prevId,
     LocalDate determinationDate,
     LocalDate effectiveDate,
     BigDecimal allowableAnnualCut,

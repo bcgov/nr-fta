@@ -1,4 +1,4 @@
-import { apiGet } from './http';
+import { apiGet, apiGetForBlob } from './http';
 
 // Mirrors the backend HarvestHistoryDtos (ca.bc.gov.nrs.fta.tenure.tab.harvesthistory)
 // — legacy FTA990 (FTA_990_HARV_HIST), read-only.
@@ -55,4 +55,12 @@ export function getTenureHarvestHistory(forestFileId: string): Promise<TenureHar
   return apiGet<TenureHarvestHistory>(
     `/api/fta/tenures/${encodeURIComponent(forestFileId)}/harvest-history`,
   );
+}
+
+/**
+ * GET /api/fta/timber-marks/{timberMark}/mark-report — FTA990's "Print Mark Report": the
+ * FTA404 Mark Report PDF for the mark.
+ */
+export function getMarkReport(timberMark: string): Promise<Blob> {
+  return apiGetForBlob(`/api/fta/timber-marks/${encodeURIComponent(timberMark)}/mark-report`);
 }

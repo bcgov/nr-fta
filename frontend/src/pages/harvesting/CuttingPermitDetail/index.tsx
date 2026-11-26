@@ -2,6 +2,7 @@ import {
   Archive,
   ArrowLeft,
   Calendar,
+  DocumentPdf,
   Edit,
   Pause,
   RecentlyViewed,
@@ -12,7 +13,7 @@ import {
   TrashCan,
   Tree,
 } from '@carbon/icons-react';
-import { Button, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
+import { Button, InlineNotification, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import { useCallback, useEffect, useState, type FC } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
@@ -43,10 +44,12 @@ import {
   areaLabel,
   deletePermit,
   getCuttingPermitDetail,
+  getHarvestAuthorizationLetter,
   getPermitLookups,
   hasScheduleB,
   retirePermit,
 } from '@/services/cutting_permit_detail';
+import { triggerBrowserDownload } from '@/utils/download';
 import { formatDate } from '@/utils/formatDate';
 
 import PermitConditions from './PermitConditions';
@@ -113,6 +116,7 @@ const CuttingPermitDetail: FC = () => {
   const { display } = useNotification();
   const [editOpen, setEditOpen] = useState(false);
   const [confirming, setConfirming] = useState<'retire' | 'delete' | null>(null);
+  const [printingLetter, setPrintingLetter] = useState(false);
 
   const fetcher = useCallback(
     () =>
@@ -164,6 +168,37 @@ const CuttingPermitDetail: FC = () => {
   const permitQuery = forestFileId ? `?forestFileId=${encodeURIComponent(forestFileId)}` : '';
   const rules = cp?.rules;
 
+  // FTA902's Letter: the FTA413 harvest authorization letter, on a Fort St. John
+  // authority only, for anyone who can open the permit.
+  const onLetter = async () => {
+    if (!cp) return;
+    setPrintingLetter(true);
+    try {
+      const pdf = await getHarvestAuthorizationLetter(cp.hvaSkey);
+      triggerBrowserDownload(pdf, `FTA413-harvest-authorization-${cp.cuttingPermitId ?? cpId}.pdf`);
+    } catch (err) {
+      display({
+        kind: 'error',
+        title: 'Could not produce the letter.',
+        subtitle: err instanceof Error ? err.message : 'Request failed',
+        timeout: 9000,
+      });
+    } finally {
+      setPrintingLetter(false);
+    }
+  };
+  const letterButton = cp?.fsj ? (
+    <Button
+      size="md"
+      kind="tertiary"
+      renderIcon={DocumentPdf}
+      disabled={printingLetter}
+      onClick={onLetter}
+    >
+      Letter
+    </Button>
+  ) : null;
+
   const actions =
     cp && rules && canEditHarvest(user) ? (
       <>
@@ -176,6 +211,7 @@ const CuttingPermitDetail: FC = () => {
         >
           Edit permit
         </Button>
+        {letterButton}
         {rules.canAssignMarks && (
           <Button
             size="md"
@@ -217,7 +253,9 @@ const CuttingPermitDetail: FC = () => {
           Delete
         </Button>
       </>
-    ) : undefined;
+    ) : (
+      (letterButton ?? undefined)
+    );
 
   // A Timber Mark Headquarters Administrator reaches this page from Timber Mark
   // Search and may not open Harvesting Authority Search, so goes back there.
@@ -356,6 +394,23 @@ const CuttingPermitDetail: FC = () => {
                   <TabPanel>
                     {tabs.isOpened(0) && (
                       <div className="fsp-info__tab-panel">
+                        {/* Fta902CpDetailAction.handleGet's messages, in its words. */}
+                        {cp.blockSuspensionsExist && (
+                          <InlineNotification
+                            kind="info"
+                            lowContrast
+                            hideCloseButton
+                            title="There have been suspended blocks in this cutting permit. Ensure that the Expiry Date is correct."
+                          />
+                        )}
+                        {cp.postponementExpired && (
+                          <InlineNotification
+                            kind="info"
+                            lowContrast
+                            hideCloseButton
+                            title="The Postponement Period has expired."
+                          />
+                        )}
                         <div className="fsp-info__tile-row">
                           <DetailTile title="Permit details" icon={Report} fields={permitFields} />
                           <DetailTile

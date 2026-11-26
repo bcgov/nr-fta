@@ -93,11 +93,20 @@ public final class AptCommitmentRules {
     if (blank(r.forestFileId())) {
       return "Forest File ID is required.";
     }
+    if (r.forestFileId().trim().length() > 10) {
+      return "Forest File ID can be at most 10 characters.";
+    }
     if (blank(r.aptPartitionSt())) {
       return "Partition is required.";
     }
+    if (r.aptPartitionSt().trim().length() > 3) {
+      return "Partition must be a partition code.";
+    }
     if (blank(r.commitTypeSt())) {
       return "Type is required.";
+    }
+    if (r.commitTypeSt().trim().length() > 50) {
+      return "Type must be a commitment type code.";
     }
     if (r.aac() == null) {
       return "AAC is required.";

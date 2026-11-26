@@ -59,7 +59,8 @@ public final class AacDtos {
 
   /**
    * Add ({@code POST …/aac}) or change ({@code PUT …/aac/{amountId}}) an AAC history row.
-   * The revision counts are needed only for a change.
+   * A change sends both revision counts; an add to an existing period sends that period's
+   * revision count as loaded (the lock), an add that starts a period sends none.
    *
    * @param revenueShareable Y, N, or blank for unknown
    */

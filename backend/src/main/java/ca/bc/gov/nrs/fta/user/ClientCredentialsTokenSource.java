@@ -34,6 +34,8 @@ public final class ClientCredentialsTokenSource {
   private final String clientId;
   private final String scope;
   private final String basicAuthHeader;
+  // Names the service in log lines ("user-lookup", "CHES", …).
+  private final String label;
 
   // Cached access token + the moment it expires. volatile because callers may
   // hit fetchCached() from different request threads; a stray double-fetch on
@@ -42,12 +44,14 @@ public final class ClientCredentialsTokenSource {
   private volatile Instant cachedAccessTokenExpiresAt = Instant.EPOCH;
 
   private ClientCredentialsTokenSource(
-      RestClient http, String tokenUrl, String clientId, String scope, String basicAuthHeader) {
+      RestClient http, String tokenUrl, String clientId, String scope, String basicAuthHeader,
+      String label) {
     this.http = http;
     this.tokenUrl = tokenUrl;
     this.clientId = clientId;
     this.scope = scope;
     this.basicAuthHeader = basicAuthHeader;
+    this.label = label;
   }
 
   /**
@@ -58,6 +62,18 @@ public final class ClientCredentialsTokenSource {
   public static ClientCredentialsTokenSource fromProps(
       String tokenUrl, String clientId, String clientSecret, String scope,
       Duration connectTimeout, Duration readTimeout) {
+    return fromProps(tokenUrl, clientId, clientSecret, scope, connectTimeout, readTimeout,
+        "user-lookup", "USER_LOOKUP");
+  }
+
+  /**
+   * As {@link #fromProps(String, String, String, String, Duration, Duration)}, for another
+   * service: {@code label} names it in log lines and {@code envPrefix} in the misconfiguration
+   * message (e.g. "CHES" → CHES_TOKEN_URL, CHES_CLIENT_ID, CHES_CLIENT_SECRET).
+   */
+  public static ClientCredentialsTokenSource fromProps(
+      String tokenUrl, String clientId, String clientSecret, String scope,
+      Duration connectTimeout, Duration readTimeout, String label, String envPrefix) {
     String url = tokenUrl == null ? "" : tokenUrl.trim();
     String id = clientId == null ? "" : clientId.trim();
     String secret = clientSecret == null ? "" : clientSecret.trim();
@@ -68,9 +84,9 @@ public final class ClientCredentialsTokenSource {
     }
     if (url.isBlank() || id.isBlank() || secret.isBlank()) {
       throw new IllegalStateException(
-          "user-lookup client_credentials misconfigured — set ALL of "
-              + "USER_LOOKUP_TOKEN_URL, USER_LOOKUP_CLIENT_ID, USER_LOOKUP_CLIENT_SECRET "
-              + "(or none).");
+          label + " client_credentials misconfigured — set ALL of "
+              + envPrefix + "_TOKEN_URL, " + envPrefix + "_CLIENT_ID, " + envPrefix
+              + "_CLIENT_SECRET (or none).");
     }
 
     SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -83,7 +99,7 @@ public final class ClientCredentialsTokenSource {
 
     String basic = "Basic " + Base64.getEncoder().encodeToString(
         (id + ":" + secret).getBytes(StandardCharsets.UTF_8));
-    return new ClientCredentialsTokenSource(http, url, id, requestedScope, basic);
+    return new ClientCredentialsTokenSource(http, url, id, requestedScope, basic, label);
   }
 
   public String tokenUrl() {
@@ -116,8 +132,8 @@ public final class ClientCredentialsTokenSource {
       cachedAccessTokenExpiresAt = now.plusSeconds(fresh.expiresInSeconds());
       return cachedAccessToken;
     } catch (RuntimeException ex) {
-      LOG.warn("user-lookup client_credentials token fetch failed ({}); next call will retry",
-          ex.getMessage());
+      LOG.warn("{} client_credentials token fetch failed ({}); next call will retry",
+          label, ex.getMessage());
       cachedAccessToken = "";
       cachedAccessTokenExpiresAt = Instant.EPOCH;
       return "";

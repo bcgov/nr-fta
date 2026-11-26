@@ -1,162 +1,162 @@
 package ca.bc.gov.nrs.fta.tenure.tab.tenureapp;
 
+import ca.bc.gov.nrs.fta.integration.DocumentStore;
+import ca.bc.gov.nrs.fta.integration.DocumentStore.StoredDocument;
+import ca.bc.gov.nrs.fta.integration.EmailSender;
+import ca.bc.gov.nrs.fta.integration.IntegrationException;
+import ca.bc.gov.nrs.fta.integration.IntegrationNotConfiguredException;
 import ca.bc.gov.nrs.fta.tenure.tab.tenureapp.TenureAppDtos.TenureAppIssuePermitRequest;
 import ca.bc.gov.nrs.fta.tenure.tab.tenureapp.TenureAppDtos.TenureAppIssuePermitResult;
-import java.sql.CallableStatement;
-import java.sql.Types;
+import ca.bc.gov.nrs.fta.tenure.tab.tenureapp.TenureAppDtos.TenureAppPermitFile;
 import java.util.List;
-import java.util.Map;
-import org.springframework.dao.EmptyResultDataAccessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Legacy FTA950's Issue Permit (Fta950xTenAppIssuePermitAction).
+ * Legacy FTA950's Issue Permit (Fta950xTenAppIssuePermitAction.handleUpload), step for step:
  *
- * <p>Legacy uploaded the permit PDF to document management, then ran
- * {@code FTA_950X_TEN_APP_ISSUE_PERMIT.mainline('ISSUE_PERMIT', …)} twice — first with
- * {@code p_validate_only_no_transaction = 'TRUE'} (the issuance checks only), then
- * {@code 'FALSE'} with the document's link — and finally e-mailed the recipients. The package
- * (2,400 lines: the CP / file / range / FSJ / FUP First Nations issuance rules, the permit
- * document records, the authority to HI, the file to HI, the application to ISS) is called
- * here rather than ported, so its rules stay exactly legacy's. Both calls run in one
- * transaction: any error from either rolls everything back (the package deletes the
- * application's earlier permit documents even on the validation pass).
+ * <ol>
+ *   <li>{@code FTA_950X_TEN_APP_ISSUE_PERMIT.mainline('ISSUE_PERMIT', …)} with {@code
+ *       p_validate_only_no_transaction = 'TRUE'} — the issuance checks alone;
+ *   <li>the permit file uploaded to document management under the tenure, titled with the
+ *       document name ({@link DocumentStore}; legacy: DmViewService.uploadFile);
+ *   <li>the package again with {@code 'FALSE'} and the document's link — the permit document
+ *       records, the authority and file to HI, the application to ISS;
+ *   <li>commit;
+ *   <li>the e-mail to the recipients the user added ({@link EmailSender}; legacy: CMSG) —
+ *       subject "Forest Permit {file type} {file id}", a link to the document, and the file
+ *       attached when Attach Document To Email is checked.
+ * </ol>
  *
- * <p>Not ported: the document-management upload (this app has no DM client — the caller gives
- * the document's link instead) and the e-mail to recipients (no CMSG client).
+ * <p>The package (2,400 lines of CP / file / range / FSJ / FUP First Nations issuance rules) is
+ * called rather than ported, so its rules stay exactly legacy's. Steps 1-3 share one
+ * transaction: an error from either pass, or a failed upload, rolls everything back. (ISSUE_PERMIT
+ * opens a cleanup of the application's earlier permit documents on both passes, but its cursor
+ * keys on the application's GUID before it is read, so it deletes nothing; the validation pass
+ * writes nothing.) As in legacy, a document uploaded before a failing second pass stays in the
+ * store, and an e-mail failure comes after the commit, so the permit stays issued — the result
+ * then carries the reason as {@code emailWarning}.
  */
 @Service
 public class TenureAppIssuePermitService {
 
-  private static final String APPLICATION_SQL =
-      """
-      SELECT ta.tenure_application_state_code
-        FROM the.tenure_application ta
-       WHERE ta.tenure_app_id = :tenureAppId
-         AND (ta.forest_file_id = :forestFileId
-              OR EXISTS (SELECT 1 FROM the.tenure_application_map_feature tamf
-                          WHERE tamf.tenure_app_id = ta.tenure_app_id
-                            AND tamf.forest_file_id = :forestFileId))
-      """;
+  private static final Logger LOG = LoggerFactory.getLogger(TenureAppIssuePermitService.class);
 
-  private static final String FILE_TYPE_SQL =
-      "SELECT file_type_code FROM the.prov_forest_use WHERE forest_file_id = :forestFileId";
+  /** fta.web.warning.permitIssued. */
+  static final String ISSUED = "The Permit has been successfully issued.";
 
-  private static final String HVA_ON_FILE_SQL =
-      """
-      SELECT COUNT(*) FROM the.harvesting_authority
-       WHERE hva_skey = :hvaSkey AND forest_file_id = :forestFileId
-      """;
+  private final TenureAppIssuePermitDao dao;
+  private final DocumentStore documents;
+  private final EmailSender email;
+  private final TransactionTemplate tx;
 
-  private static final String CALL =
-      "DECLARE"
-          + " v_action VARCHAR2(30) := 'ISSUE_PERMIT';"
-          + " v_file VARCHAR2(30) := ?;"
-          + " v_type VARCHAR2(30) := ?;"
-          + " v_app VARCHAR2(30) := ?;"
-          + " v_hva VARCHAR2(30) := ?;"
-          + " v_uri VARCHAR2(4000) := ?;"
-          + " v_user VARCHAR2(100) := ?;"
-          + " v_err VARCHAR2(4000);"
-          + " v_validate VARCHAR2(10) := ?;"
-          + " BEGIN the.fta_950x_ten_app_issue_permit.mainline("
-          + "v_action, v_file, v_type, v_app, v_hva, v_uri, v_user, v_err, v_validate);"
-          + " ? := v_err; END;";
-
-  private final NamedParameterJdbcTemplate named;
-  private final JdbcTemplate jdbc;
-
-  public TenureAppIssuePermitService(NamedParameterJdbcTemplate named) {
-    this.named = named;
-    this.jdbc = named.getJdbcTemplate();
+  public TenureAppIssuePermitService(
+      TenureAppIssuePermitDao dao,
+      DocumentStore documents,
+      EmailSender email,
+      PlatformTransactionManager transactionManager) {
+    this.dao = dao;
+    this.documents = documents;
+    this.email = email;
+    this.tx = new TransactionTemplate(transactionManager);
   }
 
   /**
    * Issues the permit for one of the file's applications.
    *
-   * @throws ResponseStatusException 404 if the application is not on the file; 409 if it is
-   *     not approved or issued; 400 on a missing document or a failed issuance check
+   * @throws ResponseStatusException 404 if the application or file is not found; 409 if the
+   *     application is not approved or issued; 400 on a failed popup or issuance check; 503 when
+   *     document storage is not configured; 502 when the upload fails
    */
-  @Transactional
   public TenureAppIssuePermitResult issue(
-      String forestFileId, long tenureAppId, TenureAppIssuePermitRequest q, String userId) {
-    MapSqlParameterSource p = new MapSqlParameterSource()
-        .addValue("forestFileId", forestFileId)
-        .addValue("tenureAppId", tenureAppId, Types.NUMERIC);
-    List<String> states = named.queryForList(APPLICATION_SQL, p, String.class);
-    if (states.isEmpty()) {
-      throw new ResponseStatusException(
-          HttpStatus.NOT_FOUND, "Tenure application " + tenureAppId + " is not on this file.");
-    }
-    String state = states.get(0);
+      String forestFileId,
+      long tenureAppId,
+      TenureAppIssuePermitRequest q,
+      TenureAppPermitFile file,
+      String userId) {
+    String state = dao.applicationState(forestFileId, tenureAppId)
+        .orElseThrow(() -> new ResponseStatusException(
+            HttpStatus.NOT_FOUND, "Tenure application " + tenureAppId + " is not on this file."));
     if (!TenureAppRules.canIssue(state)) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, TenureAppRules.issueBlockedReason(state));
     }
-    String documentUri = q == null ? null : q.documentUri();
-    List<String> errors = TenureAppRules.validateIssue(documentUri);
-    if (!errors.isEmpty()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, String.join(" ", errors));
+    String documentName = q == null ? null : q.documentName();
+    List<String> recipients = q == null || q.recipients() == null ? List.of() : q.recipients();
+    String error = TenureAppRules.validateIssue(
+        documentName,
+        file == null ? null : file.fileName(),
+        file == null ? 0 : file.size(),
+        recipients);
+    if (error != null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, error);
     }
     Long hvaSkey = q.hvaSkey();
-    if (hvaSkey != null) {
-      Long n = named.queryForObject(
-          HVA_ON_FILE_SQL,
-          new MapSqlParameterSource()
-              .addValue("hvaSkey", hvaSkey, Types.NUMERIC)
-              .addValue("forestFileId", forestFileId),
-          Long.class);
-      if (n == null || n == 0) {
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST, "The harvesting authority is not on this file.");
-      }
+    if (hvaSkey != null && !dao.hvaOnFile(forestFileId, hvaSkey)) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "The harvesting authority is not on this file.");
     }
-    String fileType;
-    try {
-      fileType = named.queryForObject(
-          FILE_TYPE_SQL, Map.of("forestFileId", forestFileId), String.class);
-    } catch (EmptyResultDataAccessException e) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Tenure not found.");
-    }
+    String fileType = dao.fileType(forestFileId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tenure not found."));
 
-    String uri = documentUri.trim();
-    String hva = hvaSkey == null ? null : hvaSkey.toString();
-    String app = Long.toString(tenureAppId);
-    // The checks alone, then the issuance itself — as legacy's two passes.
-    fail(call(forestFileId, fileType, app, hva, uri, userId, true));
-    fail(call(forestFileId, fileType, app, hva, uri, userId, false));
-    return new TenureAppIssuePermitResult(
-        tenureAppId, "The Permit has been successfully issued.");
+    StoredDocument doc = tx.execute(status -> {
+      // The checks alone (legacy passed no document yet).
+      fail(dao.issuePermit(forestFileId, fileType, tenureAppId, hvaSkey, null, userId, true));
+      StoredDocument stored = upload(forestFileId, documentName, file);
+      if (!TenureAppRules.linkFits(stored.link())) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_GATEWAY,
+            "Document storage returned a link longer than " + TenureAppRules.MAX_URI
+                + " bytes.");
+      }
+      // The issuance itself, recording the document's link.
+      fail(dao.issuePermit(
+          forestFileId, fileType, tenureAppId, hvaSkey, stored.link(), userId, false));
+      return stored;
+    });
+
+    String emailWarning = null;
+    try {
+      email.send(
+          subject(fileType, forestFileId),
+          body(forestFileId, doc.viewerUrl()),
+          recipients,
+          q.attachDocument()
+              ? List.of(new EmailSender.Attachment(
+                  file.fileName(), "application/pdf", file.content()))
+              : List.of());
+    } catch (IntegrationException e) {
+      LOG.warn("Permit for application {} issued, e-mail not sent: {}", tenureAppId,
+          e.getMessage(), e);
+      emailWarning = "The e-mail to the recipients could not be sent: " + e.getMessage();
+    }
+    return new TenureAppIssuePermitResult(tenureAppId, ISSUED, emailWarning);
   }
 
-  private String call(
-      String forestFileId,
-      String fileType,
-      String tenureAppId,
-      String hvaSkey,
-      String uri,
-      String userId,
-      boolean validateOnly) {
-    return jdbc.execute(
-        (java.sql.Connection con) -> con.prepareCall(CALL),
-        (CallableStatement cs) -> {
-          cs.setString(1, forestFileId);
-          cs.setString(2, fileType);
-          cs.setString(3, tenureAppId);
-          cs.setString(4, hvaSkey);
-          cs.setString(5, uri);
-          cs.setString(6, userId);
-          cs.setString(7, validateOnly ? "TRUE" : "FALSE");
-          cs.registerOutParameter(8, Types.VARCHAR);
-          cs.execute();
-          return cs.getString(8);
-        });
+  private StoredDocument upload(String forestFileId, String title, TenureAppPermitFile file) {
+    try {
+      return documents.upload(forestFileId, title, file.fileName(), file.content());
+    } catch (IntegrationNotConfiguredException e) {
+      throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), e);
+    } catch (IntegrationException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, e.getMessage(), e);
+    }
+  }
+
+  /** ApplicationResources email.subject: "Forest Permit {0} {1}". */
+  static String subject(String fileType, String forestFileId) {
+    return "Forest Permit " + fileType + " " + forestFileId;
+  }
+
+  /** ApplicationResources email.body. */
+  static String body(String forestFileId, String viewerUrl) {
+    return "The following link will provide access to the issued permit for " + forestFileId
+        + ". <br><br> " + viewerUrl;
   }
 
   /** Throws 400 with the package's message (rolling the transaction back) when it gave one. */

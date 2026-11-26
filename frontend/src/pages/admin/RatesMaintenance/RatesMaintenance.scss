@@ -1,3 +1,13 @@
 .rates-maintenance__rate-input {
-  width: 7rem;
+  max-width: 20rem;
+}
+
+.rates-maintenance__group {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.rates-maintenance__updated {
+  color: var(--cds-text-secondary);
 }

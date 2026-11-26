@@ -28,6 +28,14 @@ export interface CreateTenureRequest {
   fupFnUsageCode: string | null;
   fupCedarSpeciesInd: string | null;
   fupTreatyPurposeInd: string | null;
+  /** B07: Y/N. */
+  bctsFundInd: string | null;
+  /** B07: A, or C for a cash sale. */
+  paymentMethodCode: string | null;
+  /** B05, B06, B07: Y starts the file in PA. */
+  subSpatialLaterInd: string | null;
+  /** A01, A18, A41: Y/N. */
+  salvageInd: string | null;
 }
 
 /** POST /api/fta/tenures — create a tenure (FTA_ADMIN). Returns the new file's id. */

@@ -5,10 +5,12 @@ import { useEffect, useState, type FC, type FormEvent } from 'react';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
+import { useDefaultOrgUnitIn } from '@/hooks/useDefaultOrgUnit';
 import PageLayout from '@/pages/PageLayout';
 import { submitBillingApproval } from '@/services/billing';
-import { getThreeLetterDistricts, type CodeOption } from '@/services/codeLists';
+import { getDistrictOrgUnits, type CodeOption } from '@/services/codeLists';
 
+import { useDistrictScope } from '../useDistrictScope';
 import '../billing.scss';
 
 /**
@@ -20,14 +22,22 @@ import '../billing.scss';
 const TenureApproval: FC = () => {
   const notify = useNotification();
   const [districts, setDistricts] = useState<CodeOption[]>([]);
-  const [orgUnitNo, setOrgUnitNo] = useState('');
+  const [chosen, setChosen] = useState('');
+  const scope = useDistrictScope(districts);
+  // A single administered district is preselected and locked, as legacy's protected District.
+  const orgUnitNo = scope.locked?.code ?? chosen;
+  // Legacy defaulted District to the user's org unit when it was a district (Org Unit Maintenance).
+  const defaultDistrict = useDefaultOrgUnitIn(scope.options, true);
+  useEffect(() => {
+    if (defaultDistrict) setChosen((c) => c || defaultDistrict);
+  }, [defaultDistrict]);
   const [year, setYear] = useState('');
   // Queuing a billing run invoices every prepared tenure in the district.
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    getThreeLetterDistricts()
+    getDistrictOrgUnits()
       .then((d) => !cancelled && setDistricts(d))
       .catch(() =>
         notify.display({
@@ -76,10 +86,11 @@ const TenureApproval: FC = () => {
                 id="appr-district"
                 labelText="District"
                 value={orgUnitNo}
-                onChange={(e) => setOrgUnitNo(e.target.value)}
+                disabled={!!scope.locked}
+                onChange={(e) => setChosen(e.target.value)}
               >
                 <SelectItem value="" text="Choose a district" />
-                {districts.map((d) => (
+                {scope.options.map((d) => (
                   <SelectItem key={d.code} value={d.code} text={d.description} />
                 ))}
               </Select>

@@ -29,6 +29,6 @@ public record MarkApplicationRequest(
     String cascadeSplitCode,
     String mapReferenceReg,
     String mapReferenceComp,
-    /** The mark holder; optional, as in legacy — with it, the location is required. */
+    /** The mark holder (main licensee); required, with its location. */
     String clientNumber,
     String clientLocnCode) {}

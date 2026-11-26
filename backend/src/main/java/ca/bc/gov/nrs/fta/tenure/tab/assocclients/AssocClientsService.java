@@ -104,7 +104,8 @@ public class AssocClientsService {
   private static final String MAIN_SQL =
       """
       SELECT forest_file_client_skey, revision_count, licensee_start_date,
-             client_number, client_locn_code
+             client_number, client_locn_code,
+             the.sil_get_client_acronym(client_number) AS client_acronym
         FROM the.forest_file_client
        WHERE forest_file_id = :forestFileId
          AND forest_file_client_skey <> NVL(:skey, 0)
@@ -154,23 +155,12 @@ public class AssocClientsService {
        WHERE client_number = :number AND admin_forest_dist = :orgUnit
       """;
 
-  /** CUR_XMASTREE: an A on a B02 when the client already holds another active B02. */
-  private static final String XMAS_SQL =
-      """
-      SELECT COUNT(*) FROM the.forest_file_client a
-        JOIN the.prov_forest_use b ON b.forest_file_id = a.forest_file_id
-       WHERE a.client_number = :number
-         AND b.file_type_code = 'B02'
-         AND b.forest_file_id <> :forestFileId
-         AND b.file_status_st IN ('HI', 'HA')
-      """;
-
   private static final String DEMOTE_SQL =
       """
       UPDATE the.forest_file_client
          SET forest_file_client_type_code = 'C',
              revision_count = revision_count + 1,
-             licensee_end_date = :endDate,
+             licensee_end_date = NVL(:endDate, SYSDATE),
              update_userid = :userId,
              update_timestamp = SYSDATE
        WHERE forest_file_client_skey = :skey
@@ -232,7 +222,7 @@ public class AssocClientsService {
       boolean singleMark) {}
 
   private record Main(long skey, long revisionCount, LocalDate start, String number,
-                      String locn) {}
+                      String locn, String acronym) {}
 
   private record Row(String type, String number, String locn) {}
 
@@ -328,9 +318,6 @@ public class AssocClientsService {
     }
     add(e, AssocClientsRules.licenseeStartProblem(
         f.type, f.start, previousEnd(p), main == null ? null : main.start()));
-    if ("A".equals(f.type) && "B02".equals(t.fileType()) && count(XMAS_SQL, p) > 0) {
-      e.add("Only one active B02 Xmas Permit allowed for licensee.");
-    }
     if (!e.isEmpty()) {
       throw bad(e);
     }
@@ -385,9 +372,9 @@ public class AssocClientsService {
       throw bad(e);
     }
 
-    // A licensee (B) made the Main Licensee: the current one becomes previous, ended today.
-    String note = "A".equals(f.type) && main != null ? demote(main, LocalDate.now(), userId)
-        : null;
+    // A licensee (B) made the Main Licensee: the current one becomes previous, ended now
+    // (legacy's SYSDATE).
+    String note = "A".equals(f.type) && main != null ? demote(main, null, userId) : null;
     int n;
     try {
       n = jdbc.update(UPDATE_SQL, p);
@@ -486,7 +473,8 @@ public class AssocClientsService {
         rs.getLong("revision_count"),
         rs.getObject("licensee_start_date", LocalDate.class),
         rs.getString("client_number"),
-        rs.getString("client_locn_code")));
+        rs.getString("client_locn_code"),
+        rs.getString("client_acronym")));
     return rows.isEmpty() ? null : rows.get(0);
   }
 
@@ -494,7 +482,11 @@ public class AssocClientsService {
     return jdbc.queryForObject(PREVIOUS_END_SQL, p, LocalDate.class);
   }
 
-  /** Makes the current Main Licensee the previous one; returns legacy's fta520.client.reset. */
+  /**
+   * Makes the current Main Licensee the previous one, ending on {@code endDate} (SYSDATE when
+   * null); returns legacy's fta520.client.reset, naming the client by acronym and location as
+   * curMainClient does.
+   */
   private String demote(Main main, LocalDate endDate, String userId) {
     int n = jdbc.update(DEMOTE_SQL, new MapSqlParameterSource()
         .addValue("endDate", endDate, Types.DATE)
@@ -504,7 +496,9 @@ public class AssocClientsService {
     if (n == 0) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, MODIFIED);
     }
-    return "Client " + main.number() + " " + main.locn()
+    String acronym = main.acronym() == null ? "" : main.acronym();
+    String locn = main.locn() == null ? "" : main.locn();
+    return "Client " + acronym + "  " + locn
         + " has been set to previous licensee. Please review licensee end date if required.";
   }
 

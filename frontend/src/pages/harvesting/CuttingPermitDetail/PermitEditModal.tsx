@@ -23,7 +23,12 @@ import { parseTypedDate } from '@/utils/typedDate';
 
 /** Legacy FTA902's limits; the backend enforces them too. */
 const MAX_LOCATION = 50;
-const AREA_PATTERN = /^\d{1,8}(\.\d{1,4})?$/;
+/** HARVESTING_AUTHORITY's widths: DISTRICT_ADMN_ZONE 4, MGMT_UNIT_TYPE_CODE 1, MGMT_UNIT_ID 4. */
+const MAX_ZONE = 4;
+const MAX_MGMT_TYPE = 1;
+const MAX_MGMT_ID = 4;
+/** HARVEST_AREA is NUMBER(11,4): 7 whole digits. */
+const AREA_PATTERN = /^\d{1,7}(\.\d{1,4})?$/;
 const WHOLE_PATTERN = /^\d{1,4}$/;
 
 interface Form {
@@ -106,7 +111,7 @@ const validate = (f: Form): Errors => {
     if (v.trim() && !WHOLE_PATTERN.test(v.trim())) e[k] = 'Enter a whole number.';
   });
   if (f.area.trim() && !AREA_PATTERN.test(f.area.trim()))
-    e.area = 'Enter hectares, with up to 4 decimal places.';
+    e.area = 'Enter hectares up to 9,999,999.9999, with up to 4 decimal places.';
   return e;
 };
 
@@ -449,6 +454,7 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
             id="cp-edit-zone"
             labelText="Zone"
             value={form.zone}
+            maxLength={MAX_ZONE}
             disabled={saving}
             onChange={(e) => set('zone', e.target.value)}
           />
@@ -488,6 +494,7 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
             id="cp-edit-mgmt-type"
             labelText="Management Unit Type"
             value={form.mgmtType}
+            maxLength={MAX_MGMT_TYPE}
             disabled={saving}
             onChange={(e) => set('mgmtType', e.target.value.toUpperCase())}
           />
@@ -495,6 +502,7 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
             id="cp-edit-mgmt-id"
             labelText="Management Unit"
             value={form.mgmtId}
+            maxLength={MAX_MGMT_ID}
             disabled={saving}
             onChange={(e) => set('mgmtId', e.target.value.toUpperCase())}
           />

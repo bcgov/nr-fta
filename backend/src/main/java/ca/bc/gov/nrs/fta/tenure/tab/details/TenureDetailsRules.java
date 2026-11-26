@@ -20,6 +20,11 @@ import java.util.List;
  *                          {@code recreationStatuses}
  * @param purposeList       which option list Purpose offers: {@code forLicenceToCut},
  *                          {@code specialUse} or {@code occLicenceToCut}
+ * @param deletable         whether FTA100's Delete is enabled ({@code p_disable_delete_ind})
+ * @param retirable         whether FTA100's Retire is enabled ({@code p_disable_retire_ind})
+ * @param assignsMarkDesignate whether FTA100's Assign Mark Designate is shown and enabled
+ * @param changesMarkDesignate whether FTA100's Change Mark Designate (FTA101) is shown and
+ *                          enabled ({@link ChangeMarkDesignateRules})
  */
 public record TenureDetailsRules(
     boolean editable,
@@ -28,4 +33,8 @@ public record TenureDetailsRules(
     List<String> conditionalFields,
     List<String> overrideStatuses,
     String statusList,
-    String purposeList) {}
+    String purposeList,
+    boolean deletable,
+    boolean retirable,
+    boolean assignsMarkDesignate,
+    boolean changesMarkDesignate) {}

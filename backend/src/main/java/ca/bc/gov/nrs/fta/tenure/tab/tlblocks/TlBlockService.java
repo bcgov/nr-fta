@@ -1,16 +1,12 @@
 package ca.bc.gov.nrs.fta.tenure.tab.tlblocks;
 
 import ca.bc.gov.nrs.fta.tenure.tab.tlblocks.TlBlockDtos.TlBlock;
-import ca.bc.gov.nrs.fta.tenure.tab.tlblocks.TlBlockDtos.TlBlockSaveRequest;
 import ca.bc.gov.nrs.fta.tenure.tab.tlblocks.TlBlockDtos.TlBlocksResponse;
 import java.math.BigDecimal;
 import java.sql.Types;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -25,18 +21,14 @@ import org.springframework.web.server.ResponseStatusException;
  * <ul>
  *   <li>{@link #get}: {@code GET} — the blocks of {@code TL_BLOCK_AREA} ordered as legacy did
  *       ({@code LPAD(tl_block_id, 10)}), with {@code getsum}'s totals;
- *   <li>{@link #add} / {@link #update}: {@code SAVE} ({@code ADD} / {@code CHANGE}) — net is
- *       gross less eliminated, and the licence's {@code TIMBER_LIC_AREA} is re-rolled from the
- *       blocks ({@code updatesum}); an add first creates that row if the licence has none, and
- *       touches {@code PROV_FOREST_USE} for HDBS transaction processing, as legacy did;
- *   <li>{@link #delete}: {@code REMOVE}, then the same roll-up;
  *   <li>{@link #retire} / {@link #unretire}: {@code RETIRE} / {@code UNRETIRE} — set or clear
  *       the block's retirement date; totals are untouched, as in legacy.
  * </ul>
  *
- * <p>Every write is gated by {@link TlBlockRules} and guarded by the block's revision count
- * (409 when it changed). Legacy also locked {@code TIMBER_LIC_AREA}'s revision count; here its
- * areas are recomputed from the blocks inside the same transaction, so that lock is not needed.
+ * <p>Legacy's screen offers only Retire and Un-Retire (fta980Tlblock.jsp); its package's
+ * {@code SAVE} and {@code REMOVE} have no button, so blocks are not added, changed or deleted
+ * here. Every write is gated by {@link TlBlockRules} and guarded by the block's revision count
+ * (409 when it changed).
  *
  * <p>Runs against the shared {@code THE} Oracle schema — there is no local database, so it is
  * exercised only in a deployed environment.
@@ -64,77 +56,6 @@ public class TlBlockService {
       """
       SELECT COUNT(*) FROM the.tl_block_area
        WHERE forest_file_id = :forestFileId AND tl_block_id = :blockId
-      """;
-
-  /** ADD's TIMBER_LIC_AREA create, when the licence has none yet (areas set by the roll-up). */
-  private static final String INSERT_LICENCE_AREA_SQL =
-      """
-      INSERT INTO the.timber_lic_area (
-        forest_file_id, init_licence_area, obligation_area, eliminated_area, non_harvest_area,
-        update_userid, update_timestamp, revision_count, entry_userid, entry_timestamp
-      )
-      SELECT :forestFileId, 0, 0, 0, 0, :userId, SYSDATE, 0, :userId, SYSDATE
-        FROM dual
-       WHERE NOT EXISTS (SELECT 1 FROM the.timber_lic_area WHERE forest_file_id = :forestFileId)
-      """;
-
-  /** ADD's "touch the record in prov_forest_use for HDBS transaction processing". */
-  private static final String TOUCH_TENURE_SQL =
-      "UPDATE the.prov_forest_use SET update_userid = :userId WHERE forest_file_id = :forestFileId";
-
-  /** {@code updatesum}: the licence's areas are the sums of its blocks'. */
-  private static final String ROLL_UP_SQL =
-      """
-      UPDATE the.timber_lic_area
-         SET (init_licence_area, eliminated_area, obligation_area) =
-             (SELECT NVL(SUM(tb.tl_block_gross_ha), 0),
-                     NVL(SUM(tb.tl_block_elimin_ha), 0),
-                     NVL(SUM(tb.tl_block_net_ha), 0)
-                FROM the.tl_block_area tb
-               WHERE tb.forest_file_id = :forestFileId),
-             update_timestamp = SYSDATE,
-             update_userid = :userId,
-             revision_count = revision_count + 1
-       WHERE forest_file_id = :forestFileId
-      """;
-
-  /**
-   * ADD's insert. The GUID is what ESF's {@code process_tl_block} gives each block (legacy's
-   * own ADD predates the column).
-   */
-  private static final String INSERT_SQL =
-      """
-      INSERT INTO the.tl_block_area (
-        forest_file_id, tl_block_id, tl_block_area_guid, tl_block_gross_ha,
-        tl_block_elimin_ha, tl_block_net_ha,
-        entry_userid, entry_timestamp, update_userid, update_timestamp, revision_count
-      ) VALUES (
-        :forestFileId, :blockId, SYS_GUID(), :gross,
-        :elim, :gross - :elim,
-        :userId, SYSDATE, :userId, SYSDATE, 1
-      )
-      """;
-
-  private static final String UPDATE_SQL =
-      """
-      UPDATE the.tl_block_area
-         SET tl_block_gross_ha = :gross,
-             tl_block_elimin_ha = :elim,
-             tl_block_net_ha = :gross - :elim,
-             update_timestamp = SYSDATE,
-             update_userid = :userId,
-             revision_count = revision_count + 1
-       WHERE forest_file_id = :forestFileId
-         AND tl_block_id = :blockId
-         AND revision_count = :rev
-      """;
-
-  private static final String DELETE_SQL =
-      """
-      DELETE FROM the.tl_block_area
-       WHERE forest_file_id = :forestFileId
-         AND tl_block_id = :blockId
-         AND revision_count = :rev
       """;
 
   private static final String RETIRE_SQL =
@@ -188,86 +109,6 @@ public class TlBlockService {
         sum(blocks, TlBlock::grossHa),
         sum(blocks, TlBlock::eliminHa),
         sum(blocks, TlBlock::netHa));
-  }
-
-  /**
-   * Adds a block.
-   *
-   * @throws ResponseStatusException 404 no tenure; 409 not allowed or already exists; 400
-   *     invalid fields
-   */
-  @Transactional
-  public void add(String forestFileId, TlBlockSaveRequest q, String userId) {
-    Tenure tenure = editable(forestFileId);
-    String blockId = TlBlockFieldChecks.normalizeBlockId(q.tlBlockId());
-    List<String> e = new ArrayList<>(TlBlockFieldChecks.blockIdProblems(blockId));
-    e.addAll(TlBlockFieldChecks.areaProblems(q.grossHa(), q.eliminHa()));
-    badRequestIf(e);
-
-    MapSqlParameterSource p = params(tenure, blockId, userId)
-        .addValue("gross", q.grossHa(), Types.NUMERIC)
-        .addValue("elim", zeroIfNull(q.eliminHa()), Types.NUMERIC);
-    if (blockExists(p)) {
-      throw alreadyExists(blockId);
-    }
-    jdbc.update(INSERT_LICENCE_AREA_SQL, p);
-    jdbc.update(TOUCH_TENURE_SQL, p);
-    try {
-      jdbc.update(INSERT_SQL, p);
-    } catch (DuplicateKeyException ex) {
-      throw alreadyExists(blockId);
-    }
-    jdbc.update(ROLL_UP_SQL, p);
-  }
-
-  /**
-   * Changes a block's gross and eliminated areas.
-   *
-   * @throws ResponseStatusException 404 no tenure or block; 409 not allowed or modified since
-   *     read; 400 invalid fields
-   */
-  @Transactional
-  public void update(String forestFileId, String blockId, TlBlockSaveRequest q, String userId) {
-    Tenure tenure = editable(forestFileId);
-    List<String> e = new ArrayList<>(TlBlockFieldChecks.areaProblems(q.grossHa(), q.eliminHa()));
-    if (q.revisionCount() == null) {
-      e.add("Revision count is mandatory.");
-    }
-    badRequestIf(e);
-
-    MapSqlParameterSource p = params(tenure, blockId, userId)
-        .addValue("gross", q.grossHa(), Types.NUMERIC)
-        .addValue("elim", zeroIfNull(q.eliminHa()), Types.NUMERIC)
-        .addValue("rev", q.revisionCount(), Types.NUMERIC);
-    guard(jdbc.update(UPDATE_SQL, p), p, blockId);
-    jdbc.update(INSERT_LICENCE_AREA_SQL, p);
-    jdbc.update(ROLL_UP_SQL, p);
-  }
-
-  /**
-   * Deletes a block.
-   *
-   * @throws ResponseStatusException 404 no tenure or block; 409 not allowed, modified since
-   *     read, or the block has related records
-   */
-  @Transactional
-  public void delete(String forestFileId, String blockId, Long revisionCount, String userId) {
-    Tenure tenure = editable(forestFileId);
-    MapSqlParameterSource p = params(tenure, blockId, userId)
-        .addValue("rev", revisionCount, Types.NUMERIC);
-    badRequestIf(revisionCount == null ? List.of("Revision count is mandatory.") : List.of());
-    int n;
-    try {
-      n = jdbc.update(DELETE_SQL, p);
-    } catch (DataIntegrityViolationException ex) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
-          "TL block " + blockId + " has related records (amendments or map features) and"
-              + " cannot be deleted.");
-    }
-    guard(n, p, blockId);
-    jdbc.update(INSERT_LICENCE_AREA_SQL, p);
-    jdbc.update(ROLL_UP_SQL, p);
   }
 
   /**
@@ -332,16 +173,6 @@ public class TlBlockService {
     }
   }
 
-  /** The tenure, when its blocks may be added, changed or deleted; else 409 with why not. */
-  private Tenure editable(String forestFileId) {
-    Tenure tenure = tenure(forestFileId);
-    TlBlockRules rules = TlBlockRules.of(tenure.fileTypeCode(), tenure.statusCode());
-    if (!rules.edit()) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, rules.editReason());
-    }
-    return tenure;
-  }
-
   private static MapSqlParameterSource params(Tenure tenure, String blockId, String userId) {
     return new MapSqlParameterSource()
         .addValue("forestFileId", tenure.forestFileId())
@@ -373,15 +204,6 @@ public class TlBlockService {
     if (!problems.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, String.join(" ", problems));
     }
-  }
-
-  private static ResponseStatusException alreadyExists(String blockId) {
-    return new ResponseStatusException(
-        HttpStatus.CONFLICT, "TL block " + blockId + " already exists on this licence.");
-  }
-
-  private static BigDecimal zeroIfNull(BigDecimal v) {
-    return v == null ? BigDecimal.ZERO : v;
   }
 
   private static BigDecimal sum(

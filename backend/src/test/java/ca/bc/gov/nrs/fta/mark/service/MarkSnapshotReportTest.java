@@ -33,14 +33,14 @@ class MarkSnapshotReportTest {
         "B01 - Private", "DVA - Stuart Nechako Natural Resource District",
         "RNO - Omineca Natural Resource Region", "S - Stamp", "H - Hammer", "012-982-971", "U",
         "24", "Prince George TSA", "I", "I - Interior", "68", "071", null, 0, null, null, null,
-        1L, null, true,
+        null, 1L, null, true,
         landIndex,
         List.of(new MarkDetailDto.AssociatedClient(
             "00001234", "00", "MEADOW RANCH LTD", "Vanderhoof", 1L, "A", "A - Main Licensee",
             LocalDate.of(2023, 5, 1), null, 1)),
         List.of(new MarkDetailDto.Amendment(
             LocalDate.of(2024, 1, 15), "HN", "HN - Approved", 1, "IDIR\\JSMITH",
-            new BigDecimal("70"), "Area change")),
+            new BigDecimal("70"), "Area change", LocalDate.of(2024, 1, 20))),
         List.of(new MarkDetailDto.Note(
             "IDIR\\JSMITH", LocalDateTime.of(2024, 2, 1, 9, 30), "Called the holder.")),
         null);

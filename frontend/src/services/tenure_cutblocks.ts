@@ -89,7 +89,7 @@ export interface TenureCutBlockCreateRequest {
   plannedNetArea: number;
   plannedStartDate: string | null;
   spExempt: 'Y' | 'N';
-  wasteAssessmentRequired: 'Y' | 'N';
+  wasteAssessmentRequired: 'Y' | 'N' | 'U';
   underPartitionOrder: 'Y' | 'N' | null;
   fireHarvestingReasonCode: string | null;
   reportedFireDate: string | null;

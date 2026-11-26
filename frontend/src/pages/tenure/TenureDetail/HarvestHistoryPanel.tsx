@@ -1,5 +1,6 @@
-import { Money, Receipt } from '@carbon/icons-react';
+import { Money, Printer, Receipt } from '@carbon/icons-react';
 import {
+  Button,
   InlineNotification,
   Table,
   TableBody,
@@ -9,18 +10,21 @@ import {
   TableHeader,
   TableRow,
 } from '@carbon/react';
-import { useCallback, type FC } from 'react';
+import { useCallback, useState, type FC } from 'react';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import DetailTile from '@/components/DetailTile';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
+import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
 import {
+  getMarkReport,
   getTenureHarvestHistory,
   getTimberMarkHarvestHistory,
   type HarvestHistoryRow,
   type TenureHarvestHistory,
 } from '@/services/tenure_harvesthistory';
+import { triggerBrowserDownload } from '@/utils/download';
 
 import UnavailableNotice from './UnavailableNotice';
 
@@ -67,6 +71,26 @@ export const TimberMarkHarvestHistory: FC<{ timberMark: string }> = ({ timberMar
 
 const HarvestHistoryView: FC<{ fetcher: () => Promise<TenureHarvestHistory> }> = ({ fetcher }) => {
   const { data, loading, error, reload } = useApiResource(fetcher, [fetcher]);
+  const { display } = useNotification();
+
+  // FTA990's "Print Mark Report": the FTA404 Mark Report for the mark on screen.
+  const [printing, setPrinting] = useState(false);
+  const onPrintMarkReport = async (timberMark: string) => {
+    setPrinting(true);
+    try {
+      const pdf = await getMarkReport(timberMark);
+      triggerBrowserDownload(pdf, `FTA404-MarkReport-${timberMark}.pdf`);
+    } catch (err) {
+      display({
+        kind: 'error',
+        title: 'Could not produce the mark report.',
+        subtitle: err instanceof Error ? err.message : 'Request failed',
+        timeout: 9000,
+      });
+    } finally {
+      setPrinting(false);
+    }
+  };
 
   return (
     <div className="fsp-info__tab-panel">
@@ -85,6 +109,19 @@ const HarvestHistoryView: FC<{ fetcher: () => Promise<TenureHarvestHistory> }> =
             />
           ) : (
             <>
+              {data.timberMark && (
+                <div className="detail-edit__toolbar">
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    renderIcon={Printer}
+                    disabled={printing}
+                    onClick={() => void onPrintMarkReport(data.timberMark ?? '')}
+                  >
+                    {printing ? 'Printing…' : 'Print Mark Report'}
+                  </Button>
+                </div>
+              )}
               <UnavailableNotice notices={data.unavailable} />
               <DetailTile
                 title={`Timber mark ${data.timberMark ?? ''}`}

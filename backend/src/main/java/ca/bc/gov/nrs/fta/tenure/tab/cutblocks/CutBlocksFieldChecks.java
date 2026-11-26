@@ -22,6 +22,13 @@ final class CutBlocksFieldChecks {
   static final BigDecimal MAX_AREA = new BigDecimal("9999999.9999");
 
   private static final Set<String> YES_NO = Set.of("Y", "N");
+  /** FTA904's Waste Assessment select: a blank (U) choice besides Y and N. */
+  private static final Set<String> YES_NO_UNKNOWN = Set.of("Y", "N", "U");
+  /**
+   * File types whose new blocks must say Y or N to Waste Assessment: FTA904's add mode drops the
+   * blank choice for them ({@code Fta904CutblkdetailAction.handleAddNew}).
+   */
+  static final Set<String> WASTE_MANDATORY_FILE_TYPES = Set.of("B05", "B06", "B07");
 
   /**
    * Legacy's add-mode checks, in its order; empty when the block is acceptable.
@@ -51,7 +58,11 @@ final class CutBlocksFieldChecks {
     } else if (!YES_NO.contains(q.spExempt())) {
       e.add("SP Exempt must be Y or N.");
     }
-    if (q.wasteAssessmentRequired() != null && !YES_NO.contains(q.wasteAssessmentRequired())) {
+    boolean wasteMandatory = WASTE_MANDATORY_FILE_TYPES.contains(fileTypeCode);
+    String waste = q.wasteAssessmentRequired();
+    if (wasteMandatory && (waste == null || "U".equals(waste))) {
+      e.add("Waste Assessment Required is mandatory.");
+    } else if (waste != null && !(wasteMandatory ? YES_NO : YES_NO_UNKNOWN).contains(waste)) {
       e.add("Waste Assessment Required must be Y or N.");
     }
     if (q.underPartitionOrder() != null && !YES_NO.contains(q.underPartitionOrder())) {

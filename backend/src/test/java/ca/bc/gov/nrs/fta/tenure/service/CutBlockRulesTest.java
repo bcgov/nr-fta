@@ -47,6 +47,17 @@ class CutBlockRulesTest {
     }
 
     @Test
+    void aPeFileRefusesSaveAndRelabelButNotTheSuspensionButtons() {
+      // noSaveWhenStatusPE checks the file's status; getAllowSuspend follows p_disable_save_ind.
+      CutBlockRules.Facts peFile =
+          new CutBlockRules.Facts("A01", "PE", "HI", "HB", true, false, false, false, false);
+      CutBlockRules rules = CutBlockRules.of(peFile, true, true);
+      assertThat(rules.canEdit()).isFalse();
+      assertThat(rules.canRelabel()).isFalse();
+      assertThat(rules.canSuspend()).isTrue();
+    }
+
+    @Test
     void oilAndGasFilesStayReadOnly() {
       CutBlockRules.Facts a11 =
           new CutBlockRules.Facts("A11", "HI", "HI", "HB", true, false, false, false, false);

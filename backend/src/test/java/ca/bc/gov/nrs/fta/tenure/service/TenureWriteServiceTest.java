@@ -46,16 +46,19 @@ class TenureWriteServiceTest {
 
   private static CreateTenureRequest woodlot(String adminOrg, String muId) {
     return new CreateTenureRequest(null, "A04", adminOrg, null, "F", muId, null,
-        null, null, null, null, null, null, null, null, null);
+        null, null, null, null, null, null, null, null, null, null, null, null, null);
   }
 
   @BeforeEach
   @SuppressWarnings("unchecked")
   void database() {
     when(jdbc.getJdbcTemplate()).thenReturn(plain);
-    // The file type is current; a timber tenure type, not recreation, not a designate type.
-    when(jdbc.queryForObject(contains("the.file_type_code"), anyMap(), eq(Long.class)))
+    // The file type is one Add New offers and Headquarters may add; a timber tenure type, not
+    // recreation, not a designate type.
+    when(jdbc.queryForObject(contains("the.file_type_addnew_code"), anyMap(), eq(Long.class)))
         .thenReturn(1L);
+    when(jdbc.queryForObject(contains("the.fta_file_level_authority"), anyMap(),
+        eq(Long.class))).thenReturn(1L);
     when(jdbc.queryForObject(contains("fta_valid_recreation_file_type"),
         any(SqlParameterSource.class), eq(String.class))).thenReturn("N");
     when(jdbc.queryForObject(contains("fta_valid_timber_tenure_type"),
@@ -121,6 +124,58 @@ class TenureWriteServiceTest {
     verify(jdbc, never()).update(anyString(), anyMap());
     verify(plain, never()).execute(any(CallableStatementCreator.class),
         any(CallableStatementCallback.class));
+  }
+
+  @Test
+  void aTypeAddNewDoesNotOfferIsRefused() {
+    when(jdbc.queryForObject(contains("the.file_type_addnew_code"), anyMap(), eq(Long.class)))
+        .thenReturn(0L);
+
+    assertThatThrownBy(() -> service.create(woodlot("1867", "W1234"), "IDIR\\USER"))
+        .hasMessageContaining("is not a current file type that can be added.");
+    verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+  }
+
+  @Test
+  void aTypeHeadquartersMayNotAddIsRefused() {
+    when(jdbc.queryForObject(contains("the.fta_file_level_authority"), anyMap(),
+        eq(Long.class))).thenReturn(0L);
+
+    assertThatThrownBy(() -> service.create(woodlot("1867", "W1234"), "IDIR\\USER"))
+        .hasMessageContaining("You are not authorized to add A04 files.");
+    verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+  }
+
+  @Test
+  void aRangeTypeIsRefused() {
+    CreateTenureRequest range = new CreateTenureRequest(null, "E01", null, "1867", "F", "W1234",
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+
+    assertThatThrownBy(() -> service.create(range, "IDIR\\USER"))
+        .hasMessageContaining("You are not authorized to add E01 files.");
+  }
+
+  @Test
+  void aB07AsksQuotaBctsFundPaymentAndSpatialLater() {
+    CreateTenureRequest b07 = new CreateTenureRequest(null, "B07", null, "1867", "F", "W1234",
+        null, "OT", "Z1", null, null, null, null, null, null, null, null, null, null, null);
+
+    assertThatThrownBy(() -> service.create(b07, "IDIR\\USER"))
+        .hasMessageContaining("Quota type is mandatory if file type is B07.")
+        .hasMessageContaining("BCTS Fund is mandatory.")
+        .hasMessageContaining("Payment Method is mandatory.")
+        .hasMessageContaining("Submit Spatial Later is mandatory.");
+  }
+
+  @Test
+  void anA18AsksSalvage() {
+    CreateTenureRequest a18 = new CreateTenureRequest(null, "A18", "1867", null, "F", "W1234",
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    when(jdbc.query(contains("FROM the.org_unit"), anyMap(), any(RowMapper.class)))
+        .thenReturn(List.of((Object) new String[] {"R", "Y"}));
+
+    assertThatThrownBy(() -> service.create(a18, "IDIR\\USER"))
+        .hasMessageContaining("Salvage is mandatory.");
   }
 
   @Test

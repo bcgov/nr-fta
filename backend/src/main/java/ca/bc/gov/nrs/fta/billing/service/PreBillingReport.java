@@ -228,15 +228,18 @@ public class PreBillingReport {
       """;
 
   private final NamedParameterJdbcTemplate jdbc;
+  private final BillingDistrictScope scope;
 
-  public PreBillingReport(NamedParameterJdbcTemplate jdbc) {
+  public PreBillingReport(NamedParameterJdbcTemplate jdbc, BillingDistrictScope scope) {
     this.jdbc = jdbc;
+    this.scope = scope;
   }
 
   /**
    * The report PDF for a district and billing year.
    *
-   * @throws ResponseStatusException 400 for a missing or invalid district or year
+   * @throws ResponseStatusException 400 for a missing or invalid district or year, 403 for a
+   *     district the user does not administer
    */
   public byte[] render(Long orgUnitNo, String year, String userId) {
     validate(orgUnitNo, year);
@@ -248,6 +251,8 @@ public class PreBillingReport {
       throw bad(NOT_A_DISTRICT);
     }
     String districtCode = codes.get(0);
+    // Legacy protected a district user's District: only the district they administer.
+    scope.requireDistrict(districtCode);
     p.addValue("districtCode", districtCode);
     String server = jdbc.queryForObject(SERVER_SQL, p, String.class);
 

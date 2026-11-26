@@ -82,7 +82,8 @@ const validate = (
     if (f.type !== AAC)
       e.endDate = 'Association Type must be AAC for an Association End Date to be present.';
     else if ((awardDate && f.endDate < awardDate) || (expiryDate && f.endDate > expiryDate))
-      e.endDate = "Must be within this tenure's term (and the associated tenure's).";
+      e.endDate =
+        'Association End date cannot be earlier than the issue date or later than the expiry date of either tenure.';
   }
   return e;
 };

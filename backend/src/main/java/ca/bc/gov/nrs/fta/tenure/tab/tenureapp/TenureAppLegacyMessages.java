@@ -1,5 +1,7 @@
 package ca.bc.gov.nrs.fta.tenure.tab.tenureapp;
 
+import ca.bc.gov.nrs.fta.tenure.tab.details.TenureDetailsMessages;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -11,8 +13,12 @@ final class TenureAppLegacyMessages {
 
   private static final String CUSTOM = "fta.web.error.user.custom.msg";
 
-  /** ApplicationResources.properties text for the keys the package returns. */
-  private static final Map<String, String> MESSAGES = Map.ofEntries(
+  /**
+   * ApplicationResources.properties text for the keys the package returns, with
+   * FTA_EDIT_STATUS_CHANGE's {@code fta.status.change.*} keys (the package runs it when it
+   * moves the file and authority to HI) as the Details tab has them.
+   */
+  private static final Map<String, String> MESSAGES = withStatusChange(Map.ofEntries(
       Map.entry("fta.web.usr.database.record.modified",
           "The record you are attempting to update has been modified by another user."
               + " Please refresh the screen. System Information: Package {0}, Action {1},"
@@ -33,9 +39,15 @@ final class TenureAppLegacyMessages {
           "An unexpected error has occurred in package/procedure {0}, {1} - {2}, {3} Please"
               + " contact System Support."),
       Map.entry("fta.web.usr.database.invalid.function",
-          "An unknown database action was requested. System Information - {0} - {1} - {2}."));
+          "An unknown database action was requested. System Information - {0} - {1} - {2}.")));
 
   private TenureAppLegacyMessages() {}
+
+  private static Map<String, String> withStatusChange(Map<String, String> own) {
+    Map<String, String> all = new HashMap<>(TenureDetailsMessages.statusChangeTexts());
+    all.putAll(own);
+    return Map.copyOf(all);
+  }
 
   /** The readable text of a legacy error string; null when it holds no message. */
   static String readable(String error) {

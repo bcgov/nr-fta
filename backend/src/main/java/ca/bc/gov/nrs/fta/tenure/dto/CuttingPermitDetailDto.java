@@ -19,6 +19,12 @@ import java.time.LocalDate;
  * @param harvestArea     Schedule B (ha) on an A02, A04, A44, A28 or A29, Area (ha) otherwise
  * @param scheduleAArea   Schedule A (ha), the private-land blocks; those five types only
  * @param revisionCount   HARVESTING_AUTHORITY's, sent back on a write
+ * @param blockSuspensionsExist a block of the permit has a suspension, ended or not (GET's
+ *                        {@code p_cb_susp_cnt}), so FTA902 asks for the Expiry Date to be
+ *                        checked
+ * @param postponementExpired the permit is HP and its latest postponement expired before today
+ * @param fsj             a Fort St. John authority ({@code Fta_Get_Fsj_Ind}): FTA902 offers its
+ *                        FTA413 Letter
  * @param rules           what the caller may do to this permit
  */
 public record CuttingPermitDetailDto(
@@ -61,4 +67,7 @@ public record CuttingPermitDetailDto(
     String withinFibreRecoveryZone,
     LocalDate retirementDate,
     Long revisionCount,
+    boolean blockSuspensionsExist,
+    boolean postponementExpired,
+    boolean fsj,
     CuttingPermitRules rules) {}

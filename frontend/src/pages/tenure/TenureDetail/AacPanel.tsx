@@ -346,7 +346,12 @@ const AacPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
           amountRevisionCount: dialog.editing.amountRevisionCount,
         });
       } else {
-        await addAac(forestFileId, body);
+        // Joining an existing period locks on that period's revision as loaded.
+        const period = data.rows.find((r) => r.effectiveDate === form.effectiveDate);
+        await addAac(forestFileId, {
+          ...body,
+          periodRevisionCount: period?.periodRevisionCount,
+        });
       }
       display({
         kind: 'success',

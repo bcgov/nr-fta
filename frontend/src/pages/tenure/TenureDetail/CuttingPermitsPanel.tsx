@@ -45,7 +45,8 @@ const date = (v: string | null | undefined) => dash(formatDate(v));
 
 /** Legacy FTA902's limits; the backend enforces them too. */
 const MAX_LOCATION = 50;
-const AREA_PATTERN = /^\d{1,8}(\.\d{1,4})?$/;
+/** HARVESTING_AUTHORITY.HARVEST_AREA is NUMBER(11,4): 7 whole digits. */
+const AREA_PATTERN = /^\d{1,7}(\.\d{1,4})?$/;
 
 interface Form {
   cpId: string;
@@ -73,7 +74,7 @@ const validate = (f: Form, maxTerm: number): Errors => {
   else if (!Number.isInteger(term) || term < 1 || term > maxTerm)
     e.term = `Enter 1 to ${maxTerm} months.`;
   if (f.area.trim() && !AREA_PATTERN.test(f.area.trim()))
-    e.area = 'Enter hectares, with up to 4 decimal places.';
+    e.area = 'Enter hectares up to 9,999,999.9999, with up to 4 decimal places.';
   if (f.location.trim().length > MAX_LOCATION) e.location = `At most ${MAX_LOCATION} characters.`;
   if (!f.method) e.method = 'Compliance Method is mandatory.';
   if (f.method !== 'E' && !f.instrument) e.instrument = 'Marking Instrument is mandatory.';

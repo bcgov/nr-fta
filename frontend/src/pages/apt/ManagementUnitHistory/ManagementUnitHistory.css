@@ -1,0 +1,4 @@
+/* The Management unit section is wrapped for its inline edit; this spaces it from the next one. */
+.apt-mu__top {
+  margin-block-end: 1.5rem;
+}

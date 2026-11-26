@@ -4,14 +4,12 @@ import static ca.bc.gov.nrs.fta.apt.service.AptManagementUnitSql.MU_NAMES;
 import static ca.bc.gov.nrs.fta.apt.service.AptManagementUnitSql.MU_SOURCE;
 import static ca.bc.gov.nrs.fta.apt.service.AptManagementUnitSql.MU_TYPE_CODES;
 import static ca.bc.gov.nrs.fta.apt.service.AptManagementUnitSql.ORA_DUPLICATE;
-import static ca.bc.gov.nrs.fta.apt.service.AptManagementUnitSql.badRequest;
 import static ca.bc.gov.nrs.fta.apt.service.AptManagementUnitSql.conflict;
 import static ca.bc.gov.nrs.fta.apt.service.AptManagementUnitSql.date;
 import static ca.bc.gov.nrs.fta.apt.service.AptManagementUnitSql.dbError;
 import static ca.bc.gov.nrs.fta.apt.service.AptManagementUnitSql.getDate;
 import static ca.bc.gov.nrs.fta.apt.service.AptManagementUnitSql.getDateTime;
 import static ca.bc.gov.nrs.fta.apt.service.AptManagementUnitSql.getLong;
-import static ca.bc.gov.nrs.fta.apt.service.AptManagementUnitSql.isOracleError;
 import static ca.bc.gov.nrs.fta.apt.service.AptManagementUnitSql.str;
 
 import ca.bc.gov.nrs.fta.apt.dto.AptManagementUnitDto;
@@ -20,15 +18,10 @@ import ca.bc.gov.nrs.fta.apt.dto.AptManagementUnitHistoryRequest;
 import ca.bc.gov.nrs.fta.apt.dto.AptManagementUnitRequest;
 import ca.bc.gov.nrs.fta.apt.dto.AptManagementUnitSearchCriteria;
 import ca.bc.gov.nrs.fta.apt.dto.AptManagementUnitUnassignedDto;
-import java.math.BigDecimal;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.List;
 import java.util.Map;
 import org.springframework.dao.DataAccessException;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -41,8 +34,7 @@ import org.springframework.web.server.ResponseStatusException;
  * APT2's ManagementUnitService, as direct SQL on the tables the {@code THE.APT_*} routines
  * used: management units ({@code APT_MANAGEMENT_UNITS_GET}, {@code APT_MANAGEMENT_UNIT_INS_UPD}),
  * the code-table units not yet in APT ({@code APT_MGMT_UNIT_UNASSIGNED_GET}) and their AAC
- * determinations ({@code APT_MGMT_UNIT_HISTORIES_GET}, {@code APT_MGMT_UNIT_HISTORY_INS_UPD},
- * with {@code APT_PKG.INSERT_MUH_CHILD_RECORDS}'s copy).
+ * determinations ({@code APT_MGMT_UNIT_HISTORIES_GET}, {@code APT_MGMT_UNIT_HISTORY_INS_UPD}).
  *
  * <p>{@code APT_MANAGEMENT_UNITS} has no trigger, and the routine never set its audit columns
  * (it ignored its user), so neither does this. {@code MUH_BR_IU_TRG} stamps the history's
@@ -60,8 +52,6 @@ public class AptManagementUnitService {
   /** {@code APT_MGMT_UNIT_HISTORY_INS_UPD}'s message for {@code MUH_UK}. */
   static final String SAME_DATES =
       "Error: 2 records have the same Effective and Apportionment Dates.";
-
-  private static final String COPY_ERROR = "Error: %s in APT_PKG.INSERT_MUH_CHILD_RECORDS ";
 
   /** {@code APT_MANAGEMENT_UNITS_GET}. A unit with no code-table name or org unit is left out. */
   static final String SEARCH_SQL =
@@ -109,7 +99,16 @@ public class AptManagementUnitService {
           + " WHERE amus.apt_mgmt_unit_st IN " + MU_TYPE_CODES
           + " AND amu.apt_mgmt_unit_st IS NULL"
           + " AND amu.mgmt_unit_number IS NULL"
+          // Z ("Outside Managed Units") has no number, so it can never be added; APT2 listed it
+          // and then failed on the insert.
+          + " AND amus.mgmt_unit_number IS NOT NULL"
           + " ORDER BY amus.mgmt_unit_name";
+
+  /** Whether a type and number is a code-table management unit of an APT type. */
+  static final String KNOWN_UNIT_SQL =
+      "SELECT COUNT(*) FROM " + MU_NAMES + " amus"
+          + " WHERE amus.apt_mgmt_unit_st IN " + MU_TYPE_CODES
+          + " AND amus.apt_mgmt_unit_st = :type AND amus.mgmt_unit_number = :number";
 
   /** {@code cur_chk_mu_exist}. */
   static final String UNIT_EXISTS_SQL =
@@ -193,70 +192,6 @@ public class AptManagementUnitService {
        WHERE id = :id
       """;
 
-  // ── APT_PKG.INSERT_MUH_CHILD_RECORDS: its cursors and inserts. Like the package, the copies
-  //    carry no AAC (ha) and no user id (the triggers stamp the database user). ──
-
-  static final String COPY_PARTITIONS_SQL =
-      """
-      SELECT the.part_seq.NEXTVAL AS new_id, id AS old_id, apt_partition_st AS code,
-             allowable_annual_cut, comments
-        FROM the.apt_partitions
-       WHERE muh_id = :prevId
-      """;
-
-  static final String INSERT_PARTITION_COPY_SQL =
-      """
-      INSERT INTO the.apt_partitions (id, muh_id, apt_partition_st, allowable_annual_cut, comments)
-      VALUES (:id, :muhId, :type, :aac, :comments)
-      """;
-
-  static final String COPY_APPORTIONMENTS_SQL =
-      """
-      SELECT the.prtaprtmt_seq.NEXTVAL AS new_id, id AS old_id, apt_foa_st AS code,
-             allowable_annual_cut, comments
-        FROM the.apt_part_apportionments
-       WHERE part_id = :oldId
-      """;
-
-  static final String INSERT_APPORTIONMENT_COPY_SQL =
-      """
-      INSERT INTO the.apt_part_apportionments (id, part_id, apt_foa_st, allowable_annual_cut,
-                                               comments)
-      VALUES (:id, :partId, :foa, :aac, :comments)
-      """;
-
-  static final String COPY_DISTRIBUTIONS_SQL =
-      """
-      SELECT the.aptd_seq.NEXTVAL AS new_id, id AS old_id, muouo_id, distribution_volume,
-             effective_date
-        FROM the.apt_apt_distributions
-       WHERE papt_id = :oldId
-      """;
-
-  static final String INSERT_DISTRIBUTION_COPY_SQL =
-      """
-      INSERT INTO the.apt_apt_distributions (id, papt_id, muouo_id, distribution_volume,
-                                             effective_date)
-      VALUES (:id, :paptId, :muouoId, :volume, :effectiveDate)
-      """;
-
-  /** {@code aptdj_cur} and its insert: the old distribution's latest journal rows, unless DEL. */
-  static final String INSERT_DISTRIBUTION_JN_COPY_SQL =
-      """
-      INSERT INTO the.apt_apt_distributions_jn (
-        id, jn_datetime, jn_operation, jn_oracle_user, papt_id, muouo_id,
-        distribution_volume, effective_date, jn_notes, jn_appln, jn_session
-      )
-      SELECT :id, SYSDATE, adj.jn_operation, adj.jn_oracle_user, :paptId, adj.muouo_id,
-             adj.distribution_volume, adj.effective_date,
-             '(Inserted via copy function) ' || adj.jn_notes, adj.jn_appln, adj.jn_session
-        FROM the.apt_apt_distributions_jn adj
-       WHERE adj.id = :oldId
-         AND adj.jn_operation <> 'DEL'
-         AND adj.jn_datetime IN (SELECT MAX(jn_datetime) FROM the.apt_apt_distributions_jn
-                                  WHERE id = adj.id)
-      """;
-
   private static final RowMapper<AptManagementUnitDto> UNIT = (rs, i) -> new AptManagementUnitDto(
       getLong(rs, "ID"),
       rs.getString("MGMT_UNIT_NAME"),
@@ -304,12 +239,6 @@ public class AptManagementUnitService {
         parts[1]);
   };
 
-  /** A row the copy reads: its new id (from the sequence), its old id and what is copied. */
-  private record CopyRow(Long newId, Long oldId, String code, BigDecimal aac, String comments) {}
-
-  private record DistributionRow(Long newId, Long oldId, Long muouoId, BigDecimal volume,
-      Timestamp effectiveDate) {}
-
   private final NamedParameterJdbcTemplate jdbc;
 
   public AptManagementUnitService(NamedParameterJdbcTemplate jdbc) {
@@ -348,6 +277,11 @@ public class AptManagementUnitService {
     Long existing = jdbc.queryForObject(UNIT_EXISTS_SQL, p, Long.class);
     if (existing != null && existing > 0) {
       throw conflict(UNIT_EXISTS);
+    }
+    // The search joins units to the code table, so one that is not in it would never be seen.
+    Long known = jdbc.queryForObject(KNOWN_UNIT_SQL, p, Long.class);
+    if (known == null || known == 0) {
+      reject("The management unit is not one of the management units that can be added.");
     }
     Long id = nextVal(jdbc, "the.mu_seq");
     p.addValue("id", id, Types.NUMERIC);
@@ -406,27 +340,17 @@ public class AptManagementUnitService {
     return historyRows(muId, historyId);
   }
 
-  /**
-   * Adds a determination. With {@code prevId}, that determination's partitions, apportionments
-   * and BCTS distributions are copied onto the new one, as {@code APT_PKG.INSERT_MUH_CHILD_RECORDS}
-   * did; all in one transaction.
-   */
+  /** Adds a determination. */
   @Transactional
   public AptManagementUnitHistoryDto createHistory(Long muId, AptManagementUnitHistoryRequest r,
       String user) {
     get(muId);
     reject(AptManagementUnitRules.historyProblem(r));
-    if (r.prevId() != null && historyRows(muId, r.prevId()).isEmpty()) {
-      reject("The determination to copy from is not one of this management unit's.");
-    }
     Long id = nextVal(jdbc, "the.muh_seq");
     try {
       jdbc.update(INSERT_HISTORY_SQL, historyParams(id, muId, r, user));
     } catch (DataAccessException ex) {
       throw dbError(ex, ORA_DUPLICATE, SAME_DATES);
-    }
-    if (r.prevId() != null) {
-      copyChildRecords(id, r.prevId());
     }
     return oneHistory(muId, id);
   }
@@ -477,85 +401,6 @@ public class AptManagementUnitService {
         .addValue("futureHarvestLbaseArea", r.futureHarvestLandbaseArea(), Types.NUMERIC)
         .addValue("comments", str(r.comments()), Types.VARCHAR)
         .addValue("user", str(user), Types.VARCHAR);
-  }
-
-  // ── APT_PKG.INSERT_MUH_CHILD_RECORDS ──
-
-  /**
-   * Copies determination {@code prevId}'s partitions, their apportionments, their BCTS
-   * distributions and each distribution's latest journal entry onto determination {@code muhId}.
-   * A failure is the package's 400, worded as it worded it.
-   */
-  void copyChildRecords(Long muhId, Long prevId) {
-    List<CopyRow> partitions = jdbc.query(COPY_PARTITIONS_SQL,
-        new MapSqlParameterSource("prevId", prevId), AptManagementUnitService::copyRow);
-    for (CopyRow part : partitions) {
-      copyInsert(INSERT_PARTITION_COPY_SQL, new MapSqlParameterSource()
-          .addValue("id", part.newId(), Types.NUMERIC)
-          .addValue("muhId", muhId, Types.NUMERIC)
-          .addValue("type", part.code(), Types.VARCHAR)
-          .addValue("aac", part.aac(), Types.NUMERIC)
-          .addValue("comments", part.comments(), Types.VARCHAR),
-          "when inserting APT_PARTITION record with ID = " + part.newId(),
-          "when inserting APT_PARTITION record.");
-      List<CopyRow> apportionments = jdbc.query(COPY_APPORTIONMENTS_SQL,
-          new MapSqlParameterSource("oldId", part.oldId()), AptManagementUnitService::copyRow);
-      for (CopyRow papt : apportionments) {
-        // The package's OTHERS message here names APT_APT_DISTRIBUTIONS; kept as it was.
-        copyInsert(INSERT_APPORTIONMENT_COPY_SQL, new MapSqlParameterSource()
-            .addValue("id", papt.newId(), Types.NUMERIC)
-            .addValue("partId", part.newId(), Types.NUMERIC)
-            .addValue("foa", papt.code(), Types.VARCHAR)
-            .addValue("aac", papt.aac(), Types.NUMERIC)
-            .addValue("comments", papt.comments(), Types.VARCHAR),
-            "when inserting APT_PART_APPORTIONMENTS record with ID = " + papt.newId(),
-            "when inserting APT_APT_DISTRIBUTIONS record.");
-        copyDistributions(papt);
-      }
-    }
-  }
-
-  private void copyDistributions(CopyRow papt) {
-    List<DistributionRow> distributions = jdbc.query(COPY_DISTRIBUTIONS_SQL,
-        new MapSqlParameterSource("oldId", papt.oldId()), (rs, i) -> new DistributionRow(
-            getLong(rs, "NEW_ID"), getLong(rs, "OLD_ID"), getLong(rs, "MUOUO_ID"),
-            rs.getBigDecimal("DISTRIBUTION_VOLUME"), rs.getTimestamp("EFFECTIVE_DATE")));
-    for (DistributionRow d : distributions) {
-      copyInsert(INSERT_DISTRIBUTION_COPY_SQL, new MapSqlParameterSource()
-          .addValue("id", d.newId(), Types.NUMERIC)
-          .addValue("paptId", papt.newId(), Types.NUMERIC)
-          .addValue("muouoId", d.muouoId(), Types.NUMERIC)
-          .addValue("volume", d.volume(), Types.NUMERIC)
-          .addValue("effectiveDate", d.effectiveDate(), Types.TIMESTAMP),
-          "when inserting APT_APT_DISTRIBUTIONS record with ID = " + d.newId(),
-          "when inserting APT_APT_DISTRIBUTIONS record.");
-      copyInsert(INSERT_DISTRIBUTION_JN_COPY_SQL, new MapSqlParameterSource()
-          .addValue("id", d.newId(), Types.NUMERIC)
-          .addValue("paptId", papt.newId(), Types.NUMERIC)
-          .addValue("oldId", d.oldId(), Types.NUMERIC),
-          "when inserting APT_APT_DISTRIBUTIONS_JN record with ID = " + d.newId(),
-          "when inserting APT_APT_DISTRIBUTIONS_JN record.");
-    }
-  }
-
-  private static CopyRow copyRow(ResultSet rs, int i) throws SQLException {
-    return new CopyRow(getLong(rs, "NEW_ID"), getLong(rs, "OLD_ID"), rs.getString("CODE"),
-        rs.getBigDecimal("ALLOWABLE_ANNUAL_CUT"), rs.getString("COMMENTS"));
-  }
-
-  /** One of the package's inserts, with its DUP_VAL_ON_INDEX and OTHERS messages. */
-  private void copyInsert(String sql, MapSqlParameterSource p, String onDuplicate,
-      String onOther) {
-    try {
-      jdbc.update(sql, p);
-    } catch (DuplicateKeyException ex) {
-      throw badRequest(COPY_ERROR.formatted("DUP_VAL_ON_INDEX") + onDuplicate);
-    } catch (DataAccessException ex) {
-      if (!isOracleError(ex)) {
-        throw ex;
-      }
-      throw badRequest(COPY_ERROR.formatted("OTHERS") + onOther);
-    }
   }
 
   // ── helpers shared with the partition services ──

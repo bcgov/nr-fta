@@ -20,16 +20,17 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Adds a land index to a private mark, or updates one on it — legacy FTA511's add row and
- * the save of an existing one.
+ * Adds a land index to a private mark, updates one on it, or deletes one — legacy FTA511's
+ * add row, the save of an existing one, and its Delete.
  *
  * <p>Ports {@code FTA_511_MARK_LAND_INDEX}: the gate from its {@code GET} (Headquarters only;
  * not at HX, DV or DD; not for B15/B16 — {@link MarkEditRules#landIndex()}), the form's checks
  * ({@code Fta511MarkLandIndexForm}: Land District/Island required, both codes current,
- * description up to 40), and {@code SAVE}'s insert. The row carries the certificate and the
- * timber mark, so an application not yet issued keeps its land index when the mark is.
- * An update has its own gate ({@link MarkEditRules#landIndexUpdate()}): Headquarters may
- * correct a row at any status.
+ * description up to 40), {@code SAVE}'s insert and {@code REMOVE}'s delete. The row carries
+ * the certificate and the timber mark, so an application not yet issued keeps its land index
+ * when the mark is.
+ * An update or delete has its own gate ({@link MarkEditRules#landIndexUpdate()}), which is
+ * the add's: legacy disabled all of FTA511's buttons together.
  *
  * <p>Runs against the shared {@code THE} Oracle schema — there is no local database, so it is
  * exercised only in a deployed environment.
@@ -85,6 +86,15 @@ public class MarkLandIndexWriteService {
          AND (timber_mark = :timberMark OR certificate = :certificate)
       """;
 
+  /** FTA_511.REMOVE: the row, guarded by the revision count as read, provided it is the mark's. */
+  private static final String DELETE_SQL =
+      """
+      DELETE FROM the.mark_land_index
+       WHERE mark_land_index_skey = :skey
+         AND revision_count = :revisionCount
+         AND (timber_mark = :timberMark OR certificate = :certificate)
+      """;
+
   /** FTA_511.SAVE's update, guarded by the revision count as read. */
   private static final String UPDATE_SQL =
       """
@@ -108,7 +118,7 @@ public class MarkLandIndexWriteService {
         entry_userid, entry_timestamp, update_userid, update_timestamp, revision_count
       ) VALUES (
         the.mark_land_index_seq.NEXTVAL, :certificate, :timberMark, :primary,
-        :secondary, :description, NULL,
+        :secondary, :description, :deactivate,
         :userId, SYSDATE, :userId, SYSDATE, 0
       )
       """;
@@ -133,7 +143,8 @@ public class MarkLandIndexWriteService {
     }
     MapSqlParameterSource p = validated(
         mark, null, null, request.primaryLandIndexCode(), request.secondaryLandIndexCode(),
-        request.markLandIndexDesc(), userId);
+        request.markLandIndexDesc(), userId)
+        .addValue("deactivate", request.indexDeactivateDate(), Types.DATE);
     rejectDuplicate(p);
     try {
       jdbc.update(INSERT_SQL, p);
@@ -191,6 +202,39 @@ public class MarkLandIndexWriteService {
       throw alreadyOnMark();
     }
     if (n == 0) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT,
+          "This land index was changed by someone else. Reload the mark and try again.");
+    }
+  }
+
+  /**
+   * Deletes the land index {@code skey} from the mark — FTA_511's {@code REMOVE}.
+   *
+   * @throws ResponseStatusException 404 if the mark or the row on it does not exist; 409 if
+   *     the user may not change its land index, or someone else changed the row first; 400
+   *     without a revision count
+   */
+  @Transactional
+  public void delete(
+      String id, boolean byCertificate, long skey, Integer revisionCount, boolean districtUser) {
+    MarkDetailDto mark = find(id, byCertificate);
+    if (!MarkEditRules.of(mark, true, districtUser).landIndexUpdate()) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "Land index may not be updated at this mark's status or type.");
+    }
+    if (revisionCount == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Revision count is required.");
+    }
+    MapSqlParameterSource p = new MapSqlParameterSource()
+        .addValue("skey", skey)
+        .addValue("revisionCount", revisionCount)
+        .addValue("timberMark", mark.timberMark())
+        .addValue("certificate", mark.certificate());
+    if (jdbc.update(DELETE_SQL, p) == 0) {
+      if (jdbc.queryForList(ROW_SQL, p).isEmpty()) {
+        throw new ResponseStatusException(
+            HttpStatus.NOT_FOUND, "Land index not found on this mark.");
+      }
       throw new ResponseStatusException(HttpStatus.CONFLICT,
           "This land index was changed by someone else. Reload the mark and try again.");
     }

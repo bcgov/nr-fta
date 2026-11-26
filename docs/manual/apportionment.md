@@ -66,7 +66,8 @@ Administrators only.
 1. On **Apportionment › Management Units**, select **Add management unit**.
    The **Add management unit** dialog opens.
 2. Choose the **Management unit** from the list. It lists the units that
-   exist in FTA's code tables but not yet in apportionment. If every unit is
+   exist in FTA's code tables but not yet in apportionment. Outside Managed
+   Units has no number, so it is never listed. If every unit is
    already there, the dialog says there are no management units to add and
    **Create** stays unavailable.
 3. Choose the **Org unit** and **Status**, and enter the **Status effective
@@ -77,19 +78,19 @@ Administrators only.
 
 Administrators only.
 
-1. Open the unit and select **Edit management unit**. The **Edit management
-   unit** dialog opens.
+1. Open the unit and select **Edit management unit** on its **Management
+   unit** section. The section's fields become inputs.
 2. Change the **Org unit**, **Source management unit**, **Status**, **Status
-   effective date** or **Comments**. The unit's type, number
+   effective** date or **Comments**. The unit's type, number
    and name can't change.
-3. Select **Save**, or **Cancel** to close the dialog without saving.
+3. Select **Save changes**, or **Cancel** to discard your changes.
 
 ### Review a management unit's AAC determinations
 
-Open a unit from the search. The page shows the unit's details across the
-top (**Name**, **Management unit type**, **Management unit no.**, **Status**,
-**Status effective**, **Org unit** and **Source management unit**). Select the
-source management unit to open it.
+Open a unit from the search. The **Management unit** section at the top shows
+its **Name**, **Management unit type**, **Management unit no.**, **Status**,
+**Status effective**, **Org unit**, **Source management unit** and
+**Comments**. Select the source management unit to open it.
 
 The **AAC determinations** table lists each determination, newest first,
 with its effective date, AAC in cubic metres and hectares, and comment. Select a row to show
@@ -113,10 +114,7 @@ Administrators only.
    AAC figures and the long term harvest level are whole numbers from 0 to
    999,999,999. Areas are from 0 to 9,999,999.99, with up to two decimals.
    Comments can be up to 2000 characters.
-3. When adding a determination, you can tick **Copy the partitions,
-   apportionments and BCTS distributions of the determination effective …**
-   to start the new one from the determination currently selected.
-4. Select **Save**.
+3. Select **Save**.
 
 ### Work with partitions and apportionments
 
@@ -225,6 +223,8 @@ Commitments are added from the licence the same way as from an
 apportionment: select **New commitment**, choose the **Partition** (one the
 licence's management unit uses), and enter the rest. From a licence, a
 **Reason** is required for a new commitment as well as for a change.
+**New commitment** is disabled until the licence has a **FOA Type**; set it
+with **Edit licence** first.
 
 ### Look up corporate linkages
 

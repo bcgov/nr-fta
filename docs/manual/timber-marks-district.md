@@ -46,6 +46,7 @@ read-only for you.
 
 Things to know:
 
+- **District** starts with your default district, if you have one.
 - A valid **Timber mark** ignores every other criterion.
 - **File ID**, **Cutting permit**, **Timber mark** and **Certificate** match
   in upper or lower case.
@@ -100,8 +101,8 @@ This works the same on **Private Marks › Application List**.
 
 The results show **Certificate**, **Timber mark**, **Application date**,
 **District**, **Timber mark status**, **Amendment status**, **Client** and
-**Last updated by**. Select a row to open the private mark. An application
-that hasn't been issued a timber mark yet opens by its certificate.
+**Last updated by**. Select a row to open the private mark. An application that hasn't been issued a
+timber mark yet opens by its certificate.
 
 ![Private Marks › Application List with results](images/tm-application-list.png)
 

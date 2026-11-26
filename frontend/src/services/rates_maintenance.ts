@@ -1,45 +1,47 @@
-import { apiGet, apiPut, toQuery } from './http';
+import { apiGet, apiPut } from './http';
 
-// Mirrors the backend RatesMaintenanceDto (ca.bc.gov.nrs.fta.shared.dto),
-// which mirrors the legacy THE.FTA_699_RATEFEE RANGE_BILL_RATE row (c_rate cursor).
-export interface RatesMaintenanceRate {
-  rangeBillRateId: number | null;
-  calendarYear: number | null;
-  updateTimestamp: string | null; // ISO date
-  rangeFileTypeCode: string | null;
-  rangeRateTypeCode: string | null;
-  revenueClassnCode: string | null;
-  rangeRate: number | null;
+/** One of the 12 values FTA699 shows. Mirrors RatesMaintenanceDto.Rate. */
+export interface RateValue {
+  /** Legacy's rate type code: GGR, GUF, GNF, HGR, HUF, HNF, GLF, GPF, NGI, HLF, HPF, NHI. */
+  code: string;
+  label: string;
+  /** Null when the year is corrupt. */
+  rate: number | null;
+}
+
+/**
+ * One calendar year of rates and fees. Mirrors the backend RatesMaintenanceDto
+ * (ca.bc.gov.nrs.fta.shared.dto), the OUT parameters of THE.FTA_699_RATEFEE.get.
+ */
+export interface RatesYear {
+  calendarYear: number;
+  /** yyyy-MM-dd HH:mm:ss; sent back on save as the lock. Null for a year not yet entered. */
+  updateTimestamp: string | null;
   updateUserid: string | null;
-  rngTenrRateDesc: string | null;
+  /** The stored rows are not the year's 24: no values, and Save is off. */
+  corrupt: boolean;
+  rates: RateValue[];
 }
 
-export interface RatesMaintenanceParams {
-  calendarYear?: number;
+/** GET /api/fta/admin/rates/years — the Calendar Year dropdown, latest first. */
+export function getRateYears(): Promise<number[]> {
+  return apiGet<number[]>('/api/fta/admin/rates/years');
 }
 
-/** GET /api/fta/admin/rates — standard Range Billing rates/fees (FTA_699_RATEFEE). */
-export function getRates(params: RatesMaintenanceParams = {}): Promise<RatesMaintenanceRate[]> {
-  return apiGet<RatesMaintenanceRate[]>(`/api/fta/admin/rates${toQuery({ ...params })}`);
+/** GET /api/fta/admin/rates?calendarYear= — one year's 12 values (FTA_699_RATEFEE.get). */
+export function getRates(calendarYear: number): Promise<RatesYear> {
+  return apiGet<RatesYear>(`/api/fta/admin/rates?calendarYear=${calendarYear}`);
 }
 
-// Mirrors the backend RatesSaveRequest.RateItem (ca.bc.gov.nrs.fta.shared.dto).
-export interface RatesSaveRateItem {
-  rangeBillRateId: number | null;
-  rangeFileTypeCode: string | null;
-  rangeRateTypeCode: string | null;
-  revenueClassnCode: string | null;
-  rangeRate: number | null;
-  rngTenrRateDesc: string | null;
-}
-
-// Mirrors the backend RatesSaveRequest (ca.bc.gov.nrs.fta.shared.dto).
+/** Mirrors the backend RatesSaveRequest. */
 export interface RatesSaveRequest {
-  calendarYear: number | null;
-  rates: RatesSaveRateItem[];
+  calendarYear: number;
+  updateTimestamp: string | null;
+  /** The 12 values as typed, keyed by code. */
+  rates: Record<string, string>;
 }
 
-/** PUT /api/fta/admin/rates — save standard Range Billing rates/fees (FTA699, FTA_ADMIN only). */
+/** PUT /api/fta/admin/rates — save one year (FTA699, FTA_ADMIN only). */
 export function saveRates(req: RatesSaveRequest): Promise<{ updated: number }> {
   return apiPut<{ updated: number }>('/api/fta/admin/rates', req);
 }
