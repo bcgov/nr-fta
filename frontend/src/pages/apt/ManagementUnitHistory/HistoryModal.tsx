@@ -1,4 +1,4 @@
-import { Button, Checkbox, Stack, TextArea, TextInput } from '@carbon/react';
+import { Button, Stack, TextArea, TextInput } from '@carbon/react';
 import { useEffect, useState, type FC } from 'react';
 
 import DateField from '@/components/DateField';
@@ -11,7 +11,7 @@ import {
   type AptManagementUnitHistoryRequest,
 } from '@/services/apt/managementUnits';
 
-import { areaProblem, day, MAX_COMMENTS, numText, toNumber, wholeProblem } from './shared';
+import { areaProblem, MAX_COMMENTS, numText, toNumber, wholeProblem } from './shared';
 
 interface Form {
   effectiveDate: string;
@@ -27,8 +27,6 @@ interface Form {
   currentNetOperatingArea: string;
   futureHarvestLandbaseArea: string;
   comments: string;
-  /** Create only: copy the source determination's partitions and apportionments. */
-  copy: boolean;
 }
 
 type Errors = Partial<Record<keyof Form, string>>;
@@ -47,7 +45,6 @@ const EMPTY: Form = {
   currentNetOperatingArea: '',
   futureHarvestLandbaseArea: '',
   comments: '',
-  copy: false,
 };
 
 const formOf = (h: AptManagementUnitHistory): Form => ({
@@ -64,7 +61,6 @@ const formOf = (h: AptManagementUnitHistory): Form => ({
   currentNetOperatingArea: numText(h.currentNetOperatingArea),
   futureHarvestLandbaseArea: numText(h.futureHarvestLandbaseArea),
   comments: h.comments ?? '',
-  copy: false,
 });
 
 /** APT2's checks (SharedHistoryForm and its modal), with the areas' two decimals kept. */
@@ -94,8 +90,7 @@ const validate = (f: Form): Errors => {
   return e;
 };
 
-const bodyOf = (f: Form, prevId: number | null): AptManagementUnitHistoryRequest => ({
-  prevId,
+const bodyOf = (f: Form): AptManagementUnitHistoryRequest => ({
   effectiveDate: f.effectiveDate,
   determinationDate: f.determinationDate,
   inventoryRevDate: f.inventoryRevDate || null,
@@ -125,8 +120,7 @@ interface Props {
 /**
  * A management unit's AAC determination, new or edited (APT2's NewManagementUnitHistoryModal and
  * the history screen's detail form). A new one starts from the selected determination's values,
- * as in APT2, and can also take a copy of its partitions and apportionments — what
- * APT_MGMT_UNIT_HISTORY_INS_UPD's previous-id parameter is for, which APT2 never sent.
+ * as in APT2.
  */
 const HistoryModal: FC<Props> = ({ muId, open, mode, source, onClose, onSaved }) => {
   const { display } = useNotification();
@@ -165,11 +159,8 @@ const HistoryModal: FC<Props> = ({ muId, open, mode, source, onClose, onSaved })
     try {
       const saved =
         mode === 'edit' && source
-          ? await updateAptManagementUnitHistory(muId, source.id, bodyOf(form, null))
-          : await createAptManagementUnitHistory(
-              muId,
-              bodyOf(form, form.copy && source ? source.id : null),
-            );
+          ? await updateAptManagementUnitHistory(muId, source.id, bodyOf(form))
+          : await createAptManagementUnitHistory(muId, bodyOf(form));
       display({
         kind: 'success',
         title: mode === 'edit' ? 'Determination saved' : 'Determination added',
@@ -257,15 +248,6 @@ const HistoryModal: FC<Props> = ({ muId, open, mode, source, onClose, onSaved })
           disabled={saving}
           onChange={(e) => set('comments', e.target.value)}
         />
-        {mode === 'create' && source && (
-          <Checkbox
-            id="apt-muh-copy"
-            labelText={`Copy the partitions, apportionments and BCTS distributions of the determination effective ${day(source.effectiveDate)}`}
-            checked={form.copy}
-            disabled={saving}
-            onChange={(_, { checked }) => set('copy', checked)}
-          />
-        )}
       </Stack>
       <div className="detail-dialog__actions">
         <Button kind="tertiary" disabled={saving} onClick={close}>

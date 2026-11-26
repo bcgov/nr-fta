@@ -387,11 +387,6 @@ const AssociatedClientsPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
                   </Table>
                 </TableContainer>
               </div>
-              {canEdit && data?.canEdit && (
-                <p className="fsp-info__toolbar-note">
-                  Only a previous licensee (C) or an S type client can be deleted.
-                </p>
-              )}
             </div>
           ))}
       </AsyncBoundary>

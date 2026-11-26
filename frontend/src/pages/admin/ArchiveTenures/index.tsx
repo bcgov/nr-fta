@@ -21,6 +21,7 @@ import DestructiveModal from '@/components/core/DestructiveModal';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
+import { useDefaultOrgUnit } from '@/hooks/useDefaultOrgUnit';
 import PageLayout from '@/pages/PageLayout';
 import {
   archiveTenures,
@@ -83,6 +84,20 @@ const ArchiveTenures: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Legacy defaulted Region to a region user's org unit, and Region and District to a district
+  // user's region and org unit (Org Unit Maintenance).
+  const userDefault = useDefaultOrgUnit();
+  useEffect(() => {
+    const no = userDefault?.orgUnitNo;
+    if (!no) return;
+    const level = userDefault.orgLevelCode;
+    const regionNo = level === 'R' ? no : level === 'D' ? userDefault.rollupRegionNo : null;
+    const districtNo = level === 'D' && districts.some((o) => o.code === no) ? no : '';
+    if (!regionNo || !regions.some((o) => o.code === regionNo)) return;
+    if (level === 'D' && !districtNo) return;
+    setForm((f) => (f.regionNo || f.districtNo ? f : { ...f, regionNo, districtNo }));
+  }, [userDefault, regions, districts]);
+
   const set = (f: keyof Form) => (v: string) => setForm((s) => ({ ...s, [f]: v }));
 
   const count = async (c: ArchiveTenuresCriteria) => {
@@ -139,7 +154,7 @@ const ArchiveTenures: FC = () => {
   const hay = rows?.reduce((n, r) => n + r.hayCount, 0) ?? 0;
   const total = grazing + hay;
   const yearIsOver = searched != null && searched.expiryYear < new Date().getFullYear();
-  const canGo = form.regionNo !== '' && /^\d{4}$/.test(form.expiryYear);
+  const canGo = form.regionNo !== '' && /^[1-9]\d{3}$/.test(form.expiryYear);
 
   return (
     <PageLayout

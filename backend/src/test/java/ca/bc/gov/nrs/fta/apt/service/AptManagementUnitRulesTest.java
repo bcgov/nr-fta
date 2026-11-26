@@ -24,7 +24,7 @@ class AptManagementUnitRulesTest {
 
   private static AptManagementUnitHistoryRequest history(BigDecimal aac, BigDecimal aacHa,
       BigDecimal area) {
-    return new AptManagementUnitHistoryRequest(null, DAY, DAY, aac, aacHa, null, null, null,
+    return new AptManagementUnitHistoryRequest(DAY, DAY, aac, aacHa, null, null, null,
         area, null, null, null, null, null);
   }
 
@@ -66,10 +66,10 @@ class AptManagementUnitRulesTest {
         .isNull();
     // AAC (m³) is optional, as in APT2.
     assertThat(AptManagementUnitRules.historyProblem(history(null, null, null))).isNull();
-    assertThat(AptManagementUnitRules.historyProblem(new AptManagementUnitHistoryRequest(null,
+    assertThat(AptManagementUnitRules.historyProblem(new AptManagementUnitHistoryRequest(
         null, DAY, BigDecimal.ONE, null, null, null, null, null, null, null, null, null, null)))
         .startsWith("AAC Determination Date");
-    assertThat(AptManagementUnitRules.historyProblem(new AptManagementUnitHistoryRequest(null,
+    assertThat(AptManagementUnitRules.historyProblem(new AptManagementUnitHistoryRequest(
         DAY, null, BigDecimal.ONE, null, null, null, null, null, null, null, null, null, null)))
         .startsWith("Effective Date");
   }

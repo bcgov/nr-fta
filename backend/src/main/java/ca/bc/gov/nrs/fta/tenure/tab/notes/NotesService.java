@@ -95,7 +95,7 @@ public class NotesService {
     jdbc.update(INSERT_SQL, new MapSqlParameterSource()
         .addValue("forestFileId", forestFileId)
         .addValue("userId", userId)
-        .addValue("note", note.trim()));
+        .addValue("note", note));
   }
 
   private NotesRules rules(String forestFileId) {

@@ -36,6 +36,7 @@ import {
   skipTimberMark,
   printMarkCertificate,
   submitMark,
+  shownAmendDate,
   shownAmendment,
   updateMark,
   type MarkDetail,
@@ -389,7 +390,7 @@ const MarkApplicationPanel: FC<Props> = ({
   const onSkip = async () => {
     setSkipping(true);
     try {
-      const next = await skipTimberMark(form.fileTypeCode);
+      const next = await skipTimberMark(id, form.fileTypeCode, byCertificate);
       setIssueConfirm({ mark: next });
     } catch (err) {
       display({
@@ -713,20 +714,15 @@ const MarkApplicationPanel: FC<Props> = ({
       () => text('crownGrantedAcqDesc', 'Crown Granted Description', MAX.crownGrantedAcqDesc, 'sm'),
       { optional: true },
     ),
-    // A cancelled (HX) mark shows its amendment only while approved (HN), awaiting print.
-    // An issued (HI) amendment is never shown.
-    ...(amendment?.prvMrkAmdStsSt !== 'HI' &&
-    (mark.markStatusCode !== 'HX' || amendment?.prvMrkAmdStsSt === 'HN')
-      ? [
-          field(
-            'Amendment Status',
-            statusTag(amendment?.prvMrkAmdStsSt ?? null, amendment?.prvMrkAmdStsDesc ?? null),
-            open(rules?.amendmentStatus),
-            () => select('amendStatusCode', 'Amendment Status', amendOptions),
-          ),
-        ]
-      : []),
-    { label: 'Amended Date', value: date(mark.markAmendDate) },
+    // The outstanding (PI or HN) amendment, else the latest issued (HI) one; a disallowed
+    // amendment is left to the Amendments tab.
+    field(
+      'Amendment Status',
+      statusTag(amendment?.prvMrkAmdStsSt ?? null, amendment?.prvMrkAmdStsDesc ?? null),
+      open(rules?.amendmentStatus),
+      () => select('amendStatusCode', 'Amendment Status', amendOptions),
+    ),
+    { label: 'Amended Date', value: date(shownAmendDate(mark)) },
     { label: 'Amendment Count', value: mark.amendments.length },
   ];
 

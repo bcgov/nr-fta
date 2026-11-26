@@ -21,12 +21,17 @@ import java.time.LocalDate;
  * @param purposeCode       licence to cut purpose, B05, B06 and B07 (mandatory)
  * @param districtAdminZone Zone, B05, B06, B07 and B10 (mandatory)
  * @param location          Geographic Location, B05 (mandatory), B06 and B07 (optional)
- * @param quotaTypeCode     Quota Type, B05 and B06 (mandatory), B07 (optional)
+ * @param quotaTypeCode     Quota Type, B05, B06 and B07 (mandatory)
  * @param initialArea       Initial Area (ha), A30 (mandatory)
  * @param fupTypeCode       FUP Type, B10 (mandatory)
  * @param fupFnUsageCode    First Nations Purpose, when the FUP type is FN (mandatory)
  * @param fupCedarSpeciesInd Majority Volume Cedar Species, Y/N, FUP type FN
  * @param fupTreatyPurposeInd First Nations Treaty Purpose, Y/N, FUP type FN (optional)
+ * @param bctsFundInd       BCTS Fund, Y/N, B07 (mandatory)
+ * @param paymentMethodCode Payment Method, A or C (C: a cash sale), B07 (mandatory)
+ * @param subSpatialLaterInd Submit Spatial Later, Y/N, B05, B06 and B07 (mandatory); Y starts
+ *                          the file in PA
+ * @param salvageInd        Salvage, Y/N, A01, A18 and A41 (mandatory)
  */
 public record CreateTenureRequest(
     String forestFileId,
@@ -44,4 +49,8 @@ public record CreateTenureRequest(
     String fupTypeCode,
     String fupFnUsageCode,
     String fupCedarSpeciesInd,
-    String fupTreatyPurposeInd) {}
+    String fupTreatyPurposeInd,
+    String bctsFundInd,
+    String paymentMethodCode,
+    String subSpatialLaterInd,
+    String salvageInd) {}

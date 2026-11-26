@@ -309,10 +309,15 @@ public class AacService {
         p.addValue("periodId", periodId);
         jdbc.update(INSERT_PERIOD_SQL, p);
       } else {
-        // Legacy's update of the found period: same date and unit, a new revision.
+        // Legacy's update of the found period: same date and unit, a new revision, locked on
+        // the period's revision as the user loaded it. A period the user didn't see (added
+        // since) is a change by someone else.
+        if (q.periodRevisionCount() == null) {
+          throw new ResponseStatusException(HttpStatus.CONFLICT, MODIFIED);
+        }
         periodId = period.periodId();
         p.addValue("periodId", periodId)
-            .addValue("periodRev", period.periodRevisionCount(), Types.NUMERIC);
+            .addValue("periodRev", q.periodRevisionCount(), Types.NUMERIC);
         if (jdbc.update(UPDATE_PERIOD_SQL, p) == 0) {
           throw new ResponseStatusException(HttpStatus.CONFLICT, MODIFIED);
         }

@@ -39,13 +39,18 @@ const formatTimestamp = (value: string | null): string => {
   return `${formatDate(value)} ${time}`;
 };
 
-/** Legacy's form checks (RequiredFieldValidator, StringLengthValidator 4000). */
+/**
+ * Legacy's form checks (RequiredFieldValidator, StringLengthValidator 4000), plus the column's
+ * 4000-byte limit. The note is checked and stored as typed.
+ */
 const validate = (text: string): string | null =>
-  !text
+  !text.trim()
     ? 'Note is mandatory.'
     : text.length > TENURE_NOTE_MAX_LENGTH
       ? `Note must not exceed ${TENURE_NOTE_MAX_LENGTH} characters.`
-      : null;
+      : new TextEncoder().encode(text).length > TENURE_NOTE_MAX_LENGTH
+        ? `Note must not exceed ${TENURE_NOTE_MAX_LENGTH} bytes.`
+        : null;
 
 /**
  * The Notes tab of the tenure detail — legacy FTA970 (Forest Notes), as the
@@ -69,8 +74,7 @@ const TenureNotesPanel: FC<TenurePanelProps> = ({ tenure }) => {
 
   const allowed = canEdit && !!data?.canAdd;
 
-  const trimmed = note.trim();
-  const invalid = validate(trimmed);
+  const invalid = validate(note);
 
   const openDialog = () => {
     setNote('');
@@ -89,7 +93,7 @@ const TenureNotesPanel: FC<TenurePanelProps> = ({ tenure }) => {
     }
     setSaving(true);
     try {
-      await addTenureNote(forestFileId, trimmed);
+      await addTenureNote(forestFileId, note);
       display({ kind: 'success', title: 'Note added', timeout: 5000 });
       setOpen(false);
       reload();

@@ -39,4 +39,11 @@ class MarkUpdateServiceSignerTest {
   void anAmendmentStatusChangeDoesNot() {
     assertThat(MarkUpdateService.signsCertificate("HI", "HI", true)).isFalse();
   }
+
+  @Test
+  void aSaveOfACancelledMarkKeepsTheSigner() {
+    // Cancelled with the amendment disallowed, then the Cancelled date filled in: no re-sign.
+    assertThat(MarkUpdateService.signsCertificate("HX", "HX", false)).isFalse();
+    assertThat(MarkUpdateService.signsCertificate("HX", "HX", true)).isFalse();
+  }
 }

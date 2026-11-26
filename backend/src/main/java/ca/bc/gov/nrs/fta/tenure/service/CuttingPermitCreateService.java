@@ -49,7 +49,8 @@ public class CuttingPermitCreateService {
 
   private static final int MAX_LOCATION = 50;
 
-  private static final BigDecimal MAX_AREA = new BigDecimal("99999999.9999");
+  /** HARVESTING_AUTHORITY.HARVEST_AREA is NUMBER(11,4). */
+  private static final BigDecimal MAX_AREA = new BigDecimal("9999999.9999");
 
   private static final Set<String> SALVAGE_LICENCE_TYPES = Set.of("A01", "A41");
 
@@ -187,7 +188,7 @@ public class CuttingPermitCreateService {
     }
     if (q.harvestArea() != null
         && (q.harvestArea().signum() < 0 || q.harvestArea().compareTo(MAX_AREA) > 0)) {
-      e.add("Area must be 0 or more hectares.");
+      e.add("Area must be between 0 and 9,999,999.9999 hectares.");
     }
     if (method == null) {
       e.add("Compliance Method is mandatory.");

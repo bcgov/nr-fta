@@ -31,8 +31,19 @@ class NotesRulesTest {
   @Test
   void noteAtMost4000Characters() {
     assertThat(NotesRules.validate("x".repeat(4000))).isEmpty();
-    assertThat(NotesRules.validate(" " + "x".repeat(4000) + " ")).isEmpty();
+    // Checked as typed: surrounding spaces count, as they are stored.
+    assertThat(NotesRules.validate(" " + "x".repeat(3999)))
+        .isEmpty();
+    assertThat(NotesRules.validate(" " + "x".repeat(4000)))
+        .containsExactly("Note must not exceed 4000 characters.");
     assertThat(NotesRules.validate("x".repeat(4001)))
         .containsExactly("Note must not exceed 4000 characters.");
+  }
+
+  @Test
+  void noteAtMost4000Utf8Bytes() {
+    assertThat(NotesRules.validate("é".repeat(2000))).isEmpty();
+    assertThat(NotesRules.validate("é".repeat(2001)))
+        .containsExactly("Note must not exceed 4000 bytes.");
   }
 }

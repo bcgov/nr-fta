@@ -117,14 +117,30 @@ public final class TenureAppDtos {
       String cutBlockIds) {}
 
   /**
-   * {@code POST .../tenure-applications/{tenureAppId}/issue-permit} body.
+   * {@code POST .../tenure-applications/{tenureAppId}/issue-permit}'s form fields (the permit
+   * file travels beside them as {@link TenureAppPermitFile}) — legacy's Issue Permit popup.
    *
-   * @param hvaSkey     the row's harvesting authority, when it has one (legacy passed the row's)
-   * @param documentUri link to the issued permit PDF, recorded as the application's permit
-   *     document (legacy uploaded the PDF to document management and recorded its link)
+   * @param hvaSkey        the row's harvesting authority, when it has one (legacy passed the
+   *     row's)
+   * @param documentName   the document's title in document management
+   * @param recipients     the e-mail addresses added with Add Email, in order
+   * @param attachDocument Attach Document To Email (legacy default: checked)
    */
-  public record TenureAppIssuePermitRequest(Long hvaSkey, String documentUri) {}
+  public record TenureAppIssuePermitRequest(
+      Long hvaSkey, String documentName, List<String> recipients, boolean attachDocument) {}
 
-  /** What the issue did. */
-  public record TenureAppIssuePermitResult(Long tenureAppId, String message) {}
+  /** The uploaded permit file. */
+  public record TenureAppPermitFile(String fileName, byte[] content) {
+    public long size() {
+      return content == null ? 0 : content.length;
+    }
+  }
+
+  /**
+   * What the issue did.
+   *
+   * @param message      legacy's confirmation
+   * @param emailWarning set when the permit was issued but the e-mail could not be sent
+   */
+  public record TenureAppIssuePermitResult(Long tenureAppId, String message, String emailWarning) {}
 }

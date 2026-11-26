@@ -68,6 +68,11 @@ public record MarkDetailDto(
     String mapReferenceComp,
     LocalDate markExtendDate,
     Integer markExtendCount,
+    /**
+     * PRIVATE_MARK_EXTEND_REAS_CODE: why the mark was last extended. Kept by every save that
+     * doesn't change the extension, as legacy's GET read it back for its save.
+     */
+    String markExtendReasonCode,
     LocalDate markAmendDate,
     /** The outstanding (PI or HN) amendment's status, as legacy "Amendment Status". */
     String outstandingAmendStatus,
@@ -103,15 +108,16 @@ public record MarkDetailDto(
         districtDesc,
         regionDesc, markingMethodDesc, markingInstrumentDesc, bcaaFolioNumber,
         mgmtUnitTypeCode, mgmtUnitId, mgmtUnitDesc, cascadeSplitCode, cascadeSplitDesc,
-        mapReferenceReg, mapReferenceComp, markExtendDate, markExtendCount, markAmendDate,
+        mapReferenceReg, mapReferenceComp, markExtendDate, markExtendCount, markExtendReasonCode,
+        markAmendDate,
         outstandingAmendStatus, outstandingAmendStatusDesc, revisionCount, amendRevisionCount,
         timberMarkRecord, landIndex, clients, amendments, notes, editRules);
   }
 
   /**
-   * The amendment whose status the mark shows as its "Amendment Status": the outstanding
-   * (PI or HN) one, else the newest. An issued (HI) amendment isn't outstanding, so it still
-   * shows once it's done. Null when the mark has no amendments.
+   * The amendment the mark's Administration details show ("Amendment Status" and "Amended
+   * Date"): the outstanding (PI or HN) one, else the latest issued (HI) one. A disallowed or
+   * otherwise closed amendment stays on the Amendments tab only. Null when there is none.
    */
   public Amendment shownAmendment() {
     if (amendments == null || amendments.isEmpty()) {
@@ -119,9 +125,27 @@ public record MarkDetailDto(
     }
     // The list is newest first (MarkDetailService).
     return amendments.stream()
-        .filter(a -> "PI".equals(a.prvMrkAmdStsSt()) || "HN".equals(a.prvMrkAmdStsSt()))
+        .filter(a -> isOutstanding(a.prvMrkAmdStsSt()))
         .findFirst()
-        .orElse(amendments.get(0));
+        .or(() -> amendments.stream().filter(a -> "HI".equals(a.prvMrkAmdStsSt())).findFirst())
+        .orElse(null);
+  }
+
+  /**
+   * The "Amended Date" beside {@link #shownAmendment()}: the certificate's amend date for an
+   * outstanding amendment, the issued amendment's own date for an HI one, else none — the
+   * certificate's date may belong to a later, disallowed amendment.
+   */
+  public LocalDate shownAmendDate() {
+    Amendment shown = shownAmendment();
+    if (shown == null) {
+      return null;
+    }
+    return isOutstanding(shown.prvMrkAmdStsSt()) ? markAmendDate : shown.updateDate();
+  }
+
+  private static boolean isOutstanding(String status) {
+    return "PI".equals(status) || "HN".equals(status);
   }
 
   /** This record with the current user's edit rules attached. */
@@ -134,7 +158,8 @@ public record MarkDetailDto(
         permitBlockLocn, permitBlockArea, proofOfCrownOrLegal, markStatusDesc, fileTypeDesc,
         districtDesc, regionDesc, markingMethodDesc, markingInstrumentDesc, bcaaFolioNumber,
         mgmtUnitTypeCode, mgmtUnitId, mgmtUnitDesc, cascadeSplitCode, cascadeSplitDesc,
-        mapReferenceReg, mapReferenceComp, markExtendDate, markExtendCount, markAmendDate,
+        mapReferenceReg, mapReferenceComp, markExtendDate, markExtendCount, markExtendReasonCode,
+        markAmendDate,
         outstandingAmendStatus, outstandingAmendStatusDesc, revisionCount, amendRevisionCount,
         timberMarkRecord, landIndex, clients, amendments, notes, rules);
   }
@@ -181,7 +206,9 @@ public record MarkDetailDto(
       /** The requested area, hectares (PERMIT_BLOCK_AREA). */
       BigDecimal permitBlockArea,
       /** The requested amendment changes (P_OF_C_OR_LEGAL). */
-      String requestedChanges) {}
+      String requestedChanges,
+      /** When its status last changed (UPDATE_TIMESTAMP): for an HI amendment, its issue. */
+      LocalDate updateDate) {}
 
   /**
    * One note on the mark's forest file — mirrors

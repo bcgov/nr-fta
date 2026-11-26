@@ -38,13 +38,6 @@ public final class TlBlockDtos {
       BigDecimal totalEliminHa,
       BigDecimal totalNetHa) {}
 
-  /**
-   * A block to add, or a block's new areas. {@code tlBlockId} is read on add only (the block
-   * is the key); {@code revisionCount} on update only.
-   */
-  public record TlBlockSaveRequest(
-      String tlBlockId, BigDecimal grossHa, BigDecimal eliminHa, Long revisionCount) {}
-
   /** The block's revision count, for retire and un-retire. */
   public record TlBlockRevisionRequest(Long revisionCount) {}
 }

@@ -201,6 +201,7 @@ const AptLicenceDetail: FC = () => {
                 kind="tertiary"
                 size="sm"
                 renderIcon={Add}
+                disabled={!l?.aptFoaSt}
                 onClick={() => openCommitment(null)}
               >
                 New commitment

@@ -23,7 +23,7 @@ class MarkEditRulesTest {
         timberMark, "150557", timberMark, fileType, status, null, null, null, null, null, 60,
         "1867", "DVA", client, client == null ? null : "00", "Holder", "S", "H", null, null,
         "PINCHI MINE RD", null, "Legal", null, null, null, null, null, null, "012-982-971",
-        "U", "24", null, "E", null, "68", "071", null, 0, null, amendStatus, null, 1L,
+        "U", "24", null, "E", null, "68", "071", null, 0, null, null, amendStatus, null, 1L,
         amendStatus == null ? null : 1L, true, List.of(), List.of(), List.of(), List.of(),
         null);
   }
@@ -129,11 +129,15 @@ class MarkEditRulesTest {
     }
 
     @Test
-    void headquartersMayChangeACancelledMarksStatusWithoutAClient() {
-      MarkDetailDto cancelled = mark("HX", "B01", "12A345", null, null);
-
-      assertThat(hq(cancelled).status()).isTrue();
-      assertThat(hq(cancelled).statusOptions()).containsExactly("HX", "HI", "PI", "DD", "DV");
+    void statusNeedsAClient() {
+      // setProtectionStates: no client is state1, which protects Status too — HX included.
+      for (String status : List.of("HX", "HI", "PI")) {
+        MarkEditRules without = hq(mark(status, "B01", "12A345", null, null));
+        assertThat(without.status()).as(status).isFalse();
+        assertThat(without.statusOptions()).as(status).containsExactly(status);
+        assertThat(hq(mark(status, "B01", "12A345", "00001", null)).status()).as(status)
+            .isTrue();
+      }
     }
 
     @Test
@@ -241,14 +245,18 @@ class MarkEditRulesTest {
         List.of("PA", "PI", "HN", "HI", "HX", "DV", "DD", "EE");
 
     @Test
-    void headquartersUpdatesAtEveryStatus() {
+    void headquartersUpdatesWhereItMayAdd() {
+      // FTA_511 disables its buttons at HX, DV and DD; FTA_513 opens clients at HI, PI, PA.
       for (String status : ALL) {
         MarkEditRules rules = hq(mark(status, "B08", "E12345", "00001", null));
-        assertThat(rules.landIndexUpdate()).as(status).isTrue();
-        assertThat(rules.clientsUpdate()).as(status).isTrue();
+        assertThat(rules.landIndexUpdate()).as(status)
+            .isEqualTo(!List.of("HX", "DV", "DD").contains(status));
+        assertThat(rules.clientsUpdate()).as(status)
+            .isEqualTo(List.of("HI", "PI", "PA").contains(status));
+        assertThat(rules.landIndexUpdate()).as(status).isEqualTo(rules.landIndex());
+        assertThat(rules.clientsUpdate()).as(status).isEqualTo(rules.clients());
       }
     }
-
 
     @Test
     void notForViewOnlyTypesOrViewers() {
@@ -336,7 +344,8 @@ class MarkEditRulesTest {
           m.regionDesc(), m.markingMethodDesc(), m.markingInstrumentDesc(),
           m.bcaaFolioNumber(), m.mgmtUnitTypeCode(), m.mgmtUnitId(), m.mgmtUnitDesc(),
           m.cascadeSplitCode(), m.cascadeSplitDesc(), m.mapReferenceReg(),
-          m.mapReferenceComp(), m.markExtendDate(), m.markExtendCount(), m.markAmendDate(),
+          m.mapReferenceComp(), m.markExtendDate(), m.markExtendCount(),
+          m.markExtendReasonCode(), m.markAmendDate(),
           m.outstandingAmendStatus(), m.outstandingAmendStatusDesc(), m.revisionCount(),
           m.amendRevisionCount(), false, m.landIndex(), m.clients(), m.amendments(),
           m.notes(), null);

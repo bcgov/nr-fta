@@ -16,19 +16,16 @@ package ca.bc.gov.nrs.fta.tenure.tab.tlblocks;
  *       once the tenure is issued (status H…), and only for an org level with FILE authority on
  *       A06 in the file's own region. This app has no org levels; every FTA_ADMIN gets
  *       Headquarters' rules, so only the status gate remains.
- *   <li>Add / update / delete ({@code SAVE}, {@code REMOVE}): no status gate in legacy.
+ *   <li>Legacy's screen offers nothing else: its package's {@code SAVE} and {@code REMOVE} have
+ *       no button, so blocks are not added, changed or deleted.
  * </ul>
  *
  * @param timberLicence whether the file is a Timber Licence (A06), so the tab applies at all
- * @param edit          whether blocks may be added, changed and deleted
- * @param editReason    why not, when {@code edit} is false
  * @param retire        whether blocks may be retired and un-retired
  * @param retireReason  why not, when {@code retire} is false
  */
 public record TlBlockRules(
     boolean timberLicence,
-    boolean edit,
-    String editReason,
     boolean retire,
     String retireReason) {
 
@@ -39,13 +36,11 @@ public record TlBlockRules(
   public static TlBlockRules of(String fileTypeCode, String statusCode) {
     if (!TIMBER_LICENCE.equals(fileTypeCode)) {
       String reason = notTimberLicence(fileTypeCode);
-      return new TlBlockRules(false, false, reason, false, reason);
+      return new TlBlockRules(false, false, reason);
     }
     boolean issued = statusCode != null && statusCode.startsWith("H");
     return new TlBlockRules(
         true,
-        true,
-        null,
         issued,
         issued ? null : "TL blocks can be retired only once the tenure is issued (status H…).");
   }

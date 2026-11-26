@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -38,6 +39,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Private Mark detail API — {@code GET /api/fta/marks/{markNumber}}, and {@code PUT} on the
@@ -211,6 +213,22 @@ public class MarkDetailController {
   }
 
   /**
+   * {@code DELETE /api/fta/marks/{id}/land-index/{skey}?revisionCount=} — FTA511's Delete:
+   * the land index off the mark. Returns nothing; the client re-reads the mark.
+   */
+  @DeleteMapping("/{markNumber}/land-index/{skey}")
+  public ResponseEntity<Void> deleteLandIndex(
+      @PathVariable String markNumber,
+      @PathVariable long skey,
+      @RequestParam(required = false) String by,
+      @RequestParam(required = false) Integer revisionCount,
+      JwtAuthenticationToken principal) {
+    markLandIndexWriteService.delete(
+        markNumber, isCertificate(by), skey, revisionCount, isDistrictUser(principal));
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
    * {@code POST /api/fta/marks/{id}/print} — FTA510's Print: the FTA402 Registered Timber Mark
    * Certificate as a PDF. A POST, not a GET, because for a district user it also marks the
    * mark issued (HN to HI); see {@link MarkPrintService}.
@@ -246,15 +264,25 @@ public class MarkDetailController {
   }
 
   /**
-   * {@code POST /api/fta/marks/skip-timber-mark?fileType=B08} — passes over the next timber
-   * mark (the user won't issue it) and returns the one after: {@code {"timberMark": …}}, or
-   * 404 for a type that isn't issued here. Takes the number for good, as legacy's repeated
-   * Assign Mark did.
+   * {@code POST /api/fta/marks/{id}/skip-timber-mark?fileType=B08} — passes over the next
+   * timber mark (the user won't issue it) and returns the one after:
+   * {@code {"timberMark": …}}, or 404 for a type that isn't issued here. Takes the number for
+   * good, as legacy's repeated Assign Mark did, so only where Assign Mark is open on the mark
+   * ({@link MarkEditRules#markType()}: Headquarters, a client, no mark type yet).
    */
-  @PostMapping("/skip-timber-mark")
-  public ResponseEntity<Map<String, String>> skipTimberMark(@RequestParam String fileType) {
-    return timberMarkPreview.skipFor(fileType.trim().toUpperCase(java.util.Locale.ROOT))
-        .map(mark -> ResponseEntity.ok(Map.of("timberMark", mark)))
+  @PostMapping("/{markNumber}/skip-timber-mark")
+  public ResponseEntity<Map<String, String>> skipTimberMark(
+      @PathVariable String markNumber,
+      @RequestParam(required = false) String by,
+      @RequestParam String fileType,
+      JwtAuthenticationToken principal) {
+    MarkDetailDto mark = find(markNumber, by)
+        .orElseThrow(() -> new ResponseStatusException(
+            HttpStatus.NOT_FOUND, "Private mark not found."));
+    return timberMarkPreview
+        .skipFor(mark, isDistrictUser(principal),
+            fileType.trim().toUpperCase(java.util.Locale.ROOT))
+        .map(next -> ResponseEntity.ok(Map.of("timberMark", next)))
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
 

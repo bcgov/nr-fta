@@ -7,6 +7,7 @@ import { useNotification } from '@/context/notification/useNotification';
 import { getBlockStatuses, type CodeOption } from '@/services/codeLists';
 import {
   getCutRegulationCodes,
+  getOverrideRequired,
   getReforestDeclareTypes,
   saveCutBlock,
   type CutblockDetail,
@@ -36,6 +37,15 @@ interface Form {
 
 const text = (v: string | number | null) => (v === null ? '' : String(v));
 
+/**
+ * FTA904 shows a stored U (unknown) as Y, and a block with none on its blank (U) choice: the
+ * field is never saved empty.
+ */
+const wasteOnLoad = (v: string | null) => (v === 'U' ? 'Y' : (v ?? 'U'));
+
+/** The JSP's maxlength: the reason goes to FDC_AUDIT_LOG.CHANGE_COMMENTS. */
+const MAX_OVERRIDE_REASON = 60;
+
 const initial = (b: CutblockDetail): Form => ({
   blockStatus: text(b.blockStatus),
   blockStatusDate: text(b.blockStatusDate),
@@ -44,7 +54,7 @@ const initial = (b: CutblockDetail): Form => ({
   fireHarvestingReasonCode: text(b.fireHarvestingReasonCode),
   underPartitionOrder: text(b.underPartitionOrder),
   reportedFireDate: text(b.reportedFireDate),
-  wasteAssessmentRequired: text(b.wasteAssessmentRequired),
+  wasteAssessmentRequired: wasteOnLoad(b.wasteAssessmentRequired),
   plannedGrossBlockArea: text(b.plannedGrossBlockArea),
   plannedNetBlockArea: text(b.plannedNetBlockArea),
   plannedHarvestDate: text(b.plannedHarvestDate),
@@ -102,6 +112,7 @@ const EditCutBlockModal: FC<{
   const [cutRegulations, setCutRegulations] = useState<CodeOption[]>([]);
   const [reforestTypes, setReforestTypes] = useState<CodeOption[]>([]);
   const [fireReasons, setFireReasons] = useState<CodeOption[]>([]);
+  const [overrideRequired, setOverrideRequired] = useState(false);
 
   useEffect(() => {
     if (open) setForm(initial(block));
@@ -131,6 +142,27 @@ const EditCutBlockModal: FC<{
     };
   }, [open]);
 
+  const statusChanged = form.blockStatus !== (block.blockStatus ?? '');
+
+  // fta904_edit_status_change decides when a senior user must give a District Override Reason.
+  useEffect(() => {
+    if (!open || !rules.seniorAuthority || !statusChanged || !block.blockStatus) {
+      setOverrideRequired(false);
+      return;
+    }
+    let cancelled = false;
+    getOverrideRequired(form.blockStatus, block.blockStatus)
+      .then((v) => {
+        if (!cancelled) setOverrideRequired(v);
+      })
+      .catch(() => {
+        if (!cancelled) setOverrideRequired(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, rules.seniorAuthority, statusChanged, form.blockStatus, block.blockStatus]);
+
   const set = (key: keyof Form, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
   const badDate = (key: (typeof DATE_FIELDS)[number]) =>
@@ -141,8 +173,8 @@ const EditCutBlockModal: FC<{
   const valid =
     form.blockStatus !== '' &&
     !DATE_FIELDS.some((k) => badDate(k)) &&
-    !NUMBER_FIELDS.some((k) => badNumber(k));
-  const statusChanged = form.blockStatus !== (block.blockStatus ?? '');
+    !NUMBER_FIELDS.some((k) => badNumber(k)) &&
+    (!overrideRequired || form.overrideReason.trim() !== '');
 
   const submit = async () => {
     setSaving(true);
@@ -156,7 +188,7 @@ const EditCutBlockModal: FC<{
         fireHarvestingReasonCode: orNull(form.fireHarvestingReasonCode),
         underPartitionOrder: orNull(form.underPartitionOrder),
         reportedFireDate: dateOrNull(form.reportedFireDate),
-        wasteAssessmentRequired: orNull(form.wasteAssessmentRequired),
+        wasteAssessmentRequired: form.wasteAssessmentRequired,
         plannedGrossBlockArea: numberOrNull(form.plannedGrossBlockArea),
         plannedNetBlockArea: numberOrNull(form.plannedNetBlockArea),
         plannedHarvestDate: dateOrNull(form.plannedHarvestDate),
@@ -164,7 +196,7 @@ const EditCutBlockModal: FC<{
         disturbanceStartDate: dateOrNull(form.disturbanceStartDate),
         disturbanceEndDate: dateOrNull(form.disturbanceEndDate),
         spExemptInd: orNull(form.spExemptInd),
-        overrideReason: orNull(form.overrideReason),
+        overrideReason: overrideRequired ? orNull(form.overrideReason) : null,
         cbRevisionCount: block.cbRevisionCount,
         cboaRevisionCount: block.cboaRevisionCount ?? 0,
       });
@@ -257,11 +289,12 @@ const EditCutBlockModal: FC<{
         <div className="detail-dialog__grid">
           {codeSelect('blockStatus', 'Status', statuses, rules.statusLocked)}
           {dateInput('blockStatusDate', 'As of')}
-          {rules.seniorAuthority && statusChanged && (
+          {overrideRequired && (
             <div className="detail-dialog__full">
               <TextInput
                 id="cb-edit-overrideReason"
                 labelText="District Override Reason"
+                maxLength={MAX_OVERRIDE_REASON}
                 value={form.overrideReason}
                 onChange={(e) => set('overrideReason', e.target.value)}
               />
@@ -271,7 +304,17 @@ const EditCutBlockModal: FC<{
           {codeSelect('cutRegulationCode', 'Cut Management', cutRegulations)}
           {block.harvestTypeCode === 'F' &&
             codeSelect('reforestDeclareTypeCode', 'Reforest Declare Type', reforestTypes)}
-          {yesNo('wasteAssessmentRequired', "Waste Assessment Req'd")}
+          <Select
+            id="cb-edit-wasteAssessmentRequired"
+            labelText="Waste Assessment Req'd"
+            value={form.wasteAssessmentRequired}
+            onChange={(e) => set('wasteAssessmentRequired', e.target.value)}
+          >
+            {/* FTA904's choices: a blank (U), Y and N. */}
+            <SelectItem value="U" text="" />
+            <SelectItem value="Y" text="Yes" />
+            <SelectItem value="N" text="No" />
+          </Select>
           {yesNo('underPartitionOrder', 'Under Partition Order')}
           {codeSelect('fireHarvestingReasonCode', 'Harvesting Reason', fireReasons)}
           {dateInput('reportedFireDate', 'Reported Fire Date')}

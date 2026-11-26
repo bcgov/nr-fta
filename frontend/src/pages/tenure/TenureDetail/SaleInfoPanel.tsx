@@ -110,7 +110,13 @@ const decimal = (v: string, places: number, max: number): string | undefined => 
  * Fta940SaleInfoForm's "Save" checks; the backend repeats them, then applies the
  * package's own (sale method by file type, small scale salvage, B07 volumes…).
  */
-const validate = (f: Form, r: SaleInfoRules, status: string): Errors => {
+const validate = (
+  f: Form,
+  r: SaleInfoRules,
+  status: string,
+  fileType: string,
+  adding: boolean,
+): Errors => {
   const e: Errors = {};
   const need = (key: keyof Form, when: boolean, text: string) => {
     if (when && !f[key].trim() && !e[key]) e[key] = text;
@@ -154,10 +160,17 @@ const validate = (f: Form, r: SaleInfoRules, status: string): Errors => {
   };
   deposit('scrtyDepositCode', 'scrtyDepositAmt', 'Security Deposit');
   deposit('otherDepositCode', 'otherDepositAmt', 'Other Deposit');
+  // The package's B07 volume outside a P status (FTA_940_SALE_INFO.SAVE).
+  need(
+    'saleVolume',
+    fileType === 'B07' && !status.startsWith('P'),
+    'Sales volume is mandatory for B07',
+  );
+  // ADD (a new record, any status) / CHANGE (a P status) need the admin area file.
   if (
     f.adminAreaInd === 'Y' &&
     !f.adminAreaFile.trim() &&
-    status.startsWith('P') &&
+    (adding || status.startsWith('P')) &&
     r.adminAreaFile
   )
     e.adminAreaFile = 'Admin Area File is required.';
@@ -253,7 +266,13 @@ const SaleInfoPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
 
   const onSave = async () => {
     if (!data || !form) return;
-    const found = validate(form, data.rules, data.fileStatusCode ?? '');
+    const found = validate(
+      form,
+      data.rules,
+      data.fileStatusCode ?? '',
+      data.fileTypeCode ?? '',
+      !data.recordExists,
+    );
     if (Object.keys(found).length > 0) {
       setErrors(found);
       display({ kind: 'error', title: 'Check the highlighted fields', timeout: 6000 });

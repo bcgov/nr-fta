@@ -53,8 +53,8 @@ class AptManagementUnitServiceTest {
     return new AptManagementUnitRequest(1L, " U ", "01", "ACT", DAY, sourceId, null, null);
   }
 
-  private static AptManagementUnitHistoryRequest historyRequest(Long prevId) {
-    return new AptManagementUnitHistoryRequest(prevId, DAY, DAY, BigDecimal.TEN, null, null,
+  private static AptManagementUnitHistoryRequest historyRequest() {
+    return new AptManagementUnitHistoryRequest(DAY, DAY, BigDecimal.TEN, null, null,
         null, null, null, null, null, null, null, null);
   }
 
@@ -120,6 +120,8 @@ class AptManagementUnitServiceTest {
   void createInsertsWithTheMuSequenceAndReturnsTheNewUnit() {
     when(jdbc.queryForObject(eq(AptManagementUnitService.UNIT_EXISTS_SQL),
         any(SqlParameterSource.class), eq(Long.class))).thenReturn(0L);
+    when(jdbc.queryForObject(eq(AptManagementUnitService.KNOWN_UNIT_SQL),
+        any(SqlParameterSource.class), eq(Long.class))).thenReturn(1L);
     nextId("the.mu_seq", 42L);
     unitsFound(unit(42));
 
@@ -128,6 +130,24 @@ class AptManagementUnitServiceTest {
     verify(jdbc).update(eq(AptManagementUnitService.INSERT_UNIT_SQL),
         argThat((SqlParameterSource p) -> Long.valueOf(42).equals(p.getValue("id"))
             && "U".equals(p.getValue("type"))));
+  }
+
+  @Test
+  void createOfAUnitNotInTheCodeTableIs400() {
+    when(jdbc.queryForObject(eq(AptManagementUnitService.UNIT_EXISTS_SQL),
+        any(SqlParameterSource.class), eq(Long.class))).thenReturn(0L);
+    when(jdbc.queryForObject(eq(AptManagementUnitService.KNOWN_UNIT_SQL),
+        any(SqlParameterSource.class), eq(Long.class))).thenReturn(0L);
+
+    assertStatus(() -> service.create(unitRequest(null), USER), HttpStatus.BAD_REQUEST,
+        "The management unit is not one of the management units that can be added.");
+    verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
+  }
+
+  @Test
+  void theUnassignedListLeavesOutUnitsWithNoNumber() {
+    assertThat(AptManagementUnitService.UNASSIGNED_SQL)
+        .contains("amus.mgmt_unit_number IS NOT NULL");
   }
 
   @Test
@@ -165,7 +185,7 @@ class AptManagementUnitServiceTest {
     when(jdbc.update(eq(AptManagementUnitService.INSERT_HISTORY_SQL),
         any(SqlParameterSource.class))).thenThrow(AptManagementUnitSqlTest.duplicate());
 
-    assertStatus(() -> service.createHistory(7L, historyRequest(null), USER),
+    assertStatus(() -> service.createHistory(7L, historyRequest(), USER),
         HttpStatus.CONFLICT, AptManagementUnitService.SAME_DATES);
   }
 
@@ -175,76 +195,17 @@ class AptManagementUnitServiceTest {
     nextId("the.muh_seq", 3L);
     historiesFound(history(3));
 
-    assertThat(service.createHistory(7L, historyRequest(null), USER).id()).isEqualTo(3L);
+    assertThat(service.createHistory(7L, historyRequest(), USER).id()).isEqualTo(3L);
 
     verify(jdbc).update(eq(AptManagementUnitService.INSERT_HISTORY_SQL),
         argThat((SqlParameterSource p) -> USER.equals(p.getValue("user"))
             && Long.valueOf(7).equals(p.getValue("muId"))));
-    verify(jdbc, never()).query(eq(AptManagementUnitService.COPY_PARTITIONS_SQL),
-        any(SqlParameterSource.class), any(RowMapper.class));
-  }
-
-  @Test
-  void copyingFromADeterminationOfAnotherUnitIs400() {
-    unitsFound(unit(7));
-    historiesFound();
-
-    assertStatus(() -> service.createHistory(7L, historyRequest(99L), USER),
-        HttpStatus.BAD_REQUEST,
-        "The determination to copy from is not one of this management unit's.");
-  }
-
-  @Test
-  void withAPreviousDeterminationItsChildrenAreCopied() {
-    unitsFound(unit(7));
-    nextId("the.muh_seq", 3L);
-    historiesFound(history(3));
-
-    service.createHistory(7L, historyRequest(2L), USER);
-
-    verify(jdbc).query(eq(AptManagementUnitService.COPY_PARTITIONS_SQL),
-        argThat((SqlParameterSource p) -> Long.valueOf(2).equals(p.getValue("prevId"))),
-        any(RowMapper.class));
-  }
-
-  @Test
-  void theCopyKeepsThePackagesColumnsAndJournalRule() {
-    // No AAC (ha) and no user on the copies, as APT_PKG.INSERT_MUH_CHILD_RECORDS.
-    assertThat(AptManagementUnitService.INSERT_PARTITION_COPY_SQL)
-        .doesNotContain("allowable_annual_cut_ha").doesNotContain("add_userid");
-    assertThat(AptManagementUnitService.INSERT_APPORTIONMENT_COPY_SQL)
-        .doesNotContain("allowable_annual_cut_ha").doesNotContain("add_userid");
-    assertThat(AptManagementUnitService.INSERT_DISTRIBUTION_JN_COPY_SQL)
-        .contains("adj.jn_operation <> 'DEL'")
-        .contains("'(Inserted via copy function) ' || adj.jn_notes")
-        .contains("SELECT MAX(jn_datetime)");
-  }
-
-  @Test
-  void aFailedCopyIsThePackages400() {
-    when(jdbc.query(eq(AptManagementUnitService.COPY_PARTITIONS_SQL),
-        any(SqlParameterSource.class), any(RowMapper.class)))
-        .thenAnswer(inv -> List.of(copyRow(inv.getArgument(2), 11L, 1L)));
-    when(jdbc.update(eq(AptManagementUnitService.INSERT_PARTITION_COPY_SQL),
-        any(SqlParameterSource.class))).thenThrow(AptManagementUnitSqlTest.triggerError());
-
-    assertStatus(() -> service.copyChildRecords(3L, 2L), HttpStatus.BAD_REQUEST,
-        "Error: OTHERS in APT_PKG.INSERT_MUH_CHILD_RECORDS when inserting APT_PARTITION record.");
-  }
-
-  /** Runs the service's own row mapper over a fake copy row. */
-  private static Object copyRow(RowMapper<?> mapper, long newId, long oldId) throws Exception {
-    java.sql.ResultSet rs = mock(java.sql.ResultSet.class);
-    when(rs.getBigDecimal("NEW_ID")).thenReturn(BigDecimal.valueOf(newId));
-    when(rs.getBigDecimal("OLD_ID")).thenReturn(BigDecimal.valueOf(oldId));
-    when(rs.getString("CODE")).thenReturn("A");
-    return mapper.mapRow(rs, 0);
   }
 
   @Test
   void updatingAnUnknownDeterminationIs404() {
     historiesFound();
-    assertStatus(() -> service.updateHistory(7L, 3L, historyRequest(null), USER),
+    assertStatus(() -> service.updateHistory(7L, 3L, historyRequest(), USER),
         HttpStatus.NOT_FOUND, "Management unit history 3 not found.");
   }
 }

@@ -69,6 +69,9 @@ export const getDistricts = () => list('districts');
  */
 export const getDistrictOrgUnits = () => list('district-org-units');
 
+/** Districts as legacy FTA685 / FTA686 list them (GET_DISTRICT_FILTERED). Code = ORG_UNIT_NO. */
+export const getBillingReportDistricts = () => list('billing-report-districts');
+
 /**
  * A tenure's admin org units as legacy FTA100 lists them: districts, then regions, then HQ.
  * Code = ORG_UNIT_NO, as getOrgUnits.
@@ -108,6 +111,9 @@ export const getPrivateMarkTypes = () => list('private-mark-types');
 export const getPrivateMarkAmendStatuses = () => list('private-mark-amend-statuses');
 
 export const getFileTypes = () => list('file-types');
+
+/** The file types Add New Tenure offers (legacy FTA010's list, Headquarters may add). */
+export const getAddNewFileTypes = () => list('add-new-file-types');
 
 /** Range file types (RANGE_FILE_TYPE_CODE), for FTA680's Tenure Type. */
 export const getRangeFileTypes = () => list('range-file-types');

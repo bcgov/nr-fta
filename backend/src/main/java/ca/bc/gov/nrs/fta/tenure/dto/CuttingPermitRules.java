@@ -23,8 +23,9 @@ import java.time.LocalDate;
  * @param canPostpone           add a postponement
  * @param canChangePostponements update and delete a postponement
  * @param canRescindAnytime     rescind outside a postponement's term (legacy's Super User)
- * @param canAssignMarks        legacy offers Assign Marks to Blocks on FSJ permits only
- * @param canSuspendBlocks      Cut Block Suspensions
+ * @param canAssignMarks        legacy offers Assign Marks to Blocks on FSJ permits only, in any
+ *                              status
+ * @param canSuspendBlocks      Cut Block Suspensions, in any status
  */
 public record CuttingPermitRules(
     boolean canSave,
@@ -106,7 +107,9 @@ public record CuttingPermitRules(
             status, f.issueDate(), f.latestPostponementRescinded()) == null,
         managing && ("HP".equals(status) || f.admin()),
         managing && f.admin(),
-        canSave && f.fsj(),
+        // fta902CpDetail.jsp shows Assign Marks to Blocks and Cut Block Suspensions whatever
+        // the permit's status.
+        editable && f.fsj(),
         managing);
   }
 

@@ -1,6 +1,8 @@
 package ca.bc.gov.nrs.fta.tenure.service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -86,9 +88,55 @@ final class TenureCreateRules {
     return "B05".equals(type);
   }
 
-  /** quotaTypeRequired: B05 and B06 need a Quota Type (B07 may have one). */
+  /** quotaTypeRequired and quotaTypeRequired2: every licence to cut needs a Quota Type. */
   static boolean needsQuotaType(String type) {
-    return "B05".equals(type) || "B06".equals(type);
+    return licenceToCut(type);
+  }
+
+  /**
+   * GET_DEFAULTS' p_show_bcts_ind (with p_show_payment_ind beside it): of the types FTA100 adds,
+   * only a B07 asks for BCTS Fund and Payment Method.
+   */
+  static boolean asksBctsFundAndPayment(String type) {
+    return "B07".equals(type);
+  }
+
+  /** getShowSpatialLater: a B05, B06 or B07 in a P status asks Submit Spatial Later. */
+  static boolean asksSpatialLater(String type, String status) {
+    return licenceToCut(type) && status.startsWith("P");
+  }
+
+  /** hideSalvageInd: A01, A18 and A41 ask Salvage (create_harvest_sale stores it). */
+  static boolean asksSalvage(String type) {
+    return Set.of("A01", "A18", "A41").contains(type);
+  }
+
+  /** The range file types, which this Add New doesn't create (FTA010's range checks). */
+  static final Set<String> RANGE_TYPES = Set.of("E01", "E02", "H01", "H02");
+
+  /**
+   * The licence to cut checks that tie Purpose, Quota Type, BCTS Fund and Payment Method together
+   * (FTA100's purposeAndQuotaType, dQuotaTypeBctsFundY, quotaTypeAndBctsFund and ADD_NEW_REC's
+   * cash-sale check). bctsFundAndPurposeRW fires only with a BCTS Org, which Add New doesn't ask.
+   */
+  static List<String> licenceToCutLinkErrors(String type, String purpose, String quota,
+      String bctsFund, String paymentMethod) {
+    List<String> e = new ArrayList<>();
+    if ("PA".equals(purpose) && !"P".equals(quota)) {
+      e.add("If purpose is PA then quota type can only be P.");
+    }
+    if ("D".equals(quota) && !"Y".equals(bctsFund)) {
+      e.add("Quota type should be C-Forest Service Reserve if this sale is not BCTS funded.");
+    }
+    if ("B07".equals(type) && "Y".equals(bctsFund) && !"D".equals(quota)) {
+      e.add("If BCTS Fund is Y then Quota Type must be D.");
+    }
+    if ("B07".equals(type) && ("PA".equals(purpose) || "FN".equals(purpose))
+        && "C".equals(paymentMethod)) {
+      e.add("Cash Sales not allowed for PA-Pulpwood or FN-First Nations Forestry Licence To"
+          + " Cut.");
+    }
+    return e;
   }
 
   /** The Purpose list FTA100 offers: forestry licences to cut for B07, occupant for B05/B06. */
@@ -97,14 +145,15 @@ final class TenureCreateRules {
   }
 
   /**
-   * The status a new file starts in. FTA100 defaults every new file to PP; ADD_NEW_REC accepts
-   * that only for A and U files (PP or PL), licences to cut and recreation files, and wants PA
-   * for every other one.
+   * The status a new file starts in, as Fta100TenureAction's Add New set it: PP for A and U files
+   * and licences to cut, PA for every other one (recreation files included). A licence to cut
+   * whose spatial is submitted later starts PA (ADD_NEW_REC).
    */
-  static String initialStatus(String type, boolean recreation) {
-    boolean ppAllowed = type.startsWith("A") || type.startsWith("U")
-        || licenceToCut(type) || recreation;
-    return ppAllowed ? "PP" : "PA";
+  static String initialStatus(String type, boolean spatialLater) {
+    if (licenceToCut(type)) {
+      return spatialLater ? "PA" : "PP";
+    }
+    return type.startsWith("A") || type.startsWith("U") ? "PP" : "PA";
   }
 
   /**
@@ -124,11 +173,12 @@ final class TenureCreateRules {
   }
 
   /**
-   * A licence to cut's timber mark: the file id for B05 and B06 (and a cash sale), the file id
-   * without its first character for any other B07. New files are never cash sales here.
+   * A licence to cut's timber mark: the file id for B05, B06 and a cash sale (payment method C),
+   * the file id without its first character for any other B07.
    */
-  static String timberMark(String type, String forestFileId) {
-    return "B07".equals(type) ? forestFileId.substring(1) : forestFileId;
+  static String timberMark(String type, String forestFileId, String paymentMethod) {
+    return "B07".equals(type) && !"C".equals(paymentMethod)
+        ? forestFileId.substring(1) : forestFileId;
   }
 
   /** A salvage-sale (SS) licence to cut gets salvage type SSS. */
@@ -138,10 +188,16 @@ final class TenureCreateRules {
 
   /**
    * Whether a licence to cut gets its hauling authority: not a B05 or B06 for DT, nor a
-   * BCTS-funded B07 for DT (never BCTS-funded here).
+   * BCTS-funded B07 for DT.
    */
-  static boolean createsHaulingAuthority(String type, String purpose) {
-    return !("DT".equals(purpose) && ("B05".equals(type) || "B06".equals(type)));
+  static boolean createsHaulingAuthority(String type, String purpose, String bctsFund) {
+    if (!"DT".equals(purpose)) {
+      return true;
+    }
+    if ("B05".equals(type) || "B06".equals(type)) {
+      return false;
+    }
+    return !("B07".equals(type) && "Y".equals(bctsFund));
   }
 
   /**
@@ -208,9 +264,11 @@ final class TenureCreateRules {
   /** HARVEST_SALE's codes for a new file (create_harvest_sale). */
   record HarvestSale(String saleMethod, String saleType, String salvageInd, String plannedCategory) {}
 
-  static HarvestSale harvestSale(String type, String purpose) {
+  static HarvestSale harvestSale(String type, String purpose, String salvageAnswer) {
     String salvage = "A31".equals(type) ? "Y" : "N";
-    // A18, A01 and A41 take the Salvage answer, which FTA100 defaults to N.
+    if (asksSalvage(type)) {
+      salvage = salvageAnswer == null || salvageAnswer.isEmpty() ? "N" : salvageAnswer;
+    }
 
     String method;
     if (Set.of("A03", "A20", "A23", "A24", "A26", "A27", "B20", "B23").contains(type)) {

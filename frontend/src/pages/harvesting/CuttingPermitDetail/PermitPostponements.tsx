@@ -28,6 +28,7 @@ import {
   updatePermitPostponement,
   type CuttingPermitDetail,
   type PermitPostponement,
+  type PermitPostponementRequest,
 } from '@/services/cutting_permit_detail';
 import { formatDate } from '@/utils/formatDate';
 import { parseTypedDate } from '@/utils/typedDate';
@@ -46,6 +47,13 @@ interface Form {
 type Errors = Partial<Record<keyof Form, string>>;
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+/** The day after a yyyy-mm-dd date, as yyyy-mm-dd. */
+const dayAfter = (iso: string) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+};
 
 /** {@code getEnableRescind}: within [start, expiry), unless the user may always rescind. */
 const mayRescind = (row: PermitPostponement | null, anytime: boolean) =>
@@ -71,8 +79,11 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PermitPostponement | null>(null);
   const [deleting, setDeleting] = useState<PermitPostponement | null>(null);
-  const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
+  // The validated request awaiting FTA902's "You are about to…" confirmation.
+  const [pending, setPending] = useState<PermitPostponementRequest | null>(null);
+  // fta902CpDetail.jsp: the start date is locked once there is more than one postponement.
+  const startLocked = (rows?.length ?? 0) > 1;
   const [form, setForm] = useState<Form>({
     start: '',
     expiry: '',
@@ -88,8 +99,10 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
 
   const openDialog = (row: PermitPostponement | null) => {
     setEditing(row);
+    // Fta902CpDetailAction.handleGet: a new one starts the day after the latest one expires.
+    const latestExpiry = rows?.[0]?.expiryDate;
     setForm({
-      start: row?.startDate ?? '',
+      start: row ? (row.startDate ?? '') : latestExpiry ? dayAfter(latestExpiry) : '',
       expiry: row?.expiryDate ?? '',
       years: row?.termYears != null ? `${row.termYears}` : '',
       months: row?.termMonths != null ? `${row.termMonths}` : '',
@@ -104,7 +117,7 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
     onChanged();
   };
 
-  const submit = async () => {
+  const submit = () => {
     const found: Errors = {};
     if (!parseTypedDate(form.start)) found.start = 'Enter a date as yyyy-mm-dd.';
     if (form.expiry.trim() && !parseTypedDate(form.expiry))
@@ -119,37 +132,29 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
       setErrors(found);
       return;
     }
-    const req = {
+    setPending({
       revisionCount: cp.revisionCount,
       startDate: parseTypedDate(form.start),
       expiryDate: form.expiry.trim() ? parseTypedDate(form.expiry) : null,
       termYears: form.years.trim() || null,
       termMonths: form.months.trim() || null,
       rescinded: form.rescinded ? 'Y' : 'N',
-    };
-    setSaving(true);
-    try {
-      const { warnings } = editing
-        ? await updatePermitPostponement(cp.hvaSkey, editing.id, req)
-        : await addPermitPostponement(cp.hvaSkey, req);
-      display({
-        kind: warnings.length > 0 ? 'warning' : 'success',
-        title: editing ? 'Postponement updated' : 'Postponement added',
-        subtitle: warnings.join(' '),
-        timeout: 7000,
-      });
-      setOpen(false);
-      refreshAll();
-    } catch (err) {
-      display({
-        kind: 'error',
-        title: 'Could not save the postponement',
-        subtitle: err instanceof Error ? err.message : 'Request failed',
-        timeout: 9000,
-      });
-    } finally {
-      setSaving(false);
-    }
+    });
+  };
+
+  /** Throws on failure, so the confirmation stays open and reports it. */
+  const save = async (req: PermitPostponementRequest) => {
+    const { warnings } = editing
+      ? await updatePermitPostponement(cp.hvaSkey, editing.id, req)
+      : await addPermitPostponement(cp.hvaSkey, req);
+    display({
+      kind: warnings.length > 0 ? 'warning' : 'success',
+      title: editing ? 'Postponement updated' : 'Postponement added',
+      subtitle: warnings.join(' '),
+      timeout: 7000,
+    });
+    setOpen(false);
+    refreshAll();
   };
 
   const addButton = (
@@ -238,12 +243,12 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
       </AsyncBoundary>
 
       <Modal
-        open={open}
+        open={open && pending === null}
         passiveModal
         size="sm"
         className="detail-dialog"
         modalHeading={editing ? 'Update postponement' : 'Add postponement'}
-        onRequestClose={() => !saving && setOpen(false)}
+        onRequestClose={() => setOpen(false)}
         preventCloseOnClickOutside
       >
         <Stack gap={5}>
@@ -253,7 +258,7 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
               labelText="Start"
               value={form.start}
               invalidText={errors.start}
-              disabled={saving}
+              disabled={startLocked}
               onChange={(v) => set('start', v)}
             />
             <DateField
@@ -261,7 +266,6 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
               labelText="Expiry"
               value={form.expiry}
               invalidText={errors.expiry}
-              disabled={saving}
               onChange={(v) => set('expiry', v)}
             />
           </div>
@@ -273,7 +277,6 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
               value={form.years}
               invalid={!!errors.years}
               invalidText={errors.years}
-              disabled={saving}
               onChange={(e) => set('years', e.target.value)}
             />
             <TextInput
@@ -283,7 +286,6 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
               value={form.months}
               invalid={!!errors.months}
               invalidText={errors.months}
-              disabled={saving}
               onChange={(e) => set('months', e.target.value)}
             />
           </div>
@@ -292,20 +294,35 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
               id="cp-pp-rescinded"
               labelText="Rescinded"
               checked={form.rescinded}
-              disabled={saving || !mayRescind(editing, canRescindAnytime)}
+              disabled={!mayRescind(editing, canRescindAnytime)}
               onChange={(_, { checked }) => set('rescinded', checked)}
             />
           )}
         </Stack>
         <div className="detail-dialog__actions">
-          <Button kind="tertiary" disabled={saving} onClick={() => setOpen(false)}>
+          <Button kind="tertiary" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button kind="primary" disabled={saving} onClick={() => void submit()}>
-            {saving ? 'Saving…' : 'Save'}
+          <Button kind="primary" onClick={submit}>
+            Save
           </Button>
         </div>
       </Modal>
+
+      <ConfirmationModal
+        open={pending !== null}
+        onClose={() => setPending(null)}
+        heading={editing ? 'Update postponement' : 'Add postponement'}
+        confirmLabel="Save"
+        errorTitle="Could not save the postponement"
+        onConfirm={async () => {
+          if (pending) await save(pending);
+        }}
+      >
+        {editing
+          ? 'You are about to UPDATE a postponement period. Are you sure?'
+          : 'You are about to CREATE a NEW postponement period. Are you sure?'}
+      </ConfirmationModal>
 
       <ConfirmationModal
         open={deleting !== null}

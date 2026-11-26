@@ -98,8 +98,7 @@ public class RangeUnitDetailService {
 
           String region = rs.getString("region");
           String regionName = rs.getString("region_name");
-          // Mirrors GET: region_description := region || ' - ' || get_region_name(region).
-          String regionDescription = region + " - " + (regionName == null ? "" : regionName);
+          String regionDescription = regionDescription(region, regionName);
 
           return new RangeUnitDetailDto(
               rs.getString("range_unit_id"),
@@ -117,5 +116,17 @@ public class RangeUnitDetailService {
         });
 
     return units.isEmpty() ? null : units.get(0);
+  }
+
+  /**
+   * GET's {@code region || ' - ' || get_region_name(region)}, with Oracle's
+   * concatenation: a missing part is empty, never "null". With neither part
+   * there is nothing to show, so null.
+   */
+  static String regionDescription(String region, String regionName) {
+    if (region == null && regionName == null) {
+      return null;
+    }
+    return (region == null ? "" : region) + " - " + (regionName == null ? "" : regionName);
   }
 }

@@ -2,6 +2,7 @@ package ca.bc.gov.nrs.fta.tenure.tab.tenureapp;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Pins legacy FTA950's Spatial Submissions columns, Issue Permit gate and package messages. */
@@ -20,12 +21,51 @@ class TenureAppRulesTest {
   }
 
   @Test
-  void issueNeedsADocument() {
-    assertThat(TenureAppRules.validateIssue(null)).containsExactly("Permit document is mandatory.");
-    assertThat(TenureAppRules.validateIssue("  ")).containsExactly("Permit document is mandatory.");
-    assertThat(TenureAppRules.validateIssue("https://dm/files/1")).isEmpty();
-    assertThat(TenureAppRules.validateIssue("x".repeat(2001)))
-        .containsExactly("Permit document link must not exceed 2000 characters.");
+  void addEmailChecksLikeLegacy() {
+    assertThat(TenureAppRules.validateEmail("", "")).isEqualTo("Email is mandatory.");
+    assertThat(TenureAppRules.validateEmail(null, null)).isEqualTo("Email is mandatory.");
+    assertThat(TenureAppRules.validateEmail("not-an-email", ""))
+        .isEqualTo("Email has an invalid email format.");
+    assertThat(TenureAppRules.validateEmail("a.b@gov.bc.ca", ""))
+        .isEqualTo("Reconfirm Email is mandatory.");
+    assertThat(TenureAppRules.validateEmail("a.b@gov.bc.ca", "a.b@gov"))
+        .isEqualTo("Reconfirm Email has an invalid email format.");
+    assertThat(TenureAppRules.validateEmail("a.b@gov.bc.ca", "c.d@gov.bc.ca"))
+        .isEqualTo("The Email must equal Reconfirm Email.");
+    // Legacy compares exactly: case matters.
+    assertThat(TenureAppRules.validateEmail("a.b@gov.bc.ca", "A.B@gov.bc.ca"))
+        .isEqualTo("The Email must equal Reconfirm Email.");
+    assertThat(TenureAppRules.validateEmail("first-last+x@gov.bc.ca", "first-last+x@gov.bc.ca"))
+        .isNull();
+  }
+
+  @Test
+  void uploadAndIssueChecksStopAtTheFirst() {
+    List<String> to = List.of("a@gov.bc.ca");
+    assertThat(TenureAppRules.validateIssue("", null, 0, List.of()))
+        .isEqualTo("Document Name is mandatory.");
+    assertThat(TenureAppRules.validateIssue(null, "p.pdf", 10, to))
+        .isEqualTo("Document Name is mandatory.");
+    assertThat(TenureAppRules.validateIssue("Permit", " ", 10, to))
+        .isEqualTo("File Name is mandatory.");
+    assertThat(TenureAppRules.validateIssue("Permit", "p.pdf", 0, to))
+        .isEqualTo("The uploaded file was empty.");
+    assertThat(TenureAppRules.validateIssue("Permit", "p.pdf", 4_194_304L, to))
+        .isEqualTo("Uploaded files cannot be larger than 4.0Mb.");
+    assertThat(TenureAppRules.validateIssue("Permit", "p.pdf", 4_194_303L, to)).isNull();
+    assertThat(TenureAppRules.validateIssue("Permit", "p.pdf", 10, List.of()))
+        .isEqualTo("Recipients is mandatory.");
+    assertThat(TenureAppRules.validateIssue("Permit", "p.pdf", 10, List.of("a@gov.bc.ca", "x")))
+        .isEqualTo("Email has an invalid email format.");
+  }
+
+  @Test
+  void storedLinkMustFitTheColumn() {
+    assertThat(TenureAppRules.linkFits("x".repeat(2000))).isTrue();
+    assertThat(TenureAppRules.linkFits("x".repeat(2001))).isFalse();
+    // The column holds 2000 bytes: 1001 two-byte characters are too many.
+    assertThat(TenureAppRules.linkFits("é".repeat(1001))).isFalse();
+    assertThat(TenureAppRules.linkFits(null)).isFalse();
   }
 
   @Test

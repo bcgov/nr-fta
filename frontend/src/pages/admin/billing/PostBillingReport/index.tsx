@@ -13,11 +13,13 @@ import { useEffect, useState, type FC, type FormEvent } from 'react';
 
 import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
+import { useDefaultOrgUnitIn } from '@/hooks/useDefaultOrgUnit';
 import { downloadBlob } from '@/lib/downloadBlob';
 import PageLayout from '@/pages/PageLayout';
 import { getPostBillingReport, type PostBillingSort } from '@/services/billing';
-import { getThreeLetterDistricts, type CodeOption } from '@/services/codeLists';
+import { getBillingReportDistricts, type CodeOption } from '@/services/codeLists';
 
+import { currentYear, useDistrictScope } from '../useDistrictScope';
 import '../billing.scss';
 
 const SORTS: { value: PostBillingSort; label: string }[] = [
@@ -35,14 +37,22 @@ const SORTS: { value: PostBillingSort; label: string }[] = [
 const PostBillingReport: FC = () => {
   const notify = useNotification();
   const [districts, setDistricts] = useState<CodeOption[]>([]);
-  const [orgUnit, setOrgUnit] = useState('');
-  const [year, setYear] = useState('');
+  const [chosen, setChosen] = useState('');
+  const [year, setYear] = useState(currentYear);
+  const scope = useDistrictScope(districts);
+  // A single administered district is preselected and locked, as legacy's protected Org Unit.
+  const orgUnit = scope.locked?.code ?? chosen;
+  // Legacy defaulted District to the user's org unit when it was a district (Org Unit Maintenance).
+  const defaultDistrict = useDefaultOrgUnitIn(scope.options, true);
+  useEffect(() => {
+    if (defaultDistrict) setChosen((c) => c || defaultDistrict);
+  }, [defaultDistrict]);
   const [sortBy, setSortBy] = useState<PostBillingSort>('1');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    getThreeLetterDistricts()
+    getBillingReportDistricts()
       .then((d) => !cancelled && setDistricts(d))
       .catch(() =>
         notify.display({
@@ -95,11 +105,13 @@ const PostBillingReport: FC = () => {
                 id="post-org"
                 labelText="Org Unit"
                 value={orgUnit}
-                onChange={(e) => setOrgUnit(e.target.value)}
+                disabled={!!scope.locked}
+                onChange={(e) => setChosen(e.target.value)}
               >
                 <SelectItem value="" text="Choose a district" />
-                <SelectItem value="*" text="* - All districts" />
-                {districts.map((d) => (
+                {/* Legacy offered "*" only to users who were not district users. */}
+                {scope.unscoped && <SelectItem value="*" text="* - All districts" />}
+                {scope.options.map((d) => (
                   <SelectItem key={d.code} value={d.code} text={d.description} />
                 ))}
               </Select>

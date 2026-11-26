@@ -1,6 +1,6 @@
-import { ArrowLeft, Document, Edit } from '@carbon/icons-react';
+import { ArrowLeft, Calendar, Document, ListChecked } from '@carbon/icons-react';
 import {
-  Button,
+  InlineNotification,
   Tab,
   TabList,
   TabPanel,
@@ -21,12 +21,11 @@ import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
 import SectionTile from '@/components/SectionTile';
 import Tombstone from '@/components/Tombstone';
-import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import { useOrgUnitName } from '@/hooks/useOrgUnitName';
 import PageLayout from '@/pages/PageLayout';
-import { canEdit } from '@/routes/access';
 import { getRangeTenureDetail } from '@/services/range_tenure_detail';
+import type { RangeUsage } from '@/services/range_tenure_detail';
 
 import type { FC } from 'react';
 
@@ -54,34 +53,96 @@ function statusTagType(status: string | null): 'green' | 'blue' | 'gray' | 'red'
 const dash = (v: string | number | null | undefined) =>
   v === null || v === undefined || v === '' ? '—' : v;
 const num = (v: number | null | undefined) => (v === null || v === undefined ? '—' : nf.format(v));
+const yesNo = (v: string | null | undefined) => (v === 'Y' ? 'Yes' : v === 'N' ? 'No' : '—');
+/** "CODE - Description", or the code alone when the description is unknown. */
+const codeDesc = (code: string | null, desc: string | null) =>
+  code ? (desc ? `${code} - ${desc}` : code) : '—';
 
 /**
- * FTA100Range — Range Tenure detail. Tombstone + tabs for range usage
- * (FTA613R), rotations (FTA611/612), associated land base (FTA615R), and
- * usage history. Backed by the backend {@code GET
- * /api/fta/range-tenures/{agreementId}} endpoint, which ports
- * THE.FTA_100RANGE_TENURE plus its range usage and land base sub-tabs.
+ * The FTA613R usage columns. Grazing (E) files show non-use (billable,
+ * non-billable and its reason); hay cutting (H) files show a temporary
+ * reduction (amount and reason). The tab shows a grazing non-use reason with
+ * its description, the history window its code alone, as legacy did.
+ */
+const UsageTable: FC<{
+  title: string;
+  rows: RangeUsage[];
+  hay: boolean;
+  history?: boolean;
+}> = ({ title, rows, hay, history = false }) => {
+  const reduction = hay ? 'Reduction' : 'Non-Use';
+  return (
+    <div className="bordered-table">
+      <TableContainer title={title} description={`${rows.length} row(s)`}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableHeader>Year</TableHeader>
+              <TableHeader>Authorized Use</TableHeader>
+              <TableHeader>Increase Amount</TableHeader>
+              <TableHeader>Increase Reason</TableHeader>
+              <TableHeader>{reduction} Agreement No.</TableHeader>
+              {!hay && <TableHeader>Non-Use Billable</TableHeader>}
+              <TableHeader>{hay ? 'Reduction Amount' : 'Non-Use Non-Billable'}</TableHeader>
+              <TableHeader>{hay ? 'Reduction Reason' : 'Non-Billable Reason'}</TableHeader>
+              <TableHeader>Total Annual Use</TableHeader>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((u) => (
+              <TableRow key={u.calendarYear ?? undefined}>
+                <TableCell>{dash(u.calendarYear)}</TableCell>
+                <TableCell>{num(u.authorizedUse)}</TableCell>
+                <TableCell>{num(u.tempIncrease)}</TableCell>
+                <TableCell>
+                  {codeDesc(u.rangeIncreaseReasonCode, u.rangeIncreaseReasonDesc)}
+                </TableCell>
+                <TableCell>{dash(u.nonUseAgreementNo)}</TableCell>
+                {!hay && <TableCell>{num(u.nonUseBillable)}</TableCell>}
+                <TableCell>{num(u.nonUseNonbillable)}</TableCell>
+                <TableCell>
+                  {hay || history
+                    ? dash(u.rangeNonUseReasonCode)
+                    : codeDesc(u.rangeNonUseReasonCode, u.rangeNonUseReasonDesc)}
+                </TableCell>
+                <TableCell>{num(u.totalAnnualUse)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </div>
+  );
+};
+
+/**
+ * FTA100Range — Range Tenure detail. The tenure header, its term, and its
+ * special conditions, with tabs for range usage (FTA613R, within the term),
+ * the associated land base (FTA615R), and the usage history (FTA613R's View
+ * History). Backed by the backend {@code GET /api/fta/range-tenures/{agreementId}}
+ * endpoint, which ports THE.FTA_100RANGE_TENURE plus those tabs.
  */
 const RangeTenureDetail: FC = () => {
   const orgUnitName = useOrgUnitName();
   const { agreementId = '' } = useParams();
-  const { user } = useAuth();
   const { data, loading, error, reload } = useApiResource(
     () => getRangeTenureDetail(agreementId),
     [agreementId],
   );
 
+  const hay = (data?.fileTypeCode ?? '').includes('H');
+  const replaceable = data?.licenceReplaceableInd === 'Y';
+  const mgmtUnit = data
+    ? [[data.mgmtUnitType, data.mgmtUnitId].filter(Boolean).join(''), data.mgmtUnitName]
+        .filter(Boolean)
+        .join(' - ')
+    : '';
+  const notes = data?.notesLabel?.trim() ?? '';
+
   return (
     <PageLayout
       title={`Range Tenure ${agreementId}`}
-      subtitle="Range agreement usage, rotations, land base, and usage history."
-      actions={
-        data && canEdit(user) ? (
-          <Button size="md" kind="tertiary" renderIcon={Edit}>
-            Edit agreement
-          </Button>
-        ) : undefined
-      }
+      subtitle="Range tenure, range usage, land base, and usage history."
     >
       <Link to="/search/range-tenure" className="back-link">
         <ArrowLeft size={16} /> Back to Range Tenure Search
@@ -95,11 +156,21 @@ const RangeTenureDetail: FC = () => {
       >
         {data && (
           <>
+            {data.termWarning && (
+              <InlineNotification
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                title="Warning:"
+                subtitle={data.termWarning}
+              />
+            )}
+
             <SectionTile title="Range tenure summary" icon={Document}>
               <Tombstone
-                ariaLabel="Range agreement summary"
+                ariaLabel="Range tenure summary"
                 items={[
-                  { label: 'Agreement', value: data.forestFileId },
+                  { label: 'File', value: data.forestFileId },
                   { label: 'Type', value: dash(data.fileTypeCode) },
                   {
                     label: 'Status',
@@ -107,101 +178,143 @@ const RangeTenureDetail: FC = () => {
                       <Tag type={statusTagType(data.fileStatusSt)}>{dash(data.fileStatusSt)}</Tag>
                     ),
                   },
-                  { label: 'Holder', value: dash(data.licensee) },
-                  { label: 'Organization Unit', value: orgUnitName(data.adminOrgUnitNo) },
-                  {
-                    label: 'Authorized AUMs',
-                    value: num(data.rangeUsage[0]?.authorizedUse ?? null),
-                  },
-                  { label: 'Issued', value: dash(data.issueDate) },
-                  { label: 'Expires', value: dash(data.expiryDate) },
+                  { label: 'Status Date', value: dash(data.fileStatusDate) },
+                  { label: 'Admin Org', value: orgUnitName(data.adminOrgUnitNo) },
+                  { label: 'District', value: orgUnitName(data.forestDistrictNo) },
+                  { label: 'Client', value: dash(data.licensee) },
+                  { label: 'Sec. Licensee', value: yesNo(data.secLicenseeInd) },
+                  { label: 'Mgmt Unit', value: dash(mgmtUnit) },
+                  { label: 'Zone', value: dash(data.districtAdminZone) },
+                  { label: 'File Name', value: dash(data.fileName) },
+                  ...(notes ? [{ label: 'Notes', value: <Tag type="red">{notes}</Tag> }] : []),
                 ]}
               />
+            </SectionTile>
+
+            {replaceable && (
+              <SectionTile title="Historical" icon={Calendar}>
+                <DefinitionGrid
+                  items={[{ label: 'Original Start Date', value: dash(data.originalIssueDate) }]}
+                />
+              </SectionTile>
+            )}
+
+            <SectionTile title="Current" icon={Calendar}>
+              <DefinitionGrid
+                items={[
+                  { label: 'Start Date', value: dash(data.issueDate) },
+                  {
+                    label: 'Term',
+                    value: data.tenureTermYears === null ? '—' : `${data.tenureTermYears} yr`,
+                  },
+                  { label: 'Initial Expiry Date', value: dash(data.expiryDate) },
+                  { label: 'Replacement Count', value: dash(data.replacementCount) },
+                ]}
+              />
+            </SectionTile>
+
+            {replaceable && (
+              <SectionTile title="Replacement" icon={Calendar}>
+                <DefinitionGrid
+                  items={[
+                    {
+                      label: 'Replacement Term',
+                      value:
+                        data.replacementTermYears === null
+                          ? '—'
+                          : `${data.replacementTermYears} yr`,
+                    },
+                    ...(data.replacementLabel
+                      ? [{ label: 'Replacement', value: data.replacementLabel, wide: true }]
+                      : []),
+                  ]}
+                />
+              </SectionTile>
+            )}
+
+            <SectionTile title="Special Conditions" icon={ListChecked}>
+              <div className="bordered-table">
+                <TableContainer description={`${data.specialConditions.length} row(s)`}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableHeader>Special Condition Code</TableHeader>
+                        <TableHeader>Condition Title</TableHeader>
+                        <TableHeader>Condition Text</TableHeader>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {data.specialConditions.map((c, i) => (
+                        <TableRow key={c.specialConditionSkey ?? i}>
+                          <TableCell>{dash(c.rangeSpecialConditionCode)}</TableCell>
+                          <TableCell>{dash(c.conditionTitle)}</TableCell>
+                          <TableCell>{dash(c.conditionDescription)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </div>
             </SectionTile>
 
             <Tabs>
               <TabList aria-label="Range tenure sections" contained>
                 <Tab>Range Usage</Tab>
-                <Tab>Rotations</Tab>
                 <Tab>Land Base</Tab>
                 <Tab>Usage History</Tab>
               </TabList>
               <TabPanels>
                 <TabPanel>
-                  <DefinitionGrid
-                    items={[
-                      { label: 'Management Unit', value: dash(data.mgmtUnitId ?? data.fileName) },
-                      {
-                        label: 'Authorized AUMs',
-                        value: num(data.rangeUsage[0]?.authorizedUse ?? null),
-                      },
-                      { label: 'Agreement Type', value: dash(data.fileTypeCode) },
-                      {
-                        label: 'Term',
-                        value: `${dash(data.issueDate)} — ${dash(data.expiryDate)}`,
-                      },
-                    ]}
+                  <UsageTable
+                    title={hay ? 'Hay Cutting' : 'Grazing'}
+                    rows={data.rangeUsage}
+                    hay={hay}
                   />
                 </TabPanel>
 
                 <TabPanel>
                   <div className="bordered-table">
                     <TableContainer
-                      title="Grazing / Hay Cutting Rotations"
-                      description={`${data.rangeUsage.length} rotation(s)`}
-                    >
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Year</TableHeader>
-                            <TableHeader>Unit</TableHeader>
-                            <TableHeader>Kind</TableHeader>
-                            <TableHeader>Start</TableHeader>
-                            <TableHeader>End</TableHeader>
-                            <TableHeader>AUMs</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {data.rangeUsage.map((r, i) => (
-                            <TableRow key={i}>
-                              <TableCell>{dash(r.calendarYear)}</TableCell>
-                              <TableCell>{dash(data.mgmtUnitId)}</TableCell>
-                              <TableCell>{dash(data.fileTypeCode)}</TableCell>
-                              <TableCell>{dash(data.issueDate)}</TableCell>
-                              <TableCell>{dash(data.expiryDate)}</TableCell>
-                              <TableCell>{num(r.totalAnnualUse)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
-                </TabPanel>
-
-                <TabPanel>
-                  <div className="bordered-table">
-                    <TableContainer
                       title="Associated Land Base"
-                      description={`${data.landBase.length} parcel(s)`}
+                      description={`${data.landBase.length} row(s)`}
                     >
                       <Table>
                         <TableHead>
                           <TableRow>
-                            <TableHeader>Parcel</TableHeader>
-                            <TableHeader>Description</TableHeader>
-                            <TableHeader>Area (Hectares)</TableHeader>
-                            <TableHeader>Tenure Type</TableHeader>
+                            <TableHeader>Legal Description</TableHeader>
+                            <TableHeader>PID</TableHeader>
+                            <TableHeader>ID #</TableHeader>
+                            <TableHeader>Type</TableHeader>
+                            <TableHeader>Purpose</TableHeader>
+                            <TableHeader>Fenced Pasture (ha)</TableHeader>
+                            <TableHeader>Unfenced Pasture (ha)</TableHeader>
+                            <TableHeader>Hay Field (ha)</TableHeader>
+                            <TableHeader>Comment</TableHeader>
+                            <TableHeader>Lease Start Date</TableHeader>
+                            <TableHeader>Lease End Date</TableHeader>
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {data.landBase.map((p) => (
-                            <TableRow key={p.landBaseSkey ?? p.rangeLandBaseId}>
-                              <TableCell>{dash(p.rangeLandBaseId ?? p.rangeLandBasePid)}</TableCell>
+                          {data.landBase.map((p, i) => (
+                            <TableRow key={p.landBaseSkey ?? i}>
                               <TableCell>{dash(p.description)}</TableCell>
-                              <TableCell>{num(p.forageProduction)}</TableCell>
+                              <TableCell>{dash(p.rangeLandBasePid)}</TableCell>
+                              <TableCell>{dash(p.rangeLandBaseId)}</TableCell>
                               <TableCell>
-                                {dash(p.rangeLandOwnershipTypeDesc ?? p.rangeLandOwnershipTypeCode)}
+                                {codeDesc(
+                                  p.rangeLandOwnershipTypeCode,
+                                  p.rangeLandOwnershipTypeDesc,
+                                )}
                               </TableCell>
+                              <TableCell>
+                                {codeDesc(p.rangeLandPurposeCode, p.rangeLandPurposeDesc)}
+                              </TableCell>
+                              <TableCell>{num(p.fencedPasture)}</TableCell>
+                              <TableCell>{num(p.unfencedPasture)}</TableCell>
+                              <TableCell>{num(p.forageProduction)}</TableCell>
+                              <TableCell>{dash(p.landBaseComment)}</TableCell>
+                              <TableCell>{dash(p.leaseStartDate)}</TableCell>
+                              <TableCell>{dash(p.leaseEndDate)}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -211,34 +324,7 @@ const RangeTenureDetail: FC = () => {
                 </TabPanel>
 
                 <TabPanel>
-                  <div className="bordered-table">
-                    <TableContainer title="Usage History">
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Year</TableHeader>
-                            <TableHeader>Authorized AUMs</TableHeader>
-                            <TableHeader>Actual AUMs</TableHeader>
-                            <TableHeader>Utilization</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {data.rangeUsage.map((u, i) => (
-                            <TableRow key={i}>
-                              <TableCell>{dash(u.calendarYear)}</TableCell>
-                              <TableCell>{num(u.authorizedUse)}</TableCell>
-                              <TableCell>{num(u.totalAnnualUse)}</TableCell>
-                              <TableCell>
-                                {u.authorizedUse && u.totalAnnualUse
-                                  ? `${Math.round((u.totalAnnualUse / u.authorizedUse) * 100)}%`
-                                  : '—'}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </div>
+                  <UsageTable title="Usage History" rows={data.usageHistory} hay={hay} history />
                 </TabPanel>
               </TabPanels>
             </Tabs>

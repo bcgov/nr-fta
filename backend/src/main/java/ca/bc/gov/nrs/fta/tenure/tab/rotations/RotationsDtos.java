@@ -4,9 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * The rotation tabs' wire shapes (legacy FTA611, FTA612). Numbers the user types
- * arrive as strings, so the server can answer with legacy's own messages ("… must be an
- * integer.") rather than a JSON parse error.
+ * The rotation reads' wire shapes (legacy FTA611, FTA612).
  */
 public final class RotationsDtos {
 
@@ -70,32 +68,6 @@ public final class RotationsDtos {
       GrazingProvisionDto provision,
       List<GrazingRotationDto> rotations) {}
 
-  /** Save Provision: the year's header fields. {@code revisionCount} null for a new row. */
-  public record GrazingProvisionRequest(
-      String nonUseForageTonnes,
-      String billableNonUseInd,
-      String maxCattle,
-      String maxHorses,
-      String maxSheep,
-      String maxOtherLivestock,
-      Long revisionCount) {}
-
-  /**
-   * A rotation to add or change. {@code authorizedGrazableForage} (TTL AUMs) may be blank:
-   * legacy then calculates it from the head count and the days. {@code revisionCount} is the
-   * row's, on a change.
-   */
-  public record GrazingRotationRequest(
-      String livestockCode,
-      String livestockCount,
-      String beginRotationDate,
-      String endRotationDate,
-      String rangeUnitId,
-      String pastureId,
-      String authorizedGrazableForage,
-      String privateLandGrazableForage,
-      Long revisionCount) {}
-
   // ---------------------------------------------------------------- FTA612 hay cutting
 
   /**
@@ -134,31 +106,4 @@ public final class RotationsDtos {
       Integer calendarYear,
       HayProvisionDto provision,
       List<HayRotationDto> rotations) {}
-
-  /**
-   * The hay tab's one Save: the provision and every row, as legacy saves them in one
-   * transaction (the year's harvest plus non-use must equal the authorized tonnes, so rows
-   * cannot be saved one at a time).
-   */
-  public record HaySaveRequest(
-      String nonUse,
-      String billableInd,
-      Long provisionRevisionCount,
-      List<HayRowRequest> rows) {}
-
-  /**
-   * A row of the hay grid: an existing one ({@code meadowRotationSkey} and
-   * {@code revisionCount} set; {@code delete} to remove it) or a new one (both null).
-   */
-  public record HayRowRequest(
-      Long meadowRotationSkey,
-      Long revisionCount,
-      boolean delete,
-      String permitBlockId,
-      String rangeUnitId,
-      String meadowName,
-      String authorizedHarvest) {}
-
-  /** What a hay save did, and legacy's confirmation for it. */
-  public record HaySaveResult(int saved, int deleted, String message) {}
 }

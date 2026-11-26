@@ -69,6 +69,9 @@ const permitLabel = (p: TenureCutBlockPermit) =>
     p.salvageTypeCode ? ` (salvage ${p.salvageTypeCode})` : ''
   }`;
 
+/** File types whose new blocks must say Y or N to Waste Assessment (Fta904CutblkdetailAction). */
+const WASTE_MANDATORY_FILE_TYPES = ['B05', 'B06', 'B07'];
+
 interface Form {
   hvaSkey: string;
   cutBlockId: string;
@@ -93,8 +96,8 @@ const emptyForm = (hvaSkey: string): Form => ({
   plannedStart: '',
   gross: '',
   net: '',
-  // FTA904's selects open on their first option (Yes) and GET_DEFAULTS' waste default (Y).
-  spExempt: 'Y',
+  // FTA904's setDefaults (SP Exempt N, Jira FTA-1359) and GET_DEFAULTS' waste default (Y).
+  spExempt: 'N',
   waste: 'Y',
   underPartition: '',
   fireCode: '',
@@ -153,6 +156,7 @@ const CutBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
   // Legacy gave Delete to Feature Admin and Super User, not to district staff.
   const canDelete = canManageHarvest(user);
   const forestFileId = tenure.forestFileId;
+  const wasteOptional = !WASTE_MANDATORY_FILE_TYPES.includes(tenure.fileTypeCode ?? '');
   const { display } = useNotification();
   const fetcher = useCallback(() => getTenureCutBlocks(forestFileId), [forestFileId]);
   const { data, loading, error, reload } = useApiResource(fetcher, [forestFileId]);
@@ -231,7 +235,8 @@ const CutBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
         plannedNetArea: Number(form.net),
         plannedStartDate: form.plannedStart || null,
         spExempt: form.spExempt === 'N' ? 'N' : 'Y',
-        wasteAssessmentRequired: form.waste === 'N' ? 'N' : 'Y',
+        wasteAssessmentRequired:
+          wasteOptional && form.waste === 'U' ? 'U' : form.waste === 'N' ? 'N' : 'Y',
         underPartitionOrder:
           form.underPartition === 'Y' || form.underPartition === 'N' ? form.underPartition : null,
         fireHarvestingReasonCode: form.fireCode || null,
@@ -613,6 +618,8 @@ const CutBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
               disabled={saving}
               onChange={(e) => set('waste', e.target.value)}
             >
+              {/* FTA904 offers a blank (U) choice except on B05, B06 and B07 files. */}
+              {wasteOptional && <SelectItem value="U" text="" />}
               {yesNo()}
             </Select>
           </div>

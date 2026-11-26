@@ -40,10 +40,17 @@ public record CutBlocksRules(boolean listable, boolean add, String addReason) {
     return fileTypeCode == null || INVALID_FILE_TYPES.contains(fileTypeCode) || rangeOrRecreation;
   }
 
+  /** File types {@code FTA903_ADD_NEW} takes besides the A types. */
+  private static final Set<String> B_FILE_TYPES = Set.of("B04", "B05", "B06", "B07");
+  /** B types that take a block under a non-salvage permit (FTA-1732, for waste). */
+  private static final Set<String> NO_SALVAGE_NEEDED = Set.of("B05", "B06", "B07");
+
   /**
-   * {@code FTA903_ADD_NEW}, without its district check: null when a block may be added under
-   * the permit, else why not. {@code hasPrimaryMark} is {@code FTA_904.GET_DEFAULTS}' own
-   * requirement — it reads the new block's mark from the permit's primary mark.
+   * {@code FTA903_ADD_NEW} (nr-mof-db V10.00555, FTA-1732), without its district check: null
+   * when a block may be added under the permit, else why not. A B04 needs a purpose of SS or a
+   * salvage permit; B05, B06 and B07 take any permit; an A type needs a salvage permit.
+   * {@code hasPrimaryMark} is {@code FTA_904.GET_DEFAULTS}' own requirement — it reads the new
+   * block's mark from the permit's primary mark.
    */
   static String permitProblem(
       String fileTypeCode,
@@ -51,16 +58,16 @@ public record CutBlocksRules(boolean listable, boolean add, String addReason) {
       String statusCode,
       String salvageTypeCode,
       boolean hasPrimaryMark) {
-    boolean singleMark = "B07".equals(fileTypeCode) || "B04".equals(fileTypeCode);
     if (fileTypeCode == null
         || "A11".equals(fileTypeCode)
-        || !(fileTypeCode.startsWith("A") || singleMark)) {
+        || !(fileTypeCode.startsWith("A") || B_FILE_TYPES.contains(fileTypeCode))) {
       return MSG_SALVAGE;
     }
     if ("PE".equals(statusCode)) {
       return MSG_INBOX;
     }
-    if (!(singleMark && "SS".equals(licenceToCutCode)) && blank(salvageTypeCode)) {
+    boolean b04Ss = "B04".equals(fileTypeCode) && "SS".equals(licenceToCutCode);
+    if (!b04Ss && blank(salvageTypeCode) && !NO_SALVAGE_NEEDED.contains(fileTypeCode)) {
       return MSG_SALVAGE;
     }
     if (!hasPrimaryMark) {

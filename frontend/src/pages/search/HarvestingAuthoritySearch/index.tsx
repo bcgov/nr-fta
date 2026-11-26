@@ -30,6 +30,7 @@ import { EmptyState } from '@/components/EmptyState/EmptyState';
 import ExportCsvButton from '@/components/ExportCsvButton';
 import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { useNotification } from '@/context/notification/useNotification';
+import { useFormDistrictDefault } from '@/hooks/useDefaultOrgUnit';
 import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { nextColumnSort, sortHeaderProps } from '@/lib/columnSort';
 import { safeErrorMessage } from '@/lib/errorMessage';
@@ -198,6 +199,15 @@ const HarvestingAuthoritySearch: FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [orgUnits, setOrgUnits] = useState<CodeOption[]>([]);
+  // Legacy defaulted District to the user's org unit when it was a district (Org Unit Maintenance).
+  const startForm = useFormDistrictDefault(
+    form,
+    setForm,
+    EMPTY_FORM,
+    'forestDistrict',
+    orgUnits,
+    true,
+  );
   const [fileTypes, setFileTypes] = useState<CodeOption[]>([]);
   const [cpStatuses, setCpStatuses] = useState<CodeOption[]>([]);
   const [clientTypes, setClientTypes] = useState<CodeOption[]>([]);
@@ -337,14 +347,14 @@ const HarvestingAuthoritySearch: FC = () => {
   );
 
   const onClear = useCallback(() => {
-    setForm(EMPTY_FORM);
+    setForm(startForm);
     setLastSearch(null);
     setRows(null);
     setShowOg(false);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, [setForm, setLastSearch]);
+  }, [setForm, setLastSearch, startForm]);
 
   // Back on the page with a search from earlier in this tab: run it again (fresh
   // results, same page), once the code lists — and so the form — are ready.

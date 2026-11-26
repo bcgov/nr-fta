@@ -32,6 +32,9 @@ final class PreBillingRules {
       "E01", "GLF", "E02", "GPF", "E03", "NGI",
       "H01", "HLF", "H02", "HPF", "H03", "NHI");
 
+  private static final Set<String> GRAZING = Set.of("E01", "E02", "E03");
+  private static final Set<String> HAY = Set.of("H01", "H02", "H03");
+
   private PreBillingRules() {}
 
   /** One line of the tenure's latest invoice. */
@@ -80,20 +83,29 @@ final class PreBillingRules {
       Provision p,
       Map<String, BigDecimal> rates,
       BigDecimal taxRatePct) {
-    boolean grazing = fileTypeCode != null && fileTypeCode.startsWith("E");
+    // The FTAR408_* functions pick the rate type two ways: GET_RANGE_RENT and
+    // GET_RANGE_USAGE_FEE by the type's first letter, GET_RANGE_NONUSAGE_FEE by the explicit
+    // E01–E03 / H01–H03 lists. A type neither matches has no rate type, so a 0 amount.
+    String type = fileTypeCode == null ? "" : fileTypeCode;
+    boolean e = type.startsWith("E");
+    boolean h = type.startsWith("H");
+    String rentType = e ? "GGR" : h ? "HGR" : null;
+    String feeType = e ? "GUF" : h ? "HUF" : null;
+    String nonUseType = GRAZING.contains(type) ? "GNF" : HAY.contains(type) ? "HNF" : null;
+
     BigDecimal authorized = nz(p.authorizedUse());
     BigDecimal authorizedPlusTemp = authorized.add(nz(p.tempIncrease()));
     BigDecimal used = authorizedPlusTemp.subtract(nz(p.nonUseNonBillable()));
     BigDecimal nonUseBillable = nz(p.nonUseBillable());
 
-    BigDecimal rent = authorizedPlusTemp.multiply(rate(rates, grazing ? "GGR" : "HGR"));
-    BigDecimal fee = used.multiply(rate(rates, grazing ? "GUF" : "HUF"));
+    BigDecimal rent = authorizedPlusTemp.multiply(rate(rates, rentType));
+    BigDecimal fee = used.multiply(rate(rates, feeType));
     BigDecimal nonUse = nonUseBillable.signum() > 0
-        ? nonUseBillable.multiply(rate(rates, grazing ? "GNF" : "HNF"))
+        ? nonUseBillable.multiply(rate(rates, nonUseType))
         : BigDecimal.ZERO;
     // FTAR408P's DECODE: only R and Y carry the licence fee.
     BigDecimal issue = "R".equals(instruction) || "Y".equals(instruction)
-        ? rate(rates, LICENCE_FEE.get(fileTypeCode))
+        ? rate(rates, LICENCE_FEE.get(type))
         : BigDecimal.ZERO;
     return new Amounts(authorized, rent, fee, nonUse, issue, nz(taxRatePct));
   }

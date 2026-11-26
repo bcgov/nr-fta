@@ -102,6 +102,7 @@ public class MarkDetailService {
              SUBSTR(pmc.map_reference_id, 3, 3)    AS map_reference_comp,
              pmc.private_mark_extend_date          AS mark_extend_date,
              pmc.private_mark_extend_count         AS mark_extend_count,
+             pmc.private_mark_extend_reas_code     AS mark_extend_reas_code,
              pmc.private_mark_amend_date           AS mark_amend_date,
              amd.status                            AS outstanding_amend_status,
              amd.revision_count                    AS amend_revision_count,
@@ -237,7 +238,8 @@ public class MarkDetailService {
              tma.revision_count     AS revision_count,
              tma.requesting_userid  AS requesting_userid,
              tma.permit_block_area  AS permit_block_area,
-             tma.p_of_c_or_legal    AS requested_changes
+             tma.p_of_c_or_legal    AS requested_changes,
+             tma.update_timestamp   AS update_timestamp
         FROM the.tmbr_mark_amend tma
         LEFT JOIN the.private_mark_amend_status_code pmas
                ON pmas.private_mark_amend_status_code = tma.prv_mrk_amd_sts_st
@@ -325,6 +327,7 @@ public class MarkDetailService {
           rs.getString("map_reference_comp"),
           rs.getObject("mark_extend_date", java.time.LocalDate.class),
           rs.getObject("mark_extend_count", Integer.class),
+          rs.getString("mark_extend_reas_code"),
           rs.getObject("mark_amend_date", java.time.LocalDate.class),
           rs.getString("outstanding_amend_status"),
           rs.getString("outstanding_amend_status_desc"),
@@ -377,7 +380,8 @@ public class MarkDetailService {
             rs.getObject("revision_count", Integer.class),
             rs.getString("requesting_userid"),
             rs.getBigDecimal("permit_block_area"),
-            rs.getString("requested_changes")));
+            rs.getString("requested_changes"),
+            rs.getObject("update_timestamp", java.time.LocalDate.class)));
 
     List<MarkDetailDto.Note> notes = base.forestFileId() == null
         ? List.of()

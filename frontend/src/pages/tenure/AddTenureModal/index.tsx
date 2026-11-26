@@ -5,9 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
+import { useDefaultOrgUnit } from '@/hooks/useDefaultOrgUnit';
 import {
+  getAddNewFileTypes,
   getDistricts,
-  getFileTypes,
   getManagementUnits,
   getTenureAdminOrgUnits,
   orgUnitCodeOf,
@@ -36,6 +37,10 @@ interface Form {
   fupFnUsage: string;
   fupCedar: string;
   fupTreaty: string;
+  bctsFund: string;
+  paymentMethod: string;
+  spatialLater: string;
+  salvage: string;
 }
 
 type Errors = Partial<Record<keyof Form, string>>;
@@ -57,6 +62,10 @@ const EMPTY: Form = {
   fupFnUsage: '',
   fupCedar: '',
   fupTreaty: '',
+  bctsFund: '',
+  paymentMethod: '',
+  spatialLater: '',
+  salvage: '',
 };
 
 /*
@@ -73,6 +82,18 @@ const adminOrgIsDistrict = (t: string) => ['A04', 'A44', 'A11'].includes(t);
 const showsDistrict = (t: string) => t !== '' && !t.startsWith('A') && t !== 'P01';
 const licenceToCut = (t: string) => ['B05', 'B06', 'B07'].includes(t);
 const needsZone = (t: string) => licenceToCut(t) || t === 'B10';
+/** Only a B07 asks BCTS Fund and Payment Method. */
+const asksBctsFund = (t: string) => t === 'B07';
+/** A01, A18 and A41 ask Salvage. */
+const asksSalvage = (t: string) => ['A01', 'A18', 'A41'].includes(t);
+/** GET_DEFAULTS: the management unit type a new file of this type starts with. */
+const DEFAULT_MGMT_UNIT_TYPE: Record<string, string> = {
+  A04: 'F',
+  A44: 'F',
+  A02: 'T',
+  A28: 'C',
+  A29: 'M',
+};
 
 /** Legacy FTA100's format checks for an entered ID. */
 const fileIdFormatError = (fileType: string, id: string): string | undefined => {
@@ -130,7 +151,7 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
     setErrors({});
     let cancelled = false;
     Promise.allSettled([
-      getFileTypes(),
+      getAddNewFileTypes(),
       getDistricts(),
       getTenureAdminOrgUnits(),
       getManagementUnits(),
@@ -176,16 +197,46 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
     orgUnitCodeOf(o).startsWith(adminOrgIsDistrict(t) ? 'D' : 'R'),
   );
   const purposeOptions = lists.details[t === 'B07' ? 'forLicenceToCut' : 'occLicenceToCut'] ?? [];
+  // FTA100 accepts only A (not a cash sale) or C (a cash sale).
+  const paymentOptions = (lists.details.paymentMethods ?? []).filter((o) =>
+    ['A', 'C'].includes(o.code),
+  );
 
-  const chooseType = (fileType: string) =>
-    // A new type asks different questions; keep only what every type shares.
+  // FTA100's setDefaults, from the user's default org unit (Org Unit Maintenance): District is the
+  // user's org unit; Admin Org is too for A04, A44, A06, A11 and A18 files, and otherwise the
+  // user's region when the user's org unit is a district. Only where the type's list has it.
+  const userDefault = useDefaultOrgUnit();
+  const orgDefaults = (fileType: string): Pick<Form, 'district' | 'adminOrg'> => {
+    const no = userDefault?.orgUnitNo;
+    if (!no) return { district: '', adminOrg: '' };
+    const ownOrg =
+      ['A04', 'A44', 'A06', 'A11', 'A18'].includes(fileType) || userDefault.orgLevelCode !== 'D';
+    const adminOrg = ownOrg ? no : userDefault.rollupRegionNo;
+    const level = adminOrgIsDistrict(fileType) ? 'D' : 'R';
+    return {
+      district: showsDistrict(fileType) && lists.districts.some((o) => o.code === no) ? no : '',
+      adminOrg:
+        showsAdminOrg(fileType) &&
+        lists.adminOrgs.some((o) => o.code === adminOrg && orgUnitCodeOf(o).startsWith(level))
+          ? (adminOrg ?? '')
+          : '',
+    };
+  };
+
+  const chooseType = (fileType: string) => {
+    // A new type asks different questions; keep only what every type shares, and start the
+    // management unit at the type's default where it has one.
+    const defaultMuType = DEFAULT_MGMT_UNIT_TYPE[fileType];
     setForm((f) => ({
       ...EMPTY,
+      ...orgDefaults(fileType),
       fileType,
-      mgmtUnitType: f.mgmtUnitType,
-      mgmtUnitId: f.mgmtUnitId,
+      mgmtUnitType: defaultMuType ?? f.mgmtUnitType,
+      mgmtUnitId: defaultMuType ? '' : f.mgmtUnitId,
       issueDate: f.issueDate,
     }));
+    setErrors({});
+  };
 
   const validate = (): Errors => {
     const e: Errors = {};
@@ -200,8 +251,25 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
     if (licenceToCut(t) && !form.purpose) e.purpose = 'Choose a purpose.';
     if (needsZone(t) && !form.zone.trim()) e.zone = 'Zone is mandatory.';
     if (t === 'B05' && !form.location.trim()) e.location = 'Geographic Location is mandatory.';
-    if ((t === 'B05' || t === 'B06') && !form.quotaType)
-      e.quotaType = `Quota type is mandatory if file type is ${t}.`;
+    if (licenceToCut(t)) {
+      if (!form.quotaType) e.quotaType = `Quota type is mandatory if file type is ${t}.`;
+      else if (form.purpose === 'PA' && form.quotaType !== 'P')
+        e.quotaType = 'If purpose is PA then quota type can only be P.';
+      else if (form.quotaType === 'D' && form.bctsFund !== 'Y')
+        e.quotaType =
+          'Quota type should be C-Forest Service Reserve if this sale is not BCTS funded.';
+      else if (t === 'B07' && form.bctsFund === 'Y' && form.quotaType !== 'D')
+        e.quotaType = 'If BCTS Fund is Y then Quota Type must be D.';
+      if (!form.spatialLater) e.spatialLater = 'Submit Spatial Later is mandatory.';
+    }
+    if (asksBctsFund(t)) {
+      if (!form.bctsFund) e.bctsFund = 'BCTS Fund is mandatory.';
+      if (!form.paymentMethod) e.paymentMethod = 'Payment Method is mandatory.';
+      else if (form.paymentMethod === 'C' && ['PA', 'FN'].includes(form.purpose))
+        e.paymentMethod =
+          'Cash Sales not allowed for PA-Pulpwood or FN-First Nations Forestry Licence To Cut.';
+    }
+    if (asksSalvage(t) && !form.salvage) e.salvage = 'Salvage is mandatory.';
     if (t === 'A30') {
       const a = form.initialArea.trim();
       if (!a) e.initialArea = 'Initial Area(ha) is mandatory.';
@@ -239,6 +307,10 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
         fupFnUsageCode: fn ? v(form.fupFnUsage) : null,
         fupCedarSpeciesInd: fn ? v(form.fupCedar) : null,
         fupTreatyPurposeInd: fn ? v(form.fupTreaty) : null,
+        bctsFundInd: asksBctsFund(t) ? v(form.bctsFund) : null,
+        paymentMethodCode: asksBctsFund(t) ? v(form.paymentMethod) : null,
+        subSpatialLaterInd: licenceToCut(t) ? v(form.spatialLater) : null,
+        salvageInd: asksSalvage(t) ? v(form.salvage) : null,
       });
       notify.display({
         kind: 'success',
@@ -369,10 +441,17 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
             {select('purpose', 'Purpose', purposeOptions, 'Choose a purpose')}
             {select(
               'quotaType',
-              t === 'B07' ? 'Quota Type (optional)' : 'Quota Type',
+              'Quota Type',
               lists.details.quotaTypes ?? [],
               'Choose a quota type',
             )}
+            {asksBctsFund(t) && (
+              <>
+                {select('bctsFund', 'BCTS Fund', YES_NO, 'Choose')}
+                {select('paymentMethod', 'Payment Method', paymentOptions, 'Choose a method')}
+              </>
+            )}
+            {select('spatialLater', 'Submit Spatial Later', YES_NO, 'Choose')}
             <div className="add-tenure__full">
               {text(
                 'location',
@@ -384,6 +463,8 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
         )}
 
         {needsZone(t) && text('zone', 'Zone', 4, true)}
+
+        {asksSalvage(t) && select('salvage', 'Salvage', YES_NO, 'Choose')}
 
         {t === 'B10' && (
           <>

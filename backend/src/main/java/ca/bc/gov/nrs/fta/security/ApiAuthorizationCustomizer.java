@@ -37,8 +37,9 @@ import org.springframework.stereotype.Component;
  *       ({@code POST /api/fta/marks/{id}/submit}), saving it
  *       ({@code PUT /api/fta/marks/{id}}) or one of its land indexes or clients
  *       ({@code PUT /api/fta/marks/{id}/land-index/{skey}},
- *       {@code PUT /api/fta/marks/{id}/clients/{skey}}), deleting a previous licensee
- *       ({@code DELETE /api/fta/marks/{id}/clients/{skey}}), and resolving display names
+ *       {@code PUT /api/fta/marks/{id}/clients/{skey}}), deleting a previous licensee or a
+ *       land index ({@code DELETE /api/fta/marks/{id}/clients/{skey}},
+ *       {@code DELETE /api/fta/marks/{id}/land-index/{skey}}), and resolving display names
  *       ({@code POST /api/fta/users/resolve}). Every other endpoint is 403. Mirrors the page
  *       allow-list in the frontend's {@code routes/access.ts}.</li>
  *   <li><strong>FTA_HARVEST_AUTH_DISTRICT_ADMIN</strong> — what FTA_VIEWER reads, plus adding and
@@ -81,6 +82,16 @@ public class ApiAuthorizationCustomizer implements
     // Admin endpoints — FTA_ADMIN only for ALL HTTP methods (including GET)
     authorize
         .requestMatchers("/api/fta/admin/**")
+        .hasAuthority(RoleConstants.ADMIN_AUTHORITY);
+
+    // FTA101 Change Mark Designate, its lookup included — FTA_ADMIN only (legacy enabled it for
+    // Senior Admin, and granted FTA_101_CHANGE_MARK_DESIG to Senior Admin, Feature Admin and
+    // Super User). Must appear BEFORE the tenure-detail read rule, which opens
+    // /api/fta/tenures/*/** to the timber mark roles.
+    authorize
+        .requestMatchers(
+            "/api/fta/tenures/*/details/mark-designate",
+            "/api/fta/tenures/*/details/change-mark-designate")
         .hasAuthority(RoleConstants.ADMIN_AUTHORITY);
 
     // Report generation — both roles can trigger a POST report
@@ -136,7 +147,7 @@ public class ApiAuthorizationCustomizer implements
             "/api/fta/marks/*/clients",
             "/api/fta/marks/*/amendments",
             "/api/fta/marks/*/submit",
-            "/api/fta/marks/skip-timber-mark")
+            "/api/fta/marks/*/skip-timber-mark")
         .hasAnyAuthority(
             RoleConstants.ADMIN_AUTHORITY, RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY);
@@ -152,10 +163,13 @@ public class ApiAuthorizationCustomizer implements
             RoleConstants.ADMIN_AUTHORITY, RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY);
 
-    // Deleting a previous licensee off a private mark (FTA513's Delete) — as the client save;
-    // when it is allowed is MarkEditRules. Must appear BEFORE the generic DELETE /api/** rule.
+    // Deleting a previous licensee (FTA513's Delete) or a land index (FTA511's Delete) off a
+    // private mark — as their saves; when it is allowed is MarkEditRules. Must appear BEFORE the
+    // generic DELETE /api/** rule.
     authorize
-        .requestMatchers(HttpMethod.DELETE, "/api/fta/marks/*/clients/*")
+        .requestMatchers(HttpMethod.DELETE,
+            "/api/fta/marks/*/clients/*",
+            "/api/fta/marks/*/land-index/*")
         .hasAnyAuthority(
             RoleConstants.ADMIN_AUTHORITY, RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY);
@@ -261,6 +275,20 @@ public class ApiAuthorizationCustomizer implements
             RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY,
             RoleConstants.APT_AUTHORITY);
 
+    // The FTA413 Fort St. John harvest authorization letter. Legacy FTA902 showed its Letter
+    // button on every FSJ authority to whoever could open the screen, with no role check, so
+    // every role that opens the cutting-permit detail may print it. Must appear BEFORE the
+    // generic GET /api/** rule, which excludes the timber mark roles.
+    authorize
+        .requestMatchers(HttpMethod.GET, "/api/fta/cutting-permits/*/letter")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY,
+            RoleConstants.VIEWER_AUTHORITY,
+            RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
+            RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
+
     // Reads open to FTA_TIMBER_MARK_HEADQUARTERS_ADMIN as well — only what its screens call. Must
     // appear BEFORE the generic GET /api/** rule, which excludes that role.
     authorize
@@ -274,10 +302,12 @@ public class ApiAuthorizationCustomizer implements
             "/api/fta/timber-marks",       // Timber Mark Search
             "/api/fta/timber-marks/export",
             "/api/fta/timber-marks/*/harvest-history",  // the cutting permit detail's tab
+            "/api/fta/timber-marks/*/mark-report",  // its (and the tenure's) Print Mark Report
             "/api/fta/cutting-permits/*",  // the detail Timber Mark Search opens
             "/api/fta/marks",              // Application/Amendment List
             "/api/fta/marks/*",            // private mark detail
-            "/api/fta/marks/*/snapshot")   // its point-in-time PDF
+            "/api/fta/marks/*/snapshot",   // its point-in-time PDF
+            "/api/fta/org-unit-default")   // the user's default org unit (SIL99), for search defaults
         .hasAnyAuthority(
             RoleConstants.ADMIN_AUTHORITY,
             RoleConstants.VIEWER_AUTHORITY,

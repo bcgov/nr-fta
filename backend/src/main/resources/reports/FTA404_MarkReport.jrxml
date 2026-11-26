@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FTA404 Mark Report (FTA990 Harvest History's "Print Mark Report") - ported from the legacy
+  Jasper Server report (fta-archive: JCRS/FTA/Reports/FTA/FTA404-MarkReport.rpt). Changes from
+  legacy:
+   - no query: the backend supplies the rows (MarkReportService ports FTAR404P);
+   - the Jasper Server parameters (LoggedInUser, report_cursor) are gone.
+  Everything else - columns, groups, totals, headings, fonts - is legacy's.
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="FTA404_MarkReport" pageWidth="612" pageHeight="792" whenNoDataType="AllSectionsNoDetail" columnWidth="572" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="c2573d7f-530b-4644-a46e-da724b9469c6">
+	<property name="ireport.zoom" value="1.5"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="p_user_id" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_id" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["FTA404R"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_category" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="p_report_name" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["Timber Tenure Reporting Harvest History"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_timber_mark" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<field name="timber_mark" class="java.lang.String"/>
+	<field name="billing_year" class="java.lang.Number"/>
+	<field name="cutting_permit_id" class="java.lang.String"/>
+	<field name="billing_type_code" class="java.lang.String"/>
+	<field name="hdbs_tree_species" class="java.lang.String"/>
+	<field name="log_grade" class="java.lang.String"/>
+	<field name="volume_billed" class="java.lang.Number"/>
+	<field name="total_amount" class="java.lang.Number"/>
+	<field name="catastrophic_ind" class="java.lang.String"/>
+	<field name="db_name" class="java.lang.String"/>
+	<variable name="current_page_number" class="java.lang.Integer" resetType="Page">
+		<variableExpression><![CDATA[$V{PAGE_NUMBER}]]></variableExpression>
+		<initialValueExpression><![CDATA[1]]></initialValueExpression>
+	</variable>
+	<variable name="volume_billed_species" class="java.lang.Number" resetType="Group" resetGroup="HDBS_TREE_SPECIES" calculation="Sum">
+		<variableExpression><![CDATA[$F{volume_billed}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="volume_billed_type" class="java.lang.Number" resetType="Group" resetGroup="BILLING_TYPE_CODE" calculation="Sum">
+		<variableExpression><![CDATA[$F{volume_billed}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="volume_billed_timber_mark" class="java.lang.Number" resetType="Group" resetGroup="TIMBER_MARK" calculation="Sum">
+		<variableExpression><![CDATA[$F{volume_billed}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="volume_billed_sum" class="java.lang.Number" calculation="Sum">
+		<variableExpression><![CDATA[$F{volume_billed}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="total_amount_species" class="java.lang.Number" resetType="Group" resetGroup="HDBS_TREE_SPECIES" calculation="Sum">
+		<variableExpression><![CDATA[$F{total_amount}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="total_amount_type" class="java.lang.Number" resetType="Group" resetGroup="BILLING_TYPE_CODE" calculation="Sum">
+		<variableExpression><![CDATA[$F{total_amount}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="total_amount_timber_mark" class="java.lang.Number" resetType="Group" resetGroup="TIMBER_MARK" calculation="Sum">
+		<variableExpression><![CDATA[$F{total_amount}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="total_amount_sum" class="java.lang.Number" calculation="Sum">
+		<variableExpression><![CDATA[$F{total_amount}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<group name="TIMBER_MARK">
+		<groupExpression><![CDATA[$F{timber_mark}]]></groupExpression>
+		<groupFooter>
+			<band height="34">
+				<line>
+					<reportElement uuid="35a5384e-34aa-46b9-891a-d90799a1067b" x="387" y="6" width="60" height="1"/>
+				</line>
+				<line>
+					<reportElement uuid="054de2b9-04de-4686-bb65-6a092b8f321c" x="459" y="6" width="60" height="1"/>
+				</line>
+				<textField>
+					<reportElement uuid="24a5affc-80d6-49eb-8fad-0db0fe90b876" x="171" y="12" width="204" height="12"/>
+					<textElement textAlignment="Right">
+						<font fontName="Arial" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{timber_mark} + " Timber Mark Total"]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0.00;-#,##0.00">
+					<reportElement uuid="c471cda0-5247-47d6-b5bf-025058e59d9f" x="375" y="12" width="72" height="12"/>
+					<textElement textAlignment="Right">
+						<font fontName="Arial" size="8" isBold="true" isUnderline="false"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{volume_billed_timber_mark}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0.00;-#,##0.00">
+					<reportElement uuid="3282bda5-2e7b-40ac-8c77-149b0a172950" x="447" y="12" width="72" height="12"/>
+					<textElement textAlignment="Right">
+						<font fontName="Arial" size="8" isBold="true" isUnderline="false"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{total_amount_timber_mark}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<group name="BILLING_TYPE_CODE">
+		<groupExpression><![CDATA[$F{billing_type_code}]]></groupExpression>
+		<groupFooter>
+			<band height="34">
+				<line>
+					<reportElement uuid="364b2fc3-4012-4233-ac4d-88c41353ca25" x="387" y="6" width="60" height="1"/>
+				</line>
+				<line>
+					<reportElement uuid="1104ba53-f851-4456-8f8a-8d4f99bc1c75" x="459" y="6" width="60" height="1"/>
+				</line>
+				<textField>
+					<reportElement uuid="fa113d2c-b9ec-4fef-b6dd-0695f11d276d" x="171" y="12" width="204" height="12"/>
+					<textElement textAlignment="Right">
+						<font fontName="Arial" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{billing_type_code} + " Billing Type Total"]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0.00;-#,##0.00">
+					<reportElement uuid="1907bf70-c816-4046-b9cf-0fb762cd3a91" x="375" y="12" width="72" height="12"/>
+					<textElement textAlignment="Right">
+						<font fontName="Arial" size="8" isBold="true" isUnderline="false"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{volume_billed_type}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0.00;-#,##0.00">
+					<reportElement uuid="edad1ebc-f365-423d-87ec-43e3475a8c85" x="447" y="12" width="72" height="12"/>
+					<textElement textAlignment="Right">
+						<font fontName="Arial" size="8" isBold="true" isUnderline="false"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{total_amount_type}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<group name="HDBS_TREE_SPECIES" keepTogether="true">
+		<groupExpression><![CDATA[$F{hdbs_tree_species}]]></groupExpression>
+		<groupHeader>
+			<band height="8"/>
+		</groupHeader>
+		<groupFooter>
+			<band height="34">
+				<line>
+					<reportElement uuid="c03eb042-9fe8-498e-9c23-40f9f4db6bb7" x="387" y="6" width="60" height="1"/>
+				</line>
+				<line>
+					<reportElement uuid="00bfa16e-8597-46f4-ae75-ab7802d8e30e" x="459" y="6" width="60" height="1"/>
+				</line>
+				<textField>
+					<reportElement uuid="4178440a-9c5c-4368-a460-3b52c0a9546d" x="171" y="12" width="204" height="12"/>
+					<textElement textAlignment="Right">
+						<font fontName="Arial" size="8" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{hdbs_tree_species} + " Species Total"]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0.00;-#,##0.00">
+					<reportElement uuid="3b58c03b-71e6-432c-a843-ea1fc4423588" x="375" y="12" width="72" height="12"/>
+					<textElement textAlignment="Right">
+						<font fontName="Arial" size="8" isBold="true" isUnderline="false"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{volume_billed_species}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0.00;-#,##0.00" isBlankWhenNull="false">
+					<reportElement uuid="bc617939-8f37-4ef1-84e0-827b8bd0170f" x="447" y="12" width="72" height="12"/>
+					<textElement textAlignment="Right">
+						<font fontName="Arial" size="8" isBold="true" isUnderline="false"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{total_amount_species}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<pageHeader>
+		<band height="137" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="12b753f2-e986-4482-b4c1-215f99067cc2" x="124" y="42" width="270" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Timber Tenure Reporting]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="f15ef2cc-dae6-4d2f-a2a8-bf87ebd64f02" x="395" y="34" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_user_id}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="b16f3837-6075-4811-bcb3-91c583c04555" x="124" y="10" width="270" height="32"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ministry of Forests, Lands, Natural Resource Operations & Rural Development]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="cf6083f0-db03-451f-821d-9a8ae1719c7e" x="395" y="10" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[FTA404R]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="d5fd0140-bd6a-4e14-8194-c90799b69d51" x="395" y="46" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="1964e981-ac44-4fac-9cc9-9683110e7097" x="124" y="60" width="270" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Harvest History]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="29d6e7b7-9d8b-4d97-9aa7-ceb934133d4b" x="395" y="22" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{db_name}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="b5719ec8-f7f7-4712-9dc4-d12d7483be75" x="124" y="78" width="270" height="14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Timber Mark: " +$P{p_timber_mark}]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Auto">
+				<reportElement uuid="9a4fa180-12bc-408d-9e3f-0d3e52f111a6" x="395" y="58" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[($V{current_page_number}).toString() + " of " + ($V{PAGE_NUMBER}).toString()]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+	<columnHeader>
+		<band height="12" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="211f7221-9304-415a-a357-86768e32b882" x="375" y="0" width="72" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Volume Billed]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="38e39dc3-b61d-42e0-8c2a-82796bf2306e" x="159" y="0" width="84" height="12"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Type]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="d797709c-bc17-4812-9021-64ba2c230645" x="447" y="0" width="72" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Total $$]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="4f341d59-9285-4f81-b571-b211cbc0f393" x="327" y="0" width="48" height="12"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Grade]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="9c06f420-d726-4d80-b079-f3134eb00bfa" x="105" y="0" width="54" height="12"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Catastrophic]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="d48ad7f4-2eb5-4385-a35f-51b176586bc6" x="243" y="0" width="84" height="12"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Species]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="aafc0199-02f0-45f4-8767-46aa45b48538" x="81" y="0" width="24" height="12"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[CP]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="58253258-c894-4cf3-a738-05ed97a2877a" x="21" y="0" width="60" height="12"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Timber Mark]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="12" splitType="Stretch">
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="566afdd9-f99d-4a69-aed8-425952b93a66" x="375" y="0" width="72" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="8" isBold="false" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{volume_billed}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="17f1bb0d-2011-4721-a19b-a89db4cff7b3" isPrintRepeatedValues="false" x="159" y="0" width="84" height="12" isPrintInFirstWholeBand="true" printWhenGroupChanges="HDBS_TREE_SPECIES"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="false" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{billing_type_code}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="7f85ab07-69dd-48a2-b28e-4bd5fc343de2" x="447" y="0" width="72" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="8" isBold="false" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{total_amount}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="f05556bf-5f74-4ef1-837f-4fd051f63dd9" isPrintRepeatedValues="false" x="327" y="0" width="48" height="12" printWhenGroupChanges="HDBS_TREE_SPECIES"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="false" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{log_grade}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="bc795d6f-a0d2-4c08-ad05-995e2e9d5c59" isPrintRepeatedValues="false" x="105" y="0" width="54" height="12" printWhenGroupChanges="HDBS_TREE_SPECIES"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="false" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{catastrophic_ind}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="90fdd90b-b8bb-48b9-9a3e-c75015af8b0e" isPrintRepeatedValues="false" x="243" y="0" width="84" height="12" printWhenGroupChanges="HDBS_TREE_SPECIES"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="false" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{hdbs_tree_species}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="534b1452-dfd3-4af4-b956-5248932d07be" isPrintRepeatedValues="false" x="81" y="0" width="24" height="12" printWhenGroupChanges="HDBS_TREE_SPECIES"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="false" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cutting_permit_id}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="e86ac655-e773-4620-bbbc-96b18ce9dcea" isPrintRepeatedValues="false" x="21" y="0" width="60" height="12" isPrintInFirstWholeBand="true"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="false" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{timber_mark}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="80" splitType="Stretch">
+			<line>
+				<reportElement uuid="22642439-2a82-4027-af50-bd43ea3d68b2" x="387" y="6" width="60" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="aa8d7a37-71e8-4528-9a42-783db9ab28f7" x="459" y="6" width="60" height="1"/>
+			</line>
+			<staticText>
+				<reportElement uuid="c9a71b06-ccf1-486f-895d-0a21a55bc966" x="171" y="8" width="204" height="12"/>
+				<textElement>
+					<font fontName="Arial" size="8" isBold="true"/>
+				</textElement>
+				<text><![CDATA[File Id:  Total]]></text>
+			</staticText>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="204d22f5-6408-438d-85eb-69e15093f469" x="375" y="8" width="72" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="8" isBold="false" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{volume_billed_sum}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="5164644f-f8fb-419b-bac3-61c4075d6aa2" x="447" y="8" width="72" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="8" isBold="true" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{total_amount_sum}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="7e830df1-f0b3-45a0-b9aa-5f759a923518" x="245" y="44" width="100" height="20"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[End of Report]]></text>
+			</staticText>
+		</band>
+	</summary>
+</jasperReport>

@@ -128,9 +128,11 @@ public class PostBillingReport {
   private static final String SERVER_SQL = "SELECT SYS_CONTEXT('USERENV', 'CON_NAME') FROM dual";
 
   private final NamedParameterJdbcTemplate jdbc;
+  private final BillingDistrictScope scope;
 
-  public PostBillingReport(NamedParameterJdbcTemplate jdbc) {
+  public PostBillingReport(NamedParameterJdbcTemplate jdbc, BillingDistrictScope scope) {
     this.jdbc = jdbc;
+    this.scope = scope;
   }
 
   /**
@@ -138,7 +140,8 @@ public class PostBillingReport {
    *
    * @param orgUnit a district's ORG_UNIT_NO, or {@link #ALL}
    * @param sortBy  1 client name, 2 tenure, 3 file type, 4 invoice number
-   * @throws ResponseStatusException 400 for missing or invalid criteria
+   * @throws ResponseStatusException 400 for missing or invalid criteria, 403 for a district the
+   *     user does not administer, or "*" from a district-scoped administrator
    */
   public byte[] render(String orgUnit, String year, String sortBy, String userId) {
     validate(orgUnit, year, sortBy);
@@ -148,12 +151,16 @@ public class PostBillingReport {
         .addValue("orgUnitNo", orgUnitNo, Types.NUMERIC)
         .addValue("year", year);
     String orgCode = ALL;
-    if (!all) {
+    // Legacy protected a district user's Org Unit and offered "*" only to the others.
+    if (all) {
+      scope.requireAll();
+    } else {
       List<String> codes = jdbc.queryForList(DISTRICT_SQL, p, String.class);
       if (codes.isEmpty()) {
         throw bad(NOT_A_DISTRICT);
       }
       orgCode = codes.get(0);
+      scope.requireDistrict(orgCode);
     }
     String server = jdbc.queryForObject(SERVER_SQL, p, String.class);
 

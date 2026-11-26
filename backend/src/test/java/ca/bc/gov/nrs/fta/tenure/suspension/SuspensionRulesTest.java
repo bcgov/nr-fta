@@ -53,10 +53,11 @@ class SuspensionRulesTest {
   }
 
   @Test
-  void endingNeedsARealPostStatus() {
+  void endingNeedsAPostStatus() {
     assertThat(SuspensionRules.endProblem("HB", false, "5", "5")).isNull();
     assertThat(SuspensionRules.endProblem(null, false, "5", "5")).contains("mandatory");
-    assertThat(SuspensionRules.endProblem("HS", false, "5", "5")).contains("must not");
+    // FTA914 offers every block status, HS included.
+    assertThat(SuspensionRules.endProblem("HS", false, "5", "5")).isNull();
   }
 
   @Test

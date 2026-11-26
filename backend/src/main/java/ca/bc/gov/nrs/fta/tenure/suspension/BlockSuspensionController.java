@@ -39,8 +39,8 @@ public class BlockSuspensionController {
   }
 
   @GetMapping
-  public BlockSuspension find(@PathVariable long cbSkey) {
-    return service.find(cbSkey);
+  public BlockSuspension find(@PathVariable long cbSkey, JwtAuthenticationToken principal) {
+    return service.find(cbSkey, principal);
   }
 
   @PostMapping
@@ -48,7 +48,7 @@ public class BlockSuspensionController {
       @PathVariable long cbSkey,
       @RequestBody SuspensionCreateRequest request,
       JwtAuthenticationToken principal) {
-    service.suspend(cbSkey, request, JwtPrincipalUtil.getAuditUserId(principal));
+    service.suspend(cbSkey, request, principal, JwtPrincipalUtil.getAuditUserId(principal));
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
@@ -58,7 +58,8 @@ public class BlockSuspensionController {
       @PathVariable long suspensionId,
       @RequestBody SuspensionUpdateRequest request,
       JwtAuthenticationToken principal) {
-    service.update(cbSkey, suspensionId, request, JwtPrincipalUtil.getAuditUserId(principal));
+    service.update(
+        cbSkey, suspensionId, request, principal, JwtPrincipalUtil.getAuditUserId(principal));
     return ResponseEntity.noContent().build();
   }
 
@@ -68,7 +69,8 @@ public class BlockSuspensionController {
       @PathVariable long suspensionId,
       @RequestBody(required = false) SuspensionDeleteRequest request,
       JwtAuthenticationToken principal) {
-    service.delete(cbSkey, suspensionId, request, JwtPrincipalUtil.getAuditUserId(principal));
+    service.delete(
+        cbSkey, suspensionId, request, principal, JwtPrincipalUtil.getAuditUserId(principal));
     return ResponseEntity.noContent().build();
   }
 }

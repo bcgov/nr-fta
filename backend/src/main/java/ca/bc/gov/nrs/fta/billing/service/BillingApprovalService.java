@@ -28,8 +28,9 @@ public class BillingApprovalService {
   static final String NOT_A_DISTRICT = "District is not a valid district.";
   static final String ALREADY_QUEUED = "A request has already been queued for this district today.";
 
-  private static final String IS_DISTRICT_SQL =
-      "SELECT COUNT(*) FROM the.org_unit WHERE org_unit_no = :orgUnitNo AND org_level_code = 'D'";
+  private static final String DISTRICT_CODE_SQL =
+      "SELECT org_unit_code FROM the.org_unit WHERE org_unit_no = :orgUnitNo"
+          + " AND org_level_code = 'D'";
 
   /** SUBMIT's guard: one unprocessed request per district and year per day. */
   private static final String QUEUED_TODAY_SQL =
@@ -55,15 +56,18 @@ public class BillingApprovalService {
       """;
 
   private final NamedParameterJdbcTemplate jdbc;
+  private final BillingDistrictScope scope;
 
-  public BillingApprovalService(NamedParameterJdbcTemplate jdbc) {
+  public BillingApprovalService(NamedParameterJdbcTemplate jdbc, BillingDistrictScope scope) {
     this.jdbc = jdbc;
+    this.scope = scope;
   }
 
   /**
    * The Submit button.
    *
-   * @throws ResponseStatusException 400 if the district or year is invalid, 409
+   * @throws ResponseStatusException 400 if the district or year is invalid, 403 if the user
+   *     does not administer the district, 409
    *     if a request for them is already queued today
    */
   @Transactional
@@ -76,9 +80,12 @@ public class BillingApprovalService {
         .addValue("orgUnitNo", req.orgUnitNo())
         .addValue("year", req.calendarYear())
         .addValue("userId", userId);
-    if (count(IS_DISTRICT_SQL, p) == 0) {
+    List<String> codes = jdbc.queryForList(DISTRICT_CODE_SQL, p, String.class);
+    if (codes.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, NOT_A_DISTRICT);
     }
+    // Legacy protected a district user's District: only the district they administer.
+    scope.requireDistrict(codes.get(0));
     if (count(QUEUED_TODAY_SQL, p) > 0) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, ALREADY_QUEUED);
     }

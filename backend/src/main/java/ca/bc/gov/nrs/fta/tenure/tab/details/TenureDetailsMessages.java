@@ -4,6 +4,7 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Turns the message strings FTA_100_TENURE (and the PL/SQL it calls) returns into
@@ -12,7 +13,7 @@ import java.util.Map;
  * is a warning when it starts {@code ~W,} (legacy's {@code parseToErrorsWarnings}). Warnings
  * do not stop a save; anything else does.
  */
-final class TenureDetailsMessages {
+public final class TenureDetailsMessages {
 
   private TenureDetailsMessages() {}
 
@@ -81,6 +82,16 @@ final class TenureDetailsMessages {
               + " Support."),
       Map.entry("fta.web.usr.database.invalid.function",
           "An unknown database action was requested. System Information - {0} - {1} - {2}."));
+
+  /**
+   * Legacy's text for {@code FTA_EDIT_STATUS_CHANGE}'s {@code fta.status.change.*} keys, which
+   * other packages that run it (the tenure application's Issue Permit) return too.
+   */
+  public static Map<String, String> statusChangeTexts() {
+    return TEXT.entrySet().stream()
+        .filter(e -> e.getKey().startsWith("fta.status.change."))
+        .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
 
   /** Keys that are informational rather than failures. */
   private static final List<String> WARNING_KEYS = List.of("fta.web.warning.FtaAuditLogged");

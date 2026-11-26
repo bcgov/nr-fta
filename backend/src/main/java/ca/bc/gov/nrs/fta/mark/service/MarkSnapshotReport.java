@@ -127,7 +127,7 @@ public class MarkSnapshotReport {
           kv("Amendment Status", mark.shownAmendment() == null ? null
               : desc(mark.shownAmendment().prvMrkAmdStsSt(),
                   mark.shownAmendment().prvMrkAmdStsDesc())),
-          kv("Amended Date", date(mark.markAmendDate())),
+          kv("Amended Date", date(mark.shownAmendDate())),
           kv("Amendment Count",
               String.valueOf(mark.amendments() == null ? 0 : mark.amendments().size())))));
 

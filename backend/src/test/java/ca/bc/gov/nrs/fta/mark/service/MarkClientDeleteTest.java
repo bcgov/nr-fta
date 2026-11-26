@@ -36,7 +36,7 @@ class MarkClientDeleteTest {
         "12A345", "150557", "12A345", fileType, status, null, null, null, null, null, 60,
         "1867", "DVA", "00001", "00", "Holder", "S", "H", null, null, null, null, null, null,
         null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0,
-        null, null, null, 1L, null, true, List.of(), List.of(), List.of(), List.of(), null);
+        null, null, null, null, 1L, null, true, List.of(), List.of(), List.of(), List.of(), null);
   }
 
   private void given(MarkDetailDto mark, String storedType) {

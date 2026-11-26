@@ -104,6 +104,14 @@ class CuttingPermitRulesTest {
   }
 
   @Test
+  void assignMarksAndSuspensionsIgnoreThePermitStatus() {
+    Facts fsjEe = new Facts("A01", "EE", true, ISSUED, null, false, false, false, true, true, false);
+    assertThat(CuttingPermitRules.of(fsjEe).canSave()).isFalse();
+    assertThat(CuttingPermitRules.of(fsjEe).canAssignMarks()).isTrue();
+    assertThat(senior("PE").canSuspendBlocks()).isTrue();
+  }
+
+  @Test
   void postponementsAreSeniorAndNeedHiOrHp() {
     assertThat(senior("HI").canPostpone()).isTrue();
     assertThat(senior("HP").canPostpone()).isTrue();

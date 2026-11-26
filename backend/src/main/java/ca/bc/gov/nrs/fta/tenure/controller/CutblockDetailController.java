@@ -28,6 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
  *       that label on the file; a label repeats across files, so the file is required, and the
  *       permit is needed where it repeats within one;
  *   <li>{@code PUT /api/fta/cut-blocks/{cbSkey}} — FTA904's Save;
+ *   <li>{@code GET /api/fta/cut-blocks/override-required?newStatus=&oldStatus=} — whether that
+ *       status change needs a District Override Reason ({@code fta904_edit_status_change});
  *   <li>{@code POST /api/fta/cut-blocks/{cbSkey}/relabel} — FTA231's Save;
  *   <li>{@code GET /api/fta/tenure-lookups/cut-regulation-codes} and
  *       {@code /reforest-declare-types} — the edit dialog's lists.
@@ -58,6 +60,12 @@ public class CutblockDetailController {
     return cutblockDetailService.find(blockId, forestFileId, cuttingPermitId, principal)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
+  }
+
+  @GetMapping("/cut-blocks/override-required")
+  public boolean overrideRequired(
+      @RequestParam String newStatus, @RequestParam String oldStatus) {
+    return cutBlockWriteService.overrideRequired(newStatus, oldStatus);
   }
 
   @PutMapping("/cut-blocks/{cbSkey}")

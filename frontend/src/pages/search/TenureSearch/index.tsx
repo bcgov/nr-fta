@@ -31,6 +31,7 @@ import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
+import { useFormDistrictDefault } from '@/hooks/useDefaultOrgUnit';
 import { useOrgUnitName } from '@/hooks/useOrgUnitName';
 import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { nextColumnSort, sortHeaderProps } from '@/lib/columnSort';
@@ -136,6 +137,8 @@ const TenureSearch: FC = () => {
 
   // Code lists behind the six dropdowns.
   const [orgUnits, setOrgUnits] = useState<CodeOption[]>([]);
+  // Legacy started a new or cleared search at the user's default org unit (Org Unit Maintenance).
+  const startForm = useFormDistrictDefault(form, setForm, EMPTY_FORM, 'adminOrgUnitNo', orgUnits);
   const [fileTypes, setFileTypes] = useState<CodeOption[]>([]);
   const [fileStatuses, setFileStatuses] = useState<CodeOption[]>([]);
   const [clientTypes, setClientTypes] = useState<CodeOption[]>([]);
@@ -295,13 +298,13 @@ const TenureSearch: FC = () => {
   );
 
   const onClear = useCallback(() => {
-    setForm(EMPTY_FORM);
+    setForm(startForm);
     setLastSearch(null);
     setRows(null);
     setTotalElements(0);
     setPage(0);
     setError(null);
-  }, [setForm, setLastSearch]);
+  }, [setForm, setLastSearch, startForm]);
 
   // Back on the page with a search from earlier in this tab: run it again (fresh
   // results, same page), once the code lists — and so the form — are ready.

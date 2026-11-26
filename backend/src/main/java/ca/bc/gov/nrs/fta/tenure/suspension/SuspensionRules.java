@@ -78,9 +78,6 @@ public final class SuspensionRules {
     if (isBlank(postStatus)) {
       return mandatory("Post Suspension Status");
     }
-    if (SUSPENDED.equals(postStatus)) {
-      return "Post Suspension Status must not be suspended.";
-    }
     if (updateAllBlocks && !orderNumber.trim().equals(currentOrderNumber)) {
       return "Save the new order number before ending the suspension for all blocks.";
     }

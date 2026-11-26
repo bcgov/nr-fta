@@ -1,6 +1,7 @@
 import { DocumentTasks, Map as MapIcon, Misuse, Stamp } from '@carbon/icons-react';
 import {
   Button,
+  Checkbox,
   InlineNotification,
   OverflowMenu,
   OverflowMenuItem,
@@ -18,6 +19,8 @@ import { useCallback, useState, type FC, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
+import ConfirmationModal from '@/components/ConfirmationModal';
+import DragDropFileInput from '@/components/DragDropFileInput';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { Modal } from '@/components/Modal';
 import StatusTag from '@/components/StatusTag/StatusTag';
@@ -57,7 +60,29 @@ const STATE_VARIANTS: Record<string, string> = {
   REJ: 'rejected',
 };
 
-const MAX_URI = 2000;
+/** Legacy web.xml max-upload-file-size: a file this size or larger is refused. */
+const MAX_UPLOAD_BYTES = 4_194_304;
+/** Legacy's Email field maxlength. */
+const MAX_EMAIL = 50;
+/** Fta950xTenAppIssuePermitForm.EMAIL_PATTERN. */
+const EMAIL_PATTERN =
+  /^[_A-Za-z0-9+-]+(\.[_A-Za-z0-9-]+)*@[A-Za-z0-9-]+(\.[A-Za-z0-9]+)*(\.[A-Za-z]{2,})$/;
+
+/** Legacy Add Email's check: which field failed and its message, or null. */
+const checkEmail = (
+  email: string,
+  reconfirm: string,
+): { field: 'email' | 'reconfirm'; message: string } | null => {
+  if (!email) return { field: 'email', message: 'Email is mandatory.' };
+  if (!EMAIL_PATTERN.test(email))
+    return { field: 'email', message: 'Email has an invalid email format.' };
+  if (!reconfirm) return { field: 'reconfirm', message: 'Reconfirm Email is mandatory.' };
+  if (!EMAIL_PATTERN.test(reconfirm))
+    return { field: 'reconfirm', message: 'Reconfirm Email has an invalid email format.' };
+  if (email !== reconfirm)
+    return { field: 'reconfirm', message: 'The Email must equal Reconfirm Email.' };
+  return null;
+};
 
 /** A white card with an icon heading and a count, around one of the tab's lists. */
 const Section: FC<{ title: string; icon: typeof Stamp; count: number; children: ReactNode }> = ({
@@ -92,10 +117,12 @@ const rowKey = (r: TenureAppRow, i: number) =>
  * submitted for the file, the smart-form cutting-permit requests and the
  * rejected CP submissions.
  *
- * Issue Permit is ported (legacy's FTA_950X_TEN_APP_ISSUE_PERMIT runs on the
- * server, checks first): allowed for an approved or issued application, it
- * records the permit document's link — this app has no document-management
- * upload — and sets the application Issued. The Prof Dec flag opens the
+ * Issue Permit is legacy's popup (Fta950xTenAppIssuePermit): recipients added
+ * one at a time with a reconfirmed e-mail, a document name, Attach Document To
+ * Email and the permit PDF. The server checks the issuance
+ * (FTA_950X_TEN_APP_ISSUE_PERMIT), uploads the PDF to document management,
+ * issues the permit with the document's link and e-mails the recipients.
+ * Allowed for an approved or issued application. The Prof Dec flag opens the
  * application's professional declarations.
  */
 const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenureChanged }) => {
@@ -106,8 +133,16 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
 
   // Issue permit dialog
   const [issuing, setIssuing] = useState<TenureAppRow | null>(null);
-  const [documentUri, setDocumentUri] = useState('');
-  const [uriError, setUriError] = useState<string | undefined>();
+  const [recipients, setRecipients] = useState<string[]>([]);
+  const [email, setEmail] = useState('');
+  const [reconfirmEmail, setReconfirmEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | undefined>();
+  const [reconfirmError, setReconfirmError] = useState<string | undefined>();
+  const [documentName, setDocumentName] = useState('');
+  const [attachDocument, setAttachDocument] = useState(true);
+  const [permitFile, setPermitFile] = useState<File | null>(null);
+  const [issueError, setIssueError] = useState<string | null>(null);
+  const [confirmNotPdf, setConfirmNotPdf] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Prof Dec dialog
@@ -117,30 +152,75 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
 
   const openIssue = (r: TenureAppRow) => {
     setIssuing(r);
-    setDocumentUri('');
-    setUriError(undefined);
+    setRecipients([]);
+    setEmail('');
+    setReconfirmEmail('');
+    setEmailError(undefined);
+    setReconfirmError(undefined);
+    setDocumentName('');
+    setAttachDocument(true);
+    setPermitFile(null);
+    setIssueError(null);
   };
 
   const closeIssue = () => {
     if (!saving) setIssuing(null);
   };
 
+  // Legacy Add Email: checks the pair, appends the address, clears both fields.
+  const addEmail = () => {
+    const problem = checkEmail(email, reconfirmEmail);
+    if (problem) {
+      setEmailError(problem.field === 'email' ? problem.message : undefined);
+      setReconfirmError(problem.field === 'reconfirm' ? problem.message : undefined);
+      return;
+    }
+    setRecipients((prev) => [...prev, email]);
+    setEmail('');
+    setReconfirmEmail('');
+    setEmailError(undefined);
+    setReconfirmError(undefined);
+  };
+
+  // Legacy Upload and Issue: a document name and a file first, then (server-side
+  // in legacy) the file's size and the recipients; a non-PDF asks to proceed.
+  const startIssue = () => {
+    if (!documentName || !permitFile) {
+      setIssueError(
+        'A PDF document must be selected and a document name given before you can proceed.',
+      );
+      return;
+    }
+    if (permitFile.size === 0) {
+      setIssueError('The uploaded file was empty.');
+      return;
+    }
+    if (permitFile.size >= MAX_UPLOAD_BYTES) {
+      setIssueError('Uploaded files cannot be larger than 4.0Mb.');
+      return;
+    }
+    if (recipients.length === 0) {
+      setIssueError('Recipients is mandatory.');
+      return;
+    }
+    setIssueError(null);
+    if (!permitFile.name.toUpperCase().endsWith('.PDF')) {
+      setConfirmNotPdf(true);
+      return;
+    }
+    void submitIssue();
+  };
+
   const submitIssue = async () => {
-    if (!issuing || issuing.tenureAppId === null) return;
-    const uri = documentUri.trim();
-    if (!uri) {
-      setUriError('Permit document is mandatory.');
-      return;
-    }
-    if (uri.length > MAX_URI) {
-      setUriError(`At most ${MAX_URI} characters.`);
-      return;
-    }
+    if (!issuing || issuing.tenureAppId === null || !permitFile) return;
     setSaving(true);
     try {
       const res = await issueTenureAppPermit(forestFileId, issuing.tenureAppId, {
         hvaSkey: issuing.hvaSkey,
-        documentUri: uri,
+        documentName,
+        recipients,
+        attachDocument,
+        file: permitFile,
       });
       display({
         kind: 'success',
@@ -148,6 +228,14 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
         subtitle: res.message,
         timeout: 7000,
       });
+      if (res.emailWarning) {
+        display({
+          kind: 'warning',
+          title: 'E-mail not sent',
+          subtitle: res.emailWarning,
+          timeout: 15000,
+        });
+      }
       setIssuing(null);
       reload();
       // Issuing sets the file's status to HI.
@@ -461,7 +549,7 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
           ))}
       </AsyncBoundary>
 
-      {/* Issue permit — legacy's Issue Permit popup, without its DM upload and e-mail. */}
+      {/* Issue permit — legacy's Issue Permit popup: upload, issue, e-mail. */}
       <Modal
         open={issuing !== null}
         passiveModal
@@ -473,36 +561,104 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
       >
         <Stack gap={5}>
           <p className="detail-dialog__subtitle">
-            All fields are required unless marked optional. Issuing records the permit document
-            against application {issuing?.tenureAppId}
-            {issuing?.cuttingPermitId ? ` (CP ${issuing.cuttingPermitId})` : ''}, sets it to Issued
-            and the tenure
-            {issuing?.hvaSkey ? ' and its cutting permit' : ''} to HI.
+            Uploads the permit to document management, issues it for application{' '}
+            {issuing?.tenureAppId}
+            {issuing?.cuttingPermitId ? ` (CP ${issuing.cuttingPermitId})` : ''}, setting it to
+            Issued and the tenure
+            {issuing?.hvaSkey ? ' and its cutting permit' : ''} to HI, and e-mails it to the
+            recipients.
           </p>
+          {issueError && (
+            <InlineNotification kind="error" lowContrast hideCloseButton title={issueError} />
+          )}
+          <div>
+            <span className="cds--label">Recipients</span>
+            <p>{recipients.length > 0 ? recipients.join(', ') : '—'}</p>
+          </div>
           <TextInput
-            id="tenureapp-document-uri"
-            labelText="Permit document link"
-            helperText="Link to the issued permit PDF in document management."
-            value={documentUri}
-            maxLength={MAX_URI}
-            invalid={!!uriError}
-            invalidText={uriError}
+            id="tenureapp-email"
+            labelText="Email"
+            value={email}
+            maxLength={MAX_EMAIL}
+            invalid={!!emailError}
+            invalidText={emailError}
             disabled={saving}
             onChange={(e) => {
-              setDocumentUri(e.target.value);
-              setUriError(undefined);
+              setEmail(e.target.value);
+              setEmailError(undefined);
             }}
+          />
+          <TextInput
+            id="tenureapp-reconfirm-email"
+            labelText="Reconfirm email"
+            value={reconfirmEmail}
+            invalid={!!reconfirmError}
+            invalidText={reconfirmError}
+            disabled={saving}
+            onChange={(e) => {
+              setReconfirmEmail(e.target.value);
+              setReconfirmError(undefined);
+            }}
+          />
+          <div>
+            <Button kind="tertiary" size="sm" disabled={saving} onClick={addEmail}>
+              Add email
+            </Button>
+          </div>
+          <TextInput
+            id="tenureapp-document-name"
+            labelText="Document name"
+            value={documentName}
+            disabled={saving}
+            onChange={(e) => {
+              setDocumentName(e.target.value);
+              setIssueError(null);
+            }}
+          />
+          <Checkbox
+            id="tenureapp-attach-document"
+            labelText="Attach document to email"
+            checked={attachDocument}
+            disabled={saving}
+            onChange={(_, { checked }) => setAttachDocument(checked)}
+          />
+          <DragDropFileInput
+            label="Permit PDF"
+            file={permitFile}
+            disabled={saving}
+            onSelect={(f) => {
+              setPermitFile(f);
+              setIssueError(null);
+            }}
+            onRemove={() => setPermitFile(null)}
           />
         </Stack>
         <div className="detail-dialog__actions">
           <Button kind="tertiary" disabled={saving} onClick={closeIssue}>
             Cancel
           </Button>
-          <Button kind="primary" disabled={saving} onClick={() => void submitIssue()}>
-            {saving ? 'Issuing…' : 'Issue permit'}
+          <Button kind="primary" disabled={saving} onClick={startIssue}>
+            {saving ? 'Issuing…' : 'Upload and issue'}
           </Button>
         </div>
       </Modal>
+
+      {/* Legacy's confirm for a file without a .PDF extension. */}
+      <ConfirmationModal
+        open={confirmNotPdf}
+        onClose={() => setConfirmNotPdf(false)}
+        heading="Not a PDF"
+        confirmLabel="Proceed"
+        onConfirm={() => {
+          setConfirmNotPdf(false);
+          void submitIssue();
+        }}
+      >
+        <p>
+          The file you are attempting to upload does not have a .PDF extension. Do you wish to
+          proceed?
+        </p>
+      </ConfirmationModal>
 
       {/* Professional declaration — legacy's Prof Dec popup. */}
       <Modal

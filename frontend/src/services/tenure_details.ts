@@ -1,4 +1,4 @@
-import { apiGet, apiPut } from './http';
+import { apiGet, apiPost, apiPut, toQuery } from './http';
 
 import type { CodeOption } from './codeLists';
 
@@ -87,6 +87,14 @@ export interface TenureDetailsRules {
   statusList: string;
   /** Option list for Purpose. */
   purposeList: string;
+  /** FTA100's Delete is enabled. */
+  deletable: boolean;
+  /** FTA100's Retire is enabled. */
+  retirable: boolean;
+  /** FTA100's Assign Mark Designate is shown and enabled. */
+  assignsMarkDesignate: boolean;
+  /** FTA100's Change Mark Designate (FTA101) is shown and enabled. */
+  changesMarkDesignate: boolean;
 }
 
 /** GET /api/fta/tenures/{id}/details */
@@ -110,3 +118,50 @@ export function updateTenureDetails(
     { revisions, values },
   );
 }
+
+const detailsAction = (forestFileId: string, action: string, revisions: Record<string, string>) =>
+  apiPost<void>(`/api/fta/tenures/${encodeURIComponent(forestFileId)}/details/${action}`, {
+    revisions,
+  });
+
+/** FTA100 Delete (FTA_ADMIN): removes the file and everything under it. */
+export const deleteTenure = (forestFileId: string, revisions: Record<string, string>) =>
+  detailsAction(forestFileId, 'delete', revisions);
+
+/** FTA100 Retire (FTA_ADMIN). */
+export const retireTenure = (forestFileId: string, revisions: Record<string, string>) =>
+  detailsAction(forestFileId, 'retire', revisions);
+
+/** FTA100 Assign Mark Designate (FTA_ADMIN). */
+export const assignTenureMarkDesignate = (
+  forestFileId: string,
+  revisions: Record<string, string>,
+) => detailsAction(forestFileId, 'assign-mark-designate', revisions);
+
+/** FTA101 Change Mark Designate's view: the source file, its designate and the lock. */
+export interface MarkDesignate {
+  forestFileId: string;
+  sourceFileId: string;
+  markDesignate: string;
+  /** This file's TIMBER_TENURE revision count, sent back on save. */
+  revisionCount: string;
+}
+
+/** FTA101 Go (FTA_ADMIN): the source file's designate — this file's when blank. */
+export const getMarkDesignate = (forestFileId: string, sourceFileId: string) =>
+  apiGet<MarkDesignate>(
+    `/api/fta/tenures/${encodeURIComponent(forestFileId)}/details/mark-designate${toQuery({
+      sourceFileId,
+    })}`,
+  );
+
+/** FTA101 Save Designate (FTA_ADMIN): copies the source file's designate onto this file. */
+export const changeTenureMarkDesignate = (
+  forestFileId: string,
+  sourceFileId: string,
+  revisionCount: string,
+) =>
+  apiPost<void>(
+    `/api/fta/tenures/${encodeURIComponent(forestFileId)}/details/change-mark-designate`,
+    { sourceFileId, revisionCount },
+  );

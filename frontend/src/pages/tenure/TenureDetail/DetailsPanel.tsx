@@ -9,8 +9,10 @@ import {
   TextInput,
 } from '@carbon/react';
 import { useEffect, useState, type FC, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
+import ConfirmationModal from '@/components/ConfirmationModal';
 import DetailTile, { type DetailField } from '@/components/DetailTile';
 import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
@@ -19,13 +21,18 @@ import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
 import { getManagementUnits, type CodeOption, type ManagementUnit } from '@/services/codeLists';
 import {
+  assignTenureMarkDesignate,
+  deleteTenure,
   getTenureDetails,
   getTenureDetailsOptions,
+  retireTenure,
   updateTenureDetails,
   type TenureDetails,
 } from '@/services/tenure_details';
 import { formatDate } from '@/utils/formatDate';
 import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
+
+import ChangeMarkDesignateModal from './ChangeMarkDesignateModal';
 
 import type { TenurePanelProps } from './panelProps';
 
@@ -107,8 +114,12 @@ const DetailsView: FC<{ details: TenureDetails; canEdit: boolean; onSaved: () =>
   onSaved,
 }) => {
   const { display } = useNotification();
+  const navigate = useNavigate();
   const { values, descriptions, layout, rules } = details;
   const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState<'delete' | 'retire' | null>(null);
+  const [assigning, setAssigning] = useState(false);
+  const [changingDesignate, setChangingDesignate] = useState(false);
   const [form, setForm] = useState<Record<string, string>>(values);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -218,6 +229,37 @@ const DetailsView: FC<{ details: TenureDetails; canEdit: boolean; onSaved: () =>
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // FTA100's Delete and Retire, each after a confirmation.
+  const onConfirmAction = async () => {
+    if (confirming === 'delete') {
+      await deleteTenure(details.forestFileId, details.revisions);
+      display({ kind: 'success', title: 'Delete successful.', timeout: 5000 });
+      navigate('/tenures');
+    } else if (confirming === 'retire') {
+      await retireTenure(details.forestFileId, details.revisions);
+      display({ kind: 'success', title: 'Retirement successful.', timeout: 5000 });
+      onSaved();
+    }
+  };
+
+  const onAssignMarkDesignate = async () => {
+    setAssigning(true);
+    try {
+      await assignTenureMarkDesignate(details.forestFileId, details.revisions);
+      display({ kind: 'success', title: 'Mark Designate has been assigned.', timeout: 5000 });
+      onSaved();
+    } catch (err) {
+      display({
+        kind: 'error',
+        title: 'Could not assign a mark designate.',
+        subtitle: err instanceof Error ? err.message : 'Request failed',
+        timeout: 12000,
+      });
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -651,6 +693,37 @@ const DetailsView: FC<{ details: TenureDetails; canEdit: boolean; onSaved: () =>
               >
                 Edit
               </Button>
+              {rules.assignsMarkDesignate && (
+                <Button
+                  kind="tertiary"
+                  size="sm"
+                  disabled={assigning}
+                  onClick={() => void onAssignMarkDesignate()}
+                >
+                  {assigning ? 'Assigning…' : 'Assign Mark Designate'}
+                </Button>
+              )}
+              {rules.changesMarkDesignate && (
+                <Button kind="tertiary" size="sm" onClick={() => setChangingDesignate(true)}>
+                  Change Mark Designate
+                </Button>
+              )}
+              <Button
+                kind="tertiary"
+                size="sm"
+                disabled={!rules.retirable}
+                onClick={() => setConfirming('retire')}
+              >
+                Retire
+              </Button>
+              <Button
+                kind="danger--tertiary"
+                size="sm"
+                disabled={!rules.deletable}
+                onClick={() => setConfirming('delete')}
+              >
+                Delete
+              </Button>
             </>
           )}
         </div>
@@ -689,6 +762,29 @@ const DetailsView: FC<{ details: TenureDetails; canEdit: boolean; onSaved: () =>
           ]}
         />
       )}
+
+      <ChangeMarkDesignateModal
+        forestFileId={details.forestFileId}
+        open={changingDesignate}
+        onClose={() => setChangingDesignate(false)}
+        onSaved={onSaved}
+      />
+
+      <ConfirmationModal
+        open={confirming !== null}
+        onClose={() => setConfirming(null)}
+        heading={confirming === 'delete' ? 'Delete tenure' : 'Retire tenure'}
+        confirmLabel={confirming === 'delete' ? 'Delete' : 'Retire'}
+        danger={confirming === 'delete'}
+        errorTitle={
+          confirming === 'delete' ? 'Could not delete the tenure.' : 'Could not retire the tenure.'
+        }
+        onConfirm={onConfirmAction}
+      >
+        {confirming === 'delete'
+          ? `Are you sure you want to delete file ${details.forestFileId}?`
+          : `Are you sure you want to retire file ${details.forestFileId}?`}
+      </ConfirmationModal>
 
       {editing && (
         <div className="detail-edit__actions">

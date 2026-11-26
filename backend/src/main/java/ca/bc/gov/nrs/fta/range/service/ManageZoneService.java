@@ -2,9 +2,11 @@ package ca.bc.gov.nrs.fta.range.service;
 
 import ca.bc.gov.nrs.fta.range.dto.ManageZoneDto;
 import java.util.List;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Manage Range Zone business logic.
@@ -14,9 +16,8 @@ import org.springframework.stereotype.Service;
  * The SQL and column selection are taken directly from the package body's
  * {@code get} procedure — {@code RANGE_ZONE} left-joined to {@code ORG_UNIT} on
  * the administering forest district. The WHERE clause mirrors the package
- * filters (district, and optionally the zone code) — each filter is applied
- * only when its bind value is supplied (NVL-style), matching the legacy
- * behaviour.
+ * filters: the district, which is required as legacy's GET required it, and
+ * optionally the zone code.
  *
  * <p>The SQL runs against the BC Gov shared Oracle ({@code THE}) via the
  * configured {@code DataSource}; there is no local database, so it is exercised
@@ -46,7 +47,7 @@ public class ManageZoneService {
         FROM the.range_zone ranz
         LEFT JOIN the.org_unit org
                ON ranz.admin_forest_district_no = org.org_unit_no
-       WHERE (:adminForestDistrictNo IS NULL OR ranz.admin_forest_district_no = :adminForestDistrictNo)
+       WHERE ranz.admin_forest_district_no = :adminForestDistrictNo
          AND (:rangeZoneCode IS NULL OR ranz.range_zone_code = :rangeZoneCode)
        ORDER BY ranz.range_zone_code
       """;
@@ -54,12 +55,20 @@ public class ManageZoneService {
   /**
    * Retrieve range zones — mirrors {@code FTA_631_RANGE_ZONE.get}.
    *
-   * @param adminForestDistrictNo administering forest-district org-unit number, or null
+   * @param adminForestDistrictNo administering forest-district org-unit number; required
    * @param rangeZoneCode         exact range-zone code, or null
+   * @throws ResponseStatusException 400 if the district is missing or not a number
    */
   public List<ManageZoneDto> search(String adminForestDistrictNo, String rangeZoneCode) {
+    String district = blankToNull(adminForestDistrictNo);
+    if (district == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "District is mandatory.");
+    }
+    if (!district.trim().matches("\\d{1,10}")) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "District is not valid.");
+    }
     MapSqlParameterSource params = new MapSqlParameterSource()
-        .addValue("adminForestDistrictNo", blankToNull(adminForestDistrictNo))
+        .addValue("adminForestDistrictNo", Long.parseLong(district.trim()))
         .addValue("rangeZoneCode", blankToNull(rangeZoneCode));
 
     return jdbc.query(SEARCH_SQL, params, (rs, rowNum) -> new ManageZoneDto(

@@ -54,6 +54,11 @@ public class CodeListController {
     return ResponseEntity.ok(codeListService.districtOrgUnits());
   }
 
+  @GetMapping("/billing-report-districts")
+  public ResponseEntity<List<CodeOptionDto>> billingReportDistricts() {
+    return ResponseEntity.ok(codeListService.billingReportDistricts());
+  }
+
   @GetMapping("/tenure-admin-org-units")
   public ResponseEntity<List<CodeOptionDto>> tenureAdminOrgUnits() {
     return ResponseEntity.ok(codeListService.tenureAdminOrgUnits());
@@ -108,6 +113,12 @@ public class CodeListController {
   @GetMapping("/file-types")
   public ResponseEntity<List<CodeOptionDto>> fileTypes() {
     return ResponseEntity.ok(codeListService.fileTypes());
+  }
+
+  /** The file types Add New Tenure offers. */
+  @GetMapping("/add-new-file-types")
+  public ResponseEntity<List<CodeOptionDto>> addNewFileTypes() {
+    return ResponseEntity.ok(codeListService.addNewFileTypes());
   }
 
   @GetMapping("/file-statuses")

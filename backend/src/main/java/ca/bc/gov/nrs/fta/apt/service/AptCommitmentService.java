@@ -275,6 +275,13 @@ public class AptCommitmentService {
 
   private static final String NEXT_ID_SQL = "SELECT the.comm_seq.NEXTVAL FROM dual";
 
+  /** {@code COMM_LIC_FK}: a commitment needs the licence's APT record. */
+  static final String LICENCE_EXISTS_SQL =
+      "SELECT COUNT(*) FROM the.apt_licences WHERE forest_file_id = :forestFileId";
+
+  static final String NO_LICENCE =
+      "Set the licence's FOA Type before adding commitments to it.";
+
   private static final String INSERT_SQL =
       """
       INSERT INTO the.apt_commitments (
@@ -394,6 +401,15 @@ public class AptCommitmentService {
     return rows;
   }
 
+  /** A 400 rather than {@code COMM_LIC_FK}'s ORA-02291 when the licence has no APT record. */
+  private void requireLicence(AptCommitmentRequest request) {
+    Long n = jdbc.queryForObject(LICENCE_EXISTS_SQL,
+        new MapSqlParameterSource("forestFileId", request.forestFileId().trim()), Long.class);
+    if (n == null || n == 0) {
+      refuse(NO_LICENCE);
+    }
+  }
+
   /**
    * Creates a commitment, journals it ({@code INS}) and returns it as stored, with the id
    * {@code COMM_SEQ} gave it.
@@ -401,6 +417,7 @@ public class AptCommitmentService {
   @Transactional
   public AptCommitmentDto create(AptCommitmentRequest request, String user) {
     refuse(AptCommitmentRules.problem(request, false));
+    requireLicence(request);
     Long id = jdbc.getJdbcTemplate().queryForObject(NEXT_ID_SQL, Long.class);
     if (id == null) {
       throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
@@ -422,6 +439,7 @@ public class AptCommitmentService {
   public AptCommitmentDto update(long id, AptCommitmentRequest request, String user) {
     refuse(AptCommitmentRules.problem(request, true));
     get(id);
+    requireLicence(request);
     MapSqlParameterSource p = values(id, request);
     if (write(UPDATE_SQL, p) == 0) {
       throw notFound(id);

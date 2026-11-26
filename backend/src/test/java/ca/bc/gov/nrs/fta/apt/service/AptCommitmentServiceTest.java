@@ -20,6 +20,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -49,6 +50,12 @@ class AptCommitmentServiceTest {
   private final NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
   private final JdbcTemplate plain = mock(JdbcTemplate.class);
   private final AptCommitmentService service = new AptCommitmentService(jdbc);
+
+  @BeforeEach
+  void theLicenceHasItsAptRecord() {
+    when(jdbc.queryForObject(eq(AptCommitmentService.LICENCE_EXISTS_SQL),
+        any(SqlParameterSource.class), eq(Long.class))).thenReturn(1L);
+  }
 
   private static AptCommitmentRequest request(String reason) {
     return new AptCommitmentRequest(5L, " a12345 ", " C ", " FL ", new BigDecimal("1000"), "Y",
@@ -144,6 +151,19 @@ class AptCommitmentServiceTest {
           assertThat(e.getReason()).isEqualTo(
               "ORA-02291: integrity constraint (THE.COMM_LIC_FK) violated - parent key not found");
         });
+  }
+
+  @Test
+  void aLicenceWithoutItsAptRecordIsRefusedBeforeTheInsert() {
+    when(jdbc.queryForObject(eq(AptCommitmentService.LICENCE_EXISTS_SQL),
+        any(SqlParameterSource.class), eq(Long.class))).thenReturn(0L);
+
+    assertThatThrownBy(() -> service.create(request(null), USER))
+        .isInstanceOfSatisfying(ResponseStatusException.class, e -> {
+          assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+          assertThat(e.getReason()).isEqualTo(AptCommitmentService.NO_LICENCE);
+        });
+    verify(jdbc, never()).update(anyString(), any(SqlParameterSource.class));
   }
 
   @Test

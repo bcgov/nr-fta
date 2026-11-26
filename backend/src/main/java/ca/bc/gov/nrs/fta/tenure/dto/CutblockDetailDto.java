@@ -22,6 +22,7 @@ public record CutblockDetailDto(
     long cbRevisionCount,
     Long cboaRevisionCount,
     String fileTypeCode,
+    String fileStatusCode,
     String forestFileId,
     String cuttingPermitId,
     String cutBlockId,

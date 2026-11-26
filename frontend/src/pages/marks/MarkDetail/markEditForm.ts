@@ -138,6 +138,8 @@ export const issuing = (form: MarkEditForm, mark: MarkDetail) =>
 
 const today = () => new Date().toISOString().slice(0, 10);
 const CROWN_GRANT_CUTOVER = '1906-03-12';
+/** A number as Oracle's TO_NUMBER reads one. */
+const NUMBER = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
 
 /**
  * The legacy form's "Save" checks, for fields the rules open — so mistakes show
@@ -200,7 +202,7 @@ export function validate(
     }
 
     // B08 marks are crown granted before the cut-over, B09 on or after it; they
-    // take a date or a description (a year), exactly one. The type being assigned
+    // take a date or a description, exactly one; a numeric description is a year. The type being assigned
     // counts too: legacy checked these on the Save that issued the mark.
     const type = form.fileTypeCode || mark.fileTypeCode;
     if (type === 'B08' || type === 'B09') {
@@ -214,8 +216,9 @@ export function validate(
           e.grantedAcqrdDate = 'Must be before 1906-03-12 for mark type B08.';
         if (type === 'B09' && form.grantedAcqrdDate < CROWN_GRANT_CUTOVER)
           e.grantedAcqrdDate = 'Must be on or after 1906-03-12 for mark type B09.';
-      } else if (/^\d{4}$/.test(form.crownGrantedAcqDesc.trim())) {
-        const year = Number(form.crownGrantedAcqDesc.trim());
+      } else if (NUMBER.test(form.crownGrantedAcqDesc.trim())) {
+        // Legacy reads any number as the year, rounded to a whole one (FTA_510's l_is_year).
+        const year = Math.round(Number(form.crownGrantedAcqDesc.trim()));
         if (type === 'B08' && year > 1906)
           e.crownGrantedAcqDesc = 'The year must be 1906 or earlier for mark type B08.';
         if (type === 'B09' && year < 1906)

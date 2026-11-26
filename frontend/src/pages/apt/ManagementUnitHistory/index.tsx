@@ -1,4 +1,12 @@
-import { Add, ArrowLeft, Calendar, ChartColumn, Edit, TableSplit } from '@carbon/icons-react';
+import {
+  Add,
+  ArrowLeft,
+  Calendar,
+  ChartColumn,
+  Edit,
+  Enterprise,
+  TableSplit,
+} from '@carbon/icons-react';
 import {
   Button,
   Table,
@@ -17,11 +25,9 @@ import AsyncBoundary from '@/components/AsyncBoundary';
 import DefinitionGrid from '@/components/DefinitionGrid';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { SectionTile } from '@/components/SectionTile';
-import Tombstone from '@/components/Tombstone';
 import UserName from '@/components/UserName';
 import { useAuth } from '@/context/auth/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
-import ManagementUnitEditModal from '@/pages/apt/ManagementUnitEdit/ManagementUnitEditModal';
 import { useMuTypeName } from '@/pages/apt/muTypes';
 import PageLayout from '@/pages/PageLayout';
 import { canEditApt } from '@/routes/access';
@@ -35,6 +41,8 @@ import {
 
 import HistoryModal from './HistoryModal';
 import { dash, day, num } from './shared';
+import { useUnitEdit } from './useUnitEdit';
+import './ManagementUnitHistory.css';
 
 const COLUMNS = ['Effective date', 'AAC (m³)', 'AAC (ha)', 'Comment'];
 
@@ -60,8 +68,8 @@ const detailItems = (h: AptManagementUnitHistory) => [
 /**
  * APTM1000 — a management unit and its AAC determinations, newest first (APT2's
  * ManagementUnitsHistory). Selecting a determination shows its detail; from there its
- * partitions and apportionments open. APT administrators edit the unit, add a determination
- * (starting from the selected one) and edit the selected one.
+ * partitions and apportionments open. APT administrators edit the unit in place, add a
+ * determination (starting from the selected one) and edit the selected one.
  */
 const ManagementUnitHistoryPage: FC = () => {
   const muType = useMuTypeName();
@@ -89,7 +97,8 @@ const ManagementUnitHistoryPage: FC = () => {
 
   const [picked, setPicked] = useState<number | null>(null);
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
-  const [editingUnit, setEditingUnit] = useState(false);
+  // The Management unit section's fields, edited in place.
+  const edit = useUnitEdit(unit, () => refresh());
   // Newest first, as the routine orders them; the newest is shown until one is picked.
   const selected = history.find((h) => h.id === picked) ?? history[0] ?? null;
 
@@ -104,13 +113,6 @@ const ManagementUnitHistoryPage: FC = () => {
           <ArrowLeft size={16} /> Back to Management Units
         </Link>
       }
-      actions={
-        unit && canEdit ? (
-          <Button size="md" kind="tertiary" renderIcon={Edit} onClick={() => setEditingUnit(true)}>
-            Edit management unit
-          </Button>
-        ) : undefined
-      }
     >
       <AsyncBoundary
         loading={loading}
@@ -120,27 +122,75 @@ const ManagementUnitHistoryPage: FC = () => {
       >
         {unit && (
           <>
-            <Tombstone
-              ariaLabel="Management unit summary"
-              items={[
-                { label: 'Name', value: dash(unit.mgmtUnitName) },
-                { label: 'Management unit type', value: dash(muType(unit.aptMgmtUnitSt)) },
-                { label: 'Management unit no.', value: dash(unit.mgmtUnitNumber) },
-                { label: 'Status', value: dash(statusName) },
-                { label: 'Status effective', value: day(unit.statusEffectiveDate) },
-                { label: 'Org unit', value: dash(unit.orgUnitName) },
-                {
-                  label: 'Source management unit',
-                  value: unit.muId ? (
-                    <Link to={aptPaths.managementUnitHistory(unit.muId)}>
-                      {unit.srcMgmtUnitName ?? unit.muId}
-                    </Link>
-                  ) : (
-                    '—'
-                  ),
-                },
-              ]}
-            />
+            <div className={`apt-mu__top${edit.editing ? ' detail-edit' : ''}`}>
+              <SectionTile
+                title="Management unit"
+                icon={Enterprise}
+                actions={
+                  canEdit && !edit.editing ? (
+                    <Button kind="tertiary" size="sm" renderIcon={Edit} onClick={edit.start}>
+                      Edit management unit
+                    </Button>
+                  ) : undefined
+                }
+              >
+                <DefinitionGrid
+                  items={[
+                    { label: 'Name', value: dash(unit.mgmtUnitName) },
+                    { label: 'Management unit type', value: dash(muType(unit.aptMgmtUnitSt)) },
+                    { label: 'Management unit no.', value: dash(unit.mgmtUnitNumber) },
+                    {
+                      label: 'Status',
+                      value: edit.editing ? edit.inputs.status : dash(statusName),
+                    },
+                    {
+                      label: 'Status effective',
+                      value: edit.editing
+                        ? edit.inputs.effectiveDate
+                        : day(unit.statusEffectiveDate),
+                    },
+                    {
+                      label: 'Org unit',
+                      value: edit.editing ? edit.inputs.orgUnit : dash(unit.orgUnitName),
+                    },
+                    {
+                      label: edit.editing
+                        ? 'Source management unit (optional)'
+                        : 'Source management unit',
+                      value: edit.editing ? (
+                        edit.inputs.source
+                      ) : unit.muId ? (
+                        <Link to={aptPaths.managementUnitHistory(unit.muId)}>
+                          {unit.srcMgmtUnitName ?? unit.muId}
+                        </Link>
+                      ) : (
+                        '—'
+                      ),
+                    },
+                    {
+                      label: edit.editing ? 'Comments (optional)' : 'Comments',
+                      value: edit.editing ? edit.inputs.comments : dash(unit.comments),
+                      wide: edit.editing,
+                    },
+                  ]}
+                />
+                {edit.editing && (
+                  <div className="detail-edit__actions">
+                    <Button kind="tertiary" size="md" disabled={edit.saving} onClick={edit.cancel}>
+                      Cancel
+                    </Button>
+                    <Button
+                      kind="primary"
+                      size="md"
+                      disabled={edit.saving}
+                      onClick={() => void edit.save()}
+                    >
+                      {edit.saving ? 'Saving…' : 'Save changes'}
+                    </Button>
+                  </div>
+                )}
+              </SectionTile>
+            </div>
 
             <SectionTile
               title="AAC determinations"
@@ -253,14 +303,6 @@ const ManagementUnitHistoryPage: FC = () => {
             setPicked(saved.id);
             refresh();
           }}
-        />
-      )}
-      {unit && canEdit && (
-        <ManagementUnitEditModal
-          open={editingUnit}
-          unitId={unit.id}
-          onClose={() => setEditingUnit(false)}
-          onSaved={() => refresh()}
         />
       )}
     </PageLayout>

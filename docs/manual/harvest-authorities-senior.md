@@ -47,6 +47,8 @@ in the profile panel at the top right.
 4. Choose a **Sort by** order (**District**, **Client name** or **File
    type**) and select **Search**.
 
+**District** starts with your default district, if you have one.
+
 **File ID**, **Cutting permit**, **HVA ID** and **Timber mark** match in upper
 or lower case. In **Client**, type at least three characters of a client
 number or name and pick from the list; it lists clients with that text
@@ -84,8 +86,9 @@ while the browser tab stays open.
      fewer, and the ID can't already be in use on the tenure.
    - **District**: starts as the tenure's own organization unit when that is a district; otherwise choose one.
    - **Term (months)**: 1 to 48 months (1 to 60 for an A11).
-   - **Area (Hectares) (optional)** and **Geographic Location (optional)**, up to 50
-     characters.
+   - **Area (Hectares) (optional)**: up to 9,999,999.9999, with up to 4
+     decimal places.
+   - **Geographic Location (optional)**: up to 50 characters.
    - **Compliance Method** and **Marking Instrument**. They start as full
      standard marking with a hammer. The instrument is optional only for
      method E.
@@ -116,11 +119,19 @@ The tabs are:
 |---|---|
 | **Details** | **Permit details** (including the area, **Zone**, **Land Region** and **Geographic Location**), **Issuance conditions** (including the fee, **Within Fibre Recovery Zone**, **Deciduous**, **Catastrophic** and **Cruise Based** answers), and **Term and status** (status, tenure term, issue, expiry and extension dates, extension reason and count). The area is **Schedule B (ha)** on file types A02, A04, A44, A28 and A29, with **Schedule A (ha)** (private land) beside it, and **Area (ha)** on the rest. |
 | **Cut blocks** | The permit's blocks with their status, salvage type, harvest dates and areas. Select a block to open it. Blocks are added on the tenure's **Cut block** tab. |
-| **Harvest history** | What has been billed to the permit's timber mark, by calendar year. |
+| **Harvest history** | What has been billed to the permit's timber mark, by calendar year. **Print Mark Report** downloads the mark's billing as a PDF, by species and billing type. |
 | **Conditions** | The permit's issuance conditions. |
 | **Postponements** | The permit's harvesting postponements. |
 
 ![A cutting permit's detail page](images/ha-cutting-permit.png)
+
+The **Details** tab may open with a message:
+
+- "There have been suspended blocks in this cutting permit. Ensure that the
+  Expiry Date is correct." when any of the permit's blocks has been
+  suspended.
+- "The Postponement Period has expired." when the permit is **HP** and its
+  latest postponement has ended.
 
 The action buttons at the top depend on the permit's status (see
 [Statuses](#statuses)):
@@ -128,7 +139,8 @@ The action buttons at the top depend on the permit's status (see
 | Button | What it does |
 |---|---|
 | **Edit permit** | Change the permit's status, dates, terms and other fields. |
-| **Assign marks to blocks** | Give each block one of the permit's timber marks. Shown only on Fort St. John authorizations, which carry several marks. |
+| **Letter** | Download the Fort St. John harvest authorization letter as a PDF. Shown only on Fort St. John authorizations. |
+| **Assign marks to blocks** | Give each block one of the permit's timber marks. Shown only on Fort St. John authorizations, which carry several marks, whatever the permit's status. |
 | **Suspend blocks** | Suspend several of the permit's blocks under one partition order. |
 | **Retire** | Retire a permit in status HC or HRS. |
 | **Delete** | Delete a permit in status EE. |
@@ -157,6 +169,13 @@ FTA locks the fields that can't change for the permit's status or your role:
 - **Compliance Method** and **Marking Instrument**: not on Fort St. John
   authorizations.
 - **Purpose**: shown only for file type A18.
+- **Zone** takes up to 4 characters, **Management Unit Type** 1 and
+  **Management Unit** 4. The area can be up to 9,999,999.9999 hectares, with
+  up to 4 decimal places.
+- If you leave **Expires** blank while it is open, FTA calculates it from the
+  **Issue Date** and the mark term when you save.
+- **Within Fibre Recovery Zone** shows **No** on a **PI** or **PE** permit
+  when the answer isn't known.
 
 The other fields (**Quota Type**, **Salvage Type**, **Zone**, **Geographic Location**,
 **Land Region**, **Management Unit Type**, **Management Unit**,
@@ -164,7 +183,9 @@ The other fields (**Quota Type**, **Salvage Type**, **Zone**, **Geographic Locat
 Zone**) can be changed whenever the permit can be saved. **Catastrophic** is
 required on a tenure awarded before April 1, 2006, unless you save the permit
 as **EE** or **HX**. If FTA
-saves the permit with warnings, they appear in the confirmation message.
+saves the permit with warnings, they appear in the confirmation message. For
+example, "Issue Date precedes file issue/award date." when the permit's
+**Issue Date** is before the tenure's award date.
 
 ![The Edit cutting permit dialog](images/ha-edit-cutting-permit.png)
 
@@ -172,7 +193,8 @@ saves the permit with warnings, they appear in the confirmation message.
 
 1. On the permit, open the **Conditions** tab.
 2. Select **Add condition**.
-3. Choose the **Permit Issuance Condition**. A **Condition Description** is
+3. Choose the **Permit Issuance Condition** (required; only current ones
+   are listed). A **Condition Description** is
    required for OTHER and optional for the rest (up to the length shown by
    the counter).
 4. Select **Add condition**.
@@ -186,8 +208,12 @@ To remove one, select its delete icon and confirm **Delete**.
    or **HP**, issued on or after November 4, 2003, whose latest postponement
    was not rescinded.
 3. Enter the **Start** date and either an **Expiry** date or a term
-   (**Term (years)**, **Term (months)**).
-4. Select **Save**.
+   (**Term (years)**, **Term (months)**). When the permit already has a
+   postponement, **Start** begins as the day after the latest one expires.
+   Once the permit has more than one postponement, **Start** is locked.
+4. Select **Save**, then **Save** again when FTA asks "You are about to
+   CREATE a NEW postponement period. Are you sure?" (or, for a change, "You
+   are about to UPDATE a postponement period. Are you sure?").
 
 The permit moves to status **HP** and its expiry date is pushed out. The
 table keeps each postponement's **Previous CP Expiry**, **Start**,
@@ -260,13 +286,16 @@ CSV** to download them, and select a row to open the block.
    the tenure. When the tenure has several permits, filter the list by
    cutting permit. Any block suspensions are listed below the blocks under
    **Cut block suspensions**.
-2. Select **Add cut block**. Blocks can be added only to a salvage cutting
-   permit, or to a B04 or B07 with a purpose of SS, and not while the permit
-   is **PE**.
+2. Select **Add cut block**. Blocks can be added to any cutting permit on a
+   B05, B06 or B07 tenure. On a B04, the permit needs a purpose of SS or a
+   salvage type; on other tenures, a salvage type. Blocks can't be added
+   while the permit is **PE**.
 3. In the **Add cut block** dialog, choose the **Cutting permit**, enter the
    **Cut Block** (up to 10 characters), **Planned Gross Area (ha)**,
-   **Planned Net Area (ha)**, **SP Exempt** and **Waste Assessment
-   Required**, plus any optional fields.
+   **Planned Net Area (ha)**, **SP Exempt** (starts as **No**) and **Waste
+   Assessment Required**, plus any optional fields. **Waste Assessment
+   Required** can be left blank, except on B05, B06 and B07 tenures, which
+   need **Yes** or **No**.
 4. Select **Add cut block**.
 
 The block starts in status **PP** under the permit's timber mark. For
@@ -310,17 +339,26 @@ The tabs are:
    tile, or **Edit areas and dates** on the **Areas and dates** tile.
 2. Make your changes and select **Save**.
 
+The edit buttons are shown only when the block can be edited: not while the
+block or its tenure file is **PE**.
+
 Some fields lock depending on the block:
 
 - **Status** can't change while the block is **PE**, or when its file is
-  **HX** or **HC**. When you change the status, enter a **District Override
-  Reason** if FTA asks for one.
+  **HX** or **HC**.
+- **District Override Reason** appears when you change the status in a way
+  that needs one (for example, moving a block back to an earlier status,
+  suspending it or cancelling it). It is then required, up to 60
+  characters.
 - **Planned Gross (ha)** and **Planned Start** are locked when the block has
   a mapped area.
 - **Logged Area (ha)**, **Logged Start**, **Logged Complete** and **SP
   Exempt** are locked when the block has an opening.
 - A block in status **LC** needs a logged area, and the **Logged Complete**
   date is required when you change the status to **LC**.
+- **Waste Assessment Req'd** offers a blank choice, **Yes** and **No**.
+- A code you change (such as **Status** or **Cut Management**) must still be
+  current; FTA refuses an expired one.
 
 ### Re-label a cut block
 
@@ -336,16 +374,18 @@ message reminds you.
 ### Suspend a cut block or change its suspension
 
 1. On the block, select **Suspend**. It is shown for a block in status
-   **HB** or **PP** that has never been suspended.
+   **HB** or **PP** that has never been suspended, when the block could
+   otherwise be edited.
 2. Enter the four **Suspension details** (as for [suspending several
    blocks](#suspend-several-blocks-on-a-permit)) and select **Suspend
    block**. The block moves to **HS**.
 
-While the block is **HS**, select **Edit suspension** instead. You can then:
+While the block is **HS**, select **Edit suspension** instead (shown on
+the same condition). You can then:
 
 - **Save suspension**: save changes to the suspension details.
-- **End suspension**: choose the **Post-Suspension Cut Block Status** and end
-  the suspension.
+- **End suspension**: choose the **Post-Suspension Cut Block Status** (**HS**
+  included) and end the suspension.
 - **Delete suspension**: remove it. The block returns to the status it had
   before it was suspended.
 
@@ -360,7 +400,7 @@ statuses that change what you can do:
 
 | Status | Description | What it means in FTA |
 |---|---|---|
-| **PE** | Pending Electronic | Where a new cutting permit starts. Nothing on a PE permit or block can be edited, and blocks can't be added to it. A permit's blocks in PE can still be suspended with **Suspend blocks**. |
+| **PE** | Pending Electronic | Where a new cutting permit starts. Nothing on a PE permit or block, or on a block of a PE tenure file, can be edited, and blocks can't be added to it. A permit's blocks in PE can still be suspended with **Suspend blocks**. |
 | **PP** | Proposed | A permit's area can still be changed. A new cut block starts here. A PP block can be suspended. |
 | **PL** | Planned TSL | A permit's area can still be changed. |
 | **PI** | Pending Issuance | A permit's area can still be changed. A permit's PI blocks can be suspended with **Suspend blocks**. |

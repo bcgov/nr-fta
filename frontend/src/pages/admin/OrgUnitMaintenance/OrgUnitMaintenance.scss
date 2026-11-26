@@ -1,3 +1,8 @@
-.org-unit-maintenance__field {
-  max-width: 28rem;
+.org-unit-maintenance__table {
+  max-width: 40rem;
+  margin-top: 1rem;
+
+  label {
+    cursor: pointer;
+  }
 }

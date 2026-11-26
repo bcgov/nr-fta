@@ -25,9 +25,12 @@ class TenureCreateRulesTest {
     assertThat(TenureCreateRules.initialStatus("A01", false)).isEqualTo("PP");
     assertThat(TenureCreateRules.initialStatus("U1", false)).isEqualTo("PP");
     assertThat(TenureCreateRules.initialStatus("B07", false)).isEqualTo("PP");
-    assertThat(TenureCreateRules.initialStatus("S01", true)).isEqualTo("PP");
     assertThat(TenureCreateRules.initialStatus("B10", false)).isEqualTo("PA");
+    // Recreation files start PA, as Fta100TenureAction set them.
     assertThat(TenureCreateRules.initialStatus("S01", false)).isEqualTo("PA");
+    // Submit Spatial Later = Y makes a licence to cut PA (ADD_NEW_REC).
+    assertThat(TenureCreateRules.initialStatus("B05", true)).isEqualTo("PA");
+    assertThat(TenureCreateRules.initialStatus("A01", true)).isEqualTo("PP");
   }
 
   @Test
@@ -57,13 +60,45 @@ class TenureCreateRulesTest {
 
   @Test
   void licencesToCutGetTheirTimberMarkAndHauling() {
-    assertThat(TenureCreateRules.timberMark("B05", "L12345")).isEqualTo("L12345");
-    assertThat(TenureCreateRules.timberMark("B07", "D12345")).isEqualTo("12345");
+    assertThat(TenureCreateRules.timberMark("B05", "L12345", "A")).isEqualTo("L12345");
+    assertThat(TenureCreateRules.timberMark("B07", "A12345", "A")).isEqualTo("12345");
+    // A cash sale's mark is its whole D id.
+    assertThat(TenureCreateRules.timberMark("B07", "D12345", "C")).isEqualTo("D12345");
     assertThat(TenureCreateRules.salvageType("SS")).isEqualTo("SSS");
     assertThat(TenureCreateRules.salvageType("OT")).isNull();
-    assertThat(TenureCreateRules.createsHaulingAuthority("B05", "DT")).isFalse();
-    assertThat(TenureCreateRules.createsHaulingAuthority("B07", "DT")).isTrue();
-    assertThat(TenureCreateRules.createsHaulingAuthority("B06", "OT")).isTrue();
+    assertThat(TenureCreateRules.createsHaulingAuthority("B05", "DT", "N")).isFalse();
+    assertThat(TenureCreateRules.createsHaulingAuthority("B07", "DT", "N")).isTrue();
+    assertThat(TenureCreateRules.createsHaulingAuthority("B07", "DT", "Y")).isFalse();
+    assertThat(TenureCreateRules.createsHaulingAuthority("B07", "RW", "Y")).isTrue();
+    assertThat(TenureCreateRules.createsHaulingAuthority("B06", "OT", "N")).isTrue();
+  }
+
+  @Test
+  void licenceToCutFieldsAreLinkedAsInFta100() {
+    assertThat(TenureCreateRules.needsQuotaType("B07")).isTrue();
+    assertThat(TenureCreateRules.licenceToCutLinkErrors("B07", "PA", "C", "N", "A"))
+        .containsExactly("If purpose is PA then quota type can only be P.");
+    assertThat(TenureCreateRules.licenceToCutLinkErrors("B05", "PA", "P", "N", "A")).isEmpty();
+    assertThat(TenureCreateRules.licenceToCutLinkErrors("B07", "RW", "C", "Y", "A"))
+        .containsExactly("If BCTS Fund is Y then Quota Type must be D.");
+    assertThat(TenureCreateRules.licenceToCutLinkErrors("B07", "RW", "D", "N", "A"))
+        .containsExactly("Quota type should be C-Forest Service Reserve if this sale is not"
+            + " BCTS funded.");
+    assertThat(TenureCreateRules.licenceToCutLinkErrors("B07", "RW", "D", "Y", "C")).isEmpty();
+    assertThat(TenureCreateRules.licenceToCutLinkErrors("B07", "FN", "C", "N", "C"))
+        .containsExactly("Cash Sales not allowed for PA-Pulpwood or FN-First Nations Forestry"
+            + " Licence To Cut.");
+  }
+
+  @Test
+  void addNewAsksWhatFta100AskedByType() {
+    assertThat(TenureCreateRules.asksBctsFundAndPayment("B07")).isTrue();
+    assertThat(TenureCreateRules.asksBctsFundAndPayment("B05")).isFalse();
+    assertThat(TenureCreateRules.asksSpatialLater("B06", "PP")).isTrue();
+    assertThat(TenureCreateRules.asksSpatialLater("B06", "HI")).isFalse();
+    assertThat(TenureCreateRules.asksSpatialLater("A01", "PP")).isFalse();
+    assertThat(TenureCreateRules.asksSalvage("A41")).isTrue();
+    assertThat(TenureCreateRules.asksSalvage("A03")).isFalse();
   }
 
   @Test
@@ -92,15 +127,18 @@ class TenureCreateRulesTest {
 
   @Test
   void harvestSaleCodesFollowCreateHarvestSale() {
-    assertThat(TenureCreateRules.harvestSale("A03", null))
+    assertThat(TenureCreateRules.harvestSale("A03", null, ""))
         .isEqualTo(new TenureCreateRules.HarvestSale("T", "SL", "N", "N"));
-    assertThat(TenureCreateRules.harvestSale("A04", null))
+    assertThat(TenureCreateRules.harvestSale("A04", null, ""))
         .isEqualTo(new TenureCreateRules.HarvestSale(null, null, "N", null));
-    assertThat(TenureCreateRules.harvestSale("A31", null).salvageInd()).isEqualTo("Y");
-    assertThat(TenureCreateRules.harvestSale("B07", "SS"))
+    assertThat(TenureCreateRules.harvestSale("A31", null, "").salvageInd()).isEqualTo("Y");
+    assertThat(TenureCreateRules.harvestSale("B07", "SS", ""))
         .isEqualTo(new TenureCreateRules.HarvestSale("D", null, "Y", null));
-    assertThat(TenureCreateRules.harvestSale("B02", null).saleType()).isEqualTo("SP");
-    assertThat(TenureCreateRules.harvestSale("A23", null).plannedCategory()).isEqualTo("2");
+    assertThat(TenureCreateRules.harvestSale("B02", null, "").saleType()).isEqualTo("SP");
+    assertThat(TenureCreateRules.harvestSale("A23", null, "").plannedCategory()).isEqualTo("2");
+    // A01, A18 and A41 store the Salvage answer; other types ignore it.
+    assertThat(TenureCreateRules.harvestSale("A18", null, "Y").salvageInd()).isEqualTo("Y");
+    assertThat(TenureCreateRules.harvestSale("A03", null, "Y").salvageInd()).isEqualTo("N");
   }
 
   @Test

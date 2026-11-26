@@ -56,7 +56,9 @@ const InvoicePreview: FC = () => {
     void load(f, year);
   };
 
-  const canGo = file.trim() !== '' && /^\d{4}$/.test(year);
+  // Legacy's calendarYearRange: no year after this one.
+  const future = /^\d{4}$/.test(year) && Number(year) > Number(thisYear());
+  const canGo = file.trim() !== '' && /^\d{4}$/.test(year) && !future;
 
   return (
     <PageLayout
@@ -82,6 +84,8 @@ const InvoicePreview: FC = () => {
                 id="inv-year"
                 labelText="Year"
                 value={year}
+                invalid={future}
+                invalidText="Year must be less than or equal to Current Year."
                 onChange={(e) => setYear(e.target.value.replace(/\D/g, ''))}
                 maxLength={4}
                 inputMode="numeric"

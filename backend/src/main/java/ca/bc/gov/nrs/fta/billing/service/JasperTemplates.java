@@ -14,19 +14,22 @@ import net.sf.jasperreports.engine.JasperReport;
 import net.sf.jasperreports.engine.data.JRMapCollectionDataSource;
 import org.springframework.core.io.ClassPathResource;
 
-/** The range billing reports' JRXML, compiled once each, and filled to PDF. */
-final class JasperTemplates {
+/**
+ * The range billing reports' JRXML (and the FTA675 audit reports'), compiled once each, and
+ * filled to PDF.
+ */
+public final class JasperTemplates {
 
   private static final Map<String, JasperReport> COMPILED = new ConcurrentHashMap<>();
 
   private JasperTemplates() {}
 
-  static JasperReport get(String path) {
+  public static JasperReport get(String path) {
     return COMPILED.computeIfAbsent(path, JasperTemplates::compile);
   }
 
   /** Fills {@code path} with {@code rows} and the parameters, as a PDF. */
-  static byte[] pdf(String path, Map<String, Object> params, List<Map<String, ?>> rows) {
+  public static byte[] pdf(String path, Map<String, Object> params, List<Map<String, ?>> rows) {
     try {
       JasperPrint print = JasperFillManager.fillReport(
           get(path), params, new JRMapCollectionDataSource(rows));

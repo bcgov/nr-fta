@@ -19,8 +19,14 @@ const money = new Intl.NumberFormat('en-CA', {
 });
 const fmt = (n: number | null) => (n == null ? '' : money.format(n));
 
+/** FTA695's tax label: HST for 2011 and 2012 (B.C.'s HST years), GST otherwise. */
+const taxLabel = (year: string) => {
+  const y = Number(year);
+  return y > 2010 && y < 2013 ? 'HST' : 'GST';
+};
+
 /**
- * FTA695's invoice: who it is for, then the charge lines, subtotal, GST and
+ * FTA695's invoice: who it is for, then the charge lines, subtotal, GST or HST and
  * total. Shared by the Invoice Preview screen and FTA680's Preview.
  */
 const InvoiceView: FC<{ invoice: InvoicePreview }> = ({ invoice: v }) => {
@@ -67,7 +73,9 @@ const InvoiceView: FC<{ invoice: InvoicePreview }> = ({ invoice: v }) => {
               </TableRow>
               <TableRow>
                 <TableCell />
-                <TableCell>GST @ {v.taxRate}%</TableCell>
+                <TableCell>
+                  {taxLabel(v.calendarYear)} @ {v.taxRate}%
+                </TableCell>
                 <TableCell className="billing__num">{fmt(v.taxAmount)}</TableCell>
               </TableRow>
               <TableRow className="table-total-row">

@@ -97,6 +97,13 @@ class HarvestAuthorizationRulesTest {
     "PUT, /api/fta/cutting-permits/1, " + VIEWER + ", 403",
     "PUT, /api/fta/cut-blocks/1, " + TIMBER_MARK + ", 403",
     "POST, /api/fta/tenures/F1/notes, " + TIMBER_MARK + ", 404",
+    // The FTA413 letter: every role that opens the cutting-permit detail, as legacy's Letter.
+    "GET, /api/fta/cutting-permits/1/letter, " + DISTRICT + ", 404",
+    "GET, /api/fta/cutting-permits/1/letter, " + SENIOR + ", 404",
+    "GET, /api/fta/cutting-permits/1/letter, " + VIEWER + ", 404",
+    "GET, /api/fta/cutting-permits/1/letter, " + TIMBER_MARK + ", 404",
+    "GET, /api/fta/cutting-permits/1/letter, " + ADMIN + ", 404",
+    "GET, /api/fta/cutting-permits/1/letter, FTA_APT_ADMIN, 403",
   })
   void enforcesTheRoleMatrix(String method, String path, String role, int expected)
       throws Exception {

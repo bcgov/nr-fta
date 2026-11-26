@@ -1,10 +1,14 @@
 package ca.bc.gov.nrs.fta.mark.service;
 
+import ca.bc.gov.nrs.fta.mark.dto.MarkDetailDto;
+import ca.bc.gov.nrs.fta.mark.dto.MarkEditRules;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The timber mark that issuing a private mark of a given type would be given next, without
@@ -28,6 +32,21 @@ public class TimberMarkPreview {
   }
 
   /**
+   * {@link #skipFor(String)} for {@code mark}, only where Assign Mark is open on it
+   * ({@link MarkEditRules#markType()} — legacy's {@code p_disable_assign_mark_ind}: Headquarters,
+   * a client, no mark type yet), since the number it takes is gone for good.
+   *
+   * @throws ResponseStatusException 409 where the mark cannot be assigned a mark
+   */
+  public Optional<String> skipFor(MarkDetailDto mark, boolean districtUser, String fileTypeCode) {
+    if (!MarkEditRules.of(mark, true, districtUser).markType()) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "This mark already has a mark type, or cannot be issued yet.");
+    }
+    return skipFor(fileTypeCode);
+  }
+
+  /**
    * Passes over the next mark — one the user won't issue, e.g. for spelling an unfortunate
    * word — and returns the one after it. Legacy's way: clicking Assign Mark again took the
    * shown mark and generated the next, so this takes the next number off the counter through
@@ -35,7 +54,7 @@ public class TimberMarkPreview {
    * left. When the number it takes was already used (the package refuses it), it is passed over
    * all the same.
    */
-  public Optional<String> skipFor(String fileTypeCode) {
+  Optional<String> skipFor(String fileTypeCode) {
     if (nextFor(fileTypeCode).isEmpty()) {
       return Optional.empty();
     }

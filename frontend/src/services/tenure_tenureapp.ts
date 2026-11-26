@@ -1,4 +1,4 @@
-import { apiGet, apiPost, toQuery } from './http';
+import { apiGet, apiPostForm, toQuery } from './http';
 
 /**
  * The tenure "Tenure application" tab — legacy FTA950 (Tenure Application List):
@@ -133,11 +133,36 @@ export function getTenureAppProfDecs(
   );
 }
 
-/** POST — issue the permit for an approved (or issued) application. */
+/** What Issue Permit sends — legacy's Issue Permit popup. */
+export interface IssuePermitInput {
+  hvaSkey: number | null;
+  documentName: string;
+  recipients: string[];
+  attachDocument: boolean;
+  file: File;
+}
+
+export interface IssuePermitResult {
+  tenureAppId: number;
+  message: string;
+  /** Set when the permit was issued but the e-mail could not be sent. */
+  emailWarning: string | null;
+}
+
+/**
+ * POST (multipart) — upload the permit PDF to document management, issue the
+ * permit for an approved (or issued) application and e-mail the recipients.
+ */
 export function issueTenureAppPermit(
   forestFileId: string,
   tenureAppId: number,
-  body: { hvaSkey: number | null; documentUri: string },
-): Promise<{ tenureAppId: number; message: string }> {
-  return apiPost(`${base(forestFileId)}/${tenureAppId}/issue-permit`, body);
+  input: IssuePermitInput,
+): Promise<IssuePermitResult> {
+  const form = new FormData();
+  if (input.hvaSkey !== null) form.append('hvaSkey', String(input.hvaSkey));
+  form.append('documentName', input.documentName);
+  input.recipients.forEach((r) => form.append('recipients', r));
+  form.append('attachDocument', String(input.attachDocument));
+  form.append('file', input.file, input.file.name);
+  return apiPostForm(`${base(forestFileId)}/${tenureAppId}/issue-permit`, form);
 }

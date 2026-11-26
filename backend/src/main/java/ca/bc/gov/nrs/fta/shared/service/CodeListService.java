@@ -194,6 +194,27 @@ public class CodeListService {
   }
 
   /**
+   * The file types Add New Tenure offers: legacy FTA010's current FILE_TYPE_ADDNEW_CODE rows
+   * (GET_FILE_TYPE_ADDNEW_CODE) that Headquarters may add (FTA_FILE_CP_AUTHORITY at the FILE
+   * level; every FTA_ADMIN gets Headquarters' rules), without the range types.
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> addNewFileTypes() {
+    return jdbc.query("""
+        SELECT a.file_type_addnew_code AS code,
+               a.file_type_addnew_code || ' - ' || a.description AS description
+          FROM the.file_type_addnew_code a
+         WHERE SYSDATE BETWEEN a.effective_date AND a.expiry_date
+           AND a.file_type_addnew_code NOT IN ('E01', 'E02', 'H01', 'H02')
+           AND EXISTS (SELECT 1 FROM the.fta_file_level_authority fla
+                        WHERE fla.file_type_code = a.file_type_addnew_code
+                          AND fla.file_level_type = 'FILE'
+                          AND fla.org_level_code = 'H')
+         ORDER BY a.file_type_addnew_code
+        """, MAPPER);
+  }
+
+  /**
    * File statuses. {@code TENURE_FILE_STATUS_CODE}, not {@code FILE_STATUS_CODE}
    * — the latter is a different table with a different key, and the search
    * filters {@code pfu.file_status_st}, which is the tenure one.
@@ -330,6 +351,27 @@ public class CodeListService {
           FROM the.org_unit
          WHERE org_level_code = 'D'
            AND SYSDATE BETWEEN effective_date AND expiry_date
+         ORDER BY org_unit_code
+        """,
+        MAPPER);
+  }
+
+  /**
+   * Districts as legacy FTA685 / FTA686 listed them ({@code fta.lookup.districtFilteredCodes},
+   * {@code FTA_CODE_LISTS.GET_DISTRICT_FILTERED} for a user with no district): district-level
+   * units that are their own district rollup, not yet expired, by code. The code is the
+   * ORG_UNIT_NO, as {@link #districts()}.
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> billingReportDistricts() {
+    return jdbc.query(
+        """
+        SELECT TO_CHAR(org_unit_no)                   AS code,
+               org_unit_code || ' - ' || org_unit_name AS description
+          FROM the.org_unit
+         WHERE org_unit_no = rollup_dist_no
+           AND org_level_code = 'D'
+           AND expiry_date > SYSDATE
          ORDER BY org_unit_code
         """,
         MAPPER);

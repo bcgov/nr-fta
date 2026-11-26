@@ -101,9 +101,27 @@ public class CuttingPermitDetailService {
              hva.licence_to_cut_code           AS licence_to_cut_code,
              hva.is_cp_extensn_appl_fee_waived AS ext_app_fee_waived,
              hva.is_cp_extension_appl_fee_paid AS ext_app_fee_paid,
-             hva.is_within_fibre_recovery_zone AS within_fibre_recovery_zone,
+             -- FTA_902_CP_DETAIL.GET: an unknown (U) zone reads as N while the permit is PI or PE.
+             CASE WHEN hva.harvest_auth_status_code IN ('PI', 'PE')
+                       AND hva.is_within_fibre_recovery_zone = 'U' THEN 'N'
+                  ELSE hva.is_within_fibre_recovery_zone END AS within_fibre_recovery_zone,
              hva.retirement_date               AS retirement_date,
-             hva.revision_count                AS revision_count
+             hva.revision_count                AS revision_count,
+             -- FTA_902_CP_DETAIL.GET's p_cb_susp_cnt.
+             CASE WHEN EXISTS (
+                    SELECT 1
+                      FROM the.cut_block_suspension cbs
+                      JOIN the.cut_block cb ON cb.cb_skey = cbs.cb_skey
+                     WHERE cb.forest_file_id = hva.forest_file_id
+                       AND cb.cutting_permit_id = hva.cutting_permit_id)
+                  THEN 'Y' ELSE 'N' END        AS block_suspensions_exist,
+             -- Fta902CpDetailAction.handleGet: HP, and the newest postponement ended before today.
+             CASE WHEN hva.harvest_auth_status_code = 'HP'
+                       AND (SELECT MAX(cpp.cp_postponement_expiry_date)
+                                   KEEP (DENSE_RANK LAST ORDER BY cpp.cp_postponement_id)
+                              FROM the.cutting_permit_postponement cpp
+                             WHERE cpp.hva_skey = hva.hva_skey) < TRUNC(SYSDATE)
+                  THEN 'Y' ELSE 'N' END        AS postponement_expired
         FROM the.harvesting_authority hva
         LEFT JOIN the.harvesting_hauling_xref xref
                ON xref.hva_skey = hva.hva_skey
@@ -250,7 +268,12 @@ public class CuttingPermitDetailService {
         jdbc.query(codesSql("quota_type_code"), none, CODE_MAPPER),
         jdbc.query(codesSql("harvest_auth_extend_reas_code"), none, CODE_MAPPER),
         jdbc.query(codesSql("crown_lands_region_code"), none, CODE_MAPPER),
-        jdbc.query(codesSql("permit_iss_cond_theme_code"), none, CODE_MAPPER));
+        conditionThemes());
+  }
+
+  /** The current permit issuance condition themes, the only ones a condition may be added with. */
+  public List<CodeOptionDto> conditionThemes() {
+    return jdbc.query(codesSql("permit_iss_cond_theme_code"), Map.of(), CODE_MAPPER);
   }
 
   /** The permit with the caller's rules. */
@@ -296,7 +319,7 @@ public class CuttingPermitDetailService {
         p.location(),
         p.mgmtUnitId(), p.mgmtUnitTypeCode(), p.licenceToCutCode(), p.extAppFeeWaived(),
         p.extAppFeePaid(), p.withinFibreRecoveryZone(), p.retirementDate(), p.revisionCount(),
-        rules);
+        p.blockSuspensionsExist(), p.postponementExpired(), fsj, rules);
   }
 
   /** FTA_ADMIN is the nearest thing here to legacy's Super User. */
@@ -351,6 +374,9 @@ public class CuttingPermitDetailService {
         rs.getString("within_fibre_recovery_zone"),
         rs.getObject("retirement_date", LocalDate.class),
         rs.getLong("revision_count"),
+        "Y".equals(rs.getString("block_suspensions_exist")),
+        "Y".equals(rs.getString("postponement_expired")),
+        fsj,
         new CuttingPermitRules(false, false, false, false, false, false, false, false, false,
             false, false, false, fsj, false));
   }
