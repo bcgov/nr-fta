@@ -1,5 +1,5 @@
 import { DocumentPdf } from '@carbon/icons-react';
-import { Button, Column, Grid, Select, SelectItem } from '@carbon/react';
+import { Button, Select, SelectItem } from '@carbon/react';
 import { useEffect, useState, type FC, type FormEvent } from 'react';
 
 import DateField from '@/components/DateField';
@@ -16,8 +16,6 @@ import {
   getRegions,
   type CodeOption,
 } from '@/services/codeLists';
-
-import './AuditReport.scss';
 
 const REPORTS: { value: AuditReportName; label: string; filename: string }[] = [
   {
@@ -79,7 +77,7 @@ const AuditReport: FC = () => {
       if ([r, d, t, dr].some((x) => x.status === 'rejected')) {
         notify.display({
           kind: 'error',
-          title: 'Could not load the dropdown lists',
+          title: 'Could not load the dropdown lists.',
           subtitle: 'Reload the page to try again.',
           timeout: 6000,
         });
@@ -94,7 +92,7 @@ const AuditReport: FC = () => {
 
   // Legacy protected Region and District for a district user; a single administered district
   // is preselected and locked here, with its region.
-  const scope = useDistrictScope(districts);
+  const scope = useDistrictScope(districts, 'admin');
   const district = scope.locked?.code ?? districtChoice;
   const region = scope.locked ? (districtRegions[scope.locked.code] ?? '') : regionChoice;
 
@@ -149,7 +147,7 @@ const AuditReport: FC = () => {
     } catch (err) {
       notify.display({
         kind: 'error',
-        title: 'Could not produce the report',
+        title: 'Could not produce the report.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 6000,
       });
@@ -164,9 +162,9 @@ const AuditReport: FC = () => {
       subtitle="Produce the District Override Audit or Delete EE Audit report for a region, district and date range."
     >
       <SectionTile title="Report" icon={DocumentPdf}>
-        <form className="audit-report__form" onSubmit={(e) => void onSubmit(e)}>
-          <Grid narrow>
-            <Column sm={4} md={8} lg={8}>
+        <form className="fsp-search__form" onSubmit={(e) => void onSubmit(e)}>
+          <div className="fsp-search__field-grid">
+            <div className="fsp-search__wide-cell">
               <Select
                 id="audit-report"
                 labelText="Report"
@@ -178,41 +176,36 @@ const AuditReport: FC = () => {
                   <SelectItem key={r.value} value={r.value} text={r.label} />
                 ))}
               </Select>
-            </Column>
-            <Column sm={4} md={8} lg={8} />
-            <Column sm={4} md={4} lg={8}>
-              <Select
-                id="audit-region"
-                labelText="Region Code"
-                value={region}
-                disabled={!!scope.locked}
-                onChange={(e) => setRegionChoice(e.target.value)}
-              >
-                <SelectItem value="" text="Choose a region" />
-                {scope.unscoped && <SelectItem value="*" text="* - All regions" />}
-                {regions.map((r) => (
-                  <SelectItem key={r.code} value={r.code} text={r.description} />
-                ))}
-              </Select>
-            </Column>
-            <Column sm={4} md={4} lg={8}>
-              <Select
-                id="audit-district"
-                labelText="District Code"
-                value={district}
-                disabled={!!scope.locked}
-                invalid={notInRegion}
-                invalidText="District does not fall within the region."
-                onChange={(e) => setDistrictChoice(e.target.value)}
-              >
-                <SelectItem value="" text="Choose a district" />
-                {scope.unscoped && <SelectItem value="*" text="* - All districts" />}
-                {scope.options.map((d) => (
-                  <SelectItem key={d.code} value={d.code} text={d.description} />
-                ))}
-              </Select>
-            </Column>
-            <Column sm={4} md={4} lg={8}>
+            </div>
+            <Select
+              id="audit-region"
+              labelText="Region Code"
+              value={region}
+              disabled={!!scope.locked}
+              onChange={(e) => setRegionChoice(e.target.value)}
+            >
+              <SelectItem value="" text="Choose a region" />
+              {scope.unscoped && <SelectItem value="*" text="* - All regions" />}
+              {regions.map((r) => (
+                <SelectItem key={r.code} value={r.code} text={r.description} />
+              ))}
+            </Select>
+            <Select
+              id="audit-district"
+              labelText="District Code"
+              value={district}
+              disabled={!!scope.locked}
+              invalid={notInRegion}
+              invalidText="District does not fall within the region."
+              onChange={(e) => setDistrictChoice(e.target.value)}
+            >
+              <SelectItem value="" text="Choose a district" />
+              {scope.unscoped && <SelectItem value="*" text="* - All districts" />}
+              {scope.options.map((d) => (
+                <SelectItem key={d.code} value={d.code} text={d.description} />
+              ))}
+            </Select>
+            <div className="fsp-search__row-start">
               <DateField
                 id="audit-from"
                 labelText="Date Range From"
@@ -224,17 +217,15 @@ const AuditReport: FC = () => {
                     : null
                 }
               />
-            </Column>
-            <Column sm={4} md={4} lg={8}>
-              <DateField
-                id="audit-to"
-                labelText="Date Range To"
-                value={toDate}
-                onChange={setToDate}
-              />
-            </Column>
+            </div>
+            <DateField
+              id="audit-to"
+              labelText="Date Range To"
+              value={toDate}
+              onChange={setToDate}
+            />
             {fileTypes.map((t, i) => (
-              <Column key={i} sm={4} md={4} lg={5}>
+              <div key={i} className={i === 0 ? 'fsp-search__row-start' : undefined}>
                 <Select
                   id={`audit-file-type-${i + 1}`}
                   labelText={`File Type ${i + 1}`}
@@ -249,10 +240,10 @@ const AuditReport: FC = () => {
                     <SelectItem key={o.code} value={o.code} text={o.description} />
                   ))}
                 </Select>
-              </Column>
+              </div>
             ))}
-          </Grid>
-          <div className="audit-report__actions">
+          </div>
+          <div className="fsp-search__actions">
             <Button type="submit" size="md" renderIcon={DocumentPdf} disabled={!canSubmit}>
               {busy ? 'Producing…' : 'Submit'}
             </Button>

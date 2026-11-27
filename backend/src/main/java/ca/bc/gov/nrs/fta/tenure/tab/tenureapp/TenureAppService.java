@@ -100,6 +100,7 @@ public class TenureAppService {
              ta.image_create_in_progress_ind   AS regen_in_progress_ind,
              %s AS prof_dec_ind,
              %s AS snc_ind,
+             ta.clearance_status_request_uri   AS clearance_uri,
              ta.decision_date                  AS decision_date,
              ta.issuance_date                  AS issuance_date,
       """.formatted(PROF_DEC, SNC);
@@ -264,6 +265,7 @@ public class TenureAppService {
                   THEN 'Y' ELSE 'N' END            AS prof_dec_ind,
              MAX(CASE WHEN ta.clearance_status_request_uri IS NOT NULL
                       THEN 'Y' ELSE 'N' END)       AS snc_ind,
+             MAX(ta.clearance_status_request_uri)  AS clearance_uri,
              MAX(ta.decision_date)                 AS decision_date,
              MAX(ta.issuance_date)                 AS issuance_date,
              NULL AS feature_type_desc, NULL AS cutting_permit_id, NULL AS hva_skey,
@@ -619,6 +621,7 @@ public class TenureAppService {
         yes(rs.getString("regen_in_progress_ind")),
         yes(rs.getString("prof_dec_ind")),
         yes(rs.getString("snc_ind")),
+        rs.getString("clearance_uri"),
         date(rs, "decision_date"),
         date(rs, "issuance_date"),
         TenureAppRules.canIssue(state),

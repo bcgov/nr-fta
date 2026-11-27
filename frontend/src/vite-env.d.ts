@@ -16,6 +16,12 @@ interface ImportMetaEnv {
   readonly VITE_API_BASE_URL: string;
   // Display.
   readonly VITE_APP_NAME: string;
+  // GBS (the government billing system) that FTA680's G.B.S. button opens; legacy's
+  // gbs-invoice-url. Optional: blank falls back to the production URL (lib/externalUrls.ts).
+  readonly VITE_GBS_URL?: string;
+  // SNC (Status and Clearance) web that the Tenure Application tab's SNC link opens; legacy's
+  // sncsc-web.url. Optional: blank falls back to the production URL (lib/externalUrls.ts).
+  readonly VITE_SNC_URL?: string;
 }
 
 interface ImportMeta {

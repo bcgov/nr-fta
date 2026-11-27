@@ -1,4 +1,12 @@
-import { Add, ArrowLeft, Edit, Partnership, TableSplit, WarningFilled } from '@carbon/icons-react';
+import {
+  Add,
+  ArrowLeft,
+  ArrowRight,
+  Edit,
+  Partnership,
+  TableSplit,
+  WarningFilled,
+} from '@carbon/icons-react';
 import {
   Button,
   Table,
@@ -204,7 +212,7 @@ const ManagementUnitDetail: FC = () => {
                           <TableHeader>AAC (ha)</TableHeader>
                           <TableHeader>Apportioned (m³)</TableHeader>
                           <TableHeader>Comments</TableHeader>
-                          {canEdit && <TableHeader aria-label="Actions" />}
+                          {canEdit && <TableHeader>Actions</TableHeader>}
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -319,7 +327,7 @@ const ManagementUnitDetail: FC = () => {
                           <TableHeader>AAC (ha)</TableHeader>
                           <TableHeader>Distributed (m³)</TableHeader>
                           <TableHeader>Comments</TableHeader>
-                          <TableHeader aria-label="Actions" />
+                          <TableHeader>Actions</TableHeader>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -344,6 +352,7 @@ const ManagementUnitDetail: FC = () => {
                               <Button
                                 size="sm"
                                 kind="ghost"
+                                renderIcon={ArrowRight}
                                 as={Link}
                                 to={aptPaths.commitments(muId, historyId, a.id)}
                               >

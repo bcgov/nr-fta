@@ -50,6 +50,10 @@ jobs:
       keycloak_sa_client_id: ${{ secrets.KEYCLOAK_SA_CLIENT_ID }}
       keycloak_sa_client_secret: ${{ secrets.KEYCLOAK_SA_CLIENT_SECRET }}
       user_lookup_base_url: ${{ secrets.USER_LOOKUP_BASE_URL }}
+      s3_endpoint: ${{ secrets.S3_ENDPOINT }}
+      s3_bucket: ${{ secrets.S3_BUCKET }}
+      s3_access_key_id: ${{ secrets.S3_ACCESS_KEY_ID }}
+      s3_secret_access_key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
       certificate_signatures_1: ${{ secrets.CERTIFICATE_SIGNATURES_1 }}
       certificate_signatures_2: ${{ secrets.CERTIFICATE_SIGNATURES_2 }}
       certificate_signatures_3: ${{ secrets.CERTIFICATE_SIGNATURES_3 }}
@@ -94,6 +98,10 @@ jobs:
       keycloak_sa_client_id: ${{ secrets.KEYCLOAK_SA_CLIENT_ID }}
       keycloak_sa_client_secret: ${{ secrets.KEYCLOAK_SA_CLIENT_SECRET }}
       user_lookup_base_url: ${{ secrets.USER_LOOKUP_BASE_URL }}
+      s3_endpoint: ${{ secrets.S3_ENDPOINT }}
+      s3_bucket: ${{ secrets.S3_BUCKET }}
+      s3_access_key_id: ${{ secrets.S3_ACCESS_KEY_ID }}
+      s3_secret_access_key: ${{ secrets.S3_SECRET_ACCESS_KEY }}
       certificate_signatures_1: ${{ secrets.CERTIFICATE_SIGNATURES_1 }}
       certificate_signatures_2: ${{ secrets.CERTIFICATE_SIGNATURES_2 }}
       certificate_signatures_3: ${{ secrets.CERTIFICATE_SIGNATURES_3 }}

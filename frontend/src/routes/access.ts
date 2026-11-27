@@ -24,13 +24,19 @@ import type { FamLoginUser, ROLE_TYPE } from '@/context/auth/types';
  *     DISTRICT_ADMIN                                      conditions, postponements, relabel,
  *                                                         delete, or post-issue terms and rollbacks
  *   FTA_VIEWER              all except Admin              read-only (GET only)
+ *   FTA_RANGE_              Range Tenures + Range Units   range reads; range file edits in its
+ *     DISTRICT_ADMIN        search, the range details     districts (mayEditRangeDistrict)
+ *   FTA_RANGE_              as district, plus the range   range file edits in every district;
+ *     HEADQUARTERS_ADMIN    admin + billing screens       range admin and billing
+ *                           (631, 640, 680-699)
  *   FTA_APT_ADMIN           Apportionment only            apportionment (APT) writes, any org
  *                                                         unit (legacy APT2's APT_EDITOR)
  *   FTA_APT_VIEWER          Apportionment only            read-only (legacy APT2's APT_VIEWER)
  *
- * The one exception to "no stacking" is APT: the APT roles are checked against every role the
- * user holds (canEditApt, holdsAptRole, and APT pages in isPathAllowedForUser), so a harvest or
- * timber mark administrator who is also an APT administrator keeps both.
+ * The exceptions to "no stacking" are APT and range: those roles are checked against every role
+ * the user holds (canEditApt, holdsAptRole, holdsRangeRole, mayEditRangeDistrict, and their pages
+ * in isPathAllowedForUser), so a harvest or timber mark administrator who is also an APT or range
+ * administrator keeps both.
  */
 
 /** The user's single effective role (or undefined when none). */
@@ -65,12 +71,12 @@ export function canEditMarks(user: FamLoginUser | null | undefined): boolean {
 }
 
 /**
- * Whether the user may add a note to a tenure — FTA_ADMIN or either timber mark role. Legacy
- * FTA970 let anyone who could open the file add a note; every other tenure write is
+ * Whether the user may add a note to a tenure — FTA_ADMIN, the timber mark, harvest or range
+ * roles. Legacy FTA970 let anyone who could open the file add a note; every other tenure write is
  * FTA_ADMIN's ({@link canEdit}).
  */
 export function canAddTenureNotes(user: FamLoginUser | null | undefined): boolean {
-  return canEditMarks(user) || canEditHarvest(user);
+  return canEditMarks(user) || canEditHarvest(user) || holdsRangeRole(user);
 }
 
 /**
@@ -142,6 +148,115 @@ function isTimberMarkRole(role: ROLE_TYPE | undefined): boolean {
   return role === 'FTA_TIMBER_MARK_HEADQUARTERS_ADMIN' || role === 'FTA_TIMBER_MARK_DISTRICT_ADMIN';
 }
 
+// ── Range ────────────────────────────────────────────────────────────────
+
+const RANGE_HEADQUARTERS: ROLE_TYPE = 'FTA_RANGE_HEADQUARTERS_ADMIN';
+const RANGE_DISTRICT: ROLE_TYPE = 'FTA_RANGE_DISTRICT_ADMIN';
+
+function isRangeRole(role: ROLE_TYPE | undefined): boolean {
+  return role === RANGE_HEADQUARTERS || role === RANGE_DISTRICT;
+}
+
+/** Whether the user holds either range role, among any of their roles. */
+export function holdsRangeRole(user: FamLoginUser | null | undefined): boolean {
+  const held = user?.privileges ?? {};
+  return RANGE_HEADQUARTERS in held || RANGE_DISTRICT in held;
+}
+
+/** Whether the user holds FTA_RANGE_HEADQUARTERS_ADMIN (any grant counts as every district). */
+export function isRangeHeadquartersAdmin(user: FamLoginUser | null | undefined): boolean {
+  return RANGE_HEADQUARTERS in (user?.privileges ?? {});
+}
+
+/**
+ * Unscoped FTA_ADMIN or FTA_RANGE_HEADQUARTERS_ADMIN: acts for every district on the range admin and
+ * billing screens. Mirrors the backend's LoggedUserHelper.isUnscopedRangeAdmin.
+ */
+export function isUnscopedRangeAdmin(user: FamLoginUser | null | undefined): boolean {
+  return user?.privileges?.FTA_ADMIN === null || isRangeHeadquartersAdmin(user);
+}
+
+/**
+ * Whether the user may use a range admin or billing screen on the district (ORG_UNIT_CODE):
+ * FTA_ADMIN unscoped or scoped to it, or FTA_RANGE_HEADQUARTERS_ADMIN. Mirrors
+ * LoggedUserHelper.administersRangeDistrict.
+ */
+export function administersRangeDistrict(
+  user: FamLoginUser | null | undefined,
+  orgUnitCode: string | null | undefined,
+): boolean {
+  if (isUnscopedRangeAdmin(user)) return true;
+  const admin = user?.privileges?.FTA_ADMIN;
+  return !!orgUnitCode && Array.isArray(admin) && admin.includes(orgUnitCode);
+}
+
+/**
+ * Whether the user may edit a range file administered by the district (ORG_UNIT_CODE):
+ * {@link administersRangeDistrict}, or FTA_RANGE_DISTRICT_ADMIN unscoped or scoped to it. Mirrors
+ * LoggedUserHelper.mayEditRangeDistrict. The range tenure page reads the backend's `canEdit`
+ * instead, which also knows the file's districts; this is for screens that list several files.
+ */
+export function mayEditRangeDistrict(
+  user: FamLoginUser | null | undefined,
+  orgUnitCode: string | null | undefined,
+): boolean {
+  if (administersRangeDistrict(user, orgUnitCode)) return true;
+  const held = user?.privileges ?? {};
+  if (!(RANGE_DISTRICT in held)) return false;
+  const districts = held[RANGE_DISTRICT];
+  return districts === null || (!!orgUnitCode && !!districts?.includes(orgUnitCode));
+}
+
+/**
+ * Whether the user may save Range Rates (FTA699): unscoped FTA_ADMIN or FTA_RANGE_HEADQUARTERS_ADMIN,
+ * as rates apply province-wide. A district-scoped administrator gets Save disabled.
+ */
+export function mayEditRangeRates(user: FamLoginUser | null | undefined): boolean {
+  return isUnscopedRangeAdmin(user);
+}
+
+/** The range pages both range roles open: the two searches and their details. */
+const RANGE_PAGES: readonly string[] = [
+  '/search/range-tenure',
+  '/search/range-unit',
+  '/range/:agreementId',
+  '/range-unit/:unitId',
+  // FTA008 Application Metrics Export: legacy put it on every role's Search menu, the range
+  // tech's included.
+  '/search/metrics',
+];
+
+/**
+ * The range admin and billing pages, open to FTA_RANGE_HEADQUARTERS_ADMIN as well as FTA_ADMIN: 631
+ * Manage Zone, 680/695/685/690/686 billing, 699 rates and 640 Archive Tenures.
+ */
+const RANGE_ADMIN_PAGES: readonly string[] = [
+  '/admin/range-zone',
+  '/admin/billing/tenure',
+  '/admin/billing/invoice-preview',
+  '/admin/billing/pre-billing',
+  '/admin/billing/approval',
+  '/admin/billing/post-billing',
+  '/admin/rates-fees',
+  '/admin/archive',
+];
+
+const matchesAny = (patterns: readonly string[], pathname: string) =>
+  patterns.some((pattern) => matchPath(pattern, pathname) !== null);
+
+/**
+ * Add New Tenure, which both range roles open for the range file types only: legacy FTA010 let
+ * the range tech add only range types (districtRangeUser), which FTA100R created.
+ */
+const RANGE_ADD_TENURE_PAGE = '/tenures/add';
+
+/** The pages a range role opens: Welcome, the range pages, and for the headquarters role the admin ones. */
+function isPathAllowedForRangeRole(role: ROLE_TYPE, pathname: string): boolean {
+  if (pathname === '/welcome' || matchesAny(RANGE_PAGES, pathname)) return true;
+  if (pathname === RANGE_ADD_TENURE_PAGE) return true;
+  return role === RANGE_HEADQUARTERS && matchesAny(RANGE_ADMIN_PAGES, pathname);
+}
+
 /**
  * Pages restricted to some roles — prefix-matched (exact or `prefix + "/"`).
  * Every other authenticated page is open to FTA_ADMIN and FTA_VIEWER.
@@ -193,6 +308,8 @@ export function isPathAllowedForRole(role: ROLE_TYPE | undefined, pathname: stri
     return TIMBER_MARK_ADMIN_PAGES.some((pattern) => matchPath(pattern, pathname) !== null);
   }
 
+  if (isRangeRole(role)) return isPathAllowedForRangeRole(role, pathname);
+
   const match = PAGE_ROLES.find(
     (p) => pathname === p.prefix || pathname.startsWith(`${p.prefix}/`),
   );
@@ -209,7 +326,7 @@ const WRITE_PAGES: ReadonlyArray<{
   pattern: string;
   mayOpen: (user: FamLoginUser | null | undefined) => boolean;
 }> = [
-  { pattern: '/tenures/add', mayOpen: canEdit },
+  { pattern: '/tenures/add', mayOpen: (user) => canEdit(user) || holdsRangeRole(user) },
   { pattern: '/harvesting-authority/:cpId/assign-marks', mayOpen: canEditHarvest },
   { pattern: '/harvesting-authority/:cpId/suspend-blocks', mayOpen: canManageHarvest },
   { pattern: '/cut-block/:blockId/relabel', mayOpen: canManageHarvest },
@@ -231,6 +348,12 @@ export function isPathAllowedForUser(
   // APT pages are open to every role that reads them, whatever role outranks it (a timber mark
   // role's allow-list would otherwise shut an APT role out).
   if (isAptPath(pathname) && holdsAptRole(user)) return true;
+  // Likewise the range pages, for a range role outranked by another (a timber mark role, or one
+  // without the admin pages).
+  const held = user?.privileges ?? {};
+  if (RANGE_HEADQUARTERS in held && isPathAllowedForRangeRole(RANGE_HEADQUARTERS, pathname))
+    return true;
+  if (RANGE_DISTRICT in held && isPathAllowedForRangeRole(RANGE_DISTRICT, pathname)) return true;
   return isPathAllowedForRole(effectiveRole(user), pathname);
 }
 

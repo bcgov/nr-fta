@@ -15,7 +15,10 @@ export interface RangeTenureSummary {
   mgmtUnitType: string | null;
   mgmtUnitId: string | null;
   fileStatusCode: string | null;
+  /** Legacy's "<code> - <description>", cut to 30 characters. */
   fileStatusDesc: string | null;
+  /** The description alone — the status pill's text. */
+  fileStatusDescription: string | null;
   issueDate: string | null; // ISO date
   expiryDate: string | null;
 }
@@ -62,14 +65,4 @@ export function searchRangeTenures(
   return apiGet<PageableResponse<RangeTenureSummary>>(
     `/api/fta/range-tenures${toQuery({ ...params })}`,
   );
-}
-
-/**
- * GET /api/fta/range-tenures/export — every matching range tenure as a CSV
- * download.
- *
- * Paging is dropped: the export covers the whole result set, not a page of it.
- */
-export function rangeTenureExportPath(params: RangeTenureSearchParams): string {
-  return `/api/fta/range-tenures/export${toQuery({ ...params, page: undefined, size: undefined })}`;
 }

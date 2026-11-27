@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiGetForBlob, apiPost, apiPut, toQuery } from './http';
+import { apiDelete, apiGet, apiPost, apiPut, toQuery } from './http';
 
 import type { CodeOption } from './codeLists';
 
@@ -70,8 +70,6 @@ export interface CuttingPermitDetail {
   blockSuspensionsExist: boolean;
   /** HP, and the latest postponement expired before today. */
   postponementExpired: boolean;
-  /** A Fort St. John authority (Fta_Get_Fsj_Ind): FTA902 offers its FTA413 Letter. */
-  fsj: boolean;
   rules: CuttingPermitRules;
 }
 
@@ -174,13 +172,6 @@ export const savePermit = (hvaSkey: number, req: PermitSaveRequest) =>
 /** DELETE /api/fta/cutting-permits/{hvaSkey} — FTA902's Delete, of an EE permit. */
 export const deletePermit = (hvaSkey: number, revisionCount: number) =>
   apiDelete<PermitWriteResult>(`${permitPath(hvaSkey)}${toQuery({ revisionCount })}`);
-
-/**
- * GET /api/fta/cutting-permits/{hvaSkey}/letter — FTA902's Letter: the FTA413 Fort St. John
- * harvest authorization letter, as a PDF.
- */
-export const getHarvestAuthorizationLetter = (hvaSkey: number) =>
-  apiGetForBlob(`${permitPath(hvaSkey)}/letter`);
 
 /** POST /api/fta/cutting-permits/{hvaSkey}/retire — FTA902's Retire. */
 export const retirePermit = (hvaSkey: number, revisionCount: number) =>

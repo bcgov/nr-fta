@@ -38,7 +38,7 @@ class RangeUnitSearchServiceSortTest {
     NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
     when(jdbc.queryForObject(anyString(), any(MapSqlParameterSource.class), eq(Long.class)))
         .thenReturn(0L);
-    new RangeUnitSearchService(jdbc, null).search(null, null, null, null, 0, 10, sort);
+    new RangeUnitSearchService(jdbc, null).search("1", null, null, null, 0, 10, sort);
     ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
     verify(jdbc).query(sql.capture(), any(MapSqlParameterSource.class), any(RowMapper.class));
     return sql.getValue();

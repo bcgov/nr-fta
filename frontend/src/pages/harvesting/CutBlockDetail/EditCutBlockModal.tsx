@@ -202,7 +202,7 @@ const EditCutBlockModal: FC<{
       });
       display({
         kind: 'success',
-        title: `Cut block ${saved.cutBlockId} saved`,
+        title: `Cut block ${saved.cutBlockId} saved.`,
         subtitle: saved.warnings.join(' '),
         timeout: saved.warnings.length > 0 ? 9000 : 7000,
       });
@@ -211,7 +211,7 @@ const EditCutBlockModal: FC<{
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not save the cut block',
+        title: 'Could not save the cut block.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

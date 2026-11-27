@@ -70,7 +70,7 @@ const CreateRelationshipModal: FC<Props> = ({ open, onClose, onCreated }) => {
       });
       display({
         kind: 'success',
-        title: 'Relationship created',
+        title: 'Relationship created.',
         subtitle: `Client ${parent.clientNumber} controls client ${child.clientNumber}.`,
         timeout: 6000,
       });
@@ -79,7 +79,7 @@ const CreateRelationshipModal: FC<Props> = ({ open, onClose, onCreated }) => {
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not create the relationship',
+        title: 'Could not create the relationship.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

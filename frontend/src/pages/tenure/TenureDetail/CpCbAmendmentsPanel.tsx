@@ -1,4 +1,4 @@
-import { ArrowLeft, RecentlyViewed, Tree } from '@carbon/icons-react';
+import { ArrowLeft, RecentlyViewed, Tree, View } from '@carbon/icons-react';
 import {
   Button,
   Table,
@@ -212,9 +212,7 @@ const CpCbAmendmentsPanel: FC<TenurePanelProps> = ({ tenure }) => {
                       <TableHeader>Total Amend to Net (ha)</TableHeader>
                       <TableHeader>Total Amend to Gross (ha)</TableHeader>
                       <TableHeader>Total Amend to Cruise (m³)</TableHeader>
-                      <TableHeader>
-                        <span className="cds--visually-hidden">Actions</span>
-                      </TableHeader>
+                      <TableHeader>Actions</TableHeader>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -230,6 +228,7 @@ const CpCbAmendmentsPanel: FC<TenurePanelProps> = ({ tenure }) => {
                           <Button
                             kind="ghost"
                             size="sm"
+                            renderIcon={View}
                             disabled={b.cbSkey === null}
                             onClick={() => setSelected(b)}
                           >

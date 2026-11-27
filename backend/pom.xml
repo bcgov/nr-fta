@@ -28,6 +28,8 @@
   </scm>
 
   <properties>
+    <shedlock.version>7.10.1</shedlock.version>
+    <awssdk.version>2.44.12</awssdk.version>
     <sonar.language>java</sonar.language>
     <sonar.organization>bcgov-sonarcloud</sonar.organization>
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -121,6 +123,41 @@
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-spring-boot3</artifactId>
       <version>${resilience4j.version}</version>
+    </dependency>
+    <!-- One pod runs each scheduled batch job per tick (lock table THE.FTA_SHEDLOCK). -->
+    <dependency>
+      <groupId>net.javacrumbs.shedlock</groupId>
+      <artifactId>shedlock-spring</artifactId>
+      <version>${shedlock.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>net.javacrumbs.shedlock</groupId>
+      <artifactId>shedlock-provider-jdbc-template</artifactId>
+      <version>${shedlock.version}</version>
+    </dependency>
+    <!-- E-mail straight over SMTP to the government relay (integration/SmtpEmailSender). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
+    <!-- Issued permits filed in an S3-compatible bucket (integration/S3DocumentStore). -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <version>${awssdk.version}</version>
+      <exclusions>
+        <!-- Only the synchronous client (Apache HTTP) is used. -->
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>netty-nio-client</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!-- Its HTTP client, configured directly for the connect/read timeouts. -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>apache-client</artifactId>
+      <version>${awssdk.version}</version>
     </dependency>
 
     <dependency>

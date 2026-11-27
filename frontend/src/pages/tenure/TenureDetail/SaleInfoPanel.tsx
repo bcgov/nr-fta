@@ -231,7 +231,7 @@ const SaleInfoPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
         if (!cancelled) {
           display({
             kind: 'error',
-            title: 'Could not load the edit lists',
+            title: 'Could not load the edit lists.',
             subtitle: 'Some dropdowns show only their current value.',
             timeout: 6000,
           });
@@ -275,7 +275,7 @@ const SaleInfoPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
     );
     if (Object.keys(found).length > 0) {
       setErrors(found);
-      display({ kind: 'error', title: 'Check the highlighted fields', timeout: 6000 });
+      display({ kind: 'error', title: 'Check the highlighted fields.', timeout: 6000 });
       return;
     }
     setSaving(true);
@@ -311,17 +311,17 @@ const SaleInfoPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
         warnings.length > 0
           ? {
               kind: 'warning',
-              title: 'Sale information saved, with a warning',
+              title: 'Sale information saved, with a warning.',
               subtitle: warnings.join(' '),
               timeout: 9000,
             }
-          : { kind: 'success', title: 'Sale information saved', timeout: 5000 },
+          : { kind: 'success', title: 'Sale information saved.', timeout: 5000 },
       );
       reload();
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not save the sale information',
+        title: 'Could not save the sale information.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

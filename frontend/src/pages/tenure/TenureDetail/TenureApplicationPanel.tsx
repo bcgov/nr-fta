@@ -1,4 +1,4 @@
-import { DocumentTasks, Map as MapIcon, Misuse, Stamp } from '@carbon/icons-react';
+import { DocumentTasks, Map as MapIcon, Misuse, Stamp, View } from '@carbon/icons-react';
 import {
   Button,
   Checkbox,
@@ -27,6 +27,7 @@ import StatusTag from '@/components/StatusTag/StatusTag';
 import UserName from '@/components/UserName';
 import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
+import { sncUrl } from '@/lib/externalUrls';
 import {
   getTenureAppProfDecs,
   getTenureAppTab,
@@ -39,7 +40,7 @@ import { formatDate } from '@/utils/formatDate';
 
 import UnavailableNotice from './UnavailableNotice';
 
-import type { TenurePanelProps } from './panelProps';
+import type { SharedTenurePanelProps } from './panelProps';
 
 const dash = (v: string | number | null | undefined): string | number =>
   v === null || v === undefined || v === '' ? '—' : v;
@@ -125,7 +126,11 @@ const rowKey = (r: TenureAppRow, i: number) =>
  * Allowed for an approved or issued application. The Prof Dec flag opens the
  * application's professional declarations.
  */
-const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenureChanged }) => {
+const TenureApplicationPanel: FC<SharedTenurePanelProps> = ({
+  tenure,
+  canEdit,
+  onTenureChanged,
+}) => {
   const forestFileId = tenure.forestFileId;
   const { display } = useNotification();
   const fetcher = useCallback(() => getTenureAppTab(forestFileId), [forestFileId]);
@@ -141,7 +146,9 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
   const [documentName, setDocumentName] = useState('');
   const [attachDocument, setAttachDocument] = useState(true);
   const [permitFile, setPermitFile] = useState<File | null>(null);
-  const [issueError, setIssueError] = useState<string | null>(null);
+  // Upload and Issue's refusals: a snackbar over the dialog, which stays open.
+  const refuseIssue = (message: string) =>
+    display({ kind: 'error', title: 'Could not issue the permit.', subtitle: message, timeout: 0 });
   const [confirmNotPdf, setConfirmNotPdf] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -160,7 +167,6 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
     setDocumentName('');
     setAttachDocument(true);
     setPermitFile(null);
-    setIssueError(null);
   };
 
   const closeIssue = () => {
@@ -186,24 +192,23 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
   // in legacy) the file's size and the recipients; a non-PDF asks to proceed.
   const startIssue = () => {
     if (!documentName || !permitFile) {
-      setIssueError(
+      refuseIssue(
         'A PDF document must be selected and a document name given before you can proceed.',
       );
       return;
     }
     if (permitFile.size === 0) {
-      setIssueError('The uploaded file was empty.');
+      refuseIssue('The uploaded file was empty.');
       return;
     }
     if (permitFile.size >= MAX_UPLOAD_BYTES) {
-      setIssueError('Uploaded files cannot be larger than 4.0Mb.');
+      refuseIssue('Uploaded files cannot be larger than 4.0Mb.');
       return;
     }
     if (recipients.length === 0) {
-      setIssueError('Recipients is mandatory.');
+      refuseIssue('Recipients is mandatory.');
       return;
     }
-    setIssueError(null);
     if (!permitFile.name.toUpperCase().endsWith('.PDF')) {
       setConfirmNotPdf(true);
       return;
@@ -224,14 +229,14 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
       });
       display({
         kind: 'success',
-        title: `Permit issued for application ${issuing.tenureAppId}`,
+        title: `Permit issued for application ${issuing.tenureAppId}.`,
         subtitle: res.message,
         timeout: 7000,
       });
       if (res.emailWarning) {
         display({
           kind: 'warning',
-          title: 'E-mail not sent',
+          title: 'E-mail not sent.',
           subtitle: res.emailWarning,
           timeout: 15000,
         });
@@ -243,7 +248,7 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not issue the permit',
+        title: 'Could not issue the permit.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 10000,
       });
@@ -316,7 +321,7 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
               {headers.map((h) => (
                 <TableHeader key={h}>{h}</TableHeader>
               ))}
-              <TableHeader aria-label="Actions" />
+              <TableHeader>Actions</TableHeader>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -370,11 +375,29 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
                   {cols.area && <TableCell>{num(r.objectArea)}</TableCell>}
                   <TableCell>{date(r.decisionDate)}</TableCell>
                   <TableCell>{date(r.issuanceDate)}</TableCell>
-                  <TableCell>{yesNo(r.statusNotificationClearance)}</TableCell>
+                  <TableCell>
+                    {/* Legacy 950x: an SNC link to the application's status request. */}
+                    {r.clearanceStatusRequestUri ? (
+                      <a
+                        href={sncUrl(r.clearanceStatusRequestUri)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        SNC
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </TableCell>
                   <TableCell>{yesNo(r.exhibitAImage)}</TableCell>
                   <TableCell>
                     {r.professionalDeclaration ? (
-                      <Button kind="ghost" size="sm" onClick={() => openProfDec(r)}>
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        renderIcon={View}
+                        onClick={() => openProfDec(r)}
+                      >
                         View
                       </Button>
                     ) : (
@@ -568,9 +591,6 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
             {issuing?.hvaSkey ? ' and its cutting permit' : ''} to HI, and e-mails it to the
             recipients.
           </p>
-          {issueError && (
-            <InlineNotification kind="error" lowContrast hideCloseButton title={issueError} />
-          )}
           <div>
             <span className="cds--label">Recipients</span>
             <p>{recipients.length > 0 ? recipients.join(', ') : '—'}</p>
@@ -612,7 +632,6 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
             disabled={saving}
             onChange={(e) => {
               setDocumentName(e.target.value);
-              setIssueError(null);
             }}
           />
           <Checkbox
@@ -628,7 +647,6 @@ const TenureApplicationPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
             disabled={saving}
             onSelect={(f) => {
               setPermitFile(f);
-              setIssueError(null);
             }}
             onRemove={() => setPermitFile(null)}
           />

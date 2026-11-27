@@ -18,6 +18,11 @@
   margin-block-start: 1.5rem;
 }
 
+/* PageLayout's body already spaces its sections with a 1.5rem gap; adding the margin there doubled it. */
+.page-layout__body > .section-tile + .section-tile {
+  margin-block-start: 0;
+}
+
 /* Title on the left, the section's buttons level with it on the right. */
 .section-tile__header {
   display: flex;

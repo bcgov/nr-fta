@@ -65,7 +65,7 @@ const PermitConditions: FC<Props> = ({ hvaSkey, canManage }) => {
         if (cancelled) return;
         display({
           kind: 'error',
-          title: 'Could not load the conditions list',
+          title: 'Could not load the conditions list.',
           subtitle: err instanceof Error ? err.message : 'Request failed',
           timeout: 9000,
         });
@@ -97,13 +97,13 @@ const PermitConditions: FC<Props> = ({ hvaSkey, canManage }) => {
         themeCode: theme,
         description: description.trim() || null,
       });
-      display({ kind: 'success', title: 'Condition added', timeout: 5000 });
+      display({ kind: 'success', title: 'Condition added.', timeout: 5000 });
       setOpen(false);
       reload();
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not add the condition',
+        title: 'Could not add the condition.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -144,7 +144,7 @@ const PermitConditions: FC<Props> = ({ hvaSkey, canManage }) => {
                       <TableRow>
                         <TableHeader>Permit Issuance Condition</TableHeader>
                         <TableHeader>Condition Description</TableHeader>
-                        <TableHeader aria-label="Actions" />
+                        <TableHeader>Actions</TableHeader>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -232,7 +232,7 @@ const PermitConditions: FC<Props> = ({ hvaSkey, canManage }) => {
         onConfirm={async () => {
           if (!deleting) return;
           await deletePermitCondition(hvaSkey, deleting.id);
-          display({ kind: 'success', title: 'Condition deleted', timeout: 5000 });
+          display({ kind: 'success', title: 'Condition deleted.', timeout: 5000 });
           reload();
         }}
       >

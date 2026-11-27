@@ -45,7 +45,7 @@ const ExportCsvButton: FC<ExportCsvButtonProps> = ({ path, onExport: save, disab
     } catch (e) {
       display({
         kind: 'error',
-        title: 'Export failed',
+        title: 'Export failed.',
         subtitle: safeErrorMessage(e, 'The results could not be exported.'),
         timeout: 7000,
       });

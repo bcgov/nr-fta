@@ -82,7 +82,7 @@ export function useLicenceEdit(
         setFoaTypes([]);
         display({
           kind: 'error',
-          title: 'Could not load the FOA types',
+          title: 'Could not load the FOA types.',
           subtitle: err instanceof Error ? err.message : 'Request failed',
           timeout: 9000,
         });
@@ -130,13 +130,13 @@ export function useLicenceEdit(
         replacementTerm: form.replacementTerm.trim() ? Number(form.replacementTerm.trim()) : null,
         comments: form.comments.trim() ? form.comments : null,
       });
-      display({ kind: 'success', title: `Licence ${licence.forestFileId} saved`, timeout: 5000 });
+      display({ kind: 'success', title: `Licence ${licence.forestFileId} saved.`, timeout: 5000 });
       setEditing(false);
       onSaved(saved);
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not save the licence',
+        title: 'Could not save the licence.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

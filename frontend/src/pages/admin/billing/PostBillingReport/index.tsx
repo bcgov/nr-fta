@@ -1,26 +1,18 @@
 import { DocumentPdf } from '@carbon/icons-react';
-import {
-  Button,
-  Column,
-  Grid,
-  RadioButton,
-  RadioButtonGroup,
-  Select,
-  SelectItem,
-  TextInput,
-} from '@carbon/react';
+import { Button, RadioButton, RadioButtonGroup, Select, SelectItem } from '@carbon/react';
 import { useEffect, useState, type FC, type FormEvent } from 'react';
 
 import SectionTile from '@/components/SectionTile';
+import YearSelect from '@/components/YearSelect';
 import { useNotification } from '@/context/notification/useNotification';
 import { useDefaultOrgUnitIn } from '@/hooks/useDefaultOrgUnit';
 import { downloadBlob } from '@/lib/downloadBlob';
+import { FIRST_BILLING_YEAR } from '@/lib/years';
 import PageLayout from '@/pages/PageLayout';
 import { getPostBillingReport, type PostBillingSort } from '@/services/billing';
 import { getBillingReportDistricts, type CodeOption } from '@/services/codeLists';
 
 import { currentYear, useDistrictScope } from '../useDistrictScope';
-import '../billing.scss';
 
 const SORTS: { value: PostBillingSort; label: string }[] = [
   { value: '1', label: 'Client Name' },
@@ -57,7 +49,7 @@ const PostBillingReport: FC = () => {
       .catch(() =>
         notify.display({
           kind: 'error',
-          title: 'Could not load the district list',
+          title: 'Could not load the district list.',
           subtitle: 'Reload the page to try again.',
           timeout: 6000,
         }),
@@ -83,7 +75,7 @@ const PostBillingReport: FC = () => {
     } catch (err) {
       notify.display({
         kind: 'error',
-        title: 'Could not produce the report',
+        title: 'Could not produce the report.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 6000,
       });
@@ -98,9 +90,9 @@ const PostBillingReport: FC = () => {
       subtitle="List the range invoices issued for a year, by district or for the province."
     >
       <SectionTile title="Report" icon={DocumentPdf}>
-        <form onSubmit={(e) => void onSubmit(e)}>
-          <Grid narrow>
-            <Column sm={4} md={4} lg={6}>
+        <form className="fsp-search__form" onSubmit={(e) => void onSubmit(e)}>
+          <div className="fsp-search__field-grid">
+            <div className="fsp-search__wide-cell">
               <Select
                 id="post-org"
                 labelText="Org Unit"
@@ -115,20 +107,15 @@ const PostBillingReport: FC = () => {
                   <SelectItem key={d.code} value={d.code} text={d.description} />
                 ))}
               </Select>
-            </Column>
-            <Column sm={4} md={2} lg={3}>
-              <TextInput
-                id="post-year"
-                labelText="Calendar Year"
-                placeholder="e.g. 2025"
-                value={year}
-                onChange={(e) => setYear(e.target.value.replace(/\D/g, ''))}
-                maxLength={4}
-                inputMode="numeric"
-                autoComplete="off"
-              />
-            </Column>
-            <Column sm={4} md={8} lg={16} className="billing__sort">
+            </div>
+            <YearSelect
+              id="post-year"
+              labelText="Calendar Year"
+              value={year}
+              onChange={setYear}
+              first={FIRST_BILLING_YEAR}
+            />
+            <div className="fsp-search__sort-cell">
               <RadioButtonGroup
                 legendText="Sort By"
                 name="post-sort"
@@ -144,13 +131,13 @@ const PostBillingReport: FC = () => {
                   />
                 ))}
               </RadioButtonGroup>
-            </Column>
-            <Column sm={4} md={8} lg={16}>
-              <Button type="submit" size="md" renderIcon={DocumentPdf} disabled={!canSubmit}>
-                {busy ? 'Producing…' : 'Submit'}
-              </Button>
-            </Column>
-          </Grid>
+            </div>
+          </div>
+          <div className="fsp-search__actions">
+            <Button type="submit" size="md" renderIcon={DocumentPdf} disabled={!canSubmit}>
+              {busy ? 'Producing…' : 'Submit'}
+            </Button>
+          </div>
         </form>
       </SectionTile>
     </PageLayout>

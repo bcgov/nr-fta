@@ -79,7 +79,7 @@ const AssignMarks: FC = () => {
       });
       notify.display({
         kind: 'success',
-        title: 'Timber marks assigned',
+        title: 'Timber marks assigned.',
         subtitle: `${updated} block${updated === 1 ? '' : 's'} updated for ${cpId}.`,
         timeout: 5000,
       });
@@ -90,7 +90,7 @@ const AssignMarks: FC = () => {
     } catch (err) {
       notify.display({
         kind: 'error',
-        title: 'Could not assign marks',
+        title: 'Could not assign marks.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 6000,
       });

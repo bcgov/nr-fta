@@ -45,7 +45,8 @@ class TenureAppIssuePermitServiceTest {
   private static final String USER = "IDIR\\JSMITH";
   private static final byte[] PDF = {'%', 'P', 'D', 'F'};
   private static final StoredDocument DOC = new StoredDocument(
-      "obj-1", "https://coms/api/v1/object/obj-1", "https://viewer/obj-1");
+      "A12345/permit1.pdf", "https://s3.example.com/fta/A12345/permit1.pdf",
+      "https://s3.example.com/fta/A12345/permit1.pdf?X-Amz-Signature=abc");
 
   private TenureAppIssuePermitDao dao;
   private DocumentStore documents;
@@ -81,7 +82,7 @@ class TenureAppIssuePermitServiceTest {
   @Test
   void checksThenUploadsThenIssuesWithTheLinkThenCommitsThenEmails() {
     TenureAppIssuePermitResult r = service.issue(
-        FILE, APP, request(true, "a@gov.bc.ca", "b@gov.bc.ca"), pdf(), USER);
+        FILE, APP, request(true, "a@example.com", "b@example.com"), pdf(), USER);
 
     assertThat(r.tenureAppId()).isEqualTo(APP);
     assertThat(r.message()).isEqualTo("The Permit has been successfully issued.");
@@ -97,8 +98,8 @@ class TenureAppIssuePermitServiceTest {
     order.verify(email).send(
         eq("Forest Permit B07 A12345"),
         eq("The following link will provide access to the issued permit for A12345. <br><br> "
-            + "https://viewer/obj-1"),
-        eq(List.of("a@gov.bc.ca", "b@gov.bc.ca")),
+            + "https://s3.example.com/fta/A12345/permit1.pdf?X-Amz-Signature=abc"),
+        eq(List.of("a@example.com", "b@example.com")),
         att.capture());
     assertThat(att.getValue()).singleElement().satisfies(a -> {
       assertThat(a.fileName()).isEqualTo("permit.pdf");
@@ -109,8 +110,8 @@ class TenureAppIssuePermitServiceTest {
 
   @Test
   void attachDocumentUncheckedSendsTheLinkOnly() {
-    service.issue(FILE, APP, request(false, "a@gov.bc.ca"), pdf(), USER);
-    verify(email).send(anyString(), anyString(), eq(List.of("a@gov.bc.ca")), eq(List.of()));
+    service.issue(FILE, APP, request(false, "a@example.com"), pdf(), USER);
+    verify(email).send(anyString(), anyString(), eq(List.of("a@example.com")), eq(List.of()));
   }
 
   @Test
@@ -118,7 +119,7 @@ class TenureAppIssuePermitServiceTest {
     when(dao.issuePermit(FILE, "B07", APP, 5L, null, USER, true))
         .thenReturn("fta.web.error.user.custom.msg:~W,The CP has no cut blocks.;");
 
-    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@gov.bc.ca"), pdf(), USER))
+    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@example.com"), pdf(), USER))
         .isInstanceOfSatisfying(ResponseStatusException.class, e -> {
           assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
           assertThat(e.getReason()).isEqualTo("The CP has no cut blocks.");
@@ -133,7 +134,7 @@ class TenureAppIssuePermitServiceTest {
     when(dao.issuePermit(FILE, "B07", APP, 5L, DOC.link(), USER, false))
         .thenReturn("fta.web.error.user.custom.msg:~W,Already issued.;");
 
-    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@gov.bc.ca"), pdf(), USER))
+    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@example.com"), pdf(), USER))
         .isInstanceOf(ResponseStatusException.class)
         .hasMessageContaining("Already issued.");
     verify(tm).rollback(any());
@@ -145,7 +146,7 @@ class TenureAppIssuePermitServiceTest {
     when(documents.upload(any(), any(), any(), any()))
         .thenThrow(new IntegrationNotConfiguredException("Document storage is not configured."));
 
-    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@gov.bc.ca"), pdf(), USER))
+    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@example.com"), pdf(), USER))
         .isInstanceOfSatisfying(ResponseStatusException.class, e -> {
           assertThat(e.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
           assertThat(e.getReason()).isEqualTo("Document storage is not configured.");
@@ -160,7 +161,7 @@ class TenureAppIssuePermitServiceTest {
     when(documents.upload(any(), any(), any(), any()))
         .thenThrow(new IntegrationException("Document storage refused the upload (HTTP 403)."));
 
-    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@gov.bc.ca"), pdf(), USER))
+    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@example.com"), pdf(), USER))
         .isInstanceOfSatisfying(ResponseStatusException.class, e ->
             assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY));
     verify(tm).rollback(any());
@@ -171,7 +172,7 @@ class TenureAppIssuePermitServiceTest {
     when(documents.upload(any(), any(), any(), any()))
         .thenReturn(new StoredDocument("x", "h".repeat(2001), "v"));
 
-    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@gov.bc.ca"), pdf(), USER))
+    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@example.com"), pdf(), USER))
         .isInstanceOf(ResponseStatusException.class);
     verify(dao, never()).issuePermit(any(), any(), anyLong(), any(), any(), any(), eq(false));
     verify(tm).rollback(any());
@@ -183,7 +184,7 @@ class TenureAppIssuePermitServiceTest {
         .when(email).send(any(), any(), any(), any());
 
     TenureAppIssuePermitResult r =
-        service.issue(FILE, APP, request(true, "a@gov.bc.ca"), pdf(), USER);
+        service.issue(FILE, APP, request(true, "a@example.com"), pdf(), USER);
 
     assertThat(r.message()).isEqualTo("The Permit has been successfully issued.");
     assertThat(r.emailWarning()).isEqualTo(
@@ -202,7 +203,7 @@ class TenureAppIssuePermitServiceTest {
           assertThat(e.getReason()).isEqualTo("Recipients is mandatory.");
         });
     assertThatThrownBy(() -> service.issue(
-            FILE, APP, request(true, "a@gov.bc.ca"), null, USER))
+            FILE, APP, request(true, "a@example.com"), null, USER))
         .hasMessageContaining("File Name is mandatory.");
     verify(dao, never()).issuePermit(any(), any(), anyLong(), any(), any(), any(), anyBoolean());
     verifyNoInteractions(documents, email, tm);
@@ -211,7 +212,7 @@ class TenureAppIssuePermitServiceTest {
   @Test
   void notApprovedOrIssuedIs409() {
     when(dao.applicationState(FILE, APP)).thenReturn(Optional.of("INB"));
-    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@gov.bc.ca"), pdf(), USER))
+    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@example.com"), pdf(), USER))
         .isInstanceOfSatisfying(ResponseStatusException.class, e ->
             assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
   }
@@ -219,7 +220,7 @@ class TenureAppIssuePermitServiceTest {
   @Test
   void applicationNotOnTheFileIs404() {
     when(dao.applicationState(FILE, APP)).thenReturn(Optional.empty());
-    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@gov.bc.ca"), pdf(), USER))
+    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@example.com"), pdf(), USER))
         .isInstanceOfSatisfying(ResponseStatusException.class, e ->
             assertThat(e.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
   }
@@ -227,7 +228,7 @@ class TenureAppIssuePermitServiceTest {
   @Test
   void anAuthorityOffTheFileIsRefused() {
     when(dao.hvaOnFile(FILE, 5L)).thenReturn(false);
-    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@gov.bc.ca"), pdf(), USER))
+    assertThatThrownBy(() -> service.issue(FILE, APP, request(true, "a@example.com"), pdf(), USER))
         .hasMessageContaining("The harvesting authority is not on this file.");
     verifyNoInteractions(documents);
   }
@@ -235,7 +236,7 @@ class TenureAppIssuePermitServiceTest {
   @Test
   void noAuthorityPassesNull() {
     service.issue(FILE, APP,
-        new TenureAppIssuePermitRequest(null, "CP 12 permit", List.of("a@gov.bc.ca"), false),
+        new TenureAppIssuePermitRequest(null, "CP 12 permit", List.of("a@example.com"), false),
         pdf(), USER);
     verify(dao).issuePermit(eq(FILE), eq("B07"), eq(APP), isNull(), isNull(), eq(USER), eq(true));
   }

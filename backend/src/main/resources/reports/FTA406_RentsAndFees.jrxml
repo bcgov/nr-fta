@@ -1,0 +1,524 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FTA406 Rents and Fees Preparation Report (FTA670 Annual Rents and Fees Preparation, Print) —
+  ported from the legacy Jasper Server report (fta-archive:
+  JCRS/FTA/Reports/FTA/FTA406R-RentsAndFees). Changes from legacy:
+   - no query: the backend runs THE.FTAR406P itself and supplies its cursor's rows
+     (RentsFeesReport);
+   - the Jasper Server parameters (LoggedInUser, p_rec_cursor), and the repository and
+     designer (ireport.*) properties, are gone.
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="FTA406R_RentsAndFees" pageWidth="792" pageHeight="612" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="752" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="7b004252-9b42-4721-8f31-f141694f20da">
+	<parameter name="p_userid" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_id" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["FTA406R"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_report_category" class="java.lang.String" isForPrompting="false"/>
+	<parameter name="p_report_name" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["Rents and Fees Preparation Report"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_prepared_by" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_billing_period_from" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_billing_period_to" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_org_unit_name" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_org_unit_code" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_org_unit_no" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="p_rollup_ind" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<field name="forest_file_id" class="java.lang.String"/>
+	<field name="file_type_code" class="java.lang.String"/>
+	<field name="file_status_st" class="java.lang.String"/>
+	<field name="legal_effective_dt" class="java.lang.String"/>
+	<field name="initial_expiry_dt" class="java.lang.String"/>
+	<field name="current_expiry_dt" class="java.lang.String"/>
+	<field name="invoice_prep_ind" class="java.lang.String"/>
+	<field name="calendar_year" class="java.lang.Number"/>
+	<field name="anniversary_date" class="java.lang.String"/>
+	<field name="org_unit_code" class="java.lang.String"/>
+	<field name="billable_units" class="java.lang.Number"/>
+	<field name="billable_rates" class="java.lang.Number"/>
+	<field name="billing_amounts" class="java.lang.Number"/>
+	<field name="serverid" class="java.lang.String"/>
+	<field name="client_number" class="java.lang.String"/>
+	<field name="client_locn_code" class="java.lang.String"/>
+	<field name="client_name" class="java.lang.String"/>
+	<variable name="current_page_number" class="java.lang.Integer" resetType="Page">
+		<variableExpression><![CDATA[$V{PAGE_NUMBER}]]></variableExpression>
+		<initialValueExpression><![CDATA[1]]></initialValueExpression>
+	</variable>
+	<variable name="UnitType" class="java.lang.String">
+		<variableExpression><![CDATA[(new String("A01,A02,A03,A04,A25,A28,A41").indexOf( $F{file_type_code} ) > -1 ) ? "M3" : "HA"]]></variableExpression>
+	</variable>
+	<variable name="AmountBilled" class="java.lang.Number">
+		<variableExpression><![CDATA[($F{file_type_code}.equals( "S01" ) || ($F{file_type_code}.equals( "S02" ))) ? $F{billing_amounts} : (java.lang.Number)($F{billable_units}.floatValue() * $F{billable_rates}.floatValue())]]></variableExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="150" splitType="Stretch">
+			<textField evaluationTime="Auto" isBlankWhenNull="true">
+				<reportElement uuid="a9125d2a-744a-4053-b353-5e09cfa63992" x="610" y="58" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[($V{current_page_number}).toString() + " of " + ($V{PAGE_NUMBER}).toString()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="ebe8f277-615f-4e16-b54f-b1c40cfa29e3" x="123" y="28" width="483" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Forests Tenure and Administration System]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="e61925ad-7467-489b-b6a9-ab5262a22eac" x="610" y="34" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_userid}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="7084542d-ddeb-4bc2-b53d-c8c81ed664b7" x="123" y="10" width="483" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ministry of Forests, Lands, Natural Resource Operations & Rural Development]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="a92b0adc-1852-44e1-a8e6-2a13ac85e843" x="610" y="10" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[FTA406R]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="1d806b00-ee6a-4168-be37-39307eebbd95" x="610" y="46" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="2799cce7-1087-421a-9e28-778d74f3f73a" x="123" y="46" width="483" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[*Rents and Fees Preparation Report]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="02b7f1e8-41cc-4752-94ad-e04de68791a3" x="610" y="22" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{serverid}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="962b4aeb-2262-429c-a900-f1eccd5c7afa" x="0" y="87" width="112" height="20"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Prepared By:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="28b2c8f5-270e-4031-b760-c130f158a28b" x="0" y="107" width="112" height="20"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Org Unit:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="5580a966-a3f0-45f9-a2f4-a5bfb08c0823" x="0" y="127" width="112" height="20"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Billing Period (from):]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="e7ebd0f6-a602-4fc6-b04a-38fe968150a1" x="172" y="127" width="112" height="20"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Billing Period (to):]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="600c5e93-91ec-483a-a0bb-83c9c5a6f8fe" x="112" y="87" width="232" height="20"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_prepared_by}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="9c512db3-83b9-4d20-83ad-4fc41fff7f76" x="112" y="107" width="24" height="20"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_org_unit_code}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="b1a9ec57-cc93-4c31-a8d0-0acaeac5b528" x="136" y="107" width="208" height="20"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_org_unit_name}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="a356b52e-c5dd-42a5-9c49-1722506e24fd" x="112" y="127" width="60" height="20"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_billing_period_from}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="a4aa619b-a950-473c-a460-74c0cfc3dda0" x="284" y="127" width="60" height="20"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_billing_period_to}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement uuid="bb7dcc21-d9ea-4039-91d0-d75d9fcc362f" x="0" y="147" width="802" height="1"/>
+			</line>
+		</band>
+	</title>
+	<pageHeader>
+		<band height="72">
+			<printWhenExpression><![CDATA[!$V{PAGE_NUMBER}.equals( 1 )]]></printWhenExpression>
+			<textField evaluationTime="Auto" isBlankWhenNull="true">
+				<reportElement uuid="eb3b620c-4fb2-41d3-8e8c-494100765f50" x="610" y="58" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[($V{current_page_number}).toString() + " of " + ($V{PAGE_NUMBER}).toString()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="eb0d400f-7c62-4624-a5b5-cda6fc515fd4" x="610" y="10" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[FTA406R]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="7c30be1b-79b7-40f8-9679-666c996cd6eb" x="123" y="46" width="483" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Rents and Fees Preparation Report]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="c722aba1-8ff9-4bf5-9991-fd02b892f285" x="610" y="34" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{p_userid}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="fe8fdf24-5145-4251-9dd9-9696bdfb989f" x="610" y="46" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="7041de4e-c5a5-4dbc-b5e8-8c48c04b8d09" x="123" y="10" width="483" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ministry of Forests, Lands, Natural Resource Operations & Rural Development]]></text>
+			</staticText>
+			<textField>
+				<reportElement uuid="dc55d3c7-d003-4ae9-b006-08131b6cb221" x="610" y="22" width="108" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{serverid}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="9564b56d-79c5-4a94-979a-e974435e74ef" x="123" y="28" width="483" height="18"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Forests Tenure and Administration System]]></text>
+			</staticText>
+		</band>
+	</pageHeader>
+	<columnHeader>
+		<band height="48" splitType="Stretch">
+			<line>
+				<reportElement uuid="bda69225-d77d-4c07-aee0-195ba55c7d4b" x="0" y="12" width="65" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="51547a74-a1d1-45d4-8b0f-f354243a4aae" x="105" y="12" width="65" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="d93d0da7-6259-4132-bd0c-3bb86192b73f" x="180" y="12" width="117" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="fd60807c-fc6f-4b35-ad03-66992553dde9" x="333" y="12" width="117" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="803752f5-d740-4266-8aaf-e1f2a12af525" x="600" y="12" width="35" height="1"/>
+			</line>
+			<line>
+				<reportElement uuid="bc9af5db-cb44-4915-ba48-768f5ca0b5f8" x="682" y="12" width="36" height="1"/>
+			</line>
+			<staticText>
+				<reportElement uuid="12dc3e22-3e53-4b0e-b80d-f4e1cad098ea" x="0" y="6" width="170" height="20"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tenure]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="a4ca9e98-0a70-4ee4-82a6-319e83660e47" x="0" y="26" width="40" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Opt]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="ca0c97a1-93a4-43d1-a2dc-a2231ca0a6dd" x="40" y="26" width="60" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Number]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="0ef574d3-846b-4251-8ba9-bad27709df36" x="100" y="26" width="40" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Type]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="01fe3441-d4dd-4bdd-9f05-a3b50fd97c48" x="140" y="26" width="30" height="20"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Org]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="11d4515f-0670-45d0-87db-5bad206e1b6b" x="180" y="6" width="273" height="20"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Client]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="1e7e70ef-0749-4a71-a35b-6aaa28b24740" x="180" y="26" width="48" height="20"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Number]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="240faeae-d914-4dd2-b352-7495d28a7107" x="228" y="26" width="25" height="20"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Locn]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="351297fb-d93d-4187-a12d-aa4ecfa1c716" x="253" y="26" width="200" height="20"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Name]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="6f699af0-9db2-4eb3-ad4c-cae88ae317a2" x="453" y="6" width="76" height="20"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" isBold="true"/>
+					<paragraph leftIndent="10"/>
+				</textElement>
+				<text><![CDATA[Anniversary]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="abfef0b2-eb19-4234-8250-4dea3cbea7a7" x="453" y="26" width="76" height="20"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" isBold="true"/>
+					<paragraph leftIndent="10"/>
+				</textElement>
+				<text><![CDATA[Date]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="20c2fbb7-289c-4987-9c1c-e5227cf7c3a2" x="529" y="6" width="71" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" isBold="true"/>
+					<paragraph rightIndent="10"/>
+				</textElement>
+				<text><![CDATA[Units]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="c38c3fba-5bd0-4560-8ab9-962ab9ef9fb8" x="529" y="26" width="71" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" isBold="true"/>
+					<paragraph rightIndent="10"/>
+				</textElement>
+				<text><![CDATA[Billable]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="9868cd98-06d3-4da6-96f5-b0827c5e477e" x="600" y="6" width="118" height="20"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Billing]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="fbce86b5-86b7-4de4-8da8-3c8b70c9fa03" x="600" y="26" width="32" height="20"/>
+				<textElement>
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Type]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="8292b04b-71a1-4242-b978-b6b0be8b8e55" x="632" y="26" width="32" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Rate]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="07fc6e23-f373-4910-95b4-fcd4b4308c24" x="664" y="26" width="54" height="20"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Amount]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="13" splitType="Stretch">
+			<textField>
+				<reportElement uuid="4c02a294-8bef-435d-a66c-60b21cb7a934" x="0" y="0" width="40" height="12"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{invoice_prep_ind}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="2737b035-f3e2-4be2-ac6b-43ed9193407c" x="40" y="0" width="60" height="12"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{forest_file_id}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="6532e396-040f-4337-b5e4-849a6937ca03" x="100" y="0" width="40" height="12"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{file_type_code}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="9cb32513-95f8-4618-bc17-84059d3b4dcf" x="140" y="0" width="30" height="12"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{org_unit_code}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="b4221dbd-1dc1-43e2-863b-7410890b0976" x="180" y="0" width="48" height="12"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{client_number}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="a74ebcd9-5247-4bf0-9f37-e4727ae9a6c0" x="228" y="0" width="25" height="12"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{client_locn_code}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="47cc5093-d129-4edf-b543-c2f2432123cc" x="253" y="0" width="200" height="12"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{client_name}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="638dc514-72c7-4cbb-9030-2bc6c2f2d327" x="453" y="0" width="76" height="12"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial"/>
+					<paragraph leftIndent="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{anniversary_date}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="2a5e61ae-5ef7-4665-85dd-6c7fa206a594" x="529" y="0" width="71" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial"/>
+					<paragraph rightIndent="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{billable_units}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="5be54ce5-d613-44be-ad7e-fc84d03cbc68" x="632" y="0" width="32" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{billable_rates}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement uuid="637d6d30-ad3f-417b-a66f-d8ea6c77d144" x="600" y="0" width="32" height="12"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{UnitType}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.00;-#,##0.00">
+				<reportElement uuid="a25b898f-a8e5-44b1-bb73-8f59d37dcc26" x="664" y="0" width="54" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{AmountBilled}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="6" splitType="Stretch">
+			<line>
+				<reportElement uuid="8e3e135a-752c-41b6-b77a-fc0d0a365dc0" x="0" y="3" width="802" height="1"/>
+			</line>
+		</band>
+	</pageFooter>
+	<summary>
+		<band height="42" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="dcdb5bd2-8c08-41c0-81d0-e4a2517940fa" x="0" y="16" width="100" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[END OF REPORT]]></text>
+			</staticText>
+		</band>
+	</summary>
+	<noData>
+		<band height="24">
+			<staticText>
+				<reportElement uuid="2566be6f-6155-4d1c-9f86-168f694c40f5" x="0" y="0" width="100" height="20"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[No records found.]]></text>
+			</staticText>
+		</band>
+	</noData>
+</jasperReport>

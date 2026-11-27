@@ -28,8 +28,9 @@ import type { ComponentType } from 'react';
 //   - Legacy's menu is not role-gated at all: every user sees all thirty items
 //     and the server refuses the click. Here an entry is shown only when the
 //     user's role may open its page (routes/access.ts): the admin screens are
-//     hidden from viewers, and a Timber Mark Headquarters Administrator sees only Tenure
-//     Search, Timber Mark Search and Private Marks.
+//     hidden from viewers, a Timber Mark Headquarters Administrator sees only Tenure
+//     Search, Timber Mark Search and Private Marks, a range role only the range searches,
+//     and a Range Headquarters Administrator also the range admin and billing screens.
 //   - Legacy's `Links` submenu (seven external systems) is omitted: its URLs
 //     come from servlet init-params per environment and have no home in this
 //     app's configuration yet.
@@ -61,9 +62,6 @@ export type MenuSection = {
 };
 
 export type MenuItem = MenuLeaf;
-
-/** Admin screens are FTA_ADMIN only; read-only viewers never see them. */
-const ADMIN_ONLY = ['FTA_ADMIN'];
 
 const NAV: MenuSection[] = [
   {
@@ -145,7 +143,8 @@ const NAV: MenuSection[] = [
     id: 'admin',
     label: 'Administration',
     icon: Settings,
-    roles: ADMIN_ONLY,
+    // FTA_ADMIN's, but for the range admin and billing screens, which FTA_RANGE_HEADQUARTERS_ADMIN
+    // opens too: routes/access.ts decides each entry.
     items: [
       { id: 'admin-audit', label: 'Audit Report', path: '/admin/audit' },
       {
@@ -217,9 +216,9 @@ const isVisible = (userRoles: string[], required?: string[]) =>
  * Forbidden. A section or entry may also carry its own `roles` allow-list; a
  * section whose every entry is filtered out is dropped.
  *
- * <p>APT entries are the exception to "the effective role decides": an APT administrator
- * outranked by another role (a timber mark role, whose allow-list has no APT pages) still sees
- * them, as access.isPathAllowedForUser still lets them in.
+ * <p>APT and range entries are the exception to "the effective role decides": an APT or range
+ * administrator outranked by another role (a timber mark role, whose allow-list has neither)
+ * still sees them, as access.isPathAllowedForUser still lets them in.
  *
  * @param userRoles  the user's canonical FTA role(s); the first is effective.
  * @param heldRoles  every role the user holds (the keys of `user.privileges`); defaults to

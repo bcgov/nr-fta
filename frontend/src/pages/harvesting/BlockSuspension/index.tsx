@@ -82,7 +82,7 @@ const BlockSuspension: FC = () => {
     } catch (err) {
       notify.display({
         kind: 'error',
-        title: 'Could not change the suspension',
+        title: 'Could not change the suspension.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 6000,
       });

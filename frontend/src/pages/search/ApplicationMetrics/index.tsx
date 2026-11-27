@@ -1,153 +1,179 @@
-import { Search as SearchIcon, Reset, Download } from '@carbon/icons-react';
-import { Button, Column, Grid, Select, SelectItem } from '@carbon/react';
-import { useState, type FC, type FormEvent } from 'react';
+import { Download } from '@carbon/icons-react';
+import { Button, RadioButton, RadioButtonGroup, Select, SelectItem, Tile } from '@carbon/react';
+import { useEffect, useState, type FC, type FormEvent } from 'react';
 
 import DateField from '@/components/DateField';
-import SearchResultsTable, { type ColumnDef } from '@/components/SearchResultsTable';
-import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
-import { nextColumnSort, sortRows } from '@/lib/columnSort';
-import { MOCK_APPLICATIONS, findApplication } from '@/mocks/applications';
-import { ORG_UNITS } from '@/mocks/reference';
+import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
+import {
+  exportApplicationMetrics,
+  type ApplicationMetricsCriteria,
+} from '@/services/applicationMetrics';
+import { getTenureAdminOrgUnits, type CodeOption } from '@/services/codeLists';
 
-import './ApplicationMetrics.scss';
+const BLANK: ApplicationMetricsCriteria = {
+  orgUnitNo: '',
+  submissionDateFrom: '',
+  submissionDateTo: '',
+  emailRecdDateFrom: '',
+  emailRecdDateTo: '',
+  acceptanceDateFrom: '',
+  acceptanceDateTo: '',
+  decisionDateFrom: '',
+  decisionDateTo: '',
+  issuanceDateFrom: '',
+  issuanceDateTo: '',
+};
 
-interface MetricRow {
-  id: string;
-  esfId: string;
-  fileId: string;
-  applicationType: string;
-  orgUnit: string;
-  status: string;
-  processingDays: number;
-  holdDays: number;
-  netDays: number;
-}
+type DateKey = Exclude<keyof ApplicationMetricsCriteria, 'orgUnitNo'>;
 
-const HEADERS: ColumnDef[] = [
-  { key: 'esfId', header: 'ESF ID' },
-  { key: 'fileId', header: 'File ID' },
-  { key: 'applicationType', header: 'Type' },
-  { key: 'orgUnit', header: 'Organization Unit' },
-  { key: 'status', header: 'Status' },
-  { key: 'processingDays', header: 'Processing Days' },
-  { key: 'holdDays', header: 'Hold Days' },
-  { key: 'netDays', header: 'Net Days' },
+/** The five date ranges, labelled as legacy's form named them in its messages. */
+const RANGES: { id: string; label: string; from: DateKey; to: DateKey }[] = [
+  {
+    id: 'submission',
+    label: 'Submission Date',
+    from: 'submissionDateFrom',
+    to: 'submissionDateTo',
+  },
+  { id: 'email', label: "Email Rec'd Date", from: 'emailRecdDateFrom', to: 'emailRecdDateTo' },
+  {
+    id: 'acceptance',
+    label: 'Acceptance Date',
+    from: 'acceptanceDateFrom',
+    to: 'acceptanceDateTo',
+  },
+  { id: 'decision', label: 'Decision Date', from: 'decisionDateFrom', to: 'decisionDateTo' },
+  { id: 'issuance', label: 'Issuance Date', from: 'issuanceDateFrom', to: 'issuanceDateTo' },
 ];
 
-function buildMetrics(orgUnit?: string): MetricRow[] {
-  return MOCK_APPLICATIONS.filter((a) => !orgUnit || a.orgUnit === orgUnit).map((a) => {
-    const d = findApplication(a.esfId)!;
-    return {
-      id: a.esfId,
-      esfId: a.esfId,
-      fileId: a.fileId,
-      applicationType: a.applicationType,
-      orgUnit: a.orgUnit,
-      status: a.status,
-      processingDays: d.processingDays,
-      holdDays: d.holdDays,
-      netDays: d.processingDays - d.holdDays,
-    };
-  });
-}
-
 /**
- * FTA008 — Application Metrics Export. Search application processing metrics by
- * organization unit / date range and export. Export is mock-only (raises a notification).
+ * FTA008 — Application Metrics Export. Legacy had no on-screen list: Export wrote an Excel
+ * workbook of cutting permit application metrics (a Metrics sheet and a Holds sheet) from
+ * FTA_008_METRICS_EXTRACT, for one District or all of them and any of five date ranges. Nothing
+ * is mandatory; each From must be on or before its To. Clear empties the form.
  */
 const ApplicationMetrics: FC = () => {
   const notify = useNotification();
-  const [orgUnit, setOrgUnit] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const [rows, setRows] = useState<MetricRow[] | null>(null);
-  // Every row is in the browser, so a header click sorts them here.
-  const [sort, setSort] = useState<string | undefined>();
+  const [districts, setDistricts] = useState<CodeOption[]>([]);
+  const [form, setForm] = useState<ApplicationMetricsCriteria>(BLANK);
+  const [exporting, setExporting] = useState(false);
 
-  const onSearch = (e: FormEvent) => {
+  useEffect(() => {
+    let cancelled = false;
+    getTenureAdminOrgUnits()
+      .then((d) => !cancelled && setDistricts(d))
+      .catch(() => {
+        if (cancelled) return;
+        notify.display({
+          kind: 'error',
+          title: 'Could not load the districts.',
+          subtitle: 'Reload the page to try again.',
+          timeout: 6000,
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Load once; notify is stable for the page's life.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const set = (key: keyof ApplicationMetricsCriteria, value: string) =>
+    setForm((f) => ({ ...f, [key]: value }));
+
+  const fromAfterTo = (r: (typeof RANGES)[number]) =>
+    form[r.from] !== '' && form[r.to] !== '' && form[r.from] > form[r.to];
+  const canExport = !exporting && !RANGES.some(fromAfterTo);
+
+  const onExport = async (e: FormEvent) => {
     e.preventDefault();
-    setRows(buildMetrics(orgUnit || undefined));
+    if (!canExport) return;
+    setExporting(true);
+    try {
+      await exportApplicationMetrics(form);
+    } catch (err) {
+      notify.display({
+        kind: 'error',
+        title: 'Export failed.',
+        subtitle: safeErrorMessage(err, 'The application metrics export could not be produced.'),
+        timeout: 7000,
+      });
+    } finally {
+      setExporting(false);
+    }
   };
-  const onReset = () => {
-    setOrgUnit('');
-    setFrom('');
-    setTo('');
-    setRows(null);
-    setSort(undefined);
-  };
-  const onExport = () =>
-    notify.display({
-      kind: 'success',
-      title: 'Export started',
-      subtitle: `${rows?.length ?? 0} metric row(s) exported to CSV (mock — no backend yet).`,
-      timeout: 5000,
-    });
 
   return (
     <PageLayout
       title="Application Metrics Export"
-      subtitle="Find application processing metrics by organization unit and date range, and export to CSV"
+      subtitle="Export cutting permit application metrics and holds to Excel"
     >
-      <SectionTile title="Search criteria" icon={SearchIcon}>
-        <form className="am-search__form" onSubmit={onSearch}>
-          <Grid narrow>
-            <Column sm={4} md={4} lg={5}>
+      <Tile className="fsp-search__tile">
+        <form className="fsp-search__form" onSubmit={(e) => void onExport(e)}>
+          <div className="fsp-search__field-grid">
+            <div className="fsp-search__wide-cell">
               <Select
-                id="am-org"
-                labelText="Organization Unit"
-                value={orgUnit}
-                onChange={(e) => setOrgUnit(e.target.value)}
+                id="am-district"
+                labelText="District"
+                helperText="If no District is selected, records for all Districts will be returned"
+                value={form.orgUnitNo}
+                onChange={(e) => set('orgUnitNo', e.target.value)}
               >
-                <SelectItem value="" text="All organization units" />
-                {ORG_UNITS.map((o) => (
-                  <SelectItem key={o} value={o} text={o} />
+                <SelectItem value="" text="" />
+                {districts.map((o) => (
+                  <SelectItem key={o.code} value={o.code} text={o.description} />
                 ))}
               </Select>
-            </Column>
-            <Column sm={4} md={2} lg={3}>
-              <DateField id="am-from" labelText="Submitted from" value={from} onChange={setFrom} />
-            </Column>
-            <Column sm={4} md={2} lg={3}>
-              <DateField id="am-to" labelText="Submitted to" value={to} onChange={setTo} />
-            </Column>
-          </Grid>
-          <div className="am-search__actions">
-            <Button type="submit" size="md" renderIcon={SearchIcon}>
-              Search
+            </div>
+
+            <h2 className="fsp-search__group-heading">Date ranges</h2>
+
+            {RANGES.flatMap((r) => [
+              <DateField
+                key={`${r.id}-from`}
+                id={`am-${r.id}-from`}
+                labelText={`${r.label} From`}
+                value={form[r.from]}
+                onChange={(v) => set(r.from, v)}
+                invalidText={
+                  fromAfterTo(r)
+                    ? `${r.label} From must be less than or equal to ${r.label} To.`
+                    : null
+                }
+              />,
+              <DateField
+                key={`${r.id}-to`}
+                id={`am-${r.id}-to`}
+                labelText={`${r.label} To`}
+                value={form[r.to]}
+                onChange={(v) => set(r.to, v)}
+              />,
+            ])}
+
+            <div className="fsp-search__sort-cell">
+              <RadioButtonGroup legendText="Sort by" name="am-sort-by" valueSelected="onlyCP">
+                <RadioButton id="am-sort-only-cp" labelText="Only CPs" value="onlyCP" />
+              </RadioButtonGroup>
+            </div>
+          </div>
+
+          <div className="fsp-search__actions">
+            <Button
+              kind="tertiary"
+              size="md"
+              type="button"
+              onClick={() => setForm(BLANK)}
+              disabled={exporting}
+            >
+              Clear
             </Button>
-            <Button type="button" size="md" kind="tertiary" renderIcon={Reset} onClick={onReset}>
-              Reset
+            <Button type="submit" size="md" renderIcon={Download} disabled={!canExport}>
+              {exporting ? 'Exporting…' : 'Export'}
             </Button>
-            {rows !== null && rows.length > 0 && (
-              <Button
-                type="button"
-                size="md"
-                kind="tertiary"
-                renderIcon={Download}
-                onClick={onExport}
-              >
-                Export CSV
-              </Button>
-            )}
           </div>
         </form>
-      </SectionTile>
-
-      {rows !== null && (
-        <div className="bordered-table">
-          <SearchResultsTable
-            title="Processing metrics"
-            rows={sortRows(rows, sort)}
-            headers={HEADERS}
-            sort={sort}
-            onSort={(key) => setSort((prev) => nextColumnSort(prev, key))}
-            emptyTitle="No metrics found"
-            emptyBody="No applications match the selected organization unit."
-          />
-        </div>
-      )}
+      </Tile>
     </PageLayout>
   );
 };

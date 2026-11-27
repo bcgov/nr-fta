@@ -153,7 +153,7 @@ const CommitmentEditModal: FC<Props> = ({ open, commitment, context, onClose, on
         setChoices([]);
         display({
           kind: 'error',
-          title: 'Could not load the form',
+          title: 'Could not load the form.',
           subtitle: err instanceof Error ? err.message : 'Request failed',
           timeout: 9000,
         });
@@ -215,7 +215,7 @@ const CommitmentEditModal: FC<Props> = ({ open, commitment, context, onClose, on
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not save the commitment',
+        title: 'Could not save the commitment.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

@@ -249,12 +249,12 @@ const AacPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
         revisionCount: data.areaRevisionCount,
       });
       setEditingAreas(false);
-      display({ kind: 'success', title: 'Areas saved', timeout: 5000 });
+      display({ kind: 'success', title: 'Areas saved.', timeout: 5000 });
       reload();
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not save the areas',
+        title: 'Could not save the areas.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -288,7 +288,7 @@ const AacPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
         if (!cancelled) {
           display({
             kind: 'error',
-            title: 'Could not load the AAC lists',
+            title: 'Could not load the AAC lists.',
             subtitle: 'Close the dialog and try again.',
             timeout: 6000,
           });
@@ -377,13 +377,13 @@ const AacPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
     setRemoving(true);
     try {
       await deleteAac(forestFileId, deleting);
-      display({ kind: 'success', title: 'AAC deleted', timeout: 5000 });
+      display({ kind: 'success', title: 'AAC deleted.', timeout: 5000 });
       setDeleting(null);
       reload();
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not delete the AAC',
+        title: 'Could not delete the AAC.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -506,7 +506,7 @@ const AacPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
               <TableHeader>FRA (Bill 28, 2003) m³</TableHeader>
               <TableHeader>Comment</TableHeader>
               <TableHeader>Updated By</TableHeader>
-              <TableHeader aria-label="Actions" />
+              <TableHeader>Actions</TableHeader>
             </TableRow>
           </TableHead>
           <TableBody>

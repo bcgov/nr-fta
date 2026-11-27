@@ -81,7 +81,7 @@ const AptLinkages: FC = () => {
     await deleteAptRelatedClient(deleting);
     display({
       kind: 'success',
-      title: 'Relationship deleted',
+      title: 'Relationship deleted.',
       subtitle: `${deleting.parentClientName ?? deleting.parentClientNumber} no longer controls ${
         deleting.clientName ?? deleting.clientNumber
       }.`,

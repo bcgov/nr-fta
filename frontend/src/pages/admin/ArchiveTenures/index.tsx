@@ -1,8 +1,6 @@
 import { Archive, Search as SearchIcon } from '@carbon/icons-react';
 import {
   Button,
-  Column,
-  Grid,
   Select,
   SelectItem,
   Table,
@@ -12,7 +10,6 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  TextInput,
 } from '@carbon/react';
 import { useEffect, useState, type FC, type FormEvent } from 'react';
 
@@ -20,8 +17,11 @@ import AsyncBoundary from '@/components/AsyncBoundary';
 import DestructiveModal from '@/components/core/DestructiveModal';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import SectionTile from '@/components/SectionTile';
+import YearSelect from '@/components/YearSelect';
 import { useNotification } from '@/context/notification/useNotification';
 import { useDefaultOrgUnit } from '@/hooks/useDefaultOrgUnit';
+import { safeErrorMessage } from '@/lib/errorMessage';
+import { FIRST_ARCHIVE_YEAR } from '@/lib/years';
 import PageLayout from '@/pages/PageLayout';
 import {
   archiveTenures,
@@ -29,8 +29,12 @@ import {
   type ArchiveTenuresCriteria,
   type ArchiveTenuresSummary,
 } from '@/services/archive_tenures';
-import { getThreeLetterDistricts, getRegions, type CodeOption } from '@/services/codeLists';
-import './ArchiveTenures.scss';
+import {
+  getDistrictRegions,
+  getThreeLetterDistricts,
+  getRegions,
+  type CodeOption,
+} from '@/services/codeLists';
 
 interface Form {
   regionNo: string;
@@ -53,30 +57,34 @@ const ArchiveTenures: FC = () => {
   const notify = useNotification();
   const [regions, setRegions] = useState<CodeOption[]>([]);
   const [districts, setDistricts] = useState<CodeOption[]>([]);
+  // Each district's region, so the District list offers only the chosen region's districts.
+  const [districtRegions, setDistrictRegions] = useState<Record<string, string>>({});
   const [form, setForm] = useState<Form>(EMPTY);
   const [searched, setSearched] = useState<ArchiveTenuresCriteria | null>(null);
   const [rows, setRows] = useState<ArchiveTenuresSummary[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   // Archiving changes every counted tenure and nothing in the UI undoes it.
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled([getRegions(), getThreeLetterDistricts()]).then(([r, d]) => {
-      if (cancelled) return;
-      if (r.status === 'fulfilled') setRegions(r.value);
-      if (d.status === 'fulfilled') setDistricts(d.value);
-      if (r.status === 'rejected' || d.status === 'rejected') {
-        notify.display({
-          kind: 'error',
-          title: 'Could not load the region and district lists',
-          subtitle: 'Reload the page to try again.',
-          timeout: 6000,
-        });
-      }
-    });
+    Promise.allSettled([getRegions(), getThreeLetterDistricts(), getDistrictRegions()]).then(
+      ([r, d, dr]) => {
+        if (cancelled) return;
+        if (r.status === 'fulfilled') setRegions(r.value);
+        if (d.status === 'fulfilled') setDistricts(d.value);
+        if (dr.status === 'fulfilled') setDistrictRegions(dr.value);
+        if (r.status === 'rejected' || d.status === 'rejected' || dr.status === 'rejected') {
+          notify.display({
+            kind: 'error',
+            title: 'Could not load the region and district lists.',
+            subtitle: 'Reload the page to try again.',
+            timeout: 6000,
+          });
+        }
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -100,14 +108,30 @@ const ArchiveTenures: FC = () => {
 
   const set = (f: keyof Form) => (v: string) => setForm((s) => ({ ...s, [f]: v }));
 
+  // The region drives the District list: only that region's districts, none before a region is
+  // chosen. Changing the region drops a district that isn't in it.
+  const regionDistricts = form.regionNo
+    ? districts.filter((d) => districtRegions[d.code] === form.regionNo)
+    : [];
+  const setRegion = (regionNo: string) =>
+    setForm((s) => ({
+      ...s,
+      regionNo,
+      districtNo: s.districtNo && districtRegions[s.districtNo] === regionNo ? s.districtNo : '',
+    }));
+
   const count = async (c: ArchiveTenuresCriteria) => {
     setLoading(true);
-    setError(undefined);
     try {
       setRows(await getArchiveTenuresSummary(c));
       setSearched(c);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not count the tenures');
+      notify.display({
+        kind: 'error',
+        title: 'Could not count the tenures.',
+        subtitle: safeErrorMessage(e),
+        timeout: 0,
+      });
       setRows(null);
       setSearched(null);
     } finally {
@@ -131,7 +155,7 @@ const ArchiveTenures: FC = () => {
       const { updated } = await archiveTenures(searched);
       notify.display({
         kind: 'success',
-        title: 'Tenures archived',
+        title: 'Tenures archived.',
         subtitle: `${updated} tenure(s) archived.`,
         timeout: 5000,
       });
@@ -140,8 +164,8 @@ const ArchiveTenures: FC = () => {
     } catch (err) {
       notify.display({
         kind: 'error',
-        title: 'Could not archive tenures',
-        subtitle: err instanceof Error ? err.message : 'Request failed',
+        title: 'Could not archive tenures.',
+        subtitle: safeErrorMessage(err),
         timeout: 6000,
       });
     } finally {
@@ -162,56 +186,49 @@ const ArchiveTenures: FC = () => {
       subtitle="Archive the active grazing and hay tenures whose term expired in a given year."
     >
       <SectionTile title="Criteria" icon={SearchIcon}>
-        <form onSubmit={onGo}>
-          <Grid narrow>
-            <Column sm={4} md={3} lg={5}>
-              <Select
-                id="arc-region"
-                labelText="Region"
-                value={form.regionNo}
-                onChange={(e) => set('regionNo')(e.target.value)}
-              >
-                <SelectItem value="" text="Choose a region" />
-                {regions.map((r) => (
-                  <SelectItem key={r.code} value={r.code} text={r.description} />
-                ))}
-              </Select>
-            </Column>
-            <Column sm={4} md={3} lg={5}>
-              <Select
-                id="arc-district"
-                labelText="District (optional)"
-                value={form.districtNo}
-                onChange={(e) => set('districtNo')(e.target.value)}
-              >
-                <SelectItem value="" text="All districts in the region" />
-                {districts.map((d) => (
-                  <SelectItem key={d.code} value={d.code} text={d.description} />
-                ))}
-              </Select>
-            </Column>
-            <Column sm={4} md={2} lg={3}>
-              <TextInput
-                id="arc-year"
-                labelText="Expiry Year"
-                placeholder="e.g. 2025"
-                value={form.expiryYear}
-                onChange={(e) => set('expiryYear')(e.target.value.replace(/\D/g, ''))}
-                maxLength={4}
-                inputMode="numeric"
-                autoComplete="off"
-              />
-            </Column>
-            <Column sm={4} md={8} lg={3} className="archive-tenures__go">
-              <Button type="submit" size="md" renderIcon={SearchIcon} disabled={!canGo || loading}>
-                Go
-              </Button>
-            </Column>
-          </Grid>
+        <form className="fsp-search__form" onSubmit={onGo}>
+          <div className="fsp-search__field-grid">
+            <Select
+              id="arc-region"
+              labelText="Region"
+              value={form.regionNo}
+              onChange={(e) => setRegion(e.target.value)}
+            >
+              <SelectItem value="" text="Choose a region" />
+              {regions.map((r) => (
+                <SelectItem key={r.code} value={r.code} text={r.description} />
+              ))}
+            </Select>
+            <Select
+              id="arc-district"
+              labelText="District (optional)"
+              value={form.districtNo}
+              disabled={!form.regionNo}
+              onChange={(e) => set('districtNo')(e.target.value)}
+            >
+              <SelectItem value="" text="All districts in the region" />
+              {regionDistricts.map((d) => (
+                <SelectItem key={d.code} value={d.code} text={d.description} />
+              ))}
+            </Select>
+            <YearSelect
+              id="arc-year"
+              labelText="Expiry Year"
+              value={form.expiryYear}
+              onChange={set('expiryYear')}
+              first={FIRST_ARCHIVE_YEAR}
+              placeholder="Choose a year"
+            />
+          </div>
+          <div className="fsp-search__actions">
+            <Button type="submit" size="md" renderIcon={SearchIcon} disabled={!canGo || loading}>
+              Go
+            </Button>
+          </div>
         </form>
       </SectionTile>
 
-      {(rows !== null || loading || error) && (
+      {(rows !== null || loading) && (
         <SectionTile
           title="Tenures to archive"
           icon={Archive}
@@ -227,12 +244,7 @@ const ArchiveTenures: FC = () => {
             </Button>
           }
         >
-          <AsyncBoundary
-            loading={loading}
-            error={error}
-            onRetry={searched ? () => void count(searched) : undefined}
-            loadingText="Counting tenures…"
-          >
+          <AsyncBoundary loading={loading} loadingText="Counting tenures…">
             {rows && rows.length === 0 ? (
               <EmptyState
                 title="No tenures to archive"

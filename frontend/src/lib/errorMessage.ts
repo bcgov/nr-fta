@@ -34,18 +34,30 @@ const TECHNICAL_MARKERS: readonly RegExp[] = [
   /HttpMessage(?:NotReadable|NotWritable|Conversion)/i,
   /MethodArgument(?:NotValid|TypeMismatch)/i,
   /could not (?:read|parse|resolve)/i,
+  // A Java exception's class name (java.lang.IllegalStateException, ...OutOfMemoryError).
+  /\b(?:java|javax|jakarta|org|ca|com|oracle)\.[\w$.]+(?:Exception|Error)\b/,
+  // Raw SQL. Upper case only, so "Select a district from the list" is not caught.
+  /\b(?:SELECT\b[\s\S]*\bFROM|INSERT INTO|DELETE FROM|UPDATE\s+[\w.]+\s+SET)\b/,
+  // An HTML error page (e.g. a proxy's 502), which is multi-line but has no other marker.
+  /<(?:!doctype|html|head|body|title|h1|pre)\b/i,
 ];
+
+/** Longest line a human-readable message may have; longer is a serialized body or dump. */
+const MAX_LINE_LENGTH = 240;
 
 /**
  * True when `text` looks like a raw/technical error dump rather than a
- * human-readable message. Multi-line or very long strings are treated as
- * technical (almost always a stack trace or serialized body).
+ * human-readable message: it matches a technical marker anywhere, or any one
+ * of its lines is very long (a serialized body). A message of several short,
+ * clean lines — e.g. a refused Prepare listing one refusal per row — is not
+ * technical; a stack trace still is, through its markers ("Exception",
+ * "at pkg.Class(File.java:12)", "Caused by:").
  */
 export function isTechnicalError(text: string): boolean {
   const t = text.trim();
   if (!t) return false;
-  if (t.length > 240 || /[\n\r]/.test(t)) return true;
-  return TECHNICAL_MARKERS.some((re) => re.test(t));
+  if (TECHNICAL_MARKERS.some((re) => re.test(t))) return true;
+  return t.split(/\r\n|\r|\n/).some((line) => line.trim().length > MAX_LINE_LENGTH);
 }
 
 /**

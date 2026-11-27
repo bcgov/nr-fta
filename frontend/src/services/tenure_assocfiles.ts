@@ -16,6 +16,8 @@ export interface TenureAssociatedFile {
   revisionCount: number | null;
   /** Whether the associated file is an FTA file (source F) — opens its tenure. */
   tenure: boolean;
+  /** Whether that FTA file is a range file — opens its range tenure page instead. */
+  rangeFile: boolean;
 }
 
 export interface TenureAssociatedFiles {

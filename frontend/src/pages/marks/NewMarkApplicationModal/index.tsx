@@ -167,7 +167,7 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
         if (!cancelled) {
           display({
             kind: 'error',
-            title: 'Could not load the form lists',
+            title: 'Could not load the form lists.',
             subtitle: 'Close the form and try again.',
             timeout: 6000,
           });
@@ -220,7 +220,7 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
       });
       display({
         kind: 'success',
-        title: 'Mark application created',
+        title: 'Mark application created.',
         subtitle: `Certificate ${certificate}.`,
         timeout: 6000,
       });
@@ -229,7 +229,7 @@ const NewMarkApplicationModal: FC<Props> = ({ open, onClose }) => {
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not create the mark application',
+        title: 'Could not create the mark application.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

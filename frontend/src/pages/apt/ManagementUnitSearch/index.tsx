@@ -132,7 +132,7 @@ const ManagementUnitSearch: FC = () => {
       if ([types, statuses, orgUnits, units].some((r) => r.status === 'rejected')) {
         display({
           kind: 'warning',
-          title: 'Some search lists could not be loaded',
+          title: 'Some search lists could not be loaded.',
           timeout: 6000,
         });
       }
@@ -173,7 +173,7 @@ const ManagementUnitSearch: FC = () => {
       } catch (e) {
         display({
           kind: 'error',
-          title: 'Search failed',
+          title: 'Search failed.',
           subtitle: safeErrorMessage(e),
           timeout: 6000,
         });

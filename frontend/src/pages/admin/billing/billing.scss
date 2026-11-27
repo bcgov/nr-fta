@@ -1,20 +1,8 @@
-// Shared by the range billing screens (FTA680, FTA690, FTA695).
-
-// The Go/Submit button has no label, so push it down level with the labelled inputs.
-.billing__go {
-  display: flex;
-  align-items: flex-end;
-}
+// Shared by the range billing screens (FTA680, FTA690, FTA695) and Rents & Fees.
 
 .billing__caution {
   max-width: none;
   margin-top: 1rem;
-}
-
-.billing__errors {
-  margin: 0.25rem 0 0;
-  padding-left: 1rem;
-  list-style: disc;
 }
 
 .billing__instr {
@@ -29,10 +17,10 @@
   margin-top: 1.5rem;
 }
 
-.billing__num {
-  text-align: right;
-}
-
-.billing__sort {
-  margin: 1rem 0;
+// Money and quantity columns, right-aligned. Carbon sets `text-align: start` on every
+// data-table cell (0,1,1), which outranked the bare class and left them flush left.
+.cds--data-table th.billing__num,
+.cds--data-table th.billing__num .cds--table-header-label,
+.cds--data-table td.billing__num {
+  text-align: end;
 }

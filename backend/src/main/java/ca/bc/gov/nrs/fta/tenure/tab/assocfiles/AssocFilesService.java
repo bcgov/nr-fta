@@ -52,7 +52,14 @@ public class AssocFilesService {
    */
   private static final String LIST_SQL =
       """
-      SELECT a.*
+      SELECT a.*,
+             -- FTA_VALID_RANGE_FILE_TYPE on the other file: its link opens the range page.
+             (SELECT DECODE(COUNT(*), 0, 'N', 'Y')
+                FROM the.prov_forest_use opfu
+                JOIN the.range_file_type_code rftc
+                  ON rftc.range_file_type_code = opfu.file_type_code
+               WHERE opfu.forest_file_id = a.associated_file_id
+                 AND a.file_source_code = 'F')               AS range_ind
         FROM (
       SELECT au.associated_file_id                           AS associated_file_id,
              au.file_source_code                             AS file_source_code,
@@ -217,7 +224,8 @@ public class AssocFilesService {
             rs.getString("type_desc"),
             rs.getObject("association_end_date", LocalDate.class),
             rs.getObject("revision_count", Long.class),
-            AssocFilesRules.SOURCE_FTAS.equals(rs.getString("file_source_code"))));
+            AssocFilesRules.SOURCE_FTAS.equals(rs.getString("file_source_code")),
+            "Y".equals(rs.getString("range_ind"))));
     return new AssocFilesListDto(rows, rules.canAdd(), rules.addReason());
   }
 

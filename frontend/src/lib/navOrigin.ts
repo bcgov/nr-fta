@@ -20,6 +20,11 @@ export const TIMBER_MARK_SEARCH_ORIGIN: NavOrigin = {
   label: 'Timber Mark Search',
 };
 
+export const TENURE_SEARCH_ORIGIN: NavOrigin = {
+  path: '/search/tenure',
+  label: 'Tenure Search',
+};
+
 export const originState = (origin: NavOrigin) => ({ origin });
 
 /** The origin this page was opened from, or null when reached any other way. */

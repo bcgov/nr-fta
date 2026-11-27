@@ -11,7 +11,7 @@ class ManageZoneRulesTest {
 
   static ManageZoneAddRequest valid() {
     return new ManageZoneAddRequest(
-        "ab1", "North zone", "1234", null, "jsmith", "2505551234", "j.smith@gov.bc.ca");
+        "ab1", "North zone", "1234", null, "jsmith", "2505551234", "j.smith@example.com");
   }
 
   @Test

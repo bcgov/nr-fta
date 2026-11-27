@@ -29,6 +29,8 @@ public record RangeTenureDetailDto(
     /** "Note(s) Attached" when the file has notes, else blank. */
     String notesLabel,
     String fileStatusSt,
+    /** The file status's description (TENURE_FILE_STATUS_CODE), for the status pill. */
+    String fileStatusDesc,
     LocalDate fileStatusDate,
     String mgmtUnitType,
     String mgmtUnitId,
@@ -38,6 +40,8 @@ public record RangeTenureDetailDto(
     LocalDate issueDate,
     /** TENURE_TERM.INITIAL_EXPIRY_DT. */
     LocalDate expiryDate,
+    /** TENURE_TERM.CURRENT_EXPIRY_DT, set once the tenure is extended; else null. */
+    LocalDate currentExpiryDate,
     LocalDate originalIssueDate,
     Integer tenureTermYears,
     Integer replacementTermYears,
@@ -55,7 +59,12 @@ public record RangeTenureDetailDto(
     /** Usage History: FTA_613R GET_HISTORY, every year, newest first. */
     List<RangeUsageDto> usageHistory,
     List<RangeLandBaseDto> landBase,
-    List<RangeSpecialConditionDto> specialConditions) {
+    List<RangeSpecialConditionDto> specialConditions,
+    /**
+     * Whether the user may edit this range file: FTA_ADMIN or FTA_RANGE_DISTRICT_ADMIN for its
+     * district, or FTA_RANGE_HEADQUARTERS_ADMIN (RangeFileAccess). The range editors read it.
+     */
+    boolean canEdit) {
 
   /**
    * One row of range usage per calendar year — mirrors

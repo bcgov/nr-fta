@@ -81,7 +81,7 @@ const SuspendBlocks: FC = () => {
       });
       notify.display({
         kind: 'success',
-        title: 'Blocks suspended',
+        title: 'Blocks suspended.',
         subtitle: `${suspended} block${suspended === 1 ? '' : 's'} on ${cpId} suspended.`,
         timeout: 5000,
       });
@@ -89,7 +89,7 @@ const SuspendBlocks: FC = () => {
     } catch (err) {
       notify.display({
         kind: 'error',
-        title: 'Could not suspend blocks',
+        title: 'Could not suspend blocks.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 6000,
       });

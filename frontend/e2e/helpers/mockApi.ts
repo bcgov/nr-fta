@@ -8,6 +8,7 @@
 export const FILE_ID = 'A12345';
 export const PERMIT_ID = 'P01';
 export const BLOCK_ID = 'B1';
+export const RANGE_FILE_ID = 'RAN123';
 const CB_SKEY = 1001;
 
 const permit = {
@@ -75,6 +76,58 @@ const tenureDetails = {
   layout: {},
 };
 
+const rangeTenure = {
+  forestFileId: RANGE_FILE_ID,
+  fileTypeCode: 'E01',
+  adminOrgUnitNo: null,
+  forestDistrictNo: null,
+  districtAdminZone: null,
+  licensee: null,
+  secLicenseeInd: 'N',
+  notesLabel: ' ',
+  fileStatusSt: 'HI',
+  fileStatusDesc: 'Issued',
+  fileStatusDate: null,
+  mgmtUnitType: null,
+  mgmtUnitId: null,
+  mgmtUnitName: null,
+  fileName: null,
+  issueDate: null,
+  expiryDate: null,
+  currentExpiryDate: null,
+  originalIssueDate: null,
+  tenureTermYears: null,
+  replacementTermYears: null,
+  replacementCount: null,
+  replacementLabel: null,
+  licenceReplaceableInd: 'Y',
+  rangeInd: 'Y',
+  termWarning: null,
+  rangeUsage: [],
+  usageHistory: [],
+  landBase: [],
+  specialConditions: [],
+  canEdit: true,
+};
+
+/** The range Tenure tab's form (FTA100R), for RAN123. */
+const rangeTenureTab = {
+  forestFileId: RANGE_FILE_ID,
+  values: {},
+  revisions: {},
+  descriptions: {},
+  editable: true,
+  editableFields: [],
+  replaceable: true,
+  showTenureTerm: true,
+  retirable: false,
+  cancelReplacement: false,
+  statuses: [],
+  fileTypes: [],
+  zones: [],
+  conditionCodes: [],
+};
+
 const blockSuspension = {
   cbSkey: CB_SKEY,
   forestFileId: FILE_ID,
@@ -96,6 +149,8 @@ export const mockGet = (pathname: string): unknown => {
   if (pathname === `/api/fta/cut-blocks/${BLOCK_ID}/suspensions`) return blockSuspension;
   if (pathname === `/api/fta/tenures/${FILE_ID}`) return tenure;
   if (pathname === `/api/fta/tenures/${FILE_ID}/details`) return tenureDetails;
+  if (pathname === `/api/fta/range-tenures/${RANGE_FILE_ID}`) return rangeTenure;
+  if (pathname === `/api/fta/range-tenures/${RANGE_FILE_ID}/tenure-tab`) return rangeTenureTab;
   if (pathname === '/api/fta/tenure-lookups/cutting-permit') {
     return { quotaTypes: [], extendReasons: [], crownLandsRegions: [], conditionThemes: [] };
   }

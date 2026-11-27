@@ -40,7 +40,7 @@ class ManageZoneAddWriteServiceTest {
   void setUp() {
     when(jdbc.queryForList(contains("FROM the.org_unit"), any(SqlParameterSource.class),
         eq(String.class))).thenReturn(List.of("DCC"));
-    when(auth.administersDistrict("DCC")).thenReturn(true);
+    when(auth.administersRangeDistrict("DCC")).thenReturn(true);
     when(lookup.isConfigured()).thenReturn(true);
     when(lookup.getIdirDetail("JSMITH")).thenReturn(
         Optional.of(new IdirUser("JSMITH", "g", "Jane", "Smith", "j@x")));
@@ -71,7 +71,7 @@ class ManageZoneAddWriteServiceTest {
 
   @Test
   void aDistrictTheUserDoesNotAdministerIsForbidden() {
-    when(auth.administersDistrict("DCC")).thenReturn(false);
+    when(auth.administersRangeDistrict("DCC")).thenReturn(false);
     assertThatThrownBy(() -> service.save(ManageZoneRulesTest.valid(), "IDIR\\ME"))
         .isInstanceOf(ResponseStatusException.class)
         .hasMessageContaining(ManageZoneRules.NOT_IN_ADMIN_ORG)

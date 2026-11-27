@@ -10,6 +10,9 @@ import java.time.LocalDate;
  * Oracle package {@code THE.FTA_001R_TENR_SRCH} (Range Tenure Search — see
  * {@code fta-archive/fta/database/ddl/pkg/FTA_001R_TENR_SRCH.pks}): the
  * identifying columns the range tenure search returns.
+ *
+ * <p>{@code fileStatusDesc} is legacy's "code - description" (cut to 30 characters);
+ * {@code fileStatusDescription} is the description alone, for the status pill.
  */
 public record RangeTenureSearchDto(
     String orgUnitCode,
@@ -23,5 +26,6 @@ public record RangeTenureSearchDto(
     String mgmtUnitId,
     String fileStatusCode,
     String fileStatusDesc,
+    String fileStatusDescription,
     LocalDate issueDate,
     LocalDate expiryDate) {}

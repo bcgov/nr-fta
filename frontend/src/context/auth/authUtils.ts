@@ -141,12 +141,15 @@ export function parsePrivileges(input: string[]): USER_PRIVILEGE_TYPE {
  * reads), then FTA_TIMBER_MARK_HEADQUARTERS_ADMIN (private-mark writes, a narrow set of screens), then
  * FTA_TIMBER_MARK_DISTRICT_ADMIN (the same screens and writes; only its certificate print
  * differs, and that is decided by the backend from the token, not by this ranking), which
- * outranks FTA_VIEWER (read-only), which outranks FTA_APT_ADMIN and FTA_APT_VIEWER (the
- * apportionment pages only). Mirrors the backend Role enum ordering.
+ * outranks FTA_VIEWER (read-only), which outranks FTA_RANGE_HEADQUARTERS_ADMIN and
+ * FTA_RANGE_DISTRICT_ADMIN (the range pages, and for the senior the range admin and billing
+ * pages), which outrank FTA_APT_ADMIN and FTA_APT_VIEWER (the apportionment pages only). Mirrors
+ * the backend Role enum ordering.
  *
- * The APT roles rank last because they open the fewest pages: someone who is also a viewer keeps
- * the viewer's menus. APT access itself is asked of every role the user holds
- * (access.canEditApt, holdsAptRole), so it survives being outranked.
+ * The range and APT roles rank last because they open the fewest pages: someone who is also a
+ * viewer keeps the viewer's menus. Range and APT access are asked of every role the user holds
+ * (access.holdsRangeRole, mayEditRangeDistrict, canEditApt, holdsAptRole), so they survive being
+ * outranked.
  *
  * Timber Mark Headquarters Administrator over Viewer is a trade: someone granted both keeps
  * the mark writes but loses the Viewer's wider menu, because roles do not stack.
@@ -158,6 +161,8 @@ const ROLE_PRECEDENCE: ROLE_TYPE[] = [
   'FTA_TIMBER_MARK_HEADQUARTERS_ADMIN',
   'FTA_TIMBER_MARK_DISTRICT_ADMIN',
   'FTA_VIEWER',
+  'FTA_RANGE_HEADQUARTERS_ADMIN',
+  'FTA_RANGE_DISTRICT_ADMIN',
   'FTA_APT_ADMIN',
   'FTA_APT_VIEWER',
 ];

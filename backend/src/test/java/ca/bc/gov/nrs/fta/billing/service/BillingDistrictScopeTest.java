@@ -16,8 +16,8 @@ class BillingDistrictScopeTest {
 
   private static BillingDistrictScope scope(boolean unscoped, String... districts) {
     LoggedUserHelper auth = mock(LoggedUserHelper.class);
-    when(auth.isUnscopedAdmin()).thenReturn(unscoped);
-    when(auth.administersDistrict(org.mockito.ArgumentMatchers.any())).thenAnswer(inv -> {
+    when(auth.isUnscopedRangeAdmin()).thenReturn(unscoped);
+    when(auth.administersRangeDistrict(org.mockito.ArgumentMatchers.any())).thenAnswer(inv -> {
       String code = inv.getArgument(0);
       if (unscoped) {
         return true;
@@ -47,5 +47,21 @@ class BillingDistrictScopeTest {
     forbidden(() -> s.requireDistrict("DKA"));
     forbidden(() -> s.requireDistrict(null));
     forbidden(s::requireAll);
+  }
+
+  @Test
+  void theAdminOnlyScopeIgnoresTheRangeHeadquartersRole() {
+    LoggedUserHelper auth = mock(LoggedUserHelper.class);
+    // A scoped FTA_ADMIN who is also a range headquarters: every district on billing, not on audit.
+    when(auth.isUnscopedRangeAdmin()).thenReturn(true);
+    when(auth.administersRangeDistrict(org.mockito.ArgumentMatchers.any())).thenReturn(true);
+    when(auth.isUnscopedAdmin()).thenReturn(false);
+    when(auth.administersDistrict("DCC")).thenReturn(true);
+
+    assertThatCode(new BillingDistrictScope(auth)::requireAll).doesNotThrowAnyException();
+    BillingDistrictScope admin = BillingDistrictScope.adminOnly(auth);
+    assertThatCode(() -> admin.requireDistrict("DCC")).doesNotThrowAnyException();
+    forbidden(() -> admin.requireDistrict("DKA"));
+    forbidden(admin::requireAll);
   }
 }

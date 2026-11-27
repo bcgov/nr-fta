@@ -97,7 +97,7 @@ export function useUnitEdit(
         setLists({ orgUnits: [], statuses: [], sources: [] });
         display({
           kind: 'error',
-          title: 'Could not load the management unit lists',
+          title: 'Could not load the management unit lists.',
           subtitle: err instanceof Error ? err.message : 'Request failed',
           timeout: 9000,
         });
@@ -152,7 +152,7 @@ export function useUnitEdit(
       });
       display({
         kind: 'success',
-        title: `Management unit ${saved.mgmtUnitName ?? ''} saved`,
+        title: `Management unit ${saved.mgmtUnitName ?? ''} saved.`,
         timeout: 5000,
       });
       setEditing(false);
@@ -160,7 +160,7 @@ export function useUnitEdit(
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not save the management unit',
+        title: 'Could not save the management unit.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

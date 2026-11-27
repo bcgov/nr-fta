@@ -70,6 +70,18 @@ parameters:
   # and this default is the one place it is set.
   - name: VITE_APP_NAME
     value: Forest Tenure Administration
+  # GBS, opened by Tenure Billing's G.B.S. button. Blank uses the production URL
+  # (src/lib/externalUrls.ts); legacy's test environments used
+  # https://testapps.for.gov.bc.ca/gbs/GBSMainServlet?GBS04CLINUM=
+  - name: VITE_GBS_URL
+    description: GBS URL for the G.B.S. button; blank means production
+    required: false
+  # SNC (Status and Clearance), opened by the Tenure Application tab's SNC link. Blank uses the
+  # production URL (src/lib/externalUrls.ts); legacy's test environment used
+  # https://testapps.nrs.gov.bc.ca/int/sncsc-web/viewConflicts/
+  - name: VITE_SNC_URL
+    description: SNC web URL for the Tenure Application SNC link; blank means production
+    required: false
 
 objects:
   # ── Deployment ────────────────────────────────────────────
@@ -152,6 +164,10 @@ objects:
                   value: ${VITE_API_BASE_URL}
                 - name: VITE_APP_NAME
                   value: ${VITE_APP_NAME}
+                - name: VITE_GBS_URL
+                  value: ${VITE_GBS_URL}
+                - name: VITE_SNC_URL
+                  value: ${VITE_SNC_URL}
               volumeMounts:
                 - name: srv
                   mountPath: /srv

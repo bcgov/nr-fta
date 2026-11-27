@@ -1,7 +1,9 @@
-import { Button, InlineNotification, Stack, TextInput } from '@carbon/react';
+import { Button, Stack, TextInput } from '@carbon/react';
 import { useEffect, useState, type FC, type FormEvent } from 'react';
 
 import { Modal } from '@/components/Modal';
+import { useNotification } from '@/context/notification/useNotification';
+import { safeErrorMessage } from '@/lib/errorMessage';
 import {
   changeTenureMarkDesignate,
   getMarkDesignate,
@@ -10,8 +12,6 @@ import {
 
 /** Legacy's Source File field: ten characters. */
 const MAX_FILE_ID = 10;
-
-const message = (err: unknown) => (err instanceof Error ? err.message : 'Request failed');
 
 /**
  * FTA101 Change Mark Designate, opened by the Details tab's button: "reuse of
@@ -28,7 +28,15 @@ const ChangeMarkDesignateModal: FC<{
 }> = ({ forestFileId, open, onClose, onSaved }) => {
   const [source, setSource] = useState('');
   const [shown, setShown] = useState<MarkDesignate | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const notify = useNotification();
+  // Errors are a snackbar, which shows above the dialog; the dialog stays open.
+  const fail = (err: unknown) =>
+    notify.display({
+      kind: 'error',
+      title: 'Could not change the mark designate.',
+      subtitle: safeErrorMessage(err),
+      timeout: 0,
+    });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -38,14 +46,13 @@ const ChangeMarkDesignateModal: FC<{
     let cancelled = false;
     setSource(forestFileId);
     setShown(null);
-    setError(null);
     setLoading(true);
     getMarkDesignate(forestFileId, '')
       .then((d) => {
         if (!cancelled) setShown(d);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(message(err));
+        if (!cancelled) fail(err);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -53,17 +60,18 @@ const ChangeMarkDesignateModal: FC<{
     return () => {
       cancelled = true;
     };
+    // fail only raises a toast; reading on open is keyed to the file alone.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, forestFileId]);
 
   const onGo = async (e?: FormEvent) => {
     e?.preventDefault();
     setLoading(true);
-    setError(null);
     setShown(null);
     try {
       setShown(await getMarkDesignate(forestFileId, source.trim()));
     } catch (err) {
-      setError(message(err));
+      fail(err);
     } finally {
       setLoading(false);
     }
@@ -72,13 +80,12 @@ const ChangeMarkDesignateModal: FC<{
   const onSave = async () => {
     if (!shown) return;
     setSaving(true);
-    setError(null);
     try {
       await changeTenureMarkDesignate(forestFileId, shown.sourceFileId, shown.revisionCount);
       onSaved();
       onClose();
     } catch (err) {
-      setError(message(err));
+      fail(err);
     } finally {
       setSaving(false);
     }
@@ -100,15 +107,6 @@ const ChangeMarkDesignateModal: FC<{
       preventCloseOnClickOutside
     >
       <Stack gap={5}>
-        {error && (
-          <InlineNotification
-            kind="error"
-            lowContrast
-            hideCloseButton
-            title="Could not change the mark designate."
-            subtitle={error}
-          />
-        )}
         <form onSubmit={(e) => void onGo(e)}>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
             <TextInput

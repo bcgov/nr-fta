@@ -1,13 +1,5 @@
-.rates-maintenance__rate-input {
-  max-width: 20rem;
-}
-
-.rates-maintenance__group {
-  margin-bottom: 1rem;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
+// "Last updated …" under the Rates & fees header: secondary, as a tile description.
 .rates-maintenance__updated {
+  margin: 0;
   color: var(--cds-text-secondary);
 }

@@ -26,6 +26,8 @@ const ROLE_LABEL: Record<ROLE_TYPE, string> = {
   FTA_APT_ADMIN: 'Apportionment Administrator',
   FTA_APT_VIEWER: 'Apportionment Viewer',
   FTA_VIEWER: 'Viewer',
+  FTA_RANGE_HEADQUARTERS_ADMIN: 'Range Headquarters Administrator',
+  FTA_RANGE_DISTRICT_ADMIN: 'Range District Administrator',
 };
 
 // Most-privileged first, so a user's "current role" shows their highest.
@@ -36,6 +38,8 @@ const ROLE_PRIORITY: ROLE_TYPE[] = [
   'FTA_TIMBER_MARK_HEADQUARTERS_ADMIN',
   'FTA_TIMBER_MARK_DISTRICT_ADMIN',
   'FTA_VIEWER',
+  'FTA_RANGE_HEADQUARTERS_ADMIN',
+  'FTA_RANGE_DISTRICT_ADMIN',
   'FTA_APT_ADMIN',
   'FTA_APT_VIEWER',
 ];

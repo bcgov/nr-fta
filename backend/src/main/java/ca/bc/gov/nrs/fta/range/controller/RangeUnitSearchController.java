@@ -61,6 +61,7 @@ public class RangeUnitSearchController {
       @RequestParam(required = false) String pastureName,
       @RequestParam(required = false) String rangeStatus,
       @RequestParam(required = false) String sort) {
+    RangeUnitSearchService.requireOrgUnit(orgUnitNo);
     return CsvExport.response(
         "range-units",
         csv -> rangeUnitSearchService.exportCsv(

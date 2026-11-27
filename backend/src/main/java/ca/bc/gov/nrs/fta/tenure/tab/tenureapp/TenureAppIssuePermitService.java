@@ -28,9 +28,10 @@ import org.springframework.web.server.ResponseStatusException;
  *   <li>the package again with {@code 'FALSE'} and the document's link — the permit document
  *       records, the authority and file to HI, the application to ISS;
  *   <li>commit;
- *   <li>the e-mail to the recipients the user added ({@link EmailSender}; legacy: CMSG) —
- *       subject "Forest Permit {file type} {file id}", a link to the document, and the file
- *       attached when Attach Document To Email is checked.
+ *   <li>the e-mail to the recipients the user added ({@link EmailSender}; legacy: NRS
+ *       Common Messaging) — subject "Forest Permit {file type} {file id}", a link to the
+ *       document (legacy: the DMS viewer; here a time-limited presigned link, the bucket being
+ *       private), and the file attached when Attach Document To Email is checked.
  * </ol>
  *
  * <p>The package (2,400 lines of CP / file / range / FSJ / FUP First Nations issuance rules) is

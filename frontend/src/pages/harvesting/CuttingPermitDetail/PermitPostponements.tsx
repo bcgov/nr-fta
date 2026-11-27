@@ -198,7 +198,7 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
                         <TableHeader>Expiry</TableHeader>
                         <TableHeader>Term</TableHeader>
                         <TableHeader>Rescinded</TableHeader>
-                        <TableHeader aria-label="Actions" />
+                        <TableHeader>Actions</TableHeader>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -334,7 +334,7 @@ const PermitPostponements: FC<Props> = ({ cp, onChanged }) => {
         onConfirm={async () => {
           if (!deleting) return;
           await deletePermitPostponement(cp.hvaSkey, deleting.id, cp.revisionCount);
-          display({ kind: 'success', title: 'Postponement deleted', timeout: 5000 });
+          display({ kind: 'success', title: 'Postponement deleted.', timeout: 5000 });
           refreshAll();
         }}
       >

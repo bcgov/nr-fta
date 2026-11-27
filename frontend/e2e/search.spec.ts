@@ -92,6 +92,8 @@ test.describe('the searches refuse what legacy refused', () => {
 
   test('a range unit search needs an organization unit', async ({ page }) => {
     await gotoPage(page, PAGES.rangeUnitSearch);
+    // The user's default org unit may have filled it in (and searched); empty it first.
+    await page.locator('select#ru-org-unit').selectOption('');
     await page
       .locator('form.fsp-search__form')
       .getByRole('button', { name: 'Search', exact: true })

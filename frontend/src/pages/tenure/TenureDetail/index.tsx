@@ -14,7 +14,7 @@ import {
   UserMultiple,
 } from '@carbon/icons-react';
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
@@ -25,6 +25,7 @@ import { useLazyTabs, type LazyTabs } from '@/hooks/useLazyTabs';
 import { useNavOrigin } from '@/lib/navOrigin';
 import PageLayout from '@/pages/PageLayout';
 import { canEdit, canEditHarvest } from '@/routes/access';
+import { tenureDetailPath } from '@/routes/tenurePaths';
 import { markDetailPath } from '@/services/mark_detail';
 import { getTenureDetail } from '@/services/tenure_detail';
 import { formatDate } from '@/utils/formatDate';
@@ -174,6 +175,7 @@ const TenureDetail: FC = () => {
   } = useApiResource(() => getTenureDetail(fileId), [fileId]);
 
   const tabs = useLazyTabs(fileId);
+  const location = useLocation();
 
   // What every tab panel gets (panelProps.ts).
   const panelProps: TenurePanelProps | null = tenure
@@ -181,6 +183,17 @@ const TenureDetail: FC = () => {
     : null;
 
   const title = 'Tenure';
+
+  // Legacy FTA100 never showed a range file: it sent it to FTA100R. So does this page.
+  if (tenure?.rangeFile) {
+    return (
+      <Navigate
+        to={tenureDetailPath(tenure.forestFileId, true)}
+        replace
+        state={location.state as unknown}
+      />
+    );
+  }
 
   return (
     <PageLayout

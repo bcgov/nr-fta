@@ -155,4 +155,23 @@ class BillingInstructionRulesTest {
     assertThat(none.insert()).isNull();
     assertThat(none.deleteAfterLastB()).isFalse();
   }
+
+  /**
+   * The FTA680 screenshot: range tenures shown at "N", no invoice, never certified, left alone.
+   * Legacy EDIT let N through whatever the provision or account, so Prepare accepts every one.
+   */
+  @Test
+  void anUnchangedNRowWithNoInvoiceIsNeverRefused() {
+    RowState n = new RowState("N", "", false, false);
+    for (EditFacts f : java.util.List.of(
+        new EditFacts(false, null, null, null, false, null),
+        new EditFacts(false, "CLS", null, null, false, null),
+        new EditFacts(true, "OPN", null, null, false, null),
+        new EditFacts(false, null, null, null, false, "N"))) {
+      Outcome o = BillingInstructionRules.edit(n, "E01", "N", f);
+      assertThat(o.error()).isNull();
+    }
+    assertThat(BillingInstructionRules.codeError("N", "N", java.util.Set.of())).isNull();
+    assertThat(BillingInstructionRules.codeError("", "N", java.util.Set.of())).isNull();
+  }
 }

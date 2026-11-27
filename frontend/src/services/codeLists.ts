@@ -81,6 +81,10 @@ export const getTenureAdminOrgUnits = () => list('tenure-admin-org-units');
 /** Region-level org units (code = ORG_UNIT_NO), for the FTA640 Region dropdown. */
 export const getRegions = () => list('regions');
 
+/** Each district's region: district ORG_UNIT_NO to region ORG_UNIT_NO. */
+export const getDistrictRegions = () =>
+  apiGet<Record<string, string>>('/api/fta/code-lists/district-regions');
+
 /**
  * An org unit option's ORG_UNIT_CODE ("DKM"). The option's code is the
  * ORG_UNIT_NO, but its label reads "CODE - name" (CodeListService), so the code
@@ -117,6 +121,9 @@ export const getAddNewFileTypes = () => list('add-new-file-types');
 
 /** Range file types (RANGE_FILE_TYPE_CODE), for FTA680's Tenure Type. */
 export const getRangeFileTypes = () => list('range-file-types');
+
+/** Range tenure statuses (RANGE_TENURE_STATUS_CODE), for FTA001R's Status. */
+export const getRangeTenureStatuses = () => list('range-tenure-statuses');
 
 /** Billing instructions a user may choose on FTA680 (all but "B"). */
 export const getBillingInstructionCodes = () => list('billing-instructions');

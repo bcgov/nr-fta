@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FTA411 Approval Summary (FTAR411, the "tenure billing batch summary"): what the range billing
+  batch (FTA_690_TENURE_APPROVAL.PROCESS) did with one FTA_RANGE_BILL_REQUEST, e-mailed to the
+  user who submitted it.
+
+  Legacy was the Crystal report fta-archive crystal-reports/application/fta411-ApprovalSummary.rpt,
+  whose layout and query are in compressed Crystal streams that could not be read. Its data shape
+  is THE.FTA_411_PKG.rec_FTA411 (org_unit_code, submit_userid, calendar_year, curr_time,
+  curr_date, total_invoices, first_invoice, last_invoice, invoice_total, message_text,
+  current_server), filled here from the request row (RangeBillingPackage.SUMMARY_SQL). The layout
+  is new: one page listing those values.
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="FTA411_ApprovalSummary" pageWidth="612" pageHeight="792" whenNoDataType="AllSectionsNoDetail" columnWidth="572" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000001">
+	<parameter name="p_range_bill_request_id" class="java.lang.String" isForPrompting="false"/>
+	<field name="org_unit_code" class="java.lang.String"/>
+	<field name="submit_userid" class="java.lang.String"/>
+	<field name="calendar_year" class="java.lang.Number"/>
+	<field name="curr_time" class="java.lang.String"/>
+	<field name="curr_date" class="java.util.Date"/>
+	<field name="total_invoices" class="java.lang.Number"/>
+	<field name="first_invoice" class="java.lang.String"/>
+	<field name="last_invoice" class="java.lang.String"/>
+	<field name="invoice_total" class="java.lang.Number"/>
+	<field name="message_text" class="java.lang.String"/>
+	<field name="current_server" class="java.lang.String"/>
+	<title>
+		<band height="80" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000002" x="132" y="0" width="308" height="44"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ministry of Forests
+Tenure Billing Batch Summary]]></text>
+			</staticText>
+			<staticText>
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000003" x="452" y="0" width="120" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[FTA411]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000004" x="452" y="12" width="120" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{current_server}]]></textFieldExpression>
+			</textField>
+			<textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000005" x="452" y="24" width="120" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{curr_date}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000006" x="452" y="36" width="120" height="12"/>
+				<textElement textAlignment="Right">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{curr_time}]]></textFieldExpression>
+			</textField>
+		</band>
+	</title>
+	<detail>
+		<band height="150" splitType="Stretch">
+			<staticText>
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000010" x="72" y="0" width="150" height="16"/>
+				<textElement><font fontName="Arial" size="10" isBold="true"/></textElement>
+				<text><![CDATA[Request:]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000011" x="222" y="0" width="300" height="16"/>
+				<textElement><font fontName="Arial" size="10"/></textElement>
+				<textFieldExpression><![CDATA[$P{p_range_bill_request_id}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000012" x="72" y="16" width="150" height="16"/>
+				<textElement><font fontName="Arial" size="10" isBold="true"/></textElement>
+				<text><![CDATA[Org Unit:]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000013" x="222" y="16" width="300" height="16"/>
+				<textElement><font fontName="Arial" size="10"/></textElement>
+				<textFieldExpression><![CDATA[$F{org_unit_code}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000014" x="72" y="32" width="150" height="16"/>
+				<textElement><font fontName="Arial" size="10" isBold="true"/></textElement>
+				<text><![CDATA[Billing Year:]]></text>
+			</staticText>
+			<textField pattern="0" isBlankWhenNull="true">
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000015" x="222" y="32" width="300" height="16"/>
+				<textElement><font fontName="Arial" size="10"/></textElement>
+				<textFieldExpression><![CDATA[$F{calendar_year}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000016" x="72" y="48" width="150" height="16"/>
+				<textElement><font fontName="Arial" size="10" isBold="true"/></textElement>
+				<text><![CDATA[Submitted By:]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000017" x="222" y="48" width="300" height="16"/>
+				<textElement><font fontName="Arial" size="10"/></textElement>
+				<textFieldExpression><![CDATA[$F{submit_userid}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000018" x="72" y="64" width="150" height="16"/>
+				<textElement><font fontName="Arial" size="10" isBold="true"/></textElement>
+				<text><![CDATA[Invoices Loaded:]]></text>
+			</staticText>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000019" x="222" y="64" width="300" height="16"/>
+				<textElement><font fontName="Arial" size="10"/></textElement>
+				<textFieldExpression><![CDATA[$F{total_invoices}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000020" x="72" y="80" width="150" height="16"/>
+				<textElement><font fontName="Arial" size="10" isBold="true"/></textElement>
+				<text><![CDATA[First Invoice:]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000021" x="222" y="80" width="300" height="16"/>
+				<textElement><font fontName="Arial" size="10"/></textElement>
+				<textFieldExpression><![CDATA[$F{first_invoice}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000022" x="72" y="96" width="150" height="16"/>
+				<textElement><font fontName="Arial" size="10" isBold="true"/></textElement>
+				<text><![CDATA[Last Invoice:]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000023" x="222" y="96" width="300" height="16"/>
+				<textElement><font fontName="Arial" size="10"/></textElement>
+				<textFieldExpression><![CDATA[$F{last_invoice}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000024" x="72" y="112" width="150" height="16"/>
+				<textElement><font fontName="Arial" size="10" isBold="true"/></textElement>
+				<text><![CDATA[Invoice Total:]]></text>
+			</staticText>
+			<textField pattern="$#,##0.00" isBlankWhenNull="true">
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000025" x="222" y="112" width="300" height="16"/>
+				<textElement><font fontName="Arial" size="10"/></textElement>
+				<textFieldExpression><![CDATA[$F{invoice_total}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000026" x="72" y="128" width="150" height="16"/>
+				<textElement><font fontName="Arial" size="10" isBold="true"/></textElement>
+				<text><![CDATA[Message:]]></text>
+			</staticText>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement uuid="5b0f8d8e-3f0a-4d0e-9a51-411a00000027" x="222" y="128" width="300" height="16"/>
+				<textElement><font fontName="Arial" size="10"/></textElement>
+				<textFieldExpression><![CDATA[$F{message_text}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

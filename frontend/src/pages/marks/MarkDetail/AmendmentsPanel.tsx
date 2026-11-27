@@ -88,7 +88,7 @@ const AmendmentsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }
       await addAmendment(id, { requestedChanges: changes.trim() }, byCertificate);
       display({
         kind: 'success',
-        title: 'Amendment requested',
+        title: 'Amendment requested.',
         subtitle: 'Saved as PI - Pending Issuance.',
         timeout: 5000,
       });
@@ -97,7 +97,7 @@ const AmendmentsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, onAdded }
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not request the amendment',
+        title: 'Could not request the amendment.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

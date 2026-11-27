@@ -1,8 +1,6 @@
 import { Add, Edit, Location, Search as SearchIcon } from '@carbon/icons-react';
 import {
   Button,
-  Column,
-  Grid,
   Select,
   SelectItem,
   Stack,
@@ -95,7 +93,7 @@ const ManageZone: FC = () => {
         if (cancelled) return;
         notify.display({
           kind: 'error',
-          title: 'Could not load the district list',
+          title: 'Could not load the district list.',
           subtitle: 'Reload the page to try again.',
           timeout: 6000,
         });
@@ -174,7 +172,7 @@ const ManageZone: FC = () => {
     } catch (e) {
       notify.display({
         kind: 'error',
-        title: 'Could not save zone',
+        title: 'Could not save zone.',
         subtitle: e instanceof Error ? e.message : 'Request failed',
         timeout: 9000,
       });
@@ -195,8 +193,8 @@ const ManageZone: FC = () => {
       subtitle="View, add and update the range zones and their contacts for a district."
     >
       <SectionTile title="District" icon={SearchIcon}>
-        <Grid narrow>
-          <Column sm={4} md={4} lg={6}>
+        <div className="fsp-search__field-grid">
+          <div className="fsp-search__wide-cell">
             <Select
               id="zone-district"
               labelText="District"
@@ -208,8 +206,8 @@ const ManageZone: FC = () => {
                 <SelectItem key={d.code} value={d.code} text={d.description} />
               ))}
             </Select>
-          </Column>
-        </Grid>
+          </div>
+        </div>
       </SectionTile>
 
       {district && (
@@ -240,7 +238,7 @@ const ManageZone: FC = () => {
                           <TableHeader>Contact</TableHeader>
                           <TableHeader>Phone #</TableHeader>
                           <TableHeader>Email</TableHeader>
-                          <TableHeader aria-label="Actions" />
+                          <TableHeader>Actions</TableHeader>
                         </TableRow>
                       </TableHead>
                       <TableBody>

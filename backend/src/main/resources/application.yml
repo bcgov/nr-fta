@@ -51,31 +51,50 @@ fta:
   apt-reports:
     batch-threads: ${APT_REPORT_BATCH_THREADS:4}
   # Issue Permit (Tenure application tab) files the permit PDF and e-mails the recipients, as
-  # legacy FTA950 did through NRS DMS and CMSG. Here: BC Gov COMS (integration/ComsDocumentStore)
-  # and CHES (integration/ChesEmailSender), each with its own Keycloak client_credentials service
-  # client. All optional so the app starts without them; unset, Issue Permit fails with a message
-  # naming the variables (documents), or issues the permit and reports the e-mail as not sent.
-  # Set token-url/client-id/client-secret together or none; a partial set fails at startup.
+  # legacy FTA950 did through NRS DMS and NRS Common Messaging. Here: an S3-compatible bucket
+  # (integration/S3DocumentStore) and plain SMTP (integration/SmtpEmailSender; the relay is
+  # spring.mail below). All optional so the app starts without them; unset, Issue Permit fails
+  # with a message naming the variables (documents), or issues the permit and reports the e-mail
+  # as not sent (no FTA_EMAIL_FROM).
   documents:
-    coms:
-      # COMS API root including the version, e.g. https://coms.api.gov.bc.ca/api/v1
-      base-url: ${COMS_BASE_URL:}
-      bucket-id: ${COMS_BUCKET_ID:}
-      token-url: ${COMS_TOKEN_URL:}
-      client-id: ${COMS_CLIENT_ID:}
-      client-secret: ${COMS_CLIENT_SECRET:}
-      # Optional: prefix the document id is appended to for the e-mailed link (legacy's DMS
-      # viewer URL). Unset, the e-mail links to the COMS object itself.
-      viewer-url: ${COMS_VIEWER_URL:}
+    s3:
+      # The S3-compatible endpoint (path-style access), e.g. BC Gov object storage.
+      endpoint: ${S3_ENDPOINT:}
+      bucket: ${S3_BUCKET:}
+      access-key-id: ${S3_ACCESS_KEY_ID:}
+      secret-access-key: ${S3_SECRET_ACCESS_KEY:}
+      region: ${S3_REGION:ca-central-1}
+      # How long the e-mailed (presigned) link to an issued permit works, ISO-8601. SigV4 allows
+      # at most P7D. The permit records the object's stable address, not this link.
+      link-expiry: ${S3_LINK_EXPIRY:P7D}
   email:
-    # Legacy CMSG's sender.
-    from: ${FTA_EMAIL_FROM:fta@gov.bc.ca}
-    ches:
-      # CHES API root including the version, e.g. https://ches.api.gov.bc.ca/api/v1
-      base-url: ${CHES_BASE_URL:}
-      token-url: ${CHES_TOKEN_URL:}
-      client-id: ${CHES_CLIENT_ID:}
-      client-secret: ${CHES_CLIENT_SECRET:}
+    # The sender address. Set in the deploy only; unset, every send fails as not configured.
+    from: ${FTA_EMAIL_FROM:}
+  # Legacy FTA's batch jobs, scheduled in every pod and run by one at a time (ShedLock,
+  # THE.FTA_SHEDLOCK). See the ca.bc.gov.nrs.fta.batch package documentation for the pattern.
+  # Each job's cron is a Spring 6-field cron (sec min hour day month weekday) read in
+  # America/Vancouver time; "-" disables the schedule. The schedules are set on the pods only,
+  # through the optional ConfigMap nr-fta-backend-batch-schedules-<zone> (see
+  # openshift.deploy.yml), never in Git. Any job can also be run on demand
+  # (FTA_ADMIN): POST /api/fta/admin/batch/<job>/run.
+  batch:
+    # The id scheduled runs are recorded under (legacy batch.user). No batch package takes it.
+    user-id: ${FTA_BATCH_USER_ID:IDIR\SA_FTA}
+    # FTA_690_TENURE_APPROVAL: invoices the FTA690-queued range billing requests and e-mails each
+    # submitter the FTA411 summary. Legacy (Automate) runs it nightly at 23:00. Off unless
+    # FTA_BATCH_RANGE_BILLING_CRON is set on the pods, so it never runs alongside legacy's.
+    range-billing:
+      cron: ${FTA_BATCH_RANGE_BILLING_CRON:-}
+    # FTA_102_RANGE_REPLACE: applies pending range tenure replacements (the package acts only on
+    # what is due). Legacy (Automate) runs it nightly just after midnight. Off unless
+    # FTA_BATCH_RANGE_REPLACE_CRON is set on the pods.
+    range-replace:
+      cron: ${FTA_BATCH_RANGE_REPLACE_CRON:-}
+    # FTA_520_CANCEL_MARK: cancels private marks (B08/B09/B14) expired over 90 days and not
+    # extended. No e-mail. Legacy (Automate) runs it nightly at 22:00. Off unless
+    # FTA_BATCH_CANCEL_MARK_CRON is set on the pods.
+    cancel-mark:
+      cron: ${FTA_BATCH_CANCEL_MARK_CRON:-}
 
 spring:
   # Issue Permit's upload: legacy refused files of 4 MB (4,194,304 bytes) or more with its own
@@ -86,6 +105,16 @@ spring:
       max-request-size: 6MB
   application:
     name: fta-backend
+  # Outgoing e-mail (integration/SmtpEmailSender): straight to the government SMTP relay on its
+  # default port, which takes mail from the cluster without a login.
+  mail:
+    host: apps.smtp.gov.bc.ca
+    port: 25
+    default-encoding: UTF-8
+    properties:
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 30000
+      mail.smtp.writetimeout: 30000
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
@@ -137,6 +166,11 @@ management:
       enabled: false
     health:
       show-details: always
+  health:
+    # Actuator would otherwise open an SMTP connection on every health check, and an unreachable
+    # relay would mark the pod down. A failed send is reported where it happens instead.
+    mail:
+      enabled: false
 
 # Application metadata (consumed by FtaMetricConfiguration + Actuator /info endpoint)
 info:

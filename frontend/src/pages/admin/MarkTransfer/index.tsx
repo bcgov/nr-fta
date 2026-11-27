@@ -1,5 +1,5 @@
 import { ArrowRight, Save, Reset } from '@carbon/icons-react';
-import { Button, Column, Grid, TextInput } from '@carbon/react';
+import { Button, TextInput } from '@carbon/react';
 import { useState, type FC, type FormEvent } from 'react';
 
 import DateField from '@/components/DateField';
@@ -7,8 +7,6 @@ import SectionTile from '@/components/SectionTile';
 import { useNotification } from '@/context/notification/useNotification';
 import PageLayout from '@/pages/PageLayout';
 import { transferMark } from '@/services/mark_transfer';
-
-import './MarkTransfer.scss';
 
 interface TransferForm {
   sourceForestFileId: string;
@@ -54,7 +52,7 @@ const MarkTransfer: FC = () => {
       });
       notify.display({
         kind: 'success',
-        title: 'Mark transferred',
+        title: 'Mark transferred.',
         subtitle: `Mark ${timberMark} transferred to file ${form.targetForestFileId.trim()}.`,
         timeout: 5000,
       });
@@ -62,7 +60,7 @@ const MarkTransfer: FC = () => {
     } catch (err) {
       notify.display({
         kind: 'error',
-        title: 'Could not transfer mark',
+        title: 'Could not transfer mark.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 6000,
       });
@@ -77,63 +75,50 @@ const MarkTransfer: FC = () => {
       subtitle="Move the primary timber mark of a source forest file and cutting permit to a target file and cutting permit."
     >
       <SectionTile title="Transfer details" icon={ArrowRight}>
-        <form className="mark-transfer__form" onSubmit={onSubmit}>
-          <Grid narrow>
-            <Column sm={4} md={4} lg={4}>
-              <TextInput
-                id="mt-src-file"
-                labelText="Source Forest File ID"
-                placeholder="e.g. A19201"
-                value={form.sourceForestFileId}
-                onChange={(e) => set('sourceForestFileId')(e.target.value.toUpperCase())}
-                required
-              />
-            </Column>
-            <Column sm={4} md={4} lg={4}>
-              <TextInput
-                id="mt-src-cp"
-                labelText="Source Cutting Permit"
-                placeholder="e.g. 01"
-                value={form.sourceCuttingPermitId}
-                onChange={(e) => set('sourceCuttingPermitId')(e.target.value.toUpperCase())}
-                maxLength={3}
-                required
-              />
-            </Column>
-            <Column sm={4} md={4} lg={4}>
-              <TextInput
-                id="mt-tgt-file"
-                labelText="Target Forest File ID"
-                placeholder="e.g. A20115"
-                value={form.targetForestFileId}
-                onChange={(e) => set('targetForestFileId')(e.target.value.toUpperCase())}
-                required
-              />
-            </Column>
-            <Column sm={4} md={4} lg={4}>
-              <TextInput
-                id="mt-tgt-cp"
-                labelText="Target Cutting Permit"
-                placeholder="e.g. 02"
-                value={form.targetCuttingPermitId}
-                onChange={(e) => set('targetCuttingPermitId')(e.target.value.toUpperCase())}
-                maxLength={3}
-                required
-              />
-            </Column>
-            <Column sm={4} md={4} lg={4}>
-              <DateField
-                id="mt-eff"
-                labelText="Legal transfer date"
-                value={form.effective}
-                onChange={(v) => set('effective')(v)}
-              />
-            </Column>
-          </Grid>
-          <div className="mark-transfer__actions">
-            <Button type="submit" size="md" renderIcon={Save} disabled={!canSubmit || saving}>
-              {saving ? 'Transferring…' : 'Transfer mark'}
-            </Button>
+        <form className="fsp-search__form" onSubmit={onSubmit}>
+          <div className="fsp-search__field-grid">
+            <TextInput
+              id="mt-src-file"
+              labelText="Source Forest File ID"
+              placeholder="e.g. A19201"
+              value={form.sourceForestFileId}
+              onChange={(e) => set('sourceForestFileId')(e.target.value.toUpperCase())}
+              required
+            />
+            <TextInput
+              id="mt-src-cp"
+              labelText="Source Cutting Permit"
+              placeholder="e.g. 01"
+              value={form.sourceCuttingPermitId}
+              onChange={(e) => set('sourceCuttingPermitId')(e.target.value.toUpperCase())}
+              maxLength={3}
+              required
+            />
+            <TextInput
+              id="mt-tgt-file"
+              labelText="Target Forest File ID"
+              placeholder="e.g. A20115"
+              value={form.targetForestFileId}
+              onChange={(e) => set('targetForestFileId')(e.target.value.toUpperCase())}
+              required
+            />
+            <TextInput
+              id="mt-tgt-cp"
+              labelText="Target Cutting Permit"
+              placeholder="e.g. 02"
+              value={form.targetCuttingPermitId}
+              onChange={(e) => set('targetCuttingPermitId')(e.target.value.toUpperCase())}
+              maxLength={3}
+              required
+            />
+            <DateField
+              id="mt-eff"
+              labelText="Legal transfer date"
+              value={form.effective}
+              onChange={(v) => set('effective')(v)}
+            />
+          </div>
+          <div className="fsp-search__actions">
             <Button
               type="button"
               size="md"
@@ -143,6 +128,9 @@ const MarkTransfer: FC = () => {
               disabled={saving}
             >
               Clear
+            </Button>
+            <Button type="submit" size="md" renderIcon={Save} disabled={!canSubmit || saving}>
+              {saving ? 'Transferring…' : 'Transfer mark'}
             </Button>
           </div>
         </form>

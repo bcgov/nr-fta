@@ -1,12 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { BLOCK_ID, FILE_ID, PERMIT_ID } from './helpers/mockApi';
+import { BLOCK_ID, FILE_ID, PERMIT_ID, RANGE_FILE_ID } from './helpers/mockApi';
 import { signInAs } from './helpers/mockSession';
 import { navSection, openNavSection, pageHeading, sideNav } from './helpers/nav';
 import { gotoProtected, gotoWithRetry, installStaticAssetCache } from './utils';
 
 /**
- * What each role may see and open, for all seven roles, from one test account: see
+ * What each role may see and open, for every role, from one test account: see
  * signInAs for how, and for why this covers the screens and not the server.
  *
  * The expectations are written out here rather than read from routes/access.ts, so
@@ -21,6 +21,8 @@ const MARK_DISTRICT = 'FTA_TIMBER_MARK_DISTRICT_ADMIN';
 const APT = 'FTA_APT_ADMIN';
 const APT_VIEWER = 'FTA_APT_VIEWER';
 const VIEWER = 'FTA_VIEWER';
+const RANGE_HEADQUARTERS = 'FTA_RANGE_HEADQUARTERS_ADMIN';
+const RANGE_DISTRICT = 'FTA_RANGE_DISTRICT_ADMIN';
 
 const ALL_ROLES = [
   ADMIN,
@@ -29,12 +31,16 @@ const ALL_ROLES = [
   MARK_HQ,
   MARK_DISTRICT,
   VIEWER,
+  RANGE_HEADQUARTERS,
+  RANGE_DISTRICT,
   APT,
   APT_VIEWER,
 ];
 const MARK_ROLES = [MARK_HQ, MARK_DISTRICT];
 /** The APT roles open the Apportionment pages and nothing else, as legacy APT2 was its own app. */
 const APT_ROLES = [APT, APT_VIEWER];
+/** The range roles open the range pages; the senior one the range admin and billing pages too. */
+const RANGE_ROLES = [RANGE_HEADQUARTERS, RANGE_DISTRICT];
 const WIDE_READ_ROLES = [HARVEST_SENIOR, HARVEST_DISTRICT, VIEWER];
 /** Everyone but FTA_ADMIN and FTA_HARVEST_AUTH_SENIOR_ADMIN (access.canManageHarvest). */
 const NOT_HARVEST_MANAGERS = [HARVEST_DISTRICT, ...MARK_ROLES, VIEWER];
@@ -82,7 +88,21 @@ test.describe('the menu', () => {
     [VIEWER]: ['Search', 'Tenures', 'Private Marks', 'Apportionment'],
     [MARK_HQ]: ['Search', 'Private Marks'],
     [MARK_DISTRICT]: ['Search', 'Private Marks'],
+    [RANGE_HEADQUARTERS]: ['Search', 'Administration'],
+    [RANGE_DISTRICT]: ['Search'],
   };
+
+  /** The range admin and billing entries, which FTA_RANGE_HEADQUARTERS_ADMIN shares with FTA_ADMIN. */
+  const RANGE_ADMIN_ENTRIES = [
+    'admin-range-zone',
+    'admin-billing-tenure',
+    'admin-billing-invoice',
+    'admin-billing-pre',
+    'admin-billing-approval',
+    'admin-billing-post',
+    'admin-rates-fees',
+    'admin-archive',
+  ];
 
   for (const role of ALL_ROLES) {
     test(`${role} sees its sections and allowed menu entries`, async ({ page, context }) => {
@@ -93,6 +113,30 @@ test.describe('the menu', () => {
       if (MARK_ROLES.includes(role)) {
         await openNavSection(page, 'Search');
         await expect(sideNav(page).getByRole('link')).toHaveText(['Tenures', 'Timber Marks']);
+      }
+
+      if (RANGE_ROLES.includes(role)) {
+        await openNavSection(page, 'Search');
+        await expect(sideNav(page).getByRole('link')).toHaveText([
+          'Range Tenures',
+          'Range Units',
+          'Application Metrics Export',
+        ]);
+      }
+
+      if (role === RANGE_HEADQUARTERS) {
+        await openNavSection(page, 'Administration');
+        for (const id of RANGE_ADMIN_ENTRIES) {
+          await expect(page.getByTestId(`side-nav-link-${id}`)).toBeVisible();
+        }
+        for (const id of [
+          'admin-audit',
+          'admin-rents-fees',
+          'admin-mark-transfer',
+          'admin-org-unit',
+        ]) {
+          await expect(page.getByTestId(`side-nav-link-${id}`)).toHaveCount(0);
+        }
       }
 
       if (SECTIONS[role].includes('Private Marks')) {
@@ -145,6 +189,47 @@ test.describe('the menu', () => {
     ]);
   });
 
+  test('a viewer who is also a range district administrator keeps the viewer menus', async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, [VIEWER, RANGE_DISTRICT]);
+    await gotoProtected(page, '/welcome');
+    await expect(sideNav(page).getByRole('button')).toHaveText([
+      'Search',
+      'Tenures',
+      'Private Marks',
+      'Apportionment',
+    ]);
+  });
+
+  test('a range headquarters outranked by a timber mark role keeps the range entries', async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, [MARK_HQ, RANGE_HEADQUARTERS]);
+    await gotoProtected(page, '/welcome');
+    await expect(sideNav(page).getByRole('button')).toHaveText([
+      'Search',
+      'Private Marks',
+      'Administration',
+    ]);
+    await openNavSection(page, 'Search');
+    await expect(sideNav(page).getByRole('link')).toHaveText([
+      'Tenures',
+      'Timber Marks',
+      'Range Tenures',
+      'Range Units',
+      'Application Metrics Export',
+    ]);
+  });
+
+  test('a range role scoped to a district still counts as that role', async ({ page, context }) => {
+    await signInAs(context, [`${RANGE_DISTRICT}_DISTRICT-DCC`]);
+    await gotoProtected(page, '/welcome');
+    await expect(sideNav(page).getByRole('button')).toHaveText(['Search']);
+  });
+
   test('a role scoped to a district still counts as that role', async ({ page, context }) => {
     await signInAs(context, [`${ADMIN}_DISTRICT-DCC`]);
     await gotoProtected(page, '/welcome');
@@ -153,16 +238,48 @@ test.describe('the menu', () => {
 });
 
 test.describe('the route guard', () => {
-  const PAGES: { path: string; heading?: RegExp; deniedTo: string[] }[] = [
+  /**
+   * `range` marks the pages a range role opens: 'all' for both, 'senior' for the range admin and
+   * billing pages. Every other page is refused to both range roles.
+   */
+  const PAGES: {
+    path: string;
+    heading?: RegExp;
+    deniedTo: string[];
+    range?: 'all' | 'senior';
+  }[] = [
     { path: '/admin/audit', deniedTo: [...WIDE_READ_ROLES, ...MARK_ROLES] },
-    { path: '/admin/rates-fees', deniedTo: [...WIDE_READ_ROLES, ...MARK_ROLES] },
-    { path: '/admin/billing/approval', deniedTo: [...WIDE_READ_ROLES, ...MARK_ROLES] },
+    { path: '/admin/org-unit', deniedTo: [...WIDE_READ_ROLES, ...MARK_ROLES] },
+    {
+      path: '/admin/rates-fees',
+      deniedTo: [...WIDE_READ_ROLES, ...MARK_ROLES],
+      range: 'senior',
+    },
+    {
+      path: '/admin/billing/approval',
+      deniedTo: [...WIDE_READ_ROLES, ...MARK_ROLES],
+      range: 'senior',
+    },
+    {
+      path: '/admin/range-zone',
+      deniedTo: [...WIDE_READ_ROLES, ...MARK_ROLES],
+      range: 'senior',
+    },
+    { path: '/admin/archive', deniedTo: [...WIDE_READ_ROLES, ...MARK_ROLES], range: 'senior' },
     { path: '/search/harvesting-authority', deniedTo: MARK_ROLES },
     { path: '/search/cut-block', deniedTo: MARK_ROLES },
-    { path: '/search/range-tenure', deniedTo: MARK_ROLES },
+    { path: '/search/range-tenure', deniedTo: MARK_ROLES, range: 'all' },
+    { path: '/search/range-unit', deniedTo: MARK_ROLES, range: 'all' },
+    { path: '/search/metrics', deniedTo: MARK_ROLES, range: 'all' },
+    { path: `/range/${RANGE_FILE_ID}`, deniedTo: MARK_ROLES, range: 'all' },
     { path: '/tenures', deniedTo: MARK_ROLES },
     // Pages that only make a change are closed to a role that may not make it.
-    { path: '/tenures/add', deniedTo: ALL_ROLES.filter((r) => r !== ADMIN) },
+    // The range roles open it for the range file types (legacy FTA010's districtRangeUser).
+    {
+      path: '/tenures/add',
+      deniedTo: ALL_ROLES.filter((r) => r !== ADMIN && !RANGE_ROLES.includes(r)),
+      range: 'all',
+    },
     {
       path: `/harvesting-authority/${PERMIT_ID}/assign-marks`,
       deniedTo: [...MARK_ROLES, VIEWER],
@@ -185,10 +302,15 @@ test.describe('the route guard', () => {
     { path: '/apt/linkages', deniedTo: MARK_ROLES },
     { path: '/apt/reports', deniedTo: MARK_ROLES },
   ];
-  // Outside /apt, the APT roles are refused everywhere.
-  const GUARDED = PAGES.map((p) =>
-    p.path.startsWith('/apt') ? p : { ...p, deniedTo: [...p.deniedTo, ...APT_ROLES] },
-  );
+  // Outside /apt, the APT roles are refused everywhere; outside the range pages, the range roles.
+  const GUARDED = PAGES.map((p) => ({
+    path: p.path,
+    deniedTo: [
+      ...p.deniedTo,
+      ...(p.path.startsWith('/apt') ? [] : APT_ROLES),
+      ...(p.range === 'all' ? [] : p.range === 'senior' ? [RANGE_DISTRICT] : RANGE_ROLES),
+    ],
+  }));
 
   for (const role of ALL_ROLES) {
     test(`${role}`, async ({ page, context }) => {

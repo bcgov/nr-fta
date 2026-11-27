@@ -186,7 +186,7 @@ const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCod
         if (!cancelled) {
           display({
             kind: 'error',
-            title: 'Could not load the cutting permit lists',
+            title: 'Could not load the cutting permit lists.',
             subtitle: 'Close the dialog and try again.',
             timeout: 6000,
           });
@@ -242,7 +242,7 @@ const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCod
       });
       display({
         kind: 'success',
-        title: `Cutting permit ${created.cuttingPermitId} added`,
+        title: `Cutting permit ${created.cuttingPermitId} added.`,
         subtitle: `Timber mark ${created.timberMark}, status PE.`,
         timeout: 7000,
       });
@@ -251,7 +251,7 @@ const CuttingPermitsPanel: FC<Props> = ({ forestFileId, fileTypeCode, orgUnitCod
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not add the cutting permit',
+        title: 'Could not add the cutting permit.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

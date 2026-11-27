@@ -2,10 +2,13 @@ import { Button, DatePicker, DatePickerInput, Select, SelectItem, TextInput } fr
 import { useEffect, useState, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import DateField from '@/components/DateField';
 import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
 import { Modal } from '@/components/Modal';
+import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import { useDefaultOrgUnit } from '@/hooks/useDefaultOrgUnit';
+import { canEdit, holdsRangeRole, mayEditRangeDistrict } from '@/routes/access';
 import {
   getAddNewFileTypes,
   getDistricts,
@@ -15,6 +18,12 @@ import {
   type CodeOption,
   type ManagementUnit,
 } from '@/services/codeLists';
+import {
+  createRangeTenure,
+  getRangeCreateTypes,
+  getRangeZonesWithContact,
+  type RangeZone,
+} from '@/services/range_tenure_tab';
 import { getTenureDetailsOptions } from '@/services/tenure_details';
 import { createTenure } from '@/services/tenure_write';
 import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
@@ -41,6 +50,9 @@ interface Form {
   paymentMethod: string;
   spatialLater: string;
   salvage: string;
+  /** A range tenure's Status Date and File Name (FTA100R's Add New). */
+  statusDate: string;
+  fileName: string;
 }
 
 type Errors = Partial<Record<keyof Form, string>>;
@@ -66,7 +78,16 @@ const EMPTY: Form = {
   paymentMethod: '',
   spatialLater: '',
   salvage: '',
+  statusDate: '',
+  fileName: '',
 };
+
+/**
+ * The range types FTA010 handed to FTA100R's Add New (Fta010AddNewTenureAction): a new range
+ * tenure is PA, in a district, with a management unit, a zone of that district and a file name;
+ * its term is entered on the range tenure once it leaves PA.
+ */
+const RANGE_TYPES = new Set(['E01', 'E02', 'H01', 'H02']);
 
 /*
  * Legacy FTA100's Add New rules by file type (the backend applies them again on create).
@@ -117,6 +138,8 @@ const toIsoDate = (d: Date) =>
 
 interface Lists {
   fileTypes: CodeOption[];
+  /** FTA010's range types, which FTA100R creates. */
+  rangeTypes: CodeOption[];
   districts: CodeOption[];
   /** FTA100's Admin Org list: current districts, regions, then HQ units. */
   adminOrgs: CodeOption[];
@@ -124,7 +147,14 @@ interface Lists {
   details: Record<string, CodeOption[]>;
 }
 
-const NO_LISTS: Lists = { fileTypes: [], districts: [], adminOrgs: [], units: [], details: {} };
+const NO_LISTS: Lists = {
+  fileTypes: [],
+  rangeTypes: [],
+  districts: [],
+  adminOrgs: [],
+  units: [],
+  details: {},
+};
 
 interface Props {
   open: boolean;
@@ -136,6 +166,10 @@ interface Props {
  * Tenures menu or the Tenure List; only for a role that may create a tenure (routes/access.ts).
  * It asks for what legacy had no default for, by file type; FTA assigns the ID (except for the
  * types whose ID is typed) and the rest is edited on the new file's Details tab.
+ *
+ * A range type (E01, E02, H01, H02) is created as FTA100R's Add New and opens the new range
+ * tenure. A range role, which legacy let add only range types (FTA010's districtRangeUser), is
+ * offered only those, in the districts it may edit.
  */
 const AddTenureModal: FC<Props> = ({ open, onClose }) => {
   const notify = useNotification();
@@ -144,33 +178,43 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [lists, setLists] = useState<Lists>(NO_LISTS);
+  const [rangeZones, setRangeZones] = useState<RangeZone[]>([]);
+  const { user } = useAuth();
+  const mayCreateTimber = canEdit(user);
+  const mayCreateRange = mayCreateTimber || holdsRangeRole(user);
 
   useEffect(() => {
     if (!open) return;
     setForm(EMPTY);
     setErrors({});
     let cancelled = false;
+    // A range role reads only what a range type needs.
+    const timber = <T,>(load: () => Promise<T>, empty: T) =>
+      mayCreateTimber ? load() : Promise.resolve(empty);
     Promise.allSettled([
-      getAddNewFileTypes(),
+      timber(getAddNewFileTypes, [] as CodeOption[]),
       getDistricts(),
-      getTenureAdminOrgUnits(),
+      timber(getTenureAdminOrgUnits, [] as CodeOption[]),
       getManagementUnits(),
-      getTenureDetailsOptions(),
-    ]).then(([types, districts, adminOrgs, units, details]) => {
+      timber(getTenureDetailsOptions, {} as Record<string, CodeOption[]>),
+      mayCreateRange ? getRangeCreateTypes() : Promise.resolve([] as CodeOption[]),
+    ]).then(([types, districts, adminOrgs, units, details, rangeTypes]) => {
       if (cancelled) return;
       const ok = <T,>(r: PromiseSettledResult<T>, empty: T) =>
         r.status === 'fulfilled' ? r.value : empty;
       setLists({
         fileTypes: ok(types, []),
+        rangeTypes: ok(rangeTypes, []),
         districts: ok(districts, []),
         adminOrgs: ok(adminOrgs, []),
         units: ok(units, []),
         details: ok(details, {}),
       });
-      if ([types, districts, adminOrgs, units, details].some((r) => r.status === 'rejected')) {
+      const all = [types, districts, adminOrgs, units, details, rangeTypes];
+      if (all.some((r) => r.status === 'rejected')) {
         notify.display({
           kind: 'error',
-          title: 'Could not load the lists this dialog needs',
+          title: 'Could not load the lists this dialog needs.',
           subtitle: 'Close the dialog and open it again to retry.',
           timeout: 6000,
         });
@@ -189,6 +233,7 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
   };
 
   const t = form.fileType;
+  const range = RANGE_TYPES.has(t);
   const entersId = ENTERED_ID_TYPES.has(t);
   const optionalId = t === 'B10';
   const fn = t === 'B10' && form.fupType === 'FN';
@@ -223,7 +268,39 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
     };
   };
 
+  // The file types this user may add: FTA010's list, its range types FTA100R's.
+  const fileTypeOptions = [...lists.fileTypes, ...lists.rangeTypes].sort((a, b) =>
+    a.code.localeCompare(b.code),
+  );
+  // A range tenure's district: one the user may edit (FTA100R's district was the user's own).
+  const rangeDistricts = lists.districts.filter((o) =>
+    mayEditRangeDistrict(user, orgUnitCodeOf(o)),
+  );
+
+  /** The range zones of a district, for its Zone dropdown. */
+  const loadRangeZones = (districtNo: string) => {
+    setRangeZones([]);
+    if (!districtNo) return;
+    getRangeZonesWithContact(districtNo)
+      .then(setRangeZones)
+      .catch(() => setRangeZones([]));
+  };
+
+  const chooseRangeType = (fileType: string) => {
+    // FTA100R's Add New defaults: the user's district, management unit type Q (GET_DEFAULTS),
+    // Status PA and the Status Date today (setDefaults).
+    const no = userDefault?.orgUnitNo ?? '';
+    const district = rangeDistricts.some((o) => o.code === no) ? no : '';
+    setForm({ ...EMPTY, fileType, district, mgmtUnitType: 'Q' });
+    setErrors({});
+    loadRangeZones(district);
+  };
+
   const chooseType = (fileType: string) => {
+    if (RANGE_TYPES.has(fileType)) {
+      chooseRangeType(fileType);
+      return;
+    }
     // A new type asks different questions; keep only what every type shares, and start the
     // management unit at the type's default where it has one.
     const defaultMuType = DEFAULT_MGMT_UNIT_TYPE[fileType];
@@ -241,6 +318,12 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
   const validate = (): Errors => {
     const e: Errors = {};
     if (!t) e.fileType = 'Choose a file type.';
+    if (range) {
+      if (!form.district) e.district = 'District is mandatory.';
+      if (!form.mgmtUnitType) e.mgmtUnitType = 'Mgmt Unit Type is mandatory.';
+      if (!form.zone) e.zone = 'Zone is mandatory.';
+      return e;
+    }
     if (entersId) {
       const id = form.fileId.trim();
       e.fileId = id ? fileIdFormatError(t, id) : 'File is mandatory.';
@@ -283,10 +366,46 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
     return e;
   };
 
+  const onSubmitRange = async () => {
+    setSaving(true);
+    try {
+      const { forestFileId } = await createRangeTenure({
+        fileTypeCode: t,
+        forestDistrictNo: form.district,
+        fileStatusDate: form.statusDate || null,
+        mgmtUnitType: form.mgmtUnitType,
+        mgmtUnitId: form.mgmtUnitId.trim() || null,
+        districtAdminZone: form.zone,
+        fileName: form.fileName.trim() || null,
+      });
+      notify.display({
+        kind: 'success',
+        title: 'Save successful.',
+        subtitle: `Range tenure ${forestFileId} created.`,
+        timeout: 5000,
+      });
+      onClose();
+      navigate(`/range/${encodeURIComponent(forestFileId)}`);
+    } catch (err) {
+      notify.display({
+        kind: 'error',
+        title: 'Could not create the range tenure.',
+        subtitle: err instanceof Error ? err.message : 'Request failed',
+        timeout: 9000,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const onSubmit = async () => {
     const found = validate();
     setErrors(found);
     if (Object.keys(found).length > 0) return;
+    if (range) {
+      await onSubmitRange();
+      return;
+    }
     setSaving(true);
     const v = (s: string) => s.trim() || null;
     try {
@@ -314,7 +433,7 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
       });
       notify.display({
         kind: 'success',
-        title: 'Tenure created',
+        title: 'Tenure created.',
         subtitle: `File ${forestFileId} created.`,
         timeout: 5000,
       });
@@ -323,7 +442,7 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
     } catch (err) {
       notify.display({
         kind: 'error',
-        title: 'Could not create tenure',
+        title: 'Could not create tenure.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 6000,
       });
@@ -396,11 +515,63 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
             onChange={(e) => chooseType(e.target.value)}
           >
             <SelectItem value="" text="Choose a type" />
-            {lists.fileTypes.map((ft) => (
+            {fileTypeOptions.map((ft) => (
               <SelectItem key={ft.code} value={ft.code} text={ft.description} />
             ))}
           </Select>
         </div>
+
+        {range && (
+          <>
+            <TextInput id="add-tenure-status" labelText="Status" value="PA" readOnly />
+            <DateField
+              id="add-tenure-statusDate"
+              labelText="Status Date (optional)"
+              value={form.statusDate}
+              disabled={saving}
+              onChange={(value) => set('statusDate', value)}
+            />
+            <div className="add-tenure__full">
+              <Select
+                id="add-tenure-rangeDistrict"
+                labelText="District"
+                value={form.district}
+                invalid={!!errors.district}
+                invalidText={errors.district}
+                disabled={saving}
+                onChange={(e) => {
+                  set('district', e.target.value);
+                  set('zone', '');
+                  loadRangeZones(e.target.value);
+                }}
+              >
+                <SelectItem value="" text="Choose a district" />
+                {rangeDistricts.map((o) => (
+                  <SelectItem key={o.code} value={o.code} text={o.description} />
+                ))}
+              </Select>
+            </div>
+            <Select
+              id="add-tenure-rangeZone"
+              labelText="Zone"
+              value={form.zone}
+              invalid={!!errors.zone}
+              invalidText={errors.zone}
+              disabled={saving || !form.district}
+              onChange={(e) => set('zone', e.target.value)}
+            >
+              <SelectItem value="" text="Choose a zone" />
+              {rangeZones.map((z) => (
+                <SelectItem
+                  key={z.code}
+                  value={z.code}
+                  text={[z.code, z.description, z.contact].filter(Boolean).join(' - ')}
+                />
+              ))}
+            </Select>
+            {text('fileName', 'File Name (optional)', 100)}
+          </>
+        )}
 
         {(entersId || optionalId) &&
           text('fileId', optionalId ? 'Forest File ID (optional)' : 'Forest File ID', 10, true)}
@@ -413,7 +584,9 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
             adminOrgIsDistrict(t) ? 'Choose a district' : 'Choose a region',
           )}
 
-        {showsDistrict(t) && select('district', 'District', lists.districts, 'Choose a district')}
+        {showsDistrict(t) &&
+          !range &&
+          select('district', 'District', lists.districts, 'Choose a district')}
 
         {t && (
           <div className="add-tenure__full">
@@ -486,7 +659,7 @@ const AddTenureModal: FC<Props> = ({ open, onClose }) => {
 
         {t === 'A30' && text('initialArea', 'Initial Area (ha)', 9)}
 
-        {t && (
+        {t && !range && (
           <div className="add-tenure__date">
             <DatePicker
               datePickerType="single"

@@ -2,6 +2,7 @@ package ca.bc.gov.nrs.fta.shared.service;
 
 import ca.bc.gov.nrs.fta.billing.service.BillingDistrictScope;
 import ca.bc.gov.nrs.fta.billing.service.JasperTemplates;
+import ca.bc.gov.nrs.fta.security.LoggedUserHelper;
 import ca.bc.gov.nrs.fta.shared.service.AuditReportRules.Criteria;
 import ca.bc.gov.nrs.fta.shared.service.AuditReportRules.Report;
 import ca.bc.gov.nrs.fta.shared.service.AuditReportRules.Scope;
@@ -186,9 +187,10 @@ public class AuditReportService {
   private final NamedParameterJdbcTemplate jdbc;
   private final BillingDistrictScope scope;
 
-  public AuditReportService(NamedParameterJdbcTemplate jdbc, BillingDistrictScope scope) {
+  public AuditReportService(NamedParameterJdbcTemplate jdbc, LoggedUserHelper auth) {
     this.jdbc = jdbc;
-    this.scope = scope;
+    // FTA_ADMIN's screen: the range headquarters role does not widen it.
+    this.scope = BillingDistrictScope.adminOnly(auth);
   }
 
   /** The PDF and the name to save it under. */

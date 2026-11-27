@@ -44,7 +44,7 @@ class ArchiveTenuresWriteServiceTest {
 
   @Test
   void anUnscopedAdminArchivesAnywhere() {
-    when(auth.isUnscopedAdmin()).thenReturn(true);
+    when(auth.isUnscopedRangeAdmin()).thenReturn(true);
 
     assertThat(service.archive(REGION_2020, "IDIR\\ME")).isEqualTo(5);
     verify(jdbc, never()).queryForList(anyString(), any(SqlParameterSource.class), eq(String.class));
@@ -52,21 +52,21 @@ class ArchiveTenuresWriteServiceTest {
 
   @Test
   void aScopedAdminOfEveryAffectedDistrictArchives() {
-    when(auth.isUnscopedAdmin()).thenReturn(false);
+    when(auth.isUnscopedRangeAdmin()).thenReturn(false);
     when(jdbc.queryForList(contains("SELECT DISTINCT ou.org_unit_code"),
         any(SqlParameterSource.class), eq(String.class))).thenReturn(List.of("DCC"));
-    when(auth.administersDistrict("DCC")).thenReturn(true);
+    when(auth.administersRangeDistrict("DCC")).thenReturn(true);
 
     assertThat(service.archive(REGION_2020, "IDIR\\ME")).isEqualTo(5);
   }
 
   @Test
   void aScopedAdminMissingOneDistrictIsRefused() {
-    when(auth.isUnscopedAdmin()).thenReturn(false);
+    when(auth.isUnscopedRangeAdmin()).thenReturn(false);
     when(jdbc.queryForList(contains("SELECT DISTINCT ou.org_unit_code"),
         any(SqlParameterSource.class), eq(String.class))).thenReturn(List.of("DCC", "DQU"));
-    when(auth.administersDistrict("DCC")).thenReturn(true);
-    when(auth.administersDistrict("DQU")).thenReturn(false);
+    when(auth.administersRangeDistrict("DCC")).thenReturn(true);
+    when(auth.administersRangeDistrict("DQU")).thenReturn(false);
 
     assertThatThrownBy(() -> service.archive(REGION_2020, "IDIR\\ME"))
         .isInstanceOf(ResponseStatusException.class)
@@ -79,7 +79,7 @@ class ArchiveTenuresWriteServiceTest {
   @Test
   @SuppressWarnings("unchecked")
   void anExpiredRegionIsRefused() {
-    when(auth.isUnscopedAdmin()).thenReturn(true);
+    when(auth.isUnscopedRangeAdmin()).thenReturn(true);
     when(jdbc.query(contains("FROM the.org_unit"), any(SqlParameterSource.class),
         any(RowMapper.class))).thenReturn(List.of((Object) new String[] {"ROLD", "Y"}));
 

@@ -1,4 +1,4 @@
-import { Search as SearchIcon } from '@carbon/icons-react';
+import { Add, Search as SearchIcon } from '@carbon/icons-react';
 import {
   Button,
   DataTable,
@@ -17,18 +17,21 @@ import {
   TextInput,
   Tile,
 } from '@carbon/react';
-import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState, type FC, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { EmptyState } from '@/components/EmptyState/EmptyState';
 import ExportCsvButton from '@/components/ExportCsvButton';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
+import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
-import { useFormDistrictDefault } from '@/hooks/useDefaultOrgUnit';
+import { useDefaultOrgUnitIn, useFormDistrictDefault } from '@/hooks/useDefaultOrgUnit';
 import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
 import { nextColumnSort, sortHeaderProps } from '@/lib/columnSort';
 import { safeErrorMessage } from '@/lib/errorMessage';
 import PageLayout from '@/pages/PageLayout';
+import { NEW_RANGE_UNIT, rangeUnitPath } from '@/pages/range/RangeUnitDetail/paths';
+import { holdsRangeRole } from '@/routes/access';
 import { getOrgUnits, getRangeUnitStatuses, type CodeOption } from '@/services/codeLists';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 import {
@@ -57,6 +60,10 @@ const formatCellText = (value: string | null | undefined) =>
 
 const EMPTY_FORM: RangeUnitSearchParams = {};
 
+/** Whether the user may edit range units in some district: FTA630's Add New is for them. */
+const mayAddRangeUnit = (user: Parameters<typeof holdsRangeRole>[0]) =>
+  'FTA_ADMIN' in (user?.privileges ?? {}) || holdsRangeRole(user);
+
 /**
  * FTA006 — Range Unit / Pasture Search.
  *
@@ -70,6 +77,7 @@ const EMPTY_FORM: RangeUnitSearchParams = {};
  */
 const RangeUnitSearch: FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { display, clear } = useNotification();
 
   // Criteria and the last search are kept for the browser tab; see TenureSearch.
@@ -95,6 +103,8 @@ const RangeUnitSearch: FC = () => {
   const [orgUnits, setOrgUnits] = useState<CodeOption[]>([]);
   // Legacy started a new or cleared search at the user's default org unit (Org Unit Maintenance).
   const startForm = useFormDistrictDefault(form, setForm, EMPTY_FORM, 'orgUnitNo', orgUnits);
+  // Legacy searched on entry for a district user; here, a user whose default is a district.
+  const defaultDistrict = useDefaultOrgUnitIn(orgUnits, true);
   const [statuses, setStatuses] = useState<CodeOption[]>([]);
   const [codeListsLoading, setCodeListsLoading] = useState(true);
 
@@ -119,7 +129,7 @@ const RangeUnitSearch: FC = () => {
 
   useEffect(() => {
     if (error) {
-      display({ kind: 'error', title: 'Search failed', subtitle: error, timeout: 6000 });
+      display({ kind: 'error', title: 'Search failed.', subtitle: error, timeout: 6000 });
     }
   }, [error, display]);
 
@@ -203,6 +213,18 @@ const RangeUnitSearch: FC = () => {
     }
   }, [codeListsLoading, restored, lastSearch, rows, runSearch]);
 
+  // Entering the page with no search to restore: a district default searches at once, as legacy
+  // did for a district user. Once only, and only on a form still as it started.
+  const autoSearched = useRef(false);
+  useEffect(() => {
+    if (autoSearched.current || !restored || !defaultDistrict) return;
+    autoSearched.current = true;
+    const start = { ...EMPTY_FORM, orgUnitNo: defaultDistrict };
+    const untouched = [EMPTY_FORM, start].some((f) => JSON.stringify(f) === JSON.stringify(form));
+    if (lastSearch || rows !== null || !untouched) return;
+    void runSearch(0, pageSize, start);
+  }, [restored, defaultDistrict, lastSearch, rows, form, runSearch, pageSize]);
+
   const hasResults = rows !== null && rows.length > 0;
 
   if (codeListsLoading) {
@@ -217,6 +239,19 @@ const RangeUnitSearch: FC = () => {
     <PageLayout
       title="Range Unit / Pasture Search"
       subtitle="Find a range unit or pasture by name, organization unit or status"
+      actions={
+        mayAddRangeUnit(user) ? (
+          <Button
+            as={Link}
+            to={rangeUnitPath(NEW_RANGE_UNIT)}
+            kind="tertiary"
+            size="md"
+            renderIcon={Add}
+          >
+            Add range unit
+          </Button>
+        ) : undefined
+      }
     >
       <Tile className="fsp-search__tile">
         <form className="fsp-search__form" onSubmit={onSubmit}>
@@ -309,8 +344,7 @@ const RangeUnitSearch: FC = () => {
               <>
                 <div className="fsp-search__results-header">
                   <span className="fsp-search__results-count">
-                    {totalElements.toLocaleString()}{' '}
-                    {totalElements === 1 ? 'range unit' : 'range units'} found
+                    {totalElements.toLocaleString()} rows returned
                   </span>
                   {searched && <ExportCsvButton path={rangeUnitSearchExportPath(searched)} />}
                 </div>
@@ -338,7 +372,7 @@ const RangeUnitSearch: FC = () => {
                               const rangeUnitId =
                                 (row.cells.find((c) => c.info.header === 'rangeUnitId')?.value as
                                   string | undefined) ?? '';
-                              const open = () => navigate(`/range-unit/${rangeUnitId}`);
+                              const open = () => navigate(rangeUnitPath(rangeUnitId));
                               return (
                                 <TableRow
                                   {...getRowProps({ row })}

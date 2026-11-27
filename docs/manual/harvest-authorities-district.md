@@ -138,7 +138,6 @@ The action buttons at the top depend on the permit's status (see
 | Button | What it does |
 |---|---|
 | **Edit permit** | Change the permit's status, dates and other fields. |
-| **Letter** | Download the Fort St. John harvest authorization letter as a PDF. Shown only on Fort St. John authorizations. |
 | **Assign marks to blocks** | Give each block one of the permit's timber marks. Shown only on Fort St. John authorizations, which carry several marks, whatever the permit's status. |
 | **Retire** | Retire a permit in status HC or HRS. |
 | **Delete** | Disabled for you; deleting a permit needs a senior role. |

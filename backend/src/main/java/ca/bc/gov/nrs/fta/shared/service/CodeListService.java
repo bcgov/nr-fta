@@ -3,7 +3,9 @@ package ca.bc.gov.nrs.fta.shared.service;
 import ca.bc.gov.nrs.fta.configuration.CodeListCacheConfiguration;
 import ca.bc.gov.nrs.fta.shared.dto.CodeOptionDto;
 import ca.bc.gov.nrs.fta.shared.dto.ManagementUnitDto;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -165,6 +167,23 @@ public class CodeListService {
                range_file_type_code || ' - ' || description AS description
           FROM the.range_file_type_code
          ORDER BY range_file_type_code
+        """,
+        MAPPER);
+  }
+
+  /**
+   * Range tenure statuses, for FTA001R's Status (legacy {@code fta.lookup.rangeTenureStatusCode},
+   * {@code FTA_CODE_LISTS.GET_RANGE_TENURE_STATUS_CODE} with valid-only N): every code, expired
+   * ones too, by code — as {@link #rangeFileTypes()} for its File Type.
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public List<CodeOptionDto> rangeTenureStatuses() {
+    return jdbc.query(
+        """
+        SELECT range_tenure_status_code AS code,
+               range_tenure_status_code || ' - ' || description AS description
+          FROM the.range_tenure_status_code
+         ORDER BY range_tenure_status_code
         """,
         MAPPER);
   }
@@ -426,6 +445,26 @@ public class CodeListService {
    * (legacy {@code fta.lookup.regionOrgUnitCode}). The code is the ORG_UNIT_NO,
    * as {@link #districts()}.
    */
+  /**
+   * Each district's region: district ORG_UNIT_NO to its ROLLUP_REGION_NO, so a screen can offer
+   * only the districts of the region picked (e.g. Archive Tenures).
+   */
+  @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
+  public Map<String, String> districtRegions() {
+    Map<String, String> out = new HashMap<>();
+    jdbc.query(
+        """
+        SELECT TO_CHAR(org_unit_no) AS district, TO_CHAR(rollup_region_no) AS region
+          FROM the.org_unit
+         WHERE org_unit_no = rollup_dist_no
+           AND rollup_region_no IS NOT NULL
+        """,
+        rs -> {
+          out.put(rs.getString("district"), rs.getString("region"));
+        });
+    return out;
+  }
+
   @Cacheable(cacheNames = CodeListCacheConfiguration.CODE_LISTS, key = "#root.methodName")
   public List<CodeOptionDto> regions() {
     return jdbc.query(
