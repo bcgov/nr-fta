@@ -150,7 +150,7 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate, o
         if (!cancelled) {
           display({
             kind: 'error',
-            title: 'Could not load the client types',
+            title: 'Could not load the client types.',
             subtitle: 'Close the dialog and try again.',
             timeout: 6000,
           });
@@ -257,7 +257,7 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate, o
       );
       display({
         kind: 'success',
-        title: `Client ${pendingDelete.clientNumber ?? ''} deleted`,
+        title: `Client ${pendingDelete.clientNumber ?? ''} deleted.`,
         timeout: 6000,
       });
       setPendingDelete(null);
@@ -265,7 +265,7 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate, o
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not delete the client',
+        title: 'Could not delete the client.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -343,7 +343,7 @@ const ClientsPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate, o
                     <TableHeader>Client Type</TableHeader>
                     <TableHeader>Start Date</TableHeader>
                     <TableHeader>End Date</TableHeader>
-                    <TableHeader aria-label="Actions" />
+                    <TableHeader>Actions</TableHeader>
                   </TableRow>
                 </TableHead>
                 <TableBody>

@@ -2,8 +2,7 @@ package ca.bc.gov.nrs.fta.integration;
 
 /**
  * Where FTA files the documents it issues — legacy FTA's document management (DmViewService over
- * the NRS DMS REST API), here BC Gov's Common Object Management Service ({@link
- * ComsDocumentStore}).
+ * the NRS DMS REST API), here an S3-compatible bucket ({@link S3DocumentStore}).
  */
 public interface DocumentStore {
 
@@ -23,9 +22,10 @@ public interface DocumentStore {
   /**
    * A filed document.
    *
-   * @param id        the store's id for it
-   * @param link      its link, recorded in the database (legacy's DM self link)
-   * @param viewerUrl where a person opens it (legacy's DMS viewer URL + item id)
+   * @param id        the store's id for it (the object key)
+   * @param link      its stable link, recorded in the database (legacy's DM self link)
+   * @param viewerUrl where a person opens it, e-mailed (legacy's DMS viewer URL + item id; here a
+   *                  time-limited presigned URL)
    */
   record StoredDocument(String id, String link, String viewerUrl) {}
 }

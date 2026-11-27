@@ -223,7 +223,7 @@ const MarkApplicationPanel: FC<Props> = ({
         if (!cancelled) {
           display({
             kind: 'error',
-            title: 'Could not load the edit lists',
+            title: 'Could not load the edit lists.',
             subtitle: 'Some dropdowns show only their current value.',
             timeout: 6000,
           });
@@ -282,7 +282,7 @@ const MarkApplicationPanel: FC<Props> = ({
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not print the certificate',
+        title: 'Could not print the certificate.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -306,7 +306,7 @@ const MarkApplicationPanel: FC<Props> = ({
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not take the snapshot',
+        title: 'Could not take the snapshot.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -329,7 +329,7 @@ const MarkApplicationPanel: FC<Props> = ({
       await submitMark(id, mark.revisionCount, byCertificate);
       display({
         kind: 'success',
-        title: 'Submitted to Headquarters',
+        title: 'Submitted to Headquarters.',
         subtitle: 'The application is now PI - Pending Issuance.',
         timeout: 6000,
       });
@@ -338,7 +338,7 @@ const MarkApplicationPanel: FC<Props> = ({
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not submit the application',
+        title: 'Could not submit the application.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -365,7 +365,7 @@ const MarkApplicationPanel: FC<Props> = ({
       setErrors(found);
       display({
         kind: 'error',
-        title: 'Check the highlighted fields',
+        title: 'Check the highlighted fields.',
         timeout: 6000,
       });
       return;
@@ -395,7 +395,7 @@ const MarkApplicationPanel: FC<Props> = ({
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not generate another mark',
+        title: 'Could not generate another mark.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -420,7 +420,7 @@ const MarkApplicationPanel: FC<Props> = ({
         // Another issue took the previewed number between the preview and the save.
         display({
           kind: 'warning',
-          title: `Mark issued as ${saved.timberMark}`,
+          title: `Mark issued as ${saved.timberMark}.`,
           subtitle: `${expected} was issued to another mark in the meantime.`,
           timeout: 12000,
         });
@@ -436,7 +436,7 @@ const MarkApplicationPanel: FC<Props> = ({
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not save the mark',
+        title: 'Could not save the mark.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -861,7 +861,7 @@ const MarkApplicationPanel: FC<Props> = ({
                     }
                     display({
                       kind: 'error',
-                      title: 'Cannot submit to Headquarters',
+                      title: 'Cannot submit to Headquarters.',
                       subtitle: rules.submitReason ?? 'This application cannot be submitted.',
                       timeout: 9000,
                     });

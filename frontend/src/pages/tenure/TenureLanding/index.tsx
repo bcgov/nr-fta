@@ -31,7 +31,11 @@ const TenureLanding: FC = () => {
   const [addOpen, setAddOpen] = useState(false);
   const closeAdd = () => {
     setAddOpen(false);
-    if (onAddRoute) navigate('/tenures', { replace: true });
+    // A range role, which opens Add New Tenure but not the Tenure List, goes back to Welcome.
+    if (onAddRoute)
+      navigate(isPathAllowedForUser(user, '/tenures') ? '/tenures' : '/welcome', {
+        replace: true,
+      });
   };
 
   const onGo = (e: FormEvent) => {

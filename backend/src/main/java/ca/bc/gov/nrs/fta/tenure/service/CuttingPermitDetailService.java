@@ -319,7 +319,7 @@ public class CuttingPermitDetailService {
         p.location(),
         p.mgmtUnitId(), p.mgmtUnitTypeCode(), p.licenceToCutCode(), p.extAppFeeWaived(),
         p.extAppFeePaid(), p.withinFibreRecoveryZone(), p.retirementDate(), p.revisionCount(),
-        p.blockSuspensionsExist(), p.postponementExpired(), fsj, rules);
+        p.blockSuspensionsExist(), p.postponementExpired(), rules);
   }
 
   /** FTA_ADMIN is the nearest thing here to legacy's Super User. */
@@ -376,7 +376,6 @@ public class CuttingPermitDetailService {
         rs.getLong("revision_count"),
         "Y".equals(rs.getString("block_suspensions_exist")),
         "Y".equals(rs.getString("postponement_expired")),
-        fsj,
         new CuttingPermitRules(false, false, false, false, false, false, false, false, false,
             false, false, false, fsj, false));
   }

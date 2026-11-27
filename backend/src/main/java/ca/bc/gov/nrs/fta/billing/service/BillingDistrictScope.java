@@ -1,6 +1,7 @@
 package ca.bc.gov.nrs.fta.billing.service;
 
 import ca.bc.gov.nrs.fta.security.LoggedUserHelper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
@@ -11,7 +12,11 @@ import org.springframework.web.server.ResponseStatusException;
  * <p>Legacy FTA680, 685, 686 and 690 defaulted the district to a district user's own org unit
  * and protected it, and offered 686's "*" (every district) only to users who were not district
  * users. Here the district a user may pick is the one a district-scoped grant
- * ({@code FTA_ADMIN_DISTRICT-xxx}) names; an unscoped {@code FTA_ADMIN} may pick any, and "*".
+ * ({@code FTA_ADMIN_DISTRICT-xxx}) names; an unscoped {@code FTA_ADMIN} or an
+ * {@code FTA_RANGE_HEADQUARTERS_ADMIN} may pick any, and "*".
+ *
+ * <p>{@link #adminOnly} is the same check without the range role, for an FTA_ADMIN screen that
+ * shares it (the Audit Report).
  */
 @Component
 public class BillingDistrictScope {
@@ -20,9 +25,22 @@ public class BillingDistrictScope {
   static final String ALL_NOT_ALLOWED = "Only a provincial administrator may report on every district.";
 
   private final LoggedUserHelper auth;
+  private final boolean range;
 
+  /** The range billing screens' scope: FTA_RANGE_HEADQUARTERS_ADMIN counts as every district. */
+  @Autowired
   public BillingDistrictScope(LoggedUserHelper auth) {
+    this(auth, true);
+  }
+
+  private BillingDistrictScope(LoggedUserHelper auth, boolean range) {
     this.auth = auth;
+    this.range = range;
+  }
+
+  /** The scope of an FTA_ADMIN-only screen: districts come from the FTA_ADMIN grant alone. */
+  public static BillingDistrictScope adminOnly(LoggedUserHelper auth) {
+    return new BillingDistrictScope(auth, false);
   }
 
   /**
@@ -30,7 +48,7 @@ public class BillingDistrictScope {
    * @throws ResponseStatusException 403 unless the user administers that district
    */
   public void requireDistrict(String orgUnitCode) {
-    if (!auth.administersDistrict(orgUnitCode)) {
+    if (!(range ? auth.administersRangeDistrict(orgUnitCode) : auth.administersDistrict(orgUnitCode))) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN,
           NOT_YOUR_DISTRICT.formatted(orgUnitCode == null ? "that" : orgUnitCode));
     }
@@ -38,7 +56,7 @@ public class BillingDistrictScope {
 
   /** @throws ResponseStatusException 403 unless the user administers every district */
   public void requireAll() {
-    if (!auth.isUnscopedAdmin()) {
+    if (!(range ? auth.isUnscopedRangeAdmin() : auth.isUnscopedAdmin())) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, ALL_NOT_ALLOWED);
     }
   }

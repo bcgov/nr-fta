@@ -27,7 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
  *
  * <p>Before saving: {@code Fta631RangeZoneForm}'s required fields and input lengths, its
  * upper-casing of the zone code and contact ({@link ManageZoneRules}), and the user must
- * administer the zone's district ({@link LoggedUserHelper#administersDistrict}).
+ * administer the zone's district ({@link LoggedUserHelper#administersRangeDistrict}).
  *
  * <p>Legacy picked the contact from the district's District Range Tech users in WebADE and took
  * their name from there. Nothing here lists users by role, so the contact is typed as an IDIR
@@ -110,7 +110,7 @@ public class ManageZoneAddWriteService {
     if (district.isEmpty()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ManageZoneRules.DISTRICT_INVALID);
     }
-    if (!auth.administersDistrict(district.get(0))) {
+    if (!auth.administersRangeDistrict(district.get(0))) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, ManageZoneRules.NOT_IN_ADMIN_ORG);
     }
     String contactUserId = ManageZoneRules.contactUserId(request.contactUserId());

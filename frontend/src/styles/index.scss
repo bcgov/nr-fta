@@ -85,6 +85,18 @@
   right: 1rem !important;
   transform: translateX(100%);
   opacity: 0;
+  // Carbon fixes toasts at 18rem; let a long message widen it, within the viewport.
+  inline-size: auto;
+  min-inline-size: 18rem;
+  max-inline-size: min(40rem, calc(100vw - 2rem));
+
+  // A message of several lines (a refused Prepare lists one refusal per row) keeps its line
+  // breaks, and a long list scrolls inside the toast rather than running off the screen.
+  .#{variables.$bcgov-prefix}--toast-notification__subtitle {
+    white-space: pre-line;
+    max-block-size: 50vh;
+    overflow-y: auto;
+  }
 
   &.slide-in {
     animation: slide-in-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;

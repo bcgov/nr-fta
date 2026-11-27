@@ -7,21 +7,25 @@ import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Range unit / pasture search business logic.
  *
  * <p>Ports the legacy Oracle package {@code THE.FTA_006_RU_SRCH} (range unit /
  * pasture search) to a native query against the shared {@code THE} schema. The
- * WHERE clause mirrors the package body's {@code get_list} cursor — each filter
- * is applied only when its bind value is supplied, and all three optional
- * criteria are prefix matches, matching the legacy behaviour. Column selection
- * matches the package's {@code rec_range_unit_results} record.
+ * WHERE clause mirrors the package body's {@code get_list} cursor: the three
+ * optional criteria are prefix matches that are always applied — a blank one is
+ * {@code LIKE '%'}, which, as in legacy, never matches a NULL pasture name, range
+ * unit name or status — and the org unit is required (the package's first step
+ * looks it up and fails without one). Column selection matches the package's
+ * {@code rec_range_unit_results} record.
  *
  * <p>The legacy body first resolves {@code p_org_unit_no} to an
  * {@code org_unit_code}, then restricts to range units whose administering
@@ -67,10 +71,10 @@ public class RangeUnitSearchService {
               ON ou.org_unit_no = ru.admin_forest_district_no
         JOIN the.range_unit_status_code rusc
               ON rusc.range_unit_status_code = ru.range_unit_status_code
-       WHERE (:rangeStatus   IS NULL OR ru.range_unit_status_code LIKE UPPER(:rangeStatus) || '%')
-         AND (:pastureName   IS NULL OR UPPER(rp.pasture_name) LIKE UPPER(:pastureName) || '%')
-         AND (:rangeUnitName IS NULL OR UPPER(ru.range_unit_name) LIKE UPPER(:rangeUnitName) || '%')
-         AND (:orgUnitNo     IS NULL OR ru.admin_forest_district_no IN (
+       WHERE ru.range_unit_status_code LIKE UPPER(:rangeStatus) || '%'
+         AND UPPER(rp.pasture_name) LIKE UPPER(:pastureName) || '%'
+         AND UPPER(ru.range_unit_name) LIKE UPPER(:rangeUnitName) || '%'
+         AND ru.admin_forest_district_no IN (
                 SELECT o2.org_unit_no
                   FROM the.org_unit o2
                  WHERE o2.rollup_region_code = (SELECT o3.org_unit_code
@@ -78,7 +82,7 @@ public class RangeUnitSearchService {
                                                  WHERE o3.org_unit_no = :orgUnitNo)
                     OR o2.org_unit_code     = (SELECT o3.org_unit_code
                                                   FROM the.org_unit o3
-                                                 WHERE o3.org_unit_no = :orgUnitNo)))
+                                                 WHERE o3.org_unit_no = :orgUnitNo))
       """;
 
   // The legacy cursor's order. Deterministic, so a row cannot appear on two
@@ -122,7 +126,7 @@ public class RangeUnitSearchService {
   /**
    * Range unit / pasture search — mirrors {@code FTA_006_RU_SRCH.get_list}.
    *
-   * @param orgUnitNo     administering org-unit number (rollup/exact match), or null
+   * @param orgUnitNo     administering org-unit number (rollup/exact match); required
    * @param rangeUnitName range unit name (prefix match), or null
    * @param pastureName   pasture name (prefix match), or null
    * @param rangeStatus   range unit status code (prefix match), or null
@@ -214,8 +218,29 @@ public class RangeUnitSearchService {
             rs.getString("range_unit_status_desc")));
   }
 
+  /** Legacy's mandatory Admin Org Unit (fta006: {@code RequiredFieldValidator}). */
+  static final String ORG_UNIT_REQUIRED = "Admin Org Unit is mandatory.";
+
+  /**
+   * Refuses a search or export without an org unit. The export's controller calls it before it
+   * starts streaming, as a refusal from inside the stream could no longer be a 400.
+   *
+   * @throws ResponseStatusException 400 without an org unit
+   */
+  public static void requireOrgUnit(String orgUnitNo) {
+    if (blankToNull(orgUnitNo) == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ORG_UNIT_REQUIRED);
+    }
+  }
+
+  /**
+   * The bind values, shared by the page query, its count and the CSV export.
+   *
+   * @throws ResponseStatusException 400 without an org unit
+   */
   private static MapSqlParameterSource criteria(
       String orgUnitNo, String rangeUnitName, String pastureName, String rangeStatus) {
+    requireOrgUnit(orgUnitNo);
     return new MapSqlParameterSource()
         .addValue("orgUnitNo", blankToNull(orgUnitNo))
         .addValue("rangeUnitName", blankToNull(rangeUnitName))

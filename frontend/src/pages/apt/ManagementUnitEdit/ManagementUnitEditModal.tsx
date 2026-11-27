@@ -173,7 +173,7 @@ const ManagementUnitEditModal: FC<Props> = ({ open, onClose, onSaved }) => {
       const saved = await createAptManagementUnit(body);
       display({
         kind: 'success',
-        title: `Management unit ${saved.mgmtUnitName ?? ''} created`,
+        title: `Management unit ${saved.mgmtUnitName ?? ''} created.`,
         timeout: 5000,
       });
       onClose();
@@ -181,7 +181,7 @@ const ManagementUnitEditModal: FC<Props> = ({ open, onClose, onSaved }) => {
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not create the management unit',
+        title: 'Could not create the management unit.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

@@ -13,9 +13,9 @@ import TenureApproval from './pages/admin/billing/TenureApproval';
 import TenureBilling from './pages/admin/billing/TenureBilling';
 import ManageZone from './pages/admin/ManageZone';
 import MarkTransfer from './pages/admin/MarkTransfer';
-import NotYetAvailable from './pages/admin/NotYetAvailable';
 import OrgUnitMaintenance from './pages/admin/OrgUnitMaintenance';
 import RatesMaintenance from './pages/admin/RatesMaintenance';
+import RentsFees from './pages/admin/RentsFees';
 import AuthCallback from './pages/AuthCallback';
 
 // Core pages
@@ -180,12 +180,7 @@ export default function App() {
 
           {/* ── Admin (FTA_ADMIN only) ─────────────────────────────── */}
           <Route path="/admin/audit" element={guarded(withLayout(<AuditReport />))} />
-          <Route
-            path="/admin/rents-fees"
-            element={guarded(
-              withLayout(<NotYetAvailable title="Annual Rents & Fees Preparation" />),
-            )}
-          />
+          <Route path="/admin/rents-fees" element={guarded(withLayout(<RentsFees />))} />
           <Route path="/admin/mark-transfer" element={guarded(withLayout(<MarkTransfer />))} />
           <Route path="/admin/range-zone" element={guarded(withLayout(<ManageZone />))} />
           <Route path="/admin/org-unit" element={guarded(withLayout(<OrgUnitMaintenance />))} />

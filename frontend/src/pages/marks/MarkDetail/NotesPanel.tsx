@@ -90,13 +90,13 @@ const NotesPanel: FC<Props> = ({ id, byCertificate, forestFileId, notes, canAdd,
     setSaving(true);
     try {
       await addMarkNote(id, trimmed, byCertificate);
-      display({ kind: 'success', title: 'Note added', timeout: 5000 });
+      display({ kind: 'success', title: 'Note added.', timeout: 5000 });
       setOpen(false);
       onAdded();
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not add the note',
+        title: 'Could not add the note.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

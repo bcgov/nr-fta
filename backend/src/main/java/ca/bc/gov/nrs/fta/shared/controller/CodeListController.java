@@ -4,6 +4,7 @@ import ca.bc.gov.nrs.fta.shared.dto.CodeOptionDto;
 import ca.bc.gov.nrs.fta.shared.dto.ManagementUnitDto;
 import ca.bc.gov.nrs.fta.shared.service.CodeListService;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -105,6 +106,12 @@ public class CodeListController {
     return ResponseEntity.ok(codeListService.rangeFileTypes());
   }
 
+  /** Range tenure statuses (FTA001R's Status). */
+  @GetMapping("/range-tenure-statuses")
+  public ResponseEntity<List<CodeOptionDto>> rangeTenureStatuses() {
+    return ResponseEntity.ok(codeListService.rangeTenureStatuses());
+  }
+
   @GetMapping("/billing-instructions")
   public ResponseEntity<List<CodeOptionDto>> billingInstructions() {
     return ResponseEntity.ok(codeListService.billingInstructions());
@@ -200,6 +207,12 @@ public class CodeListController {
   @GetMapping("/licence-to-cut-codes")
   public ResponseEntity<List<CodeOptionDto>> licenceToCutCodes() {
     return ResponseEntity.ok(codeListService.licenceToCutCodes());
+  }
+
+  /** Each district's region (district ORG_UNIT_NO to region ORG_UNIT_NO). */
+  @GetMapping("/district-regions")
+  public ResponseEntity<Map<String, String>> districtRegions() {
+    return ResponseEntity.ok(codeListService.districtRegions());
   }
 
   @GetMapping("/harvest-auth-client-types")

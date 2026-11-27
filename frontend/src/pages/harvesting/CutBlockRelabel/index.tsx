@@ -48,7 +48,7 @@ const CutBlockRelabel: FC = () => {
       });
       display({
         kind: 'success',
-        title: `Cut block re-labelled ${saved.cutBlockId}`,
+        title: `Cut block re-labelled ${saved.cutBlockId}.`,
         subtitle:
           'Re-label successful. Please create new Exhibit A using TUT and submit to FTA. Provide a copy to the licensee.',
         timeout: 9000,
@@ -57,7 +57,7 @@ const CutBlockRelabel: FC = () => {
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not re-label the cut block',
+        title: 'Could not re-label the cut block.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

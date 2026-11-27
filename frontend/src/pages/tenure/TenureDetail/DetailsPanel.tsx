@@ -141,7 +141,7 @@ const DetailsView: FC<{ details: TenureDetails; canEdit: boolean; onSaved: () =>
         if (!cancelled) {
           display({
             kind: 'error',
-            title: 'Could not load the edit lists',
+            title: 'Could not load the edit lists.',
             subtitle: 'Some dropdowns show only their current value.',
             timeout: 6000,
           });
@@ -201,7 +201,7 @@ const DetailsView: FC<{ details: TenureDetails; canEdit: boolean; onSaved: () =>
   const onSave = async () => {
     if (needsOverride && !f('districtOverrideReason').trim()) {
       setErrors({ districtOverrideReason: 'District Override Reason is mandatory.' });
-      display({ kind: 'error', title: 'Check the highlighted fields', timeout: 6000 });
+      display({ kind: 'error', title: 'Check the highlighted fields.', timeout: 6000 });
       return;
     }
     const sent: Record<string, string> = {};
@@ -223,7 +223,7 @@ const DetailsView: FC<{ details: TenureDetails; canEdit: boolean; onSaved: () =>
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not save the tenure',
+        title: 'Could not save the tenure.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 12000,
       });

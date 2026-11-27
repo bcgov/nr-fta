@@ -132,7 +132,7 @@ const PartitionModal: FC<Props> = ({
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not save the partition',
+        title: 'Could not save the partition.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -240,7 +240,7 @@ const PartitionModal: FC<Props> = ({
           errorTitle="Could not delete the partition"
           onConfirm={async () => {
             await deleteAptPartition(partition.id);
-            display({ kind: 'success', title: 'Partition deleted', timeout: 5000 });
+            display({ kind: 'success', title: 'Partition deleted.', timeout: 5000 });
             setConfirming(false);
             onDeleted();
           }}

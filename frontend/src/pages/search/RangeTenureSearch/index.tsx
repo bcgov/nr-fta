@@ -24,8 +24,9 @@ import { useNavigate } from 'react-router-dom';
 
 import ClientComboBox from '@/components/ClientComboBox';
 import { EmptyState } from '@/components/EmptyState/EmptyState';
-import ExportCsvButton from '@/components/ExportCsvButton';
 import ManagementUnitComboBox from '@/components/ManagementUnitComboBox';
+import RangeTenureExportButton from '@/components/RangeTenureExportButton';
+import { statusCodeVariant } from '@/components/StatusTag/statusCodes';
 import { StatusTag } from '@/components/StatusTag/StatusTag';
 import { useNotification } from '@/context/notification/useNotification';
 import { useFormDistrictDefault } from '@/hooks/useDefaultOrgUnit';
@@ -37,20 +38,20 @@ import PageLayout from '@/pages/PageLayout';
 import {
   getManagementUnits,
   getFileClientTypes,
-  getFileStatuses,
-  getFileTypes,
   getOrgUnits,
+  getRangeFileTypes,
+  getRangeTenureStatuses,
   getRangeZones,
   type CodeOption,
 } from '@/services/codeLists';
 import type { ManagementUnit } from '@/services/codeLists';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/services/paging';
 import {
-  rangeTenureExportPath,
   searchRangeTenures,
   type RangeTenureSearchParams,
   type RangeTenureSummary,
 } from '@/services/range_tenure_search';
+import { exportRangeTenureSearch } from '@/services/rangeTenureExport';
 import { formatDate } from '@/utils/formatDate';
 import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
@@ -78,6 +79,9 @@ const EMPTY_FORM: RangeTenureSearchParams = {};
 
 /** Legacy requires at least two criteria before it will run this search. */
 const MIN_CRITERIA = 2;
+
+/** Form keys that are not counted as criteria. */
+const NOT_CRITERIA: (keyof RangeTenureSearchParams)[] = ['page', 'size', 'sort', 'clientLocnCode'];
 
 /**
  * FTA001R — Range Tenure Search.
@@ -138,8 +142,10 @@ const RangeTenureSearch: FC = () => {
     let cancelled = false;
     Promise.allSettled([
       getOrgUnits(),
-      getFileTypes(),
-      getFileStatuses(),
+      // Range types and statuses only, as legacy's fta.lookup.rangeFileTypeCode and
+      // fta.lookup.rangeTenureStatusCode.
+      getRangeFileTypes(),
+      getRangeTenureStatuses(),
       getFileClientTypes(),
       getManagementUnits(),
     ]).then((settled) => {
@@ -187,7 +193,7 @@ const RangeTenureSearch: FC = () => {
 
   useEffect(() => {
     if (error) {
-      display({ kind: 'error', title: 'Search failed', subtitle: error, timeout: 6000 });
+      display({ kind: 'error', title: 'Search failed.', subtitle: error, timeout: 6000 });
     }
   }, [error, display]);
 
@@ -198,11 +204,14 @@ const RangeTenureSearch: FC = () => {
 
   const runSearch = useCallback(
     async (nextPage: number, nextSize: number, criteria: RangeTenureSearchParams = form) => {
+      // A picked client is one criterion, as legacy counted the client field's number and not
+      // its location.
       const filled = Object.entries(criteria).filter(
-        ([k, v]) => k !== 'page' && k !== 'size' && k !== 'sort' && v !== undefined && v !== '',
+        ([k, v]) =>
+          !NOT_CRITERIA.includes(k as keyof RangeTenureSearchParams) && v !== undefined && v !== '',
       ).length;
       if (filled < MIN_CRITERIA) {
-        setError('Enter at least two search criteria.');
+        setError('At least two criteria must be selected to search.');
         return;
       }
       if (
@@ -400,6 +409,7 @@ const RangeTenureSearch: FC = () => {
                 clientNumber={form.clientNumber}
                 clientLocnCode={form.clientLocnCode}
                 clientName={form.clientName}
+                helperText="Pick a client, or type a name: use LastName%First Name% for the client name search"
                 onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
               />
             </div>
@@ -595,7 +605,9 @@ const RangeTenureSearch: FC = () => {
                     {totalElements.toLocaleString()}{' '}
                     {totalElements === 1 ? 'agreement' : 'agreements'} found
                   </span>
-                  {searched && <ExportCsvButton path={rangeTenureExportPath(searched)} />}
+                  {searched && (
+                    <RangeTenureExportButton onExport={() => exportRangeTenureSearch(searched)} />
+                  )}
                 </div>
 
                 <div className="fsp-search__table">
@@ -624,6 +636,7 @@ const RangeTenureSearch: FC = () => {
                               const open = () => {
                                 if (fileId) navigate(`/range/${encodeURIComponent(fileId)}`);
                               };
+                              const data = rows?.find((r) => r.id === row.id);
                               return (
                                 <TableRow
                                   {...getRowProps({ row })}
@@ -644,7 +657,18 @@ const RangeTenureSearch: FC = () => {
                                     if (cell.info.header === 'fileStatusDesc') {
                                       return (
                                         <TableCell key={cell.id}>
-                                          {value ? <StatusTag status={value} /> : '—'}
+                                          {value ? (
+                                            <StatusTag
+                                              status={
+                                                data?.fileStatusDescription ??
+                                                data?.fileStatusCode ??
+                                                value
+                                              }
+                                              variant={statusCodeVariant(data?.fileStatusCode)}
+                                            />
+                                          ) : (
+                                            '—'
+                                          )}
                                         </TableCell>
                                       );
                                     }

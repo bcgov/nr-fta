@@ -46,6 +46,8 @@ export interface TenureDetail {
   ftaBonusOffer: number | null;
   scrtyDepositCode: string | null;
   scrtyDepositAmt: number | null;
+  /** A range file: legacy FTA100 sent it to FTA100R, and the detail page redirects to /range. */
+  rangeFile: boolean;
 }
 
 /** GET /api/fta/tenures/{forestFileId} — tenure detail (FTA_100_TENURE). */

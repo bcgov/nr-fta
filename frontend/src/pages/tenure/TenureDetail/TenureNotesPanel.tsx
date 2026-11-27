@@ -24,7 +24,7 @@ import { canAddTenureNotes } from '@/routes/access';
 import { addTenureNote, getTenureNotes, TENURE_NOTE_MAX_LENGTH } from '@/services/tenure_notes';
 import { formatDate } from '@/utils/formatDate';
 
-import type { TenurePanelProps } from './panelProps';
+import type { SharedTenurePanelProps } from './panelProps';
 
 /**
  * "Apr 10, 2021 2:05 PM" — legacy shows the time as well as the date
@@ -58,7 +58,7 @@ const validate = (text: string): string | null =>
  * Add button above it, and a small modal to add. Notes are append-only; as in
  * legacy, a file in status PE cannot take one.
  */
-const TenureNotesPanel: FC<TenurePanelProps> = ({ tenure }) => {
+const TenureNotesPanel: FC<SharedTenurePanelProps> = ({ tenure }) => {
   const forestFileId = tenure.forestFileId;
   // Wider than the tab's other writes: the timber mark roles may add notes too.
   const { user } = useAuth();
@@ -94,13 +94,13 @@ const TenureNotesPanel: FC<TenurePanelProps> = ({ tenure }) => {
     setSaving(true);
     try {
       await addTenureNote(forestFileId, note);
-      display({ kind: 'success', title: 'Note added', timeout: 5000 });
+      display({ kind: 'success', title: 'Note added.', timeout: 5000 });
       setOpen(false);
       reload();
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not add the note',
+        title: 'Could not add the note.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

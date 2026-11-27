@@ -95,7 +95,11 @@ public class TenureDetailService {
              hs.fta_bonus_bid              AS fta_bonus_bid,
              hs.fta_bonus_offer            AS fta_bonus_offer,
              td.scrty_deposit_code         AS scrty_deposit_code,
-             td.scrty_deposit_amt          AS scrty_deposit_amt
+             td.scrty_deposit_amt          AS scrty_deposit_amt,
+             -- FTA_VALID_RANGE_FILE_TYPE: legacy FTA100 sent these files to FTA100R.
+             (SELECT DECODE(COUNT(*), 0, 'N', 'Y')
+                FROM the.range_file_type_code rftc
+               WHERE rftc.range_file_type_code = pfu.file_type_code) AS range_ind
         FROM the.prov_forest_use pfu
         JOIN the.org_unit org              ON org.org_unit_no = pfu.forest_region
         LEFT JOIN the.tenure_term tt        ON tt.forest_file_id = pfu.forest_file_id
@@ -156,7 +160,8 @@ public class TenureDetailService {
       rs.getBigDecimal("fta_bonus_bid"),
       rs.getBigDecimal("fta_bonus_offer"),
       rs.getString("scrty_deposit_code"),
-      rs.getBigDecimal("scrty_deposit_amt"));
+      rs.getBigDecimal("scrty_deposit_amt"),
+      "Y".equals(rs.getString("range_ind")));
 
   /**
    * Load one tenure's detail — mirrors {@code FTA_100_TENURE.mainline} GET.

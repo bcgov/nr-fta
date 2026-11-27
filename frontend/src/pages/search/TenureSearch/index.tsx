@@ -34,8 +34,10 @@ import { useNotification } from '@/context/notification/useNotification';
 import { useFormDistrictDefault } from '@/hooks/useDefaultOrgUnit';
 import { useOrgUnitName } from '@/hooks/useOrgUnitName';
 import { useSessionState, type LastSearch } from '@/hooks/useSessionState';
+import { useTenurePath } from '@/hooks/useTenurePath';
 import { nextColumnSort, sortHeaderProps } from '@/lib/columnSort';
 import { safeErrorMessage } from '@/lib/errorMessage';
+import { originState, TENURE_SEARCH_ORIGIN } from '@/lib/navOrigin';
 import PageLayout from '@/pages/PageLayout';
 import {
   getManagementUnits,
@@ -114,6 +116,7 @@ const EMPTY_FORM: TenureSearchParams = { sortBy: 'org' };
  */
 const TenureSearch: FC = () => {
   const navigate = useNavigate();
+  const tenurePath = useTenurePath();
   const { display, clear } = useNotification();
   const orgUnitName = useOrgUnitName();
 
@@ -198,7 +201,7 @@ const TenureSearch: FC = () => {
   // showing the last good page instead of collapsing under an error panel.
   useEffect(() => {
     if (error) {
-      display({ kind: 'error', title: 'Search failed', subtitle: error, timeout: 6000 });
+      display({ kind: 'error', title: 'Search failed.', subtitle: error, timeout: 6000 });
     }
   }, [error, display]);
 
@@ -664,13 +667,19 @@ const TenureSearch: FC = () => {
                             {dtRows.map((row) => {
                               // The status column shows the description; its
                               // colour comes from the code on the same row.
-                              const statusCode = rows?.find((r) => r.id === row.id)?.fileStatusCode;
+                              const source = rows?.find((r) => r.id === row.id);
+                              const statusCode = source?.fileStatusCode;
                               // Navigate from the file id cell, not row.id —
                               // that carries the disambiguating index suffix.
                               const forestFileId =
                                 (row.cells.find((c) => c.info.header === 'forestFileId')?.value as
                                   string | undefined) ?? '';
-                              const open = () => navigate(`/tenures/${forestFileId}`);
+                              // A range file opens the range tenure page, as legacy FTA100
+                              // sent it to FTA100R.
+                              const open = () =>
+                                navigate(tenurePath(forestFileId, source?.fileTypeCode), {
+                                  state: originState(TENURE_SEARCH_ORIGIN),
+                                });
                               return (
                                 <TableRow
                                   {...getRowProps({ row })}

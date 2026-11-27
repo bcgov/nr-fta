@@ -152,7 +152,7 @@ const AssociatedClientsPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
         if (!cancelled) {
           display({
             kind: 'error',
-            title: 'Could not load the client types',
+            title: 'Could not load the client types.',
             subtitle: 'Close the dialog and try again.',
             timeout: 6000,
           });
@@ -250,7 +250,7 @@ const AssociatedClientsPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
       await deleteTenureAssociatedClient(forestFileId, pendingDelete);
       display({
         kind: 'success',
-        title: `Client ${pendingDelete.clientNumber ?? ''} deleted`,
+        title: `Client ${pendingDelete.clientNumber ?? ''} deleted.`,
         timeout: 6000,
       });
       setPendingDelete(null);
@@ -258,7 +258,7 @@ const AssociatedClientsPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not delete the client',
+        title: 'Could not delete the client.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -349,7 +349,7 @@ const AssociatedClientsPanel: FC<TenurePanelProps> = ({ tenure, canEdit, onTenur
                         <TableHeader>Type</TableHeader>
                         <TableHeader>Start Date</TableHeader>
                         <TableHeader>End Date</TableHeader>
-                        <TableHeader aria-label="Actions" />
+                        <TableHeader>Actions</TableHeader>
                       </TableRow>
                     </TableHead>
                     <TableBody>

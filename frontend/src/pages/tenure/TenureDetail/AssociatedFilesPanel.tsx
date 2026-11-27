@@ -25,6 +25,7 @@ import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { Modal } from '@/components/Modal';
 import { useNotification } from '@/context/notification/useNotification';
 import { useApiResource } from '@/hooks/useApiResource';
+import { tenureDetailPath } from '@/routes/tenurePaths';
 import { getFileSources, type CodeOption } from '@/services/codeLists';
 import {
   addTenureAssociatedFile,
@@ -36,7 +37,7 @@ import {
 import { formatDate } from '@/utils/formatDate';
 import { parseTypedDate, TYPED_DATE_PATTERN } from '@/utils/typedDate';
 
-import type { TenurePanelProps } from './panelProps';
+import type { SharedTenurePanelProps } from './panelProps';
 
 const dash = (v: string | number | null | undefined) =>
   v === null || v === undefined || v === '' ? '—' : v;
@@ -98,7 +99,7 @@ const validate = (
  * shows the FTAS associations other files made to this one; deleting one of those removes
  * it in both directions, as legacy did.
  */
-const AssociatedFilesPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
+const AssociatedFilesPanel: FC<SharedTenurePanelProps> = ({ tenure, canEdit }) => {
   const forestFileId = tenure.forestFileId;
   const { display } = useNotification();
   const fetcher = useCallback(() => getTenureAssociatedFiles(forestFileId), [forestFileId]);
@@ -126,7 +127,7 @@ const AssociatedFilesPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
         if (!cancelled) {
           display({
             kind: 'error',
-            title: 'Could not load the source and association type lists',
+            title: 'Could not load the source and association type lists.',
             subtitle: 'Close the dialog and try again.',
             timeout: 6000,
           });
@@ -174,7 +175,7 @@ const AssociatedFilesPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
       });
       display({
         kind: warning ? 'warning' : 'success',
-        title: `File ${id} associated`,
+        title: `File ${id} associated.`,
         subtitle: warning ?? undefined,
         timeout: warning ? 9000 : 6000,
       });
@@ -183,7 +184,7 @@ const AssociatedFilesPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not add the association',
+        title: 'Could not add the association.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -199,7 +200,7 @@ const AssociatedFilesPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
       await deleteTenureAssociatedFile(forestFileId, pendingDelete);
       display({
         kind: 'success',
-        title: `Association with ${pendingDelete.associatedFileId} deleted`,
+        title: `Association with ${pendingDelete.associatedFileId} deleted.`,
         timeout: 6000,
       });
       setPendingDelete(null);
@@ -207,7 +208,7 @@ const AssociatedFilesPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not delete the association',
+        title: 'Could not delete the association.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -262,15 +263,15 @@ const AssociatedFilesPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                         <TableHeader>Source</TableHeader>
                         <TableHeader>Association Type</TableHeader>
                         <TableHeader>Association End Date</TableHeader>
-                        <TableHeader aria-label="Actions" />
+                        <TableHeader>Actions</TableHeader>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {rows.map((r) => {
-                        // An FTA file (source F) opens its tenure; another system's id has
-                        // nowhere to go, so its row is plain.
+                        // An FTA file (source F) opens its tenure — a range file its range
+                        // tenure page; another system's id has nowhere to go, so its row is plain.
                         const open = r.tenure
-                          ? () => navigate(`/tenures/${encodeURIComponent(r.associatedFileId)}`)
+                          ? () => navigate(tenureDetailPath(r.associatedFileId, r.rangeFile))
                           : undefined;
                         return (
                           <TableRow

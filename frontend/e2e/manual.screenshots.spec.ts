@@ -244,7 +244,9 @@ test.describe('Apportionment guide', () => {
     await snapResults(page, 'apt-licence-search');
 
     await resultRows(page).first().click();
-    await expect(page.getByText('At a glance')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'Commitments' })).toBeVisible({
+      timeout: 15_000,
+    });
     await snap(page, 'apt-licence', 1400);
   });
 

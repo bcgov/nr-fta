@@ -244,7 +244,7 @@ const CutBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
       });
       display({
         kind: 'success',
-        title: `Cut block ${created.cutBlockId} added`,
+        title: `Cut block ${created.cutBlockId} added.`,
         subtitle: `Status PP${created.timberMark ? `, timber mark ${created.timberMark}` : ''}.`,
         timeout: 7000,
       });
@@ -253,7 +253,7 @@ const CutBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not add the cut block',
+        title: 'Could not add the cut block.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -289,7 +289,7 @@ const CutBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
       });
       display({
         kind: 'success',
-        title: `Cut block ${deleting.cutBlockId} deleted`,
+        title: `Cut block ${deleting.cutBlockId} deleted.`,
         subtitle:
           'Delete successful. Please regenerate the exhibit A using TUT and transmit a copy to the licensee.',
         timeout: 9000,
@@ -299,7 +299,7 @@ const CutBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not delete the cut block',
+        title: 'Could not delete the cut block.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -417,7 +417,7 @@ const CutBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                           <TableHeader>Planned Net (ha)</TableHeader>
                           <TableHeader>Actual Gross (ha)</TableHeader>
                           <TableHeader>Authorized File / CP</TableHeader>
-                          <TableHeader aria-label="Actions" />
+                          <TableHeader>Actions</TableHeader>
                         </TableRow>
                       </TableHead>
                       <TableBody>

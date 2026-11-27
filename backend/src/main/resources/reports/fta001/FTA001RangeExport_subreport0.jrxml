@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="FTA001RangeExport_subreport0.jrxml" pageWidth="1500" pageHeight="595" orientation="Landscape" whenNoDataType="AllSectionsNoDetail" columnWidth="1500" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" whenResourceMissingType="Empty" uuid="eeba352c-975c-4e47-9d20-f84f278be4e0">
+  <property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+  <parameter name="report_cursor" class="java.sql.ResultSet" isForPrompting="false"/>
+  <parameter name="p_user_id" class="java.lang.String" isForPrompting="false"/>
+  <parameter name="p_forest_file_id" class="java.lang.String"/>
+  <parameter name="p_file_type_code" class="java.lang.String"/>
+  <parameter name="p_admin_org_unit_no" class="java.lang.String"/>
+  <parameter name="p_zone" class="java.lang.String"/>
+  <parameter name="p_client_name" class="java.lang.String"/>
+  <parameter name="p_client_number" class="java.lang.String"/>
+  <parameter name="p_client_locn_code" class="java.lang.String"/>
+  <parameter name="p_file_client_type" class="java.lang.String"/>
+  <parameter name="p_file_status_st" class="java.lang.String"/>
+  <parameter name="p_mgmt_unit_type" class="java.lang.String"/>
+  <parameter name="p_mgmt_unit_id" class="java.lang.String"/>
+  <parameter name="p_issue_date_from" class="java.lang.String"/>
+  <parameter name="p_issue_date_to" class="java.lang.String"/>
+  <parameter name="p_expiry_date_from" class="java.lang.String"/>
+  <parameter name="p_expiry_date_to" class="java.lang.String"/>
+  <parameter name="p_provision_year" class="java.lang.String"/>
+  <parameter name="p_authorized_use_from" class="java.lang.String"/>
+  <parameter name="p_authorized_use_to" class="java.lang.String"/>
+  <parameter name="p_temporary_increase_from" class="java.lang.String"/>
+  <parameter name="p_temporary_increase_to" class="java.lang.String"/>
+  <parameter name="p_billable_non_use_from" class="java.lang.String"/>
+  <parameter name="p_billable_non_use_to" class="java.lang.String"/>
+  <parameter name="p_non_billable_non_use_from" class="java.lang.String"/>
+  <parameter name="p_non_billable_non_use_to" class="java.lang.String"/>
+  <parameter name="p_total_annual_use_from" class="java.lang.String"/>
+  <parameter name="p_total_annual_use_to" class="java.lang.String"/>
+  <parameter name="SUBREPORT_EXT" class="java.lang.String" isForPrompting="false">
+    <defaultValueExpression><![CDATA[$P{REPORT_CONTEXT} != null ? "" : ".jasper"]]></defaultValueExpression>
+  </parameter>
+  <parameter name="ROOT_DIR" class="java.lang.String" isForPrompting="false">
+    <defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+  </parameter>
+  <parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+    <defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+  </parameter>
+  <field name="forest_file_id" class="java.lang.String"/>
+  <field name="file_status_st" class="java.lang.String"/>
+  <field name="file_status_date" class="java.util.Date"/>
+  <field name="file_type_code" class="java.lang.String"/>
+  <field name="forest_region" class="java.lang.Number"/>
+  <field name="mgmt_unit_type" class="java.lang.String"/>
+  <field name="mgmt_unit_id" class="java.lang.String"/>
+  <field name="admin_forest_district_no" class="java.lang.Number"/>
+  <field name="admin_forest_district_code" class="java.lang.String"/>
+  <field name="district_name" class="java.lang.String"/>
+  <field name="district_admn_zone" class="java.lang.String"/>
+  <field name="retirement_date" class="java.util.Date"/>
+  <field name="replacement_date" class="java.util.Date"/>
+  <field name="replacement_term" class="java.lang.Number"/>
+  <field name="original_issuance_date" class="java.util.Date"/>
+  <field name="file_name" class="java.lang.String"/>
+  <field name="tenure_term" class="java.lang.Number"/>
+  <field name="legal_effective_dt" class="java.util.Date"/>
+  <field name="initial_expiry_dt" class="java.util.Date"/>
+  <field name="current_expiry_dt" class="java.util.Date"/>
+  <field name="new_start_dt" class="java.util.Date"/>
+  <field name="new_expiry_dt" class="java.util.Date"/>
+  <background>
+    <band splitType="Stretch"/>
+  </background>
+  <columnHeader>
+    <band height="20" splitType="Stretch">
+      <staticText>
+        <reportElement uuid="32a79ce1-465b-4f15-bd47-ddeb7d2f7c00" x="0" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.export.xls.sheet.name" value="FTA_RANGE_BASIC"/>
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[forest_file_id]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="e718ecb5-b105-4f11-8f7d-390a28acdb81" x="66" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[file_status_st]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="274a36e6-46d6-46a3-84bc-bad9dc35ab79" x="132" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[file_status_date]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="77adac53-3b87-4ccf-aa3b-c055ce3fde59" x="198" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[file_type_code]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="d2e2a8c2-aa69-4fbc-8572-015b7418d9bc" x="264" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[forest_region]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="473c253b-f510-43f5-98fa-2f4526575431" x="330" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[mgmt_unit_type]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="ff67bd23-af25-4505-b797-fff7f75b5ca9" x="396" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[mgmt_unit_id]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="0c315607-4513-45a3-999e-ff0f0f841c99" x="462" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[admin_forest_district_no]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="ed319c4c-4f4c-441d-addb-89c23fba7069" x="528" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[admin_forest_district_code]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="868a8bcd-b90f-4aef-855d-3559e459f0be" x="594" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[district_name]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="97b08da7-047d-45d8-a4b1-6cd33dc0972c" x="660" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[district_admn_zone]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="8ebd3eec-a7bc-4b73-aebf-22f3a2824f03" x="726" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[retirement_date]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="da69de96-f141-425e-b778-bc35cd8a0030" x="792" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[replacement_date]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="55aa697f-d963-4f33-a6ef-75f68dd0ce18" x="858" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[replacement_term]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="5b926e69-33e5-4aae-8a36-dd9bffa610aa" x="924" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[original_issuance_date]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="7722e2c1-5960-411d-8bbd-f226d1be7776" x="990" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[file_name]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="705aa307-5f08-4bbf-b562-5abc020583de" x="1056" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[tenure_term]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="d2a88e7c-cf33-4127-a3a1-c0397ec5adc8" x="1122" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[legal_effective_dt]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="300be492-b071-4a8f-afb5-7ba771f33e2f" x="1188" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[initial_expiry_dt]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="6711aa4a-3c2b-426e-b69a-04289815f992" x="1254" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[current_expiry_dt]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="20b238db-a2c2-4990-a3bd-1551f436faaf" x="1320" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[new_start_dt]]></text>
+      </staticText>
+      <staticText>
+        <reportElement uuid="067bd6bb-00ec-4704-b1e7-602b37128e22" x="1386" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <text><![CDATA[new_expiry_dt]]></text>
+      </staticText>
+    </band>
+  </columnHeader>
+  <detail>
+    <band height="20" splitType="Stretch">
+      <textField isBlankWhenNull="true">
+        <reportElement uuid="113cdebe-0661-4d01-8b03-397adc144015" x="0" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{forest_file_id}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement uuid="cec139cf-f84c-411d-82c5-5ed768bdca2b" x="66" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{file_status_st}]]></textFieldExpression>
+      </textField>
+      <textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+        <reportElement uuid="9503b8ea-3221-475d-9323-feff0df9c35e" x="132" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{file_status_date}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement uuid="7d708f7f-ada6-48ac-adda-48b9bf29b55c" x="198" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{file_type_code}]]></textFieldExpression>
+      </textField>
+      <textField pattern="###0" isBlankWhenNull="true">
+        <reportElement uuid="f9172b90-da95-4e33-92fa-d40e9d8ecf14" x="264" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{forest_region}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement uuid="b6f1397a-eceb-4c0c-83a4-570769abc938" x="330" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{mgmt_unit_type}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement uuid="ccb388ea-b878-417f-995c-eac4d1865217" x="396" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{mgmt_unit_id}]]></textFieldExpression>
+      </textField>
+      <textField pattern="###0" isBlankWhenNull="true">
+        <reportElement uuid="0aff455e-8a7c-4c28-b692-2182a8c73ce9" x="462" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{admin_forest_district_no}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement uuid="5b8a636c-cf9e-4abd-a836-b2e97d8a5c51" x="528" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{admin_forest_district_code}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement uuid="b0bcdac5-7c33-4c1d-aad4-172b84206e34" x="594" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{district_name}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement uuid="ac3077df-9259-49e9-9fd6-f7c21137d46b" x="660" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{district_admn_zone}]]></textFieldExpression>
+      </textField>
+      <textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+        <reportElement uuid="df7ee9d9-e92c-40a3-ae0b-c7cfe157ea6a" x="726" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{retirement_date}]]></textFieldExpression>
+      </textField>
+      <textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+        <reportElement uuid="b51d6980-2de2-4b52-976a-f3310b1ecb9c" x="792" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{replacement_date}]]></textFieldExpression>
+      </textField>
+      <textField pattern="###0" isBlankWhenNull="true">
+        <reportElement uuid="9408eb88-6818-43e3-a2c0-13da1c1d7c8c" x="858" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{replacement_term}]]></textFieldExpression>
+      </textField>
+      <textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+        <reportElement uuid="a4108f60-7847-4336-b4e4-ba35e64cb0e3" x="924" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{original_issuance_date}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement uuid="bbf263c0-5ed0-4282-9cc2-588a3f92aaa8" x="990" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{file_name}]]></textFieldExpression>
+      </textField>
+      <textField pattern="###0" isBlankWhenNull="true">
+        <reportElement uuid="39ed0d3c-5284-4a35-89ca-134e5fa63bdb" x="1056" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{tenure_term}]]></textFieldExpression>
+      </textField>
+      <textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+        <reportElement uuid="f518620d-a323-4305-bf8c-104f64c0ec21" x="1122" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{legal_effective_dt}]]></textFieldExpression>
+      </textField>
+      <textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+        <reportElement uuid="07354523-c36e-47b5-ba5a-8877c971d7b1" x="1188" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{initial_expiry_dt}]]></textFieldExpression>
+      </textField>
+      <textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+        <reportElement uuid="75a773a3-a275-4c9c-97a3-f1b3b2d3481c" x="1254" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{current_expiry_dt}]]></textFieldExpression>
+      </textField>
+      <textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+        <reportElement uuid="b07e0317-10d3-40c7-b63f-5a93a138af58" x="1320" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{new_start_dt}]]></textFieldExpression>
+      </textField>
+      <textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+        <reportElement uuid="64d5dfd9-c5c4-4b46-b9e9-2beff0483d7c" x="1386" y="0" width="66" height="20">
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$F{new_expiry_dt}]]></textFieldExpression>
+      </textField>
+    </band>
+  </detail>
+</jasperReport>

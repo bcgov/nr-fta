@@ -21,6 +21,8 @@ public final class AssocFilesDtos {
    * @param revisionCount           for the optimistic lock on delete
    * @param tenure                  whether {@code associatedFileId} is an FTA file (source F) —
    *                                legacy's Details button, a link here
+   * @param rangeFile               whether that FTA file is a range file, whose link opens the
+   *                                range tenure page (legacy FTA100 redirected it to FTA100R)
    */
   public record AssocFileRowDto(
       String associatedFileId,
@@ -30,7 +32,8 @@ public final class AssocFilesDtos {
       String fileAssociationTypeDesc,
       LocalDate associationEndDate,
       Long revisionCount,
-      boolean tenure) {}
+      boolean tenure,
+      boolean rangeFile) {}
 
   /**
    * The tab: its rows, and whether an association may be added (and why not).

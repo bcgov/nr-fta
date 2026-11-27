@@ -15,6 +15,10 @@ import lombok.RequiredArgsConstructor;
  *       permit and cut block writes (see {@code ApiAuthorizationCustomizer})</li>
  *   <li>{@code FTA_HARVEST_AUTH_DISTRICT_ADMIN} — the same reads, plus adding and editing
  *       cutting permits and cut blocks, without the senior-only writes</li>
+ *   <li>{@code FTA_RANGE_HEADQUARTERS_ADMIN} — range reads and edits in every district, plus the range
+ *       admin and billing screens</li>
+ *   <li>{@code FTA_RANGE_DISTRICT_ADMIN} — range reads, and edits on range files of its own
+ *       district (FAM may scope it {@code _DISTRICT-<ORG_UNIT_CODE>})</li>
  *   <li>{@code FTA_TIMBER_MARK_HEADQUARTERS_ADMIN} — tenure and timber mark search, their
  *       detail screens, and private-mark writes (see {@code ApiAuthorizationCustomizer})</li>
  *   <li>{@code FTA_TIMBER_MARK_DISTRICT_ADMIN} — the same as
@@ -43,6 +47,10 @@ public enum Role {
      * "FTA_TIMBER_MARK_DISTRICT_ADMIN".
      */
     FTA_TIMBER_MARK_DISTRICT_ADMIN(RoleType.CONCRETE),
+    /** Range senior staff — the CSS role "FTA_RANGE_HEADQUARTERS_ADMIN". */
+    FTA_RANGE_HEADQUARTERS_ADMIN(RoleType.CONCRETE),
+    /** Range district staff — the CSS role "FTA_RANGE_DISTRICT_ADMIN"; legacy FTA_DIST_RANGE_TECH. */
+    FTA_RANGE_DISTRICT_ADMIN(RoleType.CONCRETE),
     /** Apportionment (APT) editing — the CSS role "FTA_APT_ADMIN"; legacy APT2's APT_EDITOR. */
     FTA_APT_ADMIN(RoleType.CONCRETE),
     /** Apportionment (APT) reading — the CSS role "FTA_APT_VIEWER"; legacy APT2's APT_VIEWER. */

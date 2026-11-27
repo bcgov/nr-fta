@@ -11,11 +11,10 @@ import org.springframework.stereotype.Component;
  * the CSS/Keycloak role names and are used in {@code ApiAuthorizationCustomizer} for
  * URL-level access control via {@code hasAuthority()} / {@code hasAnyAuthority()}.
  *
- * <p><b>The codes are unchanged from the Cognito groups they replace.</b> FTA scopes no role
- * by district, region or forest client — org-unit filtering is a query concern, not an
- * authorisation one — so none of FAM's scope-suffix grammar ({@code <CODE>_DISTRICT-DCC})
- * applies here and the names arrive on the token spelled exactly as written below, which is
- * what keeps exact matching correct.
+ * <p>A role FAM grants for a district arrives as {@code <CODE>_DISTRICT-<ORG_UNIT_CODE>};
+ * {@link TokenRoles#authoritiesFrom} derives the bare code below from it, so the URL rules match
+ * scoped and unscoped holders alike. Where the district matters ({@code FTA_ADMIN},
+ * {@code FTA_RANGE_DISTRICT_ADMIN}), ask {@link LoggedUserHelper}.
  */
 @Component("roles")
 public class RoleConstants {
@@ -67,12 +66,30 @@ public class RoleConstants {
      */
     public static final String APT_VIEWER_AUTHORITY = "FTA_APT_VIEWER";
 
-    /** CSS role / Spring authority for read-only access. */
+    /**
+   * CSS role / Spring authority for range headquarters staff: everything
+   * {@link #RANGE_DISTRICT_AUTHORITY} may do, in every district, plus the range admin and billing
+   * screens (631 Manage Zone, 640 Archive Tenures, 680/685/686/690/695 billing, 699 Range Rates).
+   * Any grant counts as all districts.
+   */
+  public static final String RANGE_HEADQUARTERS_AUTHORITY = "FTA_RANGE_HEADQUARTERS_ADMIN";
+
+  /**
+   * CSS role / Spring authority for range district staff: reads range tenures and range units,
+   * and edits range files administered by its district (legacy {@code FTA_DIST_RANGE_TECH}).
+   * FAM may grant it district-scoped ({@code FTA_RANGE_DISTRICT_ADMIN_DISTRICT-DCC}); unscoped,
+   * it covers every district. See {@link LoggedUserHelper#mayEditRangeDistrict}.
+   */
+  public static final String RANGE_DISTRICT_AUTHORITY = "FTA_RANGE_DISTRICT_ADMIN";
+
+  /** CSS role / Spring authority for read-only access. */
     public static final String VIEWER_AUTHORITY = "FTA_VIEWER";
 
     public final Role FTA_ADMIN = Role.FTA_ADMIN;
     public final Role FTA_HARVEST_AUTH_SENIOR_ADMIN = Role.FTA_HARVEST_AUTH_SENIOR_ADMIN;
     public final Role FTA_HARVEST_AUTH_DISTRICT_ADMIN = Role.FTA_HARVEST_AUTH_DISTRICT_ADMIN;
+    public final Role FTA_RANGE_HEADQUARTERS_ADMIN = Role.FTA_RANGE_HEADQUARTERS_ADMIN;
+    public final Role FTA_RANGE_DISTRICT_ADMIN = Role.FTA_RANGE_DISTRICT_ADMIN;
     public final Role FTA_TIMBER_MARK_HEADQUARTERS_ADMIN = Role.FTA_TIMBER_MARK_HEADQUARTERS_ADMIN;
     public final Role FTA_TIMBER_MARK_DISTRICT_ADMIN = Role.FTA_TIMBER_MARK_DISTRICT_ADMIN;
     public final Role FTA_APT_ADMIN = Role.FTA_APT_ADMIN;

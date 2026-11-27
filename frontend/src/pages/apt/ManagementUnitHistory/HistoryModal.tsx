@@ -170,7 +170,7 @@ const HistoryModal: FC<Props> = ({ muId, open, mode, source, onClose, onSaved })
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not save the determination',
+        title: 'Could not save the determination.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

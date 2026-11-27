@@ -2,7 +2,6 @@ package ca.bc.gov.nrs.fta.range.service;
 
 import ca.bc.gov.nrs.fta.range.dto.RangeTenureSearchDto;
 import ca.bc.gov.nrs.fta.shared.csv.CsvStreamingJdbc;
-import ca.bc.gov.nrs.fta.shared.csv.CsvWriter;
 import ca.bc.gov.nrs.fta.shared.dto.PagedResponse;
 import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import ca.bc.gov.nrs.fta.shared.sql.ColumnSort;
@@ -10,10 +9,11 @@ import ca.bc.gov.nrs.fta.shared.sql.SearchIds;
 import java.sql.Types;
 import java.util.List;
 import java.util.Map;
-import org.springframework.jdbc.core.RowCallbackHandler;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Range tenure search business logic.
@@ -26,10 +26,10 @@ import org.springframework.stereotype.Service;
  * behaviour. Column selection matches the package's {@code rec_tenure_results}
  * record.
  *
- * <p>NOTE: some legacy behaviour is simplified for the native port —
- * <ul>
- *   <li>the client-name filter matches on {@code fc.client_name} as a prefix.</li>
- * </ul>
+ * <p>The client name matches as BUILD_WHERE_CLAUSE did: {@code client_name || ', ' ||
+ * legal_first_name || ' ' || legal_middle_name LIKE} the input, upper-cased as the screen's
+ * forceFormats did, with only the user's own {@code %} wildcards ({@link RangeTenureSearchRules}).
+ * A management unit type is checked as the form's SIL_EDIT_MGMT_UNIT validator did.
  *
  * <p>The SQL runs against the BC Gov shared Oracle ({@code THE}) via the
  * configured {@code DataSource}; there is no local database, so it is exercised
@@ -68,6 +68,7 @@ public class RangeTenureSearchService {
              pfu.mgmt_unit_id AS mgmt_unit_id,
              pfu.file_status_st AS file_status_code,
              SUBSTR(pfu.file_status_st || ' - ' || sts.description, 1, 30) AS file_status_desc,
+             sts.description AS file_status_description,
              tt.legal_effective_dt AS issue_date,
              NVL(tt.current_expiry_dt, tt.initial_expiry_dt) AS expiry_date
       """;
@@ -111,7 +112,9 @@ public class RangeTenureSearchService {
          AND (:clientLocnCode IS NULL OR fcl.client_locn_code = :clientLocnCode)
          AND ((:fileClientType IS NULL AND fcl.forest_file_client_type_code = 'A')
               OR fcl.forest_file_client_type_code = :fileClientType)
-         AND (:clientName IS NULL OR UPPER(fc.client_name) LIKE '%' || UPPER(:clientName) || '%')
+         AND (:clientName IS NULL
+              OR fc.client_name || ', ' || fc.legal_first_name || ' ' || fc.legal_middle_name
+                 LIKE :clientName)
          AND (:provisionYear IS NULL OR rp.calendar_year = :provisionYear)
          AND (:authorizedUseFrom IS NULL OR rp.authorized_use >= :authorizedUseFrom)
          AND (:authorizedUseTo IS NULL OR rp.authorized_use <= :authorizedUseTo)
@@ -242,6 +245,7 @@ public class RangeTenureSearchService {
       int page,
       int size,
       String sort) {
+    requireValidMgmtUnit(mgmtUnitType, mgmtUnitId);
     MapSqlParameterSource params = criteria(
         forestFileId, fileTypeCode, orgUnitNo, zone,
         clientName, clientNumber, clientLocnCode, fileClientType, fileStatus,
@@ -277,6 +281,7 @@ public class RangeTenureSearchService {
             rs.getString("mgmt_unit_id"),
             rs.getString("file_status_code"),
             rs.getString("file_status_desc"),
+            rs.getString("file_status_description"),
             rs.getObject("issue_date", java.time.LocalDate.class),
             rs.getObject("expiry_date", java.time.LocalDate.class)));
 
@@ -284,127 +289,8 @@ public class RangeTenureSearchService {
   }
 
   /**
-   * Streams every matching range tenure to a CSV — the same criteria, joins and
-   * order as {@link #search}, with no paging and no row cap.
-   *
-   * <p>Criteria are built by the same {@link #criteria} helper the search uses,
-   * so the org-unit level resolution and the conditional RANGE_PROVISION join
-   * cannot drift: an export that joined provisions differently would repeat a
-   * tenure once per provision year and quietly return a different row count from
-   * the one shown on screen.
-   *
-   * <p>Columns track the Range Tenure Search table on screen (the frontend
-   * page's {@code HEADERS}), in the same order with the same header text; keep
-   * the two in step.
-   */
-  public void exportCsv(
-      String forestFileId,
-      String fileTypeCode,
-      String orgUnitNo,
-      String zone,
-      String clientName,
-      String clientNumber,
-      String clientLocnCode,
-      String fileClientType,
-      String fileStatus,
-      String mgmtUnitType,
-      String mgmtUnitId,
-      String issueDateFrom,
-      String issueDateTo,
-      String expiryDateFrom,
-      String expiryDateTo,
-      String provisionYear,
-      String authorizedUseFrom,
-      String authorizedUseTo,
-      String temporaryIncreaseFrom,
-      String temporaryIncreaseTo,
-      String billableNonUseFrom,
-      String billableNonUseTo,
-      String nonBillableNonUseFrom,
-      String nonBillableNonUseTo,
-      String totalAnnualUseFrom,
-      String totalAnnualUseTo,
-      CsvWriter csv) {
-    exportCsv(
-        forestFileId, fileTypeCode, orgUnitNo, zone, clientName, clientNumber, clientLocnCode,
-        fileClientType, fileStatus, mgmtUnitType, mgmtUnitId, issueDateFrom, issueDateTo,
-        expiryDateFrom, expiryDateTo, provisionYear, authorizedUseFrom, authorizedUseTo,
-        temporaryIncreaseFrom, temporaryIncreaseTo, billableNonUseFrom, billableNonUseTo,
-        nonBillableNonUseFrom, nonBillableNonUseTo, totalAnnualUseFrom, totalAnnualUseTo, null,
-        csv);
-  }
-
-  /** {@link #exportCsv} in a results-table column sort ({@link ColumnSort}). */
-  public void exportCsv(
-      String forestFileId,
-      String fileTypeCode,
-      String orgUnitNo,
-      String zone,
-      String clientName,
-      String clientNumber,
-      String clientLocnCode,
-      String fileClientType,
-      String fileStatus,
-      String mgmtUnitType,
-      String mgmtUnitId,
-      String issueDateFrom,
-      String issueDateTo,
-      String expiryDateFrom,
-      String expiryDateTo,
-      String provisionYear,
-      String authorizedUseFrom,
-      String authorizedUseTo,
-      String temporaryIncreaseFrom,
-      String temporaryIncreaseTo,
-      String billableNonUseFrom,
-      String billableNonUseTo,
-      String nonBillableNonUseFrom,
-      String nonBillableNonUseTo,
-      String totalAnnualUseFrom,
-      String totalAnnualUseTo,
-      String sort,
-      CsvWriter csv) {
-
-    csv.writeRow(
-        "Administration organization unit",
-        "Client name",
-        "Client type",
-        "File type",
-        "File ID",
-        "Status",
-        "Issue date",
-        "Expiry date");
-
-    streamingJdbc.jdbc().query(
-        resultsQuery(sort),
-        criteria(
-            forestFileId, fileTypeCode, orgUnitNo, zone,
-            clientName, clientNumber, clientLocnCode, fileClientType, fileStatus,
-            mgmtUnitType, mgmtUnitId,
-            issueDateFrom, issueDateTo, expiryDateFrom, expiryDateTo,
-            provisionYear, authorizedUseFrom, authorizedUseTo,
-            temporaryIncreaseFrom, temporaryIncreaseTo,
-            billableNonUseFrom, billableNonUseTo,
-            nonBillableNonUseFrom, nonBillableNonUseTo,
-            totalAnnualUseFrom, totalAnnualUseTo),
-        // Cast required: a void lambda body matches both the RowCallbackHandler
-        // and ResultSetExtractor overloads, so the compiler cannot choose.
-        (RowCallbackHandler) rs -> csv.writeRow(
-            rs.getString("org_unit_code"),
-            rs.getString("client_name"),
-            rs.getString("file_client_type_desc"),
-            rs.getString("file_type_code"),
-            rs.getString("forest_file_id"),
-            rs.getString("file_status_desc"),
-            // Read as LocalDate, not getString: CsvWriter renders it ISO, the
-            // same as the JSON API, rather than the driver's locale format.
-            rs.getObject("issue_date", java.time.LocalDate.class),
-            rs.getObject("expiry_date", java.time.LocalDate.class)));
-  }
-
-  /**
-   * The bind values for one set of search criteria, shared by the page query,
-   * its count and the CSV export so none of the three can filter differently.
+   * The bind values for one set of search criteria, shared by the page query
+   * and its count so the two cannot filter differently.
    */
   private MapSqlParameterSource criteria(
       String forestFileId,
@@ -437,7 +323,7 @@ public class RangeTenureSearchService {
         .addValue("forestFileId", SearchIds.upper(forestFileId))
         .addValue("fileTypeCode", blankToNull(fileTypeCode))
         .addValue("zone", blankToNull(zone))
-        .addValue("clientName", blankToNull(clientName))
+        .addValue("clientName", RangeTenureSearchRules.clientName(clientName))
         .addValue("clientNumber", blankToNull(clientNumber))
         .addValue("clientLocnCode", blankToNull(clientLocnCode))
         .addValue("fileClientType", blankToNull(fileClientType))
@@ -474,6 +360,30 @@ public class RangeTenureSearchService {
     params.addValue("provisionCriteria", provisionCriteria ? "Y" : "N");
 
     return params;
+  }
+
+  /**
+   * The form's {@code mgmtValidator} ({@code SIL_EDIT_MGMT_UNIT}): with a type, the type/id pair
+   * (or, with no id, the type) must be a FOREST_MGMT_UNIT. Expired units count, as there.
+   *
+   * @throws ResponseStatusException 400 with legacy's message otherwise
+   */
+  private void requireValidMgmtUnit(String mgmtUnitType, String mgmtUnitId) {
+    if (blankToNull(mgmtUnitType) == null) {
+      return;
+    }
+    Long n = jdbc.queryForObject(
+        """
+        SELECT COUNT(*) FROM the.forest_mgmt_unit
+         WHERE mgmt_unit_type_code = UPPER(TRIM(:type))
+           AND (TRIM(:unitId) IS NULL OR mgmt_unit_id = UPPER(TRIM(:unitId)))
+        """,
+        new MapSqlParameterSource().addValue("type", mgmtUnitType).addValue("unitId", mgmtUnitId),
+        Long.class);
+    if (n == null || n == 0) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, RangeTenureSearchRules.MGMT_UNIT_INVALID);
+    }
   }
 
   /**

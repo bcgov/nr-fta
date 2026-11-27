@@ -50,6 +50,8 @@ export interface TenureAppRow {
   regenInProgress: boolean;
   professionalDeclaration: boolean;
   statusNotificationClearance: boolean;
+  /** The SNC status request; the SNC column links to it (lib/externalUrls sncUrl). */
+  clearanceStatusRequestUri: string | null;
   decisionDate: string | null;
   issuanceDate: string | null;
   issuePermitAllowed: boolean;

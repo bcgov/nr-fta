@@ -2,10 +2,9 @@
  * Recognized CSS/Keycloak roles that map to FTA application roles. Mirrors the
  * backend's ca.bc.gov.nrs.fta.dto.Role enum — keep these two lists in sync.
  *
- * The codes are unchanged from the Cognito groups they replace, and FTA scopes
- * no role by district, region or forest client — org-unit filtering is a query
- * concern, not an authorisation one. So these arrive on the token spelled
- * exactly as written here, and exact matching stays correct.
+ * A role FAM grants for a district arrives as `<CODE>_DISTRICT-<ORG_UNIT_CODE>`;
+ * authUtils.parsePrivileges records it under the bare code with its districts
+ * (FTA_ADMIN and FTA_RANGE_DISTRICT_ADMIN are the ones whose scope matters).
  */
 export const AVAILABLE_ROLES = [
   'FTA_ADMIN',
@@ -16,6 +15,8 @@ export const AVAILABLE_ROLES = [
   'FTA_APT_ADMIN',
   'FTA_APT_VIEWER',
   'FTA_VIEWER',
+  'FTA_RANGE_HEADQUARTERS_ADMIN',
+  'FTA_RANGE_DISTRICT_ADMIN',
 ] as const;
 
 export type ROLE_TYPE = (typeof AVAILABLE_ROLES)[number];

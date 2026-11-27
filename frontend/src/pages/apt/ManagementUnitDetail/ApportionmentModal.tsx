@@ -130,7 +130,7 @@ const ApportionmentModal: FC<Props> = ({
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not save the apportionment',
+        title: 'Could not save the apportionment.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -238,7 +238,7 @@ const ApportionmentModal: FC<Props> = ({
           errorTitle="Could not delete the apportionment"
           onConfirm={async () => {
             await deleteAptPartitionApportionment(apportionment.id);
-            display({ kind: 'success', title: 'Apportionment deleted', timeout: 5000 });
+            display({ kind: 'success', title: 'Apportionment deleted.', timeout: 5000 });
             setConfirming(false);
             onDeleted();
           }}

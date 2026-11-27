@@ -31,7 +31,8 @@ import org.springframework.web.server.ResponseStatusException;
  * <p>Archive also refuses, as legacy did: an expired region or district (the dropdowns list only
  * current ones), an expiry year outside 1000–9999, and a user who does not administer every
  * district the archive would change ("District/Region is not within your Admin Org"). An
- * unscoped {@code FTA_ADMIN} administers every district.
+ * unscoped {@code FTA_ADMIN} or {@code FTA_RANGE_HEADQUARTERS_ADMIN} acts for every district
+ * ({@link LoggedUserHelper#isUnscopedRangeAdmin}).
  *
  * <p>Runs against the shared {@code THE} Oracle schema — there is no local
  * database, so it is exercised only in a deployed environment.
@@ -137,9 +138,9 @@ public class ArchiveTenuresWriteService {
     if (!ArchiveTenuresRules.yearIsOver(q.expiryYear(), Year.now(ZONE).getValue())) {
       throw bad(ArchiveTenuresRules.NOT_EXPIRED);
     }
-    if (!auth.isUnscopedAdmin()) {
+    if (!auth.isUnscopedRangeAdmin()) {
       List<String> districts = jdbc.queryForList(AFFECTED_DISTRICTS_SQL, p, String.class);
-      if (!ArchiveTenuresRules.administersAll(districts, auth::administersDistrict)) {
+      if (!ArchiveTenuresRules.administersAll(districts, auth::administersRangeDistrict)) {
         throw new ResponseStatusException(
             HttpStatus.FORBIDDEN, ArchiveTenuresRules.NOT_IN_ADMIN_ORG);
       }

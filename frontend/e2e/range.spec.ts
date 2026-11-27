@@ -9,11 +9,21 @@ test('a range tenure opens from search, with every tab loading', async ({ page }
   await openFirstResult(page, '#rt-org-unit', () => chooseOption(page, '#rt-status'));
   await expect(page).toHaveURL(/\/range\/[^/]+$/);
   await settled(page);
+  // Legacy FtaRangeTabs, in its order and with its labels.
   expect(await walkTabs(page, 'Range tenure sections')).toEqual([
+    'Tenure',
+    'Assoc. Files',
+    'Assoc. Client',
+    'Tenure Appl.',
+    'Notes',
     'Range Usage',
-    'Land Base',
-    'Usage History',
+    'Assoc. Land Base',
   ]);
+
+  // The usage history is Range Usage's View History window, as in legacy FTA613R.
+  await page.getByRole('tab', { name: 'Range Usage' }).click();
+  await page.getByRole('button', { name: 'View history' }).click();
+  await expect(page.getByRole('dialog', { name: 'Usage History' })).toBeVisible();
 });
 
 test('a range unit opens from search and loads', async ({ page }) => {

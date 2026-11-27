@@ -65,6 +65,9 @@ public final class TenureAppDtos {
       boolean regenInProgress,
       boolean professionalDeclaration,
       boolean statusNotificationClearance,
+      /** The application's SNC status request (CLEARANCE_STATUS_REQUEST_URI); legacy 950x's
+       *  "SNC" link opens it in SNC. Null when none. */
+      String clearanceStatusRequestUri,
       LocalDate decisionDate,
       LocalDate issuanceDate,
       boolean issuePermitAllowed,

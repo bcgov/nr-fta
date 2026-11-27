@@ -95,7 +95,7 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate,
         if (!cancelled) {
           display({
             kind: 'error',
-            title: 'Could not load the land index lists',
+            title: 'Could not load the land index lists.',
             subtitle: 'Close the dialog and try again.',
             timeout: 6000,
           });
@@ -168,13 +168,13 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate,
         pendingDelete.revisionCount,
         byCertificate,
       );
-      display({ kind: 'success', title: 'Land index deleted', timeout: 5000 });
+      display({ kind: 'success', title: 'Land index deleted.', timeout: 5000 });
       setPendingDelete(null);
       onAdded();
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not delete the land index',
+        title: 'Could not delete the land index.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -204,13 +204,13 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate,
           },
           byCertificate,
         );
-        display({ kind: 'success', title: 'Land index updated', timeout: 5000 });
+        display({ kind: 'success', title: 'Land index updated.', timeout: 5000 });
         setOpen(false);
         onAdded();
       } catch (err) {
         display({
           kind: 'error',
-          title: 'Could not update the land index',
+          title: 'Could not update the land index.',
           subtitle: err instanceof Error ? err.message : 'Request failed',
           timeout: 9000,
         });
@@ -230,7 +230,7 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate,
         },
         byCertificate,
       );
-      display({ kind: 'success', title: 'Land index added', timeout: 5000 });
+      display({ kind: 'success', title: 'Land index added.', timeout: 5000 });
       if (another) {
         resetForm();
         setFocusPrimary(true);
@@ -239,7 +239,7 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate,
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not add the land index',
+        title: 'Could not add the land index.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -286,7 +286,7 @@ const LandIndexPanel: FC<Props> = ({ id, byCertificate, rows, canAdd, canUpdate,
                     <TableHeader>Primary ID</TableHeader>
                     <TableHeader>Description</TableHeader>
                     <TableHeader>Deactivate Date</TableHeader>
-                    <TableHeader aria-label="Actions" />
+                    <TableHeader>Actions</TableHeader>
                   </TableRow>
                 </TableHead>
                 <TableBody>

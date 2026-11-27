@@ -60,4 +60,9 @@ public record TenureDetailDto(
     BigDecimal ftaBonusBid,
     BigDecimal ftaBonusOffer,
     String scrtyDepositCode,
-    BigDecimal scrtyDepositAmt) {}
+    BigDecimal scrtyDepositAmt,
+    /**
+     * A range file (its type is in RANGE_FILE_TYPE_CODE): legacy FTA100 redirected these to the
+     * range tenure screen, FTA100R, and so does the frontend.
+     */
+    boolean rangeFile) {}

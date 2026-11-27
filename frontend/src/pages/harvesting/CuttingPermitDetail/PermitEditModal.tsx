@@ -189,7 +189,7 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
         if (cancelled) return;
         display({
           kind: 'error',
-          title: 'Could not load the form',
+          title: 'Could not load the form.',
           subtitle: err instanceof Error ? err.message : 'Request failed',
           timeout: 9000,
         });
@@ -264,7 +264,7 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
       });
       display({
         kind: warnings.length > 0 ? 'warning' : 'success',
-        title: `Cutting permit ${cp.cuttingPermitId ?? ''} saved`,
+        title: `Cutting permit ${cp.cuttingPermitId ?? ''} saved.`,
         subtitle: warnings.join(' '),
         timeout: 7000,
       });
@@ -273,7 +273,7 @@ const PermitEditModal: FC<Props> = ({ cp, open, onClose, onSaved }) => {
     } catch (err) {
       display({
         kind: 'error',
-        title: 'Could not save the cutting permit',
+        title: 'Could not save the cutting permit.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });

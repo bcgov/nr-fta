@@ -85,7 +85,7 @@ class RangeTenureDetailServiceTest {
     NamedParameterJdbcTemplate jdbc = jdbcWithHeader(
         LocalDate.of(2018, 1, 1), LocalDate.of(2032, 12, 31));
 
-    RangeTenureDetailDto detail = new RangeTenureDetailService(jdbc).getDetail("RAN001");
+    RangeTenureDetailDto detail = new RangeTenureDetailService(jdbc, mock(RangeFileAccess.class)).getDetail("RAN001");
 
     assertThat(detail).isNotNull();
     assertThat(RangeTenureDetailService.USAGE_SQL)
@@ -111,7 +111,7 @@ class RangeTenureDetailServiceTest {
   void usageWithoutTerm() throws Exception {
     NamedParameterJdbcTemplate jdbc = jdbcWithHeader(null, null);
 
-    RangeTenureDetailDto detail = new RangeTenureDetailService(jdbc).getDetail("RAN001");
+    RangeTenureDetailDto detail = new RangeTenureDetailService(jdbc, mock(RangeFileAccess.class)).getDetail("RAN001");
 
     assertThat(detail.rangeUsage()).isEmpty();
     verify(jdbc, never()).query(eq(RangeTenureDetailService.USAGE_SQL),
@@ -122,7 +122,19 @@ class RangeTenureDetailServiceTest {
   @DisplayName("an unknown file is null")
   void unknownFile() {
     NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
-    assertThat(new RangeTenureDetailService(jdbc).getDetail("NOPE")).isNull();
+    assertThat(new RangeTenureDetailService(jdbc, mock(RangeFileAccess.class)).getDetail("NOPE")).isNull();
+  }
+
+  @Test
+  @DisplayName("canEdit is RangeFileAccess on the file's two districts")
+  void canEditFromBothDistricts() throws Exception {
+    NamedParameterJdbcTemplate jdbc = jdbcWithHeader(null, null);
+    RangeFileAccess access = mock(RangeFileAccess.class);
+    when(access.mayEdit("DCC", "DMH")).thenReturn(true);
+
+    assertThat(new RangeTenureDetailService(jdbc, access).getDetail("RAN001").canEdit()).isTrue();
+    assertThat(new RangeTenureDetailService(jdbc, mock(RangeFileAccess.class))
+        .getDetail("RAN001").canEdit()).isFalse();
   }
 
   /** A template whose header query maps one row with the given term dates. */
@@ -133,6 +145,8 @@ class RangeTenureDetailServiceTest {
     ResultSet rs = mock(ResultSet.class);
     when(rs.getString("forest_file_id")).thenReturn("RAN001");
     when(rs.getString("file_type_code")).thenReturn("E01");
+    when(rs.getString("admin_org_unit_code")).thenReturn("DCC");
+    when(rs.getString("district_org_unit_code")).thenReturn("DMH");
     when(rs.getObject("issue_date", LocalDate.class)).thenReturn(issueDate);
     when(rs.getObject("usage_expiry_date", LocalDate.class)).thenReturn(usageExpiry);
     when(jdbc.query(eq(RangeTenureDetailService.HEADER_SQL), any(MapSqlParameterSource.class),

@@ -26,22 +26,22 @@ class TenureAppRulesTest {
     assertThat(TenureAppRules.validateEmail(null, null)).isEqualTo("Email is mandatory.");
     assertThat(TenureAppRules.validateEmail("not-an-email", ""))
         .isEqualTo("Email has an invalid email format.");
-    assertThat(TenureAppRules.validateEmail("a.b@gov.bc.ca", ""))
+    assertThat(TenureAppRules.validateEmail("a.b@example.com", ""))
         .isEqualTo("Reconfirm Email is mandatory.");
-    assertThat(TenureAppRules.validateEmail("a.b@gov.bc.ca", "a.b@gov"))
+    assertThat(TenureAppRules.validateEmail("a.b@example.com", "a.b@gov"))
         .isEqualTo("Reconfirm Email has an invalid email format.");
-    assertThat(TenureAppRules.validateEmail("a.b@gov.bc.ca", "c.d@gov.bc.ca"))
+    assertThat(TenureAppRules.validateEmail("a.b@example.com", "c.d@example.com"))
         .isEqualTo("The Email must equal Reconfirm Email.");
     // Legacy compares exactly: case matters.
-    assertThat(TenureAppRules.validateEmail("a.b@gov.bc.ca", "A.B@gov.bc.ca"))
+    assertThat(TenureAppRules.validateEmail("a.b@example.com", "A.B@example.com"))
         .isEqualTo("The Email must equal Reconfirm Email.");
-    assertThat(TenureAppRules.validateEmail("first-last+x@gov.bc.ca", "first-last+x@gov.bc.ca"))
+    assertThat(TenureAppRules.validateEmail("first-last+x@example.com", "first-last+x@example.com"))
         .isNull();
   }
 
   @Test
   void uploadAndIssueChecksStopAtTheFirst() {
-    List<String> to = List.of("a@gov.bc.ca");
+    List<String> to = List.of("a@example.com");
     assertThat(TenureAppRules.validateIssue("", null, 0, List.of()))
         .isEqualTo("Document Name is mandatory.");
     assertThat(TenureAppRules.validateIssue(null, "p.pdf", 10, to))
@@ -55,7 +55,7 @@ class TenureAppRulesTest {
     assertThat(TenureAppRules.validateIssue("Permit", "p.pdf", 4_194_303L, to)).isNull();
     assertThat(TenureAppRules.validateIssue("Permit", "p.pdf", 10, List.of()))
         .isEqualTo("Recipients is mandatory.");
-    assertThat(TenureAppRules.validateIssue("Permit", "p.pdf", 10, List.of("a@gov.bc.ca", "x")))
+    assertThat(TenureAppRules.validateIssue("Permit", "p.pdf", 10, List.of("a@example.com", "x")))
         .isEqualTo("Email has an invalid email format.");
   }
 

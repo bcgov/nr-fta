@@ -6,6 +6,7 @@ import ca.bc.gov.nrs.fta.billing.service.InvoicePreviewRules.Provision;
 import java.math.BigDecimal;
 import java.time.Year;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -116,6 +117,11 @@ public class InvoicePreviewService {
   /**
    * The Go button. A blank year means the current one, as legacy defaulted it.
    *
+   * <p>Every refusal is an error, and no invoice is shown with one: legacy's GET priced the
+   * invoice after a wrong file status, but FTA695's action treated any error as a failure and
+   * cleared it, showing the errors alone. GET went on past a wrong status, so a tenure that
+   * also has no client or no range provision reports both, one per line, as legacy listed them.
+   *
    * @throws ResponseStatusException 400 for a missing or invalid tenure, a year after this
    *     one, or a tenure that cannot be invoiced (not range, wrong status, no client, no provision)
    */
@@ -139,13 +145,16 @@ public class InvoicePreviewService {
     }
     Map<String, Object> t = tenures.get(0);
     String fileTypeCode = (String) t.get("FILE_TYPE_CODE");
+    // GET noted a wrong status and carried on; the errors it then raised join it.
+    List<String> errors = new ArrayList<>();
     if (!List.of("A", "S", "AS").contains(String.valueOf(t.get("FILE_STATUS_ST")))) {
-      throw bad(BAD_STATUS);
+      errors.add(BAD_STATUS);
     }
 
     List<Map<String, Object>> clients = jdbc.queryForList(CLIENTS_SQL, p);
     if (clients.isEmpty()) {
-      throw bad(NO_CLIENT);
+      errors.add(NO_CLIENT);
+      throw refused(errors);
     }
     String names = String.join(";", clients.stream()
         .map(c -> String.valueOf(c.get("CLIENT_NAME"))).toList());
@@ -161,7 +170,10 @@ public class InvoicePreviewService {
         rs.getBigDecimal("non_use_billable"),
         rs.getBigDecimal("total_annual_use")));
     if (provisions.isEmpty()) {
-      throw bad(NO_PROVISION);
+      errors.add(NO_PROVISION);
+    }
+    if (!errors.isEmpty()) {
+      throw refused(errors);
     }
 
     Map<String, BigDecimal> rates = new HashMap<>();
@@ -211,6 +223,11 @@ public class InvoicePreviewService {
       throw bad(YEAR_IN_FUTURE);
     }
     return year;
+  }
+
+  /** Legacy's errors, one per line (the frontend shows each on its own line). */
+  private static ResponseStatusException refused(List<String> errors) {
+    return bad(String.join("\n", errors));
   }
 
   private static ResponseStatusException bad(String message) {

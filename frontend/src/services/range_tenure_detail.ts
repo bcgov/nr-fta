@@ -64,6 +64,8 @@ export interface RangeTenureDetail {
   /** "Note(s) Attached", or blank. */
   notesLabel: string | null;
   fileStatusSt: string | null;
+  /** The file status's description — the status pill's text. */
+  fileStatusDesc: string | null;
   fileStatusDate: string | null; // ISO date
   mgmtUnitType: string | null;
   mgmtUnitId: string | null;
@@ -71,6 +73,8 @@ export interface RangeTenureDetail {
   fileName: string | null;
   issueDate: string | null; // ISO date
   expiryDate: string | null; // ISO date
+  /** TENURE_TERM.CURRENT_EXPIRY_DT, once the tenure is extended; else null. */
+  currentExpiryDate: string | null; // ISO date
   originalIssueDate: string | null; // ISO date
   tenureTermYears: number | null;
   replacementTermYears: number | null;
@@ -88,6 +92,11 @@ export interface RangeTenureDetail {
   usageHistory: RangeUsage[];
   landBase: RangeLandBase[];
   specialConditions: RangeSpecialCondition[];
+  /**
+   * Whether the user may edit this range file: FTA_ADMIN or FTA_RANGE_DISTRICT_ADMIN for its
+   * district, or FTA_RANGE_HEADQUARTERS_ADMIN (the backend's RangeFileAccess).
+   */
+  canEdit: boolean;
 }
 
 /** GET /api/fta/range-tenures/{agreementId} — range tenure detail (FTA_100RANGE_TENURE). */

@@ -1,21 +1,14 @@
 import { Currency, Save, Calendar } from '@carbon/icons-react';
-import {
-  Button,
-  Column,
-  Grid,
-  InlineNotification,
-  Select,
-  SelectItem,
-  Stack,
-  TextInput,
-} from '@carbon/react';
+import { Button, InlineNotification, Select, SelectItem, Stack, TextInput } from '@carbon/react';
 import { useEffect, useState, type FC } from 'react';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import SectionTile from '@/components/SectionTile';
 import UserName from '@/components/UserName';
+import { useAuth } from '@/context/auth/useAuth';
 import { useNotification } from '@/context/notification/useNotification';
 import PageLayout from '@/pages/PageLayout';
+import { mayEditRangeRates } from '@/routes/access';
 import {
   getRates,
   getRateYears,
@@ -58,6 +51,7 @@ const shown = (r: RateValue) => (r.rate == null ? '' : r.rate.toFixed(2));
  */
 const RatesMaintenance: FC = () => {
   const notify = useNotification();
+  const { user } = useAuth();
   const [years, setYears] = useState<number[]>([]);
   const [year, setYear] = useState<number | null>(null);
   const [data, setData] = useState<RatesYear | null>(null);
@@ -134,7 +128,7 @@ const RatesMaintenance: FC = () => {
       });
       notify.display({
         kind: 'success',
-        title: 'Rates saved',
+        title: 'Rates saved.',
         subtitle: `Rates and fees for ${data.calendarYear} saved.`,
         timeout: 5000,
       });
@@ -142,7 +136,7 @@ const RatesMaintenance: FC = () => {
     } catch (err) {
       notify.display({
         kind: 'error',
-        title: 'Could not save rates',
+        title: 'Could not save rates.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -160,7 +154,6 @@ const RatesMaintenance: FC = () => {
       maxLength={6}
       inputMode="decimal"
       autoComplete="off"
-      className="rates-maintenance__rate-input"
       invalid={!!errors[r.code]}
       invalidText={errors[r.code]}
       disabled={saving || !!data?.corrupt}
@@ -169,7 +162,13 @@ const RatesMaintenance: FC = () => {
   );
 
   const rates = data?.rates ?? [];
-  const canSave = data != null && !data.corrupt && data.calendarYear === year && !saving;
+  // Rates apply province-wide: a district-scoped administrator may read them but not save.
+  const canSave =
+    mayEditRangeRates(user) &&
+    data != null &&
+    !data.corrupt &&
+    data.calendarYear === year &&
+    !saving;
 
   return (
     <PageLayout
@@ -177,22 +176,20 @@ const RatesMaintenance: FC = () => {
       subtitle="Review and update the rates and fees applied to range tenure billing."
     >
       <SectionTile title="Calendar year" icon={Calendar}>
-        <Grid narrow>
-          <Column sm={4} md={3} lg={4}>
-            <Select
-              id="rates-year"
-              labelText="Calendar Year"
-              value={year ?? ''}
-              disabled={loading || saving}
-              onChange={(e) => onYear(e.target.value)}
-            >
-              <SelectItem value="" text="Choose a year" />
-              {years.map((y) => (
-                <SelectItem key={y} value={y} text={String(y)} />
-              ))}
-            </Select>
-          </Column>
-        </Grid>
+        <div className="fsp-search__field-grid">
+          <Select
+            id="rates-year"
+            labelText="Calendar Year"
+            value={year ?? ''}
+            disabled={loading || saving}
+            onChange={(e) => onYear(e.target.value)}
+          >
+            <SelectItem value="" text="Choose a year" />
+            {years.map((y) => (
+              <SelectItem key={y} value={y} text={String(y)} />
+            ))}
+          </Select>
+        </div>
       </SectionTile>
 
       {(data !== null || loading || error) && (
@@ -233,20 +230,12 @@ const RatesMaintenance: FC = () => {
                     )}
                   </p>
                 )}
-                <Grid narrow>
-                  <Column sm={4} md={4} lg={8}>
-                    <h3 className="rates-maintenance__group">Rates and fees</h3>
-                    <Stack gap={5}>
-                      {rates.filter((r) => RATE_CODES.includes(r.code)).map(field)}
-                    </Stack>
-                  </Column>
-                  <Column sm={4} md={4} lg={8}>
-                    <h3 className="rates-maintenance__group">Licence and permit fees</h3>
-                    <Stack gap={5}>
-                      {rates.filter((r) => !RATE_CODES.includes(r.code)).map(field)}
-                    </Stack>
-                  </Column>
-                </Grid>
+                <div className="fsp-search__field-grid">
+                  <h3 className="fsp-search__group-heading">Rates and fees</h3>
+                  {rates.filter((r) => RATE_CODES.includes(r.code)).map(field)}
+                  <h3 className="fsp-search__group-heading">Licence and permit fees</h3>
+                  {rates.filter((r) => !RATE_CODES.includes(r.code)).map(field)}
+                </div>
               </Stack>
             )}
           </AsyncBoundary>

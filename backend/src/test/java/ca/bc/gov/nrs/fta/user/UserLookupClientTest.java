@@ -36,7 +36,7 @@ class UserLookupClientTest {
         .andExpect(queryParam("userId", "JSMITH"))
         .andRespond(withSuccess(
             "{\"found\":true,\"userId\":\"JSMITH\",\"guid\":\"g1\",\"firstName\":\"Jane\","
-                + "\"lastName\":\"Smith\",\"email\":\"jane@gov.bc.ca\"}",
+                + "\"lastName\":\"Smith\",\"email\":\"jane@example.com\"}",
             MediaType.APPLICATION_JSON));
 
     assertThat(client.getIdirDetail("JSMITH"))

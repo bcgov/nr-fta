@@ -35,7 +35,13 @@ window.config = {
   // Backend API base — read by src/services/apiFetch.ts
   VITE_API_BASE_URL: "$(escape "${VITE_API_BASE_URL:-/api}")",
   // Display
-  VITE_APP_NAME: "$(escape "${VITE_APP_NAME:-Forest Tenure Administration}")"
+  VITE_APP_NAME: "$(escape "${VITE_APP_NAME:-Forest Tenure Administration}")",
+  // GBS, opened by FTA680's G.B.S. button — read by src/lib/externalUrls.ts.
+  // Blank falls back to the production URL legacy used.
+  VITE_GBS_URL: "$(escape "${VITE_GBS_URL:-}")",
+  // SNC, opened by the Tenure Application tab's SNC link — read by src/lib/externalUrls.ts.
+  // Blank falls back to the production URL legacy used.
+  VITE_SNC_URL: "$(escape "${VITE_SNC_URL:-}")"
 };
 EOF
 

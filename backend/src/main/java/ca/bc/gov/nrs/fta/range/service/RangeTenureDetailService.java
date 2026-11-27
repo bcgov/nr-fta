@@ -36,6 +36,9 @@ import org.springframework.stereotype.Service;
  *       {@code FTA_100RANGE_TENURE.GET_SPECIAL_CONDITIONS}.</li>
  * </ul>
  *
+ * <p>{@code canEdit} is {@link RangeFileAccess#mayEdit(String, String)} on the file's two
+ * districts, as legacy's SET_AUTHORITY_IND compared them.
+ *
  * <p>The SQL runs against the BC Gov shared Oracle ({@code THE}) via the
  * configured {@code DataSource}; there is no local database, so it is exercised
  * only in a deployed environment.
@@ -44,9 +47,11 @@ import org.springframework.stereotype.Service;
 public class RangeTenureDetailService {
 
   private final NamedParameterJdbcTemplate jdbc;
+  private final RangeFileAccess access;
 
-  public RangeTenureDetailService(NamedParameterJdbcTemplate jdbc) {
+  public RangeTenureDetailService(NamedParameterJdbcTemplate jdbc, RangeFileAccess access) {
     this.jdbc = jdbc;
+    this.access = access;
   }
 
   // GET reads the zone from PROV_FOREST_USE, then GET_RANGE_TENURE overwrites it
@@ -76,6 +81,9 @@ public class RangeTenureDetailService {
                 FROM the.provforest_note pn
                WHERE pn.forest_file_id = pfu.forest_file_id) AS notes_label,
              pfu.file_status_st            AS file_status_st,
+             (SELECT fsc.description
+                FROM the.tenure_file_status_code fsc
+               WHERE fsc.tenure_file_status_code = pfu.file_status_st) AS file_status_desc,
              pfu.file_status_date          AS file_status_date,
              pfu.mgmt_unit_type            AS mgmt_unit_type,
              pfu.mgmt_unit_id              AS mgmt_unit_id,
@@ -88,6 +96,7 @@ public class RangeTenureDetailService {
              rt.file_name                  AS file_name,
              tt.legal_effective_dt         AS issue_date,
              tt.initial_expiry_dt          AS expiry_date,
+             tt.current_expiry_dt          AS current_expiry_date,
              -- FTA_GET_FILE_HEADER's expiry, which bounds the Range Usage tab.
              NVL(tt.current_expiry_dt, tt.initial_expiry_dt) AS usage_expiry_date,
              rt.original_issuance_date     AS original_issue_date,
@@ -98,10 +107,15 @@ public class RangeTenureDetailService {
              -- FTA_VALID_RANGE_FILE_TYPE
              (SELECT DECODE(COUNT(*), 0, 'N', 'Y')
                 FROM the.range_file_type_code rftc
-               WHERE rftc.range_file_type_code = pfu.file_type_code) AS range_ind
+               WHERE rftc.range_file_type_code = pfu.file_type_code) AS range_ind,
+             -- The two districts SET_AUTHORITY_IND compares (RangeFileAccess).
+             adm.org_unit_code             AS admin_org_unit_code,
+             dst.org_unit_code             AS district_org_unit_code
         FROM the.prov_forest_use pfu
         LEFT JOIN the.tenure_term tt      ON tt.forest_file_id = pfu.forest_file_id
         LEFT JOIN the.range_tenure rt     ON rt.forest_file_id = pfu.forest_file_id
+        LEFT JOIN the.org_unit adm        ON adm.org_unit_no = pfu.forest_region
+        LEFT JOIN the.org_unit dst        ON dst.org_unit_no = rt.admin_forest_district_no
        WHERE pfu.forest_file_id = :agreementId
       """.replace("{CLIENT_NAME}", ClientNameSql.displayName("cli"));
 
@@ -220,6 +234,7 @@ public class RangeTenureDetailService {
         rs.getString("sec_licensee_ind"),
         rs.getString("notes_label"),
         rs.getString("file_status_st"),
+        rs.getString("file_status_desc"),
         rs.getObject("file_status_date", LocalDate.class),
         rs.getString("mgmt_unit_type"),
         rs.getString("mgmt_unit_id"),
@@ -227,13 +242,16 @@ public class RangeTenureDetailService {
         rs.getString("file_name"),
         rs.getObject("issue_date", LocalDate.class),
         rs.getObject("expiry_date", LocalDate.class),
+        rs.getObject("current_expiry_date", LocalDate.class),
         rs.getObject("usage_expiry_date", LocalDate.class),
         rs.getObject("original_issue_date", LocalDate.class),
         rs.getObject("tenure_term_years", Integer.class),
         rs.getObject("tenure_term_months", Integer.class),
         rs.getObject("replacement_term_years", Integer.class),
         rs.getObject("replacement_count", Integer.class),
-        rs.getString("range_ind")));
+        rs.getString("range_ind"),
+        rs.getString("admin_org_unit_code"),
+        rs.getString("district_org_unit_code")));
 
     if (headers.isEmpty()) {
       return null;
@@ -290,6 +308,7 @@ public class RangeTenureDetailService {
         h.secLicenseeInd(),
         h.notesLabel(),
         h.fileStatusSt(),
+        h.fileStatusDesc(),
         h.fileStatusDate(),
         h.mgmtUnitType(),
         h.mgmtUnitId(),
@@ -297,6 +316,7 @@ public class RangeTenureDetailService {
         h.fileName(),
         h.issueDate(),
         h.expiryDate(),
+        h.currentExpiryDate(),
         h.originalIssueDate(),
         h.tenureTermYears(),
         h.replacementTermYears(),
@@ -308,7 +328,8 @@ public class RangeTenureDetailService {
         usage,
         history,
         landBase,
-        conditions);
+        conditions,
+        access.mayEdit(h.adminOrgUnitCode(), h.districtOrgUnitCode()));
   }
 
   /**
@@ -365,6 +386,7 @@ public class RangeTenureDetailService {
       String secLicenseeInd,
       String notesLabel,
       String fileStatusSt,
+      String fileStatusDesc,
       LocalDate fileStatusDate,
       String mgmtUnitType,
       String mgmtUnitId,
@@ -372,11 +394,14 @@ public class RangeTenureDetailService {
       String fileName,
       LocalDate issueDate,
       LocalDate expiryDate,
+      LocalDate currentExpiryDate,
       LocalDate usageExpiryDate,
       LocalDate originalIssueDate,
       Integer tenureTermYears,
       Integer tenureTermMonths,
       Integer replacementTermYears,
       Integer replacementCount,
-      String rangeInd) {}
+      String rangeInd,
+      String adminOrgUnitCode,
+      String districtOrgUnitCode) {}
 }

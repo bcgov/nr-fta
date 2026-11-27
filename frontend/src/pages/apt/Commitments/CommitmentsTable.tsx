@@ -161,7 +161,7 @@ const CommitmentsTable: FC<Props> = ({ rows, variant, canEdit, onEdit, onDeleted
             if (reasonTooLong)
               throw new Error(`Reason cannot exceed ${COMMITMENT_REASON_MAX} characters.`);
             await deleteAptCommitment(deleting.id, reason);
-            display({ kind: 'success', title: 'Commitment deleted', timeout: 5000 });
+            display({ kind: 'success', title: 'Commitment deleted.', timeout: 5000 });
             onDeleted();
           }}
         >

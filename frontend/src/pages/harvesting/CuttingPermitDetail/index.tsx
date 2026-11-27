@@ -2,7 +2,6 @@ import {
   Archive,
   ArrowLeft,
   Calendar,
-  DocumentPdf,
   Edit,
   Pause,
   RecentlyViewed,
@@ -44,12 +43,10 @@ import {
   areaLabel,
   deletePermit,
   getCuttingPermitDetail,
-  getHarvestAuthorizationLetter,
   getPermitLookups,
   hasScheduleB,
   retirePermit,
 } from '@/services/cutting_permit_detail';
-import { triggerBrowserDownload } from '@/utils/download';
 import { formatDate } from '@/utils/formatDate';
 
 import PermitConditions from './PermitConditions';
@@ -116,7 +113,6 @@ const CuttingPermitDetail: FC = () => {
   const { display } = useNotification();
   const [editOpen, setEditOpen] = useState(false);
   const [confirming, setConfirming] = useState<'retire' | 'delete' | null>(null);
-  const [printingLetter, setPrintingLetter] = useState(false);
 
   const fetcher = useCallback(
     () =>
@@ -168,37 +164,6 @@ const CuttingPermitDetail: FC = () => {
   const permitQuery = forestFileId ? `?forestFileId=${encodeURIComponent(forestFileId)}` : '';
   const rules = cp?.rules;
 
-  // FTA902's Letter: the FTA413 harvest authorization letter, on a Fort St. John
-  // authority only, for anyone who can open the permit.
-  const onLetter = async () => {
-    if (!cp) return;
-    setPrintingLetter(true);
-    try {
-      const pdf = await getHarvestAuthorizationLetter(cp.hvaSkey);
-      triggerBrowserDownload(pdf, `FTA413-harvest-authorization-${cp.cuttingPermitId ?? cpId}.pdf`);
-    } catch (err) {
-      display({
-        kind: 'error',
-        title: 'Could not produce the letter.',
-        subtitle: err instanceof Error ? err.message : 'Request failed',
-        timeout: 9000,
-      });
-    } finally {
-      setPrintingLetter(false);
-    }
-  };
-  const letterButton = cp?.fsj ? (
-    <Button
-      size="md"
-      kind="tertiary"
-      renderIcon={DocumentPdf}
-      disabled={printingLetter}
-      onClick={onLetter}
-    >
-      Letter
-    </Button>
-  ) : null;
-
   const actions =
     cp && rules && canEditHarvest(user) ? (
       <>
@@ -211,7 +176,6 @@ const CuttingPermitDetail: FC = () => {
         >
           Edit permit
         </Button>
-        {letterButton}
         {rules.canAssignMarks && (
           <Button
             size="md"
@@ -253,9 +217,7 @@ const CuttingPermitDetail: FC = () => {
           Delete
         </Button>
       </>
-    ) : (
-      (letterButton ?? undefined)
-    );
+    ) : undefined;
 
   // A Timber Mark Headquarters Administrator reaches this page from Timber Mark
   // Search and may not open Harvesting Authority Search, so goes back there.
@@ -493,7 +455,7 @@ const CuttingPermitDetail: FC = () => {
             errorTitle="Could not retire the cutting permit"
             onConfirm={async () => {
               await retirePermit(cp.hvaSkey, cp.revisionCount);
-              display({ kind: 'success', title: 'Retirement successful', timeout: 5000 });
+              display({ kind: 'success', title: 'Retirement successful.', timeout: 5000 });
               reload();
             }}
           >
@@ -508,7 +470,7 @@ const CuttingPermitDetail: FC = () => {
             errorTitle="Could not delete the cutting permit"
             onConfirm={async () => {
               await deletePermit(cp.hvaSkey, cp.revisionCount);
-              display({ kind: 'success', title: 'Cutting permit deleted', timeout: 5000 });
+              display({ kind: 'success', title: 'Cutting permit deleted.', timeout: 5000 });
               navigate(`/tenures/${encodeURIComponent(cp.forestFileId ?? '')}`);
             }}
           >

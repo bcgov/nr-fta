@@ -154,7 +154,7 @@ const MarkList: FC = () => {
 
   useEffect(() => {
     if (error) {
-      display({ kind: 'error', title: 'Search failed', subtitle: error, timeout: 6000 });
+      display({ kind: 'error', title: 'Search failed.', subtitle: error, timeout: 6000 });
     }
   }, [error, display]);
 

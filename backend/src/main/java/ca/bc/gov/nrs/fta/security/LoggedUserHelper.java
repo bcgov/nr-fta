@@ -106,6 +106,47 @@ public class LoggedUserHelper {
     return orgUnitCode != null && adminDistricts().contains(orgUnitCode);
   }
 
+  // ─── Range (see RangeAccess) ──────────────────────────────────────
+
+  /** Whether the user holds {@code FTA_RANGE_HEADQUARTERS_ADMIN}, in any scope. */
+  public boolean isRangeHeadquartersAdmin() {
+    return RangeAccess.isHeadquarters(tokenRoles());
+  }
+
+  /**
+   * Unscoped {@code FTA_ADMIN} or {@code FTA_RANGE_HEADQUARTERS_ADMIN}: acts for every district on the
+   * range admin and billing screens (631, 640, 680-695, 699), "every district" included.
+   */
+  public boolean isUnscopedRangeAdmin() {
+    return RangeAccess.actsForEveryDistrict(tokenRoles());
+  }
+
+  /**
+   * Whether the user may use a range admin or billing screen on the given district:
+   * {@link #administersDistrict}, or {@code FTA_RANGE_HEADQUARTERS_ADMIN} for any district.
+   */
+  public boolean administersRangeDistrict(String orgUnitCode) {
+    return RangeAccess.administersDistrict(tokenRoles(), orgUnitCode);
+  }
+
+  /**
+   * Whether the user may edit a range file administered by the given district (ORG_UNIT_CODE):
+   * unscoped {@code FTA_ADMIN} or one scoped to that district, {@code FTA_RANGE_HEADQUARTERS_ADMIN},
+   * or {@code FTA_RANGE_DISTRICT_ADMIN} unscoped or scoped to that district. Legacy's range tech
+   * edited only its own district's files.
+   */
+  public boolean mayEditRangeDistrict(String orgUnitCode) {
+    return RangeAccess.mayEditDistrict(tokenRoles(), orgUnitCode);
+  }
+
+  /**
+   * Whether the user may save Range Rates (FTA699): unscoped {@code FTA_ADMIN} or
+   * {@code FTA_RANGE_HEADQUARTERS_ADMIN}, as rates apply province-wide.
+   */
+  public boolean mayEditRangeRates() {
+    return isUnscopedRangeAdmin();
+  }
+
   // ─── Internal helpers ─────────────────────────────────────────────
 
   /** The role names on the caller's token, scope suffixes intact. */

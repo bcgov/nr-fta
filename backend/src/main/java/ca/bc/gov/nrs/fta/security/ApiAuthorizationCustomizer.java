@@ -47,6 +47,14 @@ import org.springframework.stereotype.Component;
  *       district</li>
  *   <li><strong>FTA_HARVEST_AUTH_SENIOR_ADMIN</strong> — all of that, plus suspensions, permit
  *       conditions, postponements, relabelling a block and deleting a permit or block</li>
+ *   <li><strong>FTA_RANGE_DISTRICT_ADMIN</strong> — an allow-list of reads: range tenure and range
+ *       unit search and detail, the range tenure page's shared tabs (910 associated files, 920
+ *       associated clients, 950x tenure application, 970 notes), code lists, the default org unit,
+ *       the client type-ahead and display names. Which range files it may edit (its districts) is
+ *       {@link LoggedUserHelper#mayEditRangeDistrict}</li>
+ *   <li><strong>FTA_RANGE_HEADQUARTERS_ADMIN</strong> — the same reads, plus the range admin and billing
+ *       screens under {@code /api/fta/admin/**}: range zones (631), archive tenures (640), billing
+ *       (680/685/686/690/695) and rates (699), in every district</li>
  *   <li><strong>FTA_APT_ADMIN</strong> — apportionment only: every read and write under
  *       {@code /api/fta/apt/**}, for any org unit, plus resolving display names. Nothing else
  *       (legacy APT2's APT_EDITOR, an application of its own)</li>
@@ -57,7 +65,8 @@ import org.springframework.stereotype.Component;
  * </ul>
  *
  * <p>Admin endpoints ({@code /api/fta/admin/**}) require {@code FTA_ADMIN} for
- * <em>all</em> HTTP methods, including {@code GET}.
+ * <em>all</em> HTTP methods, including {@code GET} — except the range admin and billing
+ * endpoints, which {@code FTA_RANGE_HEADQUARTERS_ADMIN} reaches too.
  *
  * <p>A role granted with a FAM scope counts as the role itself here: a token carrying
  * {@code FTA_ADMIN_DISTRICT-DCC} holds the {@code FTA_ADMIN} authority, derived by
@@ -78,6 +87,19 @@ public class ApiAuthorizationCustomizer implements
   ) {
 
     // ── API rules (must come first — never shadowed by permitAll below) ─
+
+    // Range admin and billing — FTA_ADMIN or FTA_RANGE_HEADQUARTERS_ADMIN, every method: 631 Manage
+    // Zone, 640 Archive Tenures, 680/685/686/690/695 billing and 699 Rates. Which districts each
+    // may act on is the endpoint's (LoggedUserHelper.administersRangeDistrict); saving rates is
+    // further limited to an unscoped holder (mayEditRangeRates). Must appear BEFORE the generic
+    // /api/fta/admin/** FTA_ADMIN rule.
+    authorize
+        .requestMatchers(
+            "/api/fta/admin/range-zones/**",
+            "/api/fta/admin/archive-tenures/**",
+            "/api/fta/admin/billing/**",
+            "/api/fta/admin/rates/**")
+        .hasAnyAuthority(RoleConstants.ADMIN_AUTHORITY, RoleConstants.RANGE_HEADQUARTERS_AUTHORITY);
 
     // Admin endpoints — FTA_ADMIN only for ALL HTTP methods (including GET)
     authorize
@@ -123,6 +145,7 @@ public class ApiAuthorizationCustomizer implements
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY,
             RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
             RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY,
+            RoleConstants.RANGE_HEADQUARTERS_AUTHORITY, RoleConstants.RANGE_DISTRICT_AUTHORITY,
             RoleConstants.APT_AUTHORITY, RoleConstants.APT_VIEWER_AUTHORITY);
 
     // A note on a tenure — FTA_ADMIN, either timber mark role or either harvest role (legacy
@@ -134,7 +157,8 @@ public class ApiAuthorizationCustomizer implements
             RoleConstants.ADMIN_AUTHORITY, RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY,
             RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
-            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY,
+            RoleConstants.RANGE_HEADQUARTERS_AUTHORITY, RoleConstants.RANGE_DISTRICT_AUTHORITY);
 
     // Notes on a private mark, and the mark actions — FTA_ADMIN or either timber mark role, like
     // the mark application. Must appear BEFORE the generic POST /api/** admin-only rule.
@@ -249,6 +273,82 @@ public class ApiAuthorizationCustomizer implements
         .requestMatchers(HttpMethod.DELETE, "/api/fta/apt/**")
         .hasAnyAuthority(RoleConstants.ADMIN_AUTHORITY, RoleConstants.APT_AUTHORITY);
 
+    // FTA920R Assign/Transfer to Client on a range tenure — FTA_ADMIN or either range role; which
+    // files each may change is RangeFileAccess. Must appear BEFORE the generic write rules.
+    authorize
+        .requestMatchers(HttpMethod.POST, "/api/fta/range-tenures/*/clients")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.RANGE_HEADQUARTERS_AUTHORITY,
+            RoleConstants.RANGE_DISTRICT_AUTHORITY);
+
+    // FTA613R Range Usage (Save, Copy) and FTA615R Associated Land Base (add, update, remove) on
+    // a range tenure — FTA_ADMIN or either range role; which files each may change is
+    // RangeFileAccess. Must appear BEFORE the generic write rules.
+    authorize
+        .requestMatchers(
+            HttpMethod.POST,
+            "/api/fta/range-tenures/*/usage/**",
+            "/api/fta/range-tenures/*/land-base",
+            "/api/fta/range-tenures/*/land-base/**")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.RANGE_HEADQUARTERS_AUTHORITY,
+            RoleConstants.RANGE_DISTRICT_AUTHORITY);
+    authorize
+        .requestMatchers(
+            HttpMethod.PUT,
+            "/api/fta/range-tenures/*/usage/**",
+            "/api/fta/range-tenures/*/land-base/**")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.RANGE_HEADQUARTERS_AUTHORITY,
+            RoleConstants.RANGE_DISTRICT_AUTHORITY);
+
+    // FTA100R the range Tenure tab (Save, Retire, Cancel Replacement, special conditions) and its
+    // Add New of a range tenure — FTA_ADMIN or either range role; which files (and districts)
+    // each may write is RangeFileAccess / mayEditRangeDistrict. Must appear BEFORE the generic
+    // write rules.
+    authorize
+        .requestMatchers(
+            HttpMethod.POST,
+            "/api/fta/range-tenures",
+            "/api/fta/range-tenures/*/tenure-tab/retire",
+            "/api/fta/range-tenures/*/tenure-tab/cancel-replacement",
+            "/api/fta/range-tenures/*/special-conditions")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.RANGE_HEADQUARTERS_AUTHORITY,
+            RoleConstants.RANGE_DISTRICT_AUTHORITY);
+    authorize
+        .requestMatchers(
+            HttpMethod.PUT,
+            "/api/fta/range-tenures/*/tenure-tab",
+            "/api/fta/range-tenures/*/special-conditions/*")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.RANGE_HEADQUARTERS_AUTHORITY,
+            RoleConstants.RANGE_DISTRICT_AUTHORITY);
+    authorize
+        .requestMatchers(HttpMethod.DELETE, "/api/fta/range-tenures/*/special-conditions/*")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.RANGE_HEADQUARTERS_AUTHORITY,
+            RoleConstants.RANGE_DISTRICT_AUTHORITY);
+
+    // FTA630 Maintain Range Unit / Pasture (add, save and delete a range unit and its pastures) —
+    // FTA_ADMIN or either range role; which districts each may write is RangeUnitWriteService
+    // (mayEditRangeDistrict). Must appear BEFORE the generic write rules.
+    authorize
+        .requestMatchers(HttpMethod.POST, "/api/fta/range-units", "/api/fta/range-units/**")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.RANGE_HEADQUARTERS_AUTHORITY,
+            RoleConstants.RANGE_DISTRICT_AUTHORITY);
+    authorize
+        .requestMatchers(HttpMethod.PUT, "/api/fta/range-units/**")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.RANGE_HEADQUARTERS_AUTHORITY,
+            RoleConstants.RANGE_DISTRICT_AUTHORITY);
+    authorize
+        .requestMatchers(HttpMethod.DELETE, "/api/fta/range-units/**")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY, RoleConstants.RANGE_HEADQUARTERS_AUTHORITY,
+            RoleConstants.RANGE_DISTRICT_AUTHORITY);
+
     // Write operations — FTA_ADMIN only
     authorize
         .requestMatchers(HttpMethod.POST, "/api/**")
@@ -273,21 +373,52 @@ public class ApiAuthorizationCustomizer implements
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY,
             RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
             RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY,
+            RoleConstants.RANGE_HEADQUARTERS_AUTHORITY,
+            RoleConstants.RANGE_DISTRICT_AUTHORITY,
             RoleConstants.APT_AUTHORITY);
 
-    // The FTA413 Fort St. John harvest authorization letter. Legacy FTA902 showed its Letter
-    // button on every FSJ authority to whoever could open the screen, with no role check, so
-    // every role that opens the cutting-permit detail may print it. Must appear BEFORE the
-    // generic GET /api/** rule, which excludes the timber mark roles.
+    // Range tenure and range unit search and detail, and the FTA008 Application Metrics Export
+    // (legacy gave it to every role, the range tech's included) — the generic GET roles plus both
+    // range roles. Must appear BEFORE the generic GET /api/** rule, which excludes the range roles.
     authorize
-        .requestMatchers(HttpMethod.GET, "/api/fta/cutting-permits/*/letter")
+        .requestMatchers(
+            HttpMethod.GET,
+            "/api/fta/range-tenures",
+            "/api/fta/range-tenures/**",
+            "/api/fta/range-units",
+            "/api/fta/range-units/**",
+            "/api/fta/application-metrics/export")
+        .hasAnyAuthority(
+            RoleConstants.ADMIN_AUTHORITY,
+            RoleConstants.VIEWER_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY,
+            RoleConstants.RANGE_HEADQUARTERS_AUTHORITY,
+            RoleConstants.RANGE_DISTRICT_AUTHORITY);
+
+    // Reads the range screens share with the timber mark roles' allow-list below: the code lists,
+    // the default org unit, and the range tenure page's tabs legacy's FtaRangeTabs shared with
+    // the timber set (910, 920, 950x, 970). Every role of that list plus both range roles. Must
+    // appear BEFORE it, as the first matching rule wins.
+    authorize
+        .requestMatchers(
+            HttpMethod.GET,
+            "/api/fta/code-lists/**",
+            "/api/fta/org-unit-default",
+            "/api/fta/tenures/*/associated-files",
+            "/api/fta/tenures/*/associated-clients",
+            "/api/fta/tenures/*/tenure-applications",
+            "/api/fta/tenures/*/tenure-applications/**",
+            "/api/fta/tenures/*/notes")
         .hasAnyAuthority(
             RoleConstants.ADMIN_AUTHORITY,
             RoleConstants.VIEWER_AUTHORITY,
             RoleConstants.TIMBER_MARK_HEADQUARTERS_AUTHORITY,
             RoleConstants.TIMBER_MARK_DISTRICT_AUTHORITY,
             RoleConstants.HARVEST_AUTH_SENIOR_AUTHORITY,
-            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY);
+            RoleConstants.HARVEST_AUTH_DISTRICT_AUTHORITY,
+            RoleConstants.RANGE_HEADQUARTERS_AUTHORITY,
+            RoleConstants.RANGE_DISTRICT_AUTHORITY);
 
     // Reads open to FTA_TIMBER_MARK_HEADQUARTERS_ADMIN as well — only what its screens call. Must
     // appear BEFORE the generic GET /api/** rule, which excludes that role.

@@ -92,7 +92,7 @@ const TlBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
       );
       display({
         kind: 'success',
-        title: `TL block ${block.tlBlockId} ${CONFIRM[kind].done}`,
+        title: `TL block ${block.tlBlockId} ${CONFIRM[kind].done}.`,
         timeout: 6000,
       });
       setPending(null);
@@ -100,7 +100,7 @@ const TlBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
     } catch (err) {
       display({
         kind: 'error',
-        title: `Could not ${CONFIRM[kind].action.toLowerCase()} the TL block`,
+        title: `Could not ${CONFIRM[kind].action.toLowerCase()} the TL block.`,
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 9000,
       });
@@ -146,7 +146,7 @@ const TlBlocksPanel: FC<TenurePanelProps> = ({ tenure, canEdit }) => {
                       <TableHeader>Net (ha)</TableHeader>
                       <TableHeader>Status</TableHeader>
                       <TableHeader>Retirement Date</TableHeader>
-                      <TableHeader aria-label="Actions" />
+                      <TableHeader>Actions</TableHeader>
                     </TableRow>
                   </TableHead>
                   <TableBody>

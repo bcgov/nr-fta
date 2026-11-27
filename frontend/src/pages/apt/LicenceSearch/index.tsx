@@ -94,7 +94,7 @@ const AptLicenceSearch: FC = () => {
         if (!cancelled)
           display({
             kind: 'error',
-            title: 'Could not load management unit types',
+            title: 'Could not load management unit types.',
             subtitle: safeErrorMessage(e),
             timeout: 6000,
           });
@@ -142,7 +142,7 @@ const AptLicenceSearch: FC = () => {
       } catch (e) {
         display({
           kind: 'error',
-          title: 'Search failed',
+          title: 'Search failed.',
           subtitle: safeErrorMessage(e),
           timeout: 6000,
         });

@@ -82,6 +82,25 @@ parameters:
   - name: USER_LOOKUP_CLIENT_SECRET
     required: false
     value: ""
+  # Issue Permit's document store (integration/S3DocumentStore): an S3-compatible bucket. Not
+  # required so a deploy without them still starts; Issue Permit then answers "not configured".
+  # Region and link expiry keep their application.yml defaults.
+  - name: S3_ENDPOINT
+    required: false
+    value: ""
+  - name: S3_BUCKET
+    required: false
+    value: ""
+  - name: S3_ACCESS_KEY_ID
+    required: false
+    value: ""
+  - name: S3_SECRET_ACCESS_KEY
+    required: false
+    value: ""
+  # The sender address of every e-mail FTA sends (SMTP relay). Empty: e-mail is not configured.
+  - name: FTA_EMAIL_FROM
+    required: false
+    value: ""
   - name: CERTIFICATE_SIGNATURES
     required: false
     description: |
@@ -180,6 +199,16 @@ objects:
               ports:
                 - containerPort: 8080
                   protocol: TCP
+              # The batch job schedules (FTA_BATCH_*_CRON), kept out of Git: create this ConfigMap
+              # in the namespace by hand, e.g.
+              #   oc create configmap nr-fta-backend-batch-schedules-<zone> \
+              #     --from-literal=FTA_BATCH_RANGE_REPLACE_CRON="<cron>" ...
+              # Optional, so a namespace without it deploys with every job off. A change needs a
+              # pod restart to take effect.
+              envFrom:
+                - configMapRef:
+                    name: ${NAME}-backend-batch-schedules-${ZONE}
+                    optional: true
               env:
                 - name: SPRING_PROFILES_ACTIVE
                   value: oracle
@@ -229,6 +258,28 @@ objects:
                     secretKeyRef:
                       name: ${NAME}-backend-secret-${ZONE}
                       key: USER_LOOKUP_CLIENT_SECRET
+                - name: S3_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: ${NAME}-backend-secret-${ZONE}
+                      key: S3_ENDPOINT
+                - name: S3_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: ${NAME}-backend-secret-${ZONE}
+                      key: S3_BUCKET
+                - name: S3_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: ${NAME}-backend-secret-${ZONE}
+                      key: S3_ACCESS_KEY_ID
+                - name: S3_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: ${NAME}-backend-secret-${ZONE}
+                      key: S3_SECRET_ACCESS_KEY
+                - name: FTA_EMAIL_FROM
+                  value: ${FTA_EMAIL_FROM}
                 # The certificate signatures (CertificateSignatories), from the Secret mounted below.
                 - name: CERTIFICATE_SIGNATURES_DIR
                   value: /signatures
@@ -370,6 +421,10 @@ objects:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       KEYSTORE_SECRET: ${KEYSTORE_SECRET}
       USER_LOOKUP_CLIENT_SECRET: ${USER_LOOKUP_CLIENT_SECRET}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
 
   # ── Secret: certificate signatures ─────────────────────────
   # signatures.zip, as the deploy passes it (GitHub secrets CERTIFICATE_SIGNATURES_n, joined).

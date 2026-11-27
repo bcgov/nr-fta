@@ -1,8 +1,6 @@
-import { DocumentTasks, Money, Search as SearchIcon, View } from '@carbon/icons-react';
+import { DocumentTasks, Launch, Money, Search as SearchIcon, View } from '@carbon/icons-react';
 import {
   Button,
-  Column,
-  Grid,
   InlineNotification,
   Select,
   SelectItem,
@@ -15,18 +13,23 @@ import {
   TableRow,
   TextInput,
 } from '@carbon/react';
-import { useEffect, useState, type FC, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FC, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
 import AsyncBoundary from '@/components/AsyncBoundary';
 import EmptyState from '@/components/EmptyState/EmptyState';
 import SectionTile from '@/components/SectionTile';
 import UserName from '@/components/UserName';
+import YearSelect from '@/components/YearSelect';
 import { useNotification } from '@/context/notification/useNotification';
 import { useDefaultOrgUnitIn } from '@/hooks/useDefaultOrgUnit';
+import { safeErrorMessage } from '@/lib/errorMessage';
+import { gbsUrl } from '@/lib/externalUrls';
+import { FIRST_BILLING_YEAR } from '@/lib/years';
 import PageLayout from '@/pages/PageLayout';
 import {
   getBillingInstructions,
+  getInvoicePreview,
   prepareBillingInstructions,
   type BillingInstructionRow,
   type BillingInstructionsCriteria,
@@ -38,9 +41,9 @@ import {
   type CodeOption,
 } from '@/services/codeLists';
 
+import InvoicePreviewModal from '../InvoicePreviewModal';
 import { currentYear, useDistrictScope } from '../useDistrictScope';
 
-import InvoicePreviewModal from './InvoicePreviewModal';
 import '../billing.scss';
 
 const EMPTY: BillingInstructionsCriteria = {
@@ -82,9 +85,7 @@ const TenureBilling: FC = () => {
   const [rows, setRows] = useState<BillingInstructionRow[] | null>(null);
   const [chosen, setChosen] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
-  const [rowErrors, setRowErrors] = useState<string[]>([]);
   const [previewOf, setPreviewOf] = useState<string | null>(null);
 
   useEffect(() => {
@@ -101,7 +102,7 @@ const TenureBilling: FC = () => {
       if ([d, t, i].some((r) => r.status === 'rejected')) {
         notify.display({
           kind: 'error',
-          title: 'Could not load the dropdown lists',
+          title: 'Could not load the dropdown lists.',
           subtitle: 'Reload the page to try again.',
           timeout: 6000,
         });
@@ -119,15 +120,18 @@ const TenureBilling: FC = () => {
 
   const search = async (c: BillingInstructionsCriteria) => {
     setLoading(true);
-    setError(undefined);
-    setRowErrors([]);
     try {
       const result = await getBillingInstructions(c);
       setRows(result);
       setChosen(Object.fromEntries(result.map((r) => [r.forestFileId, r.instructionCode])));
       setSearched(c);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load the billing instructions');
+      notify.display({
+        kind: 'error',
+        title: 'Could not load the billing instructions.',
+        subtitle: safeErrorMessage(e),
+        timeout: 0,
+      });
       setRows(null);
       setSearched(null);
     } finally {
@@ -143,7 +147,6 @@ const TenureBilling: FC = () => {
   const onPrepare = async () => {
     if (!searched || !rows) return;
     setSaving(true);
-    setRowErrors([]);
     try {
       const { created } = await prepareBillingInstructions(
         searched,
@@ -154,19 +157,30 @@ const TenureBilling: FC = () => {
       );
       notify.display({
         kind: 'success',
-        title: 'Prepare successful',
+        title: 'Prepare successful.',
         subtitle: created ? undefined : 'No new instructions were created.',
         timeout: 5000,
       });
       await search(searched);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Request failed';
-      // A refused Prepare lists one line per row.
-      setRowErrors(msg.split('\n'));
+      // A refused Prepare lists one refusal per row, one per line.
+      notify.display({
+        kind: 'error',
+        title: 'Nothing was prepared.',
+        subtitle: safeErrorMessage(err),
+        timeout: 0,
+      });
     } finally {
       setSaving(false);
     }
   };
+
+  // Preview prices the row for the year of the last Go, as legacy passed the header's year.
+  const previewYear = searched?.calendarYear;
+  const previewFetcher = useCallback(
+    () => getInvoicePreview(previewOf ?? '', previewYear ?? ''),
+    [previewOf, previewYear],
+  );
 
   const canGo = orgUnitNo !== '' && /^\d{4}$/.test(form.calendarYear);
 
@@ -176,9 +190,9 @@ const TenureBilling: FC = () => {
       subtitle="Set the billing instruction for each range tenure in a district, then prepare them for billing."
     >
       <SectionTile title="Criteria" icon={SearchIcon}>
-        <form onSubmit={onGo}>
-          <Grid narrow>
-            <Column sm={4} md={4} lg={6}>
+        <form className="fsp-search__form" onSubmit={onGo}>
+          <div className="fsp-search__field-grid">
+            <div className="fsp-search__wide-cell">
               <Select
                 id="bill-org"
                 labelText="Org Unit"
@@ -191,59 +205,48 @@ const TenureBilling: FC = () => {
                   <SelectItem key={d.code} value={d.code} text={d.description} />
                 ))}
               </Select>
-            </Column>
-            <Column sm={4} md={4} lg={6}>
-              <TextInput
-                id="bill-name"
-                labelText="Client Name (optional)"
-                value={form.clientName ?? ''}
-                onChange={(e) => set('clientName')(e.target.value)}
-                maxLength={60}
-                autoComplete="off"
-              />
-            </Column>
-            <Column sm={4} md={2} lg={4}>
-              <TextInput
-                id="bill-year"
-                labelText="Year"
-                placeholder="e.g. 2025"
-                value={form.calendarYear}
-                onChange={(e) => set('calendarYear')(e.target.value.replace(/\D/g, ''))}
-                maxLength={4}
-                inputMode="numeric"
-                autoComplete="off"
-              />
-            </Column>
-            <Column sm={4} md={3} lg={5}>
-              <TextInput
-                id="bill-file"
-                labelText="Tenure (optional)"
-                placeholder="e.g. RAN076543"
-                value={form.forestFileId ?? ''}
-                onChange={(e) => set('forestFileId')(e.target.value)}
-                maxLength={10}
-                autoComplete="off"
-              />
-            </Column>
-            <Column sm={4} md={3} lg={5}>
-              <Select
-                id="bill-type"
-                labelText="Tenure Type (optional)"
-                value={form.fileTypeCode ?? ''}
-                onChange={(e) => set('fileTypeCode')(e.target.value)}
-              >
-                <SelectItem value="" text="All range tenure types" />
-                {fileTypes.map((t) => (
-                  <SelectItem key={t.code} value={t.code} text={t.description} />
-                ))}
-              </Select>
-            </Column>
-            <Column sm={4} md={8} lg={2} className="billing__go">
-              <Button type="submit" size="md" renderIcon={SearchIcon} disabled={!canGo || loading}>
-                Go
-              </Button>
-            </Column>
-          </Grid>
+            </div>
+            <TextInput
+              id="bill-name"
+              labelText="Client Name (optional)"
+              value={form.clientName ?? ''}
+              onChange={(e) => set('clientName')(e.target.value)}
+              maxLength={60}
+              autoComplete="off"
+            />
+            <YearSelect
+              id="bill-year"
+              labelText="Year"
+              value={form.calendarYear}
+              onChange={set('calendarYear')}
+              first={FIRST_BILLING_YEAR}
+            />
+            <TextInput
+              id="bill-file"
+              labelText="Tenure (optional)"
+              placeholder="e.g. RAN076543"
+              value={form.forestFileId ?? ''}
+              onChange={(e) => set('forestFileId')(e.target.value)}
+              maxLength={10}
+              autoComplete="off"
+            />
+            <Select
+              id="bill-type"
+              labelText="Tenure Type (optional)"
+              value={form.fileTypeCode ?? ''}
+              onChange={(e) => set('fileTypeCode')(e.target.value)}
+            >
+              <SelectItem value="" text="All range tenure types" />
+              {fileTypes.map((t) => (
+                <SelectItem key={t.code} value={t.code} text={t.description} />
+              ))}
+            </Select>
+          </div>
+          <div className="fsp-search__actions">
+            <Button type="submit" size="md" renderIcon={SearchIcon} disabled={!canGo || loading}>
+              Go
+            </Button>
+          </div>
         </form>
         <InlineNotification
           kind="warning"
@@ -255,7 +258,7 @@ const TenureBilling: FC = () => {
         />
       </SectionTile>
 
-      {(rows !== null || loading || error) && (
+      {(rows !== null || loading) && (
         <SectionTile
           title="Range tenures"
           icon={Money}
@@ -273,26 +276,7 @@ const TenureBilling: FC = () => {
             </Button>
           }
         >
-          {rowErrors.length > 0 && (
-            <InlineNotification
-              kind="error"
-              lowContrast
-              title="Nothing was prepared"
-              onClose={() => setRowErrors([])}
-            >
-              <ul className="billing__errors">
-                {rowErrors.map((m) => (
-                  <li key={m}>{m}</li>
-                ))}
-              </ul>
-            </InlineNotification>
-          )}
-          <AsyncBoundary
-            loading={loading}
-            error={error}
-            onRetry={searched ? () => void search(searched) : undefined}
-            loadingText="Loading billing instructions…"
-          >
+          <AsyncBoundary loading={loading} loadingText="Loading billing instructions…">
             {rows && rows.length === 0 ? (
               <EmptyState
                 title="No range tenures found"
@@ -313,7 +297,7 @@ const TenureBilling: FC = () => {
                           <TableHeader>Invoice</TableHeader>
                           <TableHeader>Certified</TableHeader>
                           <TableHeader>Certified By</TableHeader>
-                          <TableHeader aria-label="Actions" />
+                          <TableHeader>Actions</TableHeader>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -359,7 +343,7 @@ const TenureBilling: FC = () => {
                             <TableCell>
                               <UserName userId={r.certifiedBy} />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="detail-tab__row-action">
                               <Button
                                 kind="ghost"
                                 size="sm"
@@ -367,6 +351,17 @@ const TenureBilling: FC = () => {
                                 onClick={() => setPreviewOf(r.forestFileId)}
                               >
                                 Preview
+                              </Button>
+                              {/* Legacy's G.B.S.: opens GBS's main page on every row. */}
+                              <Button
+                                kind="ghost"
+                                size="sm"
+                                renderIcon={Launch}
+                                href={gbsUrl()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                G.B.S.
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -384,7 +379,7 @@ const TenureBilling: FC = () => {
       {previewOf && searched && (
         <InvoicePreviewModal
           forestFileId={previewOf}
-          calendarYear={searched.calendarYear}
+          fetcher={previewFetcher}
           onClose={() => setPreviewOf(null)}
         />
       )}

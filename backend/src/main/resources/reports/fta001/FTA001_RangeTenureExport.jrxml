@@ -1,0 +1,1062 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="FTA001RangeExport" pageWidth="792" pageHeight="2100000" whenNoDataType="AllSectionsNoDetail" columnWidth="752" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" whenResourceMissingType="Empty" uuid="5e863a3d-63e3-4b73-9d4e-cec20dcb2ce1">
+  <property name="net.sf.jasperreports.export.xls.one.page.per.sheet" value="true"/>
+    <property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+  <property name="net.sf.jasperreports.page.break.no.pagination" value="apply"/>
+  <parameter name="SUBREPORT_0" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+  <parameter name="DATA_0" class="net.sf.jasperreports.engine.JRDataSource" isForPrompting="false"/>
+  <parameter name="SUBREPORT_1" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+  <parameter name="DATA_1" class="net.sf.jasperreports.engine.JRDataSource" isForPrompting="false"/>
+  <parameter name="SUBREPORT_2" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+  <parameter name="DATA_2" class="net.sf.jasperreports.engine.JRDataSource" isForPrompting="false"/>
+  <parameter name="SUBREPORT_3" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+  <parameter name="DATA_3" class="net.sf.jasperreports.engine.JRDataSource" isForPrompting="false"/>
+  <parameter name="SUBREPORT_4" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+  <parameter name="DATA_4" class="net.sf.jasperreports.engine.JRDataSource" isForPrompting="false"/>
+  <parameter name="SUBREPORT_5" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+  <parameter name="DATA_5" class="net.sf.jasperreports.engine.JRDataSource" isForPrompting="false"/>
+  <parameter name="SUBREPORT_6" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+  <parameter name="DATA_6" class="net.sf.jasperreports.engine.JRDataSource" isForPrompting="false"/>
+  <parameter name="SUBREPORT_7" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+  <parameter name="DATA_7" class="net.sf.jasperreports.engine.JRDataSource" isForPrompting="false"/>
+  <parameter name="SUBREPORT_8" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+  <parameter name="DATA_8" class="net.sf.jasperreports.engine.JRDataSource" isForPrompting="false"/>
+  <parameter name="SUBREPORT_9" class="net.sf.jasperreports.engine.JasperReport" isForPrompting="false"/>
+  <parameter name="DATA_9" class="net.sf.jasperreports.engine.JRDataSource" isForPrompting="false"/>
+  <parameter name="report_cursor" class="java.sql.ResultSet" isForPrompting="false"/>
+  <parameter name="p_user_id" class="java.lang.String" isForPrompting="false"/>
+  <parameter name="p_forest_file_id" class="java.lang.String"/>
+  <parameter name="p_file_type_code_1" class="java.lang.String"/>
+  <parameter name="p_org_unit_no" class="java.lang.String"/>
+  <parameter name="p_zone" class="java.lang.String"/>
+  <parameter name="p_client_name" class="java.lang.String"/>
+  <parameter name="p_client_number" class="java.lang.String"/>
+  <parameter name="p_client_locn_code" class="java.lang.String"/>
+  <parameter name="p_file_client_type" class="java.lang.String"/>
+  <parameter name="p_file_status_st" class="java.lang.String"/>
+  <parameter name="p_mgmt_unit_type" class="java.lang.String"/>
+  <parameter name="p_mgmt_unit_id" class="java.lang.String"/>
+  <parameter name="p_billing_period_from" class="java.lang.String"/>
+  <parameter name="p_billing_period_to" class="java.lang.String"/>
+  <parameter name="p_expiry_date_from" class="java.lang.String"/>
+  <parameter name="p_expiry_date_to" class="java.lang.String"/>
+  <parameter name="p_year" class="java.lang.String"/>
+  <parameter name="p_authorized_use_from" class="java.lang.String"/>
+  <parameter name="p_authorized_use_to" class="java.lang.String"/>
+  <parameter name="p_temporary_increase_from" class="java.lang.String"/>
+  <parameter name="p_temporary_increase_to" class="java.lang.String"/>
+  <parameter name="p_billable_non_use_from" class="java.lang.String"/>
+  <parameter name="p_billable_non_use_to" class="java.lang.String"/>
+  <parameter name="p_non_billable_non_use_from" class="java.lang.String"/>
+  <parameter name="p_non_billable_non_use_to" class="java.lang.String"/>
+  <parameter name="p_total_annual_use_from" class="java.lang.String"/>
+  <parameter name="p_total_annual_use_to" class="java.lang.String"/>
+  <parameter name="SUBREPORT_EXT" class="java.lang.String" isForPrompting="false">
+    <defaultValueExpression><![CDATA[$P{REPORT_CONTEXT} != null ? ".jrxml" : ".jasper"]]></defaultValueExpression>
+  </parameter>
+  <parameter name="ROOT_DIR" class="java.lang.String" isForPrompting="false">
+    <defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+  </parameter>
+  <parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+    <defaultValueExpression><![CDATA[""]]></defaultValueExpression>
+  </parameter>
+  <group name="CSV_BASIC">
+    <groupHeader>
+      <band height="90" splitType="Stretch">
+        <staticText>
+          <reportElement uuid="3ea8a377-3649-4158-83ea-d938ce56c894" x="0" y="0" width="55" height="20">
+            <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+            <property name="net.sf.jasperreports.text.truncate.at.char" value="true"/>
+            <property name="net.sf.jasperreports.export.xls.sheet.name" value="FTA_BASIC_RANGE"/>
+            <printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+          </reportElement>
+          <textElement/>
+          <text><![CDATA[]]></text>
+        </staticText>
+        <subreport>
+          <reportElement uuid="7e3c940c-3382-4b7b-96cd-be29d77410b6" x="0" y="20" width="750" height="55">
+            <property name="net.sf.jasperreports.export.xls.sheet.name" value="FTA_RANGE_BASIC"/>
+          </reportElement>
+          <subreportParameter name="p_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_zone">
+            <subreportParameterExpression><![CDATA[$P{p_zone}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_number">
+            <subreportParameterExpression><![CDATA[$P{p_client_number}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_locn_code">
+            <subreportParameterExpression><![CDATA[$P{p_client_locn_code}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_admin_org_unit_no">
+            <subreportParameterExpression><![CDATA[$P{p_org_unit_no}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_id">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_type_code">
+            <subreportParameterExpression><![CDATA[$P{p_file_type_code_1}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_forest_file_id">
+            <subreportParameterExpression><![CDATA[$P{p_forest_file_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_status_st">
+            <subreportParameterExpression><![CDATA[$P{p_file_status_st}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_to">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_type">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_name">
+            <subreportParameterExpression><![CDATA[$P{p_client_name}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_client_type">
+            <subreportParameterExpression><![CDATA[$P{p_file_client_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_provision_year">
+            <subreportParameterExpression><![CDATA[$P{p_year}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_from">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <dataSourceExpression><![CDATA[$P{DATA_0}]]></dataSourceExpression>
+          <subreportExpression><![CDATA[$P{SUBREPORT_0}]]></subreportExpression>
+        </subreport>
+      </band>
+    </groupHeader>
+  </group>
+  <group name="CSV_NOTES">
+    <groupHeader>
+      <band height="95" splitType="Stretch">
+        <break>
+          <reportElement uuid="db2a972a-c2f4-4913-bff8-9d5991a5ef90" x="0" y="7" width="100" height="1"/>
+        </break>
+        <staticText>
+          <reportElement uuid="3ea8a377-3649-4158-83ea-d938ce56c894" positionType="Float" x="0" y="14" width="91" height="20">
+            <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+            <property name="net.sf.jasperreports.text.truncate.at.char" value="true"/>
+            <property name="net.sf.jasperreports.export.xls.sheet.name" value="FTA_RANGE_NOTES"/>
+            <printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+          </reportElement>
+          <textElement/>
+          <text><![CDATA[]]></text>
+        </staticText>
+        <subreport>
+          <reportElement uuid="f60818de-31a9-4fdd-9b75-8e258a24f0de" positionType="Float" x="0" y="36" width="750" height="50">
+            <property name="net.sf.jasperreports.export.xls.sheet.name" value="FTA_RANGE_NOTES"/>
+          </reportElement>
+          <subreportParameter name="p_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_zone">
+            <subreportParameterExpression><![CDATA[$P{p_zone}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_number">
+            <subreportParameterExpression><![CDATA[$P{p_client_number}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_locn_code">
+            <subreportParameterExpression><![CDATA[$P{p_client_locn_code}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_admin_org_unit_no">
+            <subreportParameterExpression><![CDATA[$P{p_org_unit_no}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_id">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_type_code">
+            <subreportParameterExpression><![CDATA[$P{p_file_type_code_1}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_forest_file_id">
+            <subreportParameterExpression><![CDATA[$P{p_forest_file_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_status_st">
+            <subreportParameterExpression><![CDATA[$P{p_file_status_st}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_to">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_name">
+            <subreportParameterExpression><![CDATA[$P{p_client_name}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_type">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_client_type">
+            <subreportParameterExpression><![CDATA[$P{p_file_client_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_provision_year">
+            <subreportParameterExpression><![CDATA[$P{p_year}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_from">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <dataSourceExpression><![CDATA[$P{DATA_1}]]></dataSourceExpression>
+          <subreportExpression><![CDATA[$P{SUBREPORT_1}]]></subreportExpression>
+        </subreport>
+      </band>
+    </groupHeader>
+  </group>
+  <group name="CSV_CONDITIONS">
+    <groupHeader>
+      <band height="69">
+        <subreport isUsingCache="true">
+          <reportElement uuid="1d0086ae-2846-46ee-ae4c-c205c6d2b78e" x="2" y="14" width="748" height="50">
+            <property name="net.sf.jasperreports.export.xls.sheet.name" value="FTA_RANGE_CONDITIONS"/>
+          </reportElement>
+          <subreportParameter name="p_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_zone">
+            <subreportParameterExpression><![CDATA[$P{p_zone}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_number">
+            <subreportParameterExpression><![CDATA[$P{p_client_number}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_locn_code">
+            <subreportParameterExpression><![CDATA[$P{p_client_locn_code}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_admin_org_unit_no">
+            <subreportParameterExpression><![CDATA[$P{p_org_unit_no}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_id">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_type_code">
+            <subreportParameterExpression><![CDATA[$P{p_file_type_code_1}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_forest_file_id">
+            <subreportParameterExpression><![CDATA[$P{p_forest_file_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_status_st">
+            <subreportParameterExpression><![CDATA[$P{p_file_status_st}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_to">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_type">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_name">
+            <subreportParameterExpression><![CDATA[$P{p_client_name}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_client_type">
+            <subreportParameterExpression><![CDATA[$P{p_file_client_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_provision_year">
+            <subreportParameterExpression><![CDATA[$P{p_year}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_from">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <dataSourceExpression><![CDATA[$P{DATA_2}]]></dataSourceExpression>
+          <subreportExpression><![CDATA[$P{SUBREPORT_2}]]></subreportExpression>
+        </subreport>
+        <break>
+          <reportElement uuid="db2a972a-c2f4-4913-bff8-9d5991a5ef90" x="0" y="7" width="100" height="1"/>
+        </break>
+      </band>
+    </groupHeader>
+  </group>
+  <group name="CSV_USAGE">
+    <groupHeader>
+      <band height="60">
+        <break>
+          <reportElement uuid="db2a972a-c2f4-4913-bff8-9d5991a5ef90" x="0" y="3" width="100" height="1"/>
+        </break>
+        <subreport>
+          <reportElement uuid="70afc3c7-92cc-4336-8b87-63e4dec01ec3" x="2" y="6" width="748" height="46">
+            <property name="net.sf.jasperreports.export.xls.sheet.name" value="FTA_RANGE_USAGE"/>
+          </reportElement>
+          <subreportParameter name="p_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_zone">
+            <subreportParameterExpression><![CDATA[$P{p_zone}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_number">
+            <subreportParameterExpression><![CDATA[$P{p_client_number}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_locn_code">
+            <subreportParameterExpression><![CDATA[$P{p_client_locn_code}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_admin_org_unit_no">
+            <subreportParameterExpression><![CDATA[$P{p_org_unit_no}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_id">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_type_code">
+            <subreportParameterExpression><![CDATA[$P{p_file_type_code_1}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_forest_file_id">
+            <subreportParameterExpression><![CDATA[$P{p_forest_file_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_status_st">
+            <subreportParameterExpression><![CDATA[$P{p_file_status_st}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_to">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_type">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_name">
+            <subreportParameterExpression><![CDATA[$P{p_client_name}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_client_type">
+            <subreportParameterExpression><![CDATA[$P{p_file_client_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_provision_year">
+            <subreportParameterExpression><![CDATA[$P{p_year}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_from">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <dataSourceExpression><![CDATA[$P{DATA_3}]]></dataSourceExpression>
+          <subreportExpression><![CDATA[$P{SUBREPORT_3}]]></subreportExpression>
+        </subreport>
+      </band>
+    </groupHeader>
+  </group>
+  <group name="CSV_NON_USE" keepTogether="true">
+    <groupHeader>
+      <band height="60" splitType="Stretch">
+        <break>
+          <reportElement uuid="db2a972a-c2f4-4913-bff8-9d5991a5ef90" x="0" y="3" width="100" height="1"/>
+        </break>
+        <subreport>
+          <reportElement uuid="70afc3c7-92cc-4336-8b87-63e4dec01ec3" x="2" y="9" width="748" height="46">
+            <property name="net.sf.jasperreports.export.xls.sheet.name" value="FTA_RANGE_NON_USE"/>
+          </reportElement>
+          <subreportParameter name="p_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_zone">
+            <subreportParameterExpression><![CDATA[$P{p_zone}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_number">
+            <subreportParameterExpression><![CDATA[$P{p_client_number}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_locn_code">
+            <subreportParameterExpression><![CDATA[$P{p_client_locn_code}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_admin_org_unit_no">
+            <subreportParameterExpression><![CDATA[$P{p_org_unit_no}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_id">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_type_code">
+            <subreportParameterExpression><![CDATA[$P{p_file_type_code_1}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_forest_file_id">
+            <subreportParameterExpression><![CDATA[$P{p_forest_file_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_status_st">
+            <subreportParameterExpression><![CDATA[$P{p_file_status_st}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_to">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_type">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_name">
+            <subreportParameterExpression><![CDATA[$P{p_client_name}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_client_type">
+            <subreportParameterExpression><![CDATA[$P{p_file_client_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_provision_year">
+            <subreportParameterExpression><![CDATA[$P{p_year}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_from">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <dataSourceExpression><![CDATA[$P{DATA_4}]]></dataSourceExpression>
+          <subreportExpression><![CDATA[$P{SUBREPORT_4}]]></subreportExpression>
+        </subreport>
+      </band>
+    </groupHeader>
+  </group>
+  <group name="CSV_FULL_LAND">
+    <groupHeader>
+      <band height="60">
+        <break>
+          <reportElement uuid="db2a972a-c2f4-4913-bff8-9d5991a5ef90" x="0" y="3" width="100" height="1"/>
+        </break>
+        <subreport>
+          <reportElement uuid="70afc3c7-92cc-4336-8b87-63e4dec01ec3" x="2" y="9" width="748" height="46">
+            <property name="net.sf.jasperreports.export.xls.sheet.name" value="FTA_RANGE_FULL_LAND_BASE"/>
+          </reportElement>
+          <subreportParameter name="p_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_zone">
+            <subreportParameterExpression><![CDATA[$P{p_zone}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_number">
+            <subreportParameterExpression><![CDATA[$P{p_client_number}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_locn_code">
+            <subreportParameterExpression><![CDATA[$P{p_client_locn_code}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_admin_org_unit_no">
+            <subreportParameterExpression><![CDATA[$P{p_org_unit_no}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_id">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_type_code">
+            <subreportParameterExpression><![CDATA[$P{p_file_type_code_1}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_forest_file_id">
+            <subreportParameterExpression><![CDATA[$P{p_forest_file_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_status_st">
+            <subreportParameterExpression><![CDATA[$P{p_file_status_st}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_to">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_type">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_name">
+            <subreportParameterExpression><![CDATA[$P{p_client_name}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_client_type">
+            <subreportParameterExpression><![CDATA[$P{p_file_client_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_provision_year">
+            <subreportParameterExpression><![CDATA[$P{p_year}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_from">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <dataSourceExpression><![CDATA[$P{DATA_5}]]></dataSourceExpression>
+          <subreportExpression><![CDATA[$P{SUBREPORT_5}]]></subreportExpression>
+        </subreport>
+      </band>
+    </groupHeader>
+  </group>
+  <group name="CSV_PRIVATE_LAND">
+    <groupHeader>
+      <band height="60">
+        <break>
+          <reportElement uuid="db2a972a-c2f4-4913-bff8-9d5991a5ef90" x="0" y="3" width="100" height="1"/>
+        </break>
+        <subreport>
+          <reportElement uuid="70afc3c7-92cc-4336-8b87-63e4dec01ec3" x="2" y="9" width="748" height="46">
+            <property name="net.sf.jasperreports.export.xls.sheet.name" value="FTA_ACTIVE_LAND_BASE"/>
+          </reportElement>
+          <subreportParameter name="p_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_zone">
+            <subreportParameterExpression><![CDATA[$P{p_zone}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_number">
+            <subreportParameterExpression><![CDATA[$P{p_client_number}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_locn_code">
+            <subreportParameterExpression><![CDATA[$P{p_client_locn_code}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_admin_org_unit_no">
+            <subreportParameterExpression><![CDATA[$P{p_org_unit_no}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_id">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_type_code">
+            <subreportParameterExpression><![CDATA[$P{p_file_type_code_1}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_forest_file_id">
+            <subreportParameterExpression><![CDATA[$P{p_forest_file_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_status_st">
+            <subreportParameterExpression><![CDATA[$P{p_file_status_st}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_to">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_type">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_name">
+            <subreportParameterExpression><![CDATA[$P{p_client_name}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_client_type">
+            <subreportParameterExpression><![CDATA[$P{p_file_client_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_provision_year">
+            <subreportParameterExpression><![CDATA[$P{p_year}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_from">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <dataSourceExpression><![CDATA[$P{DATA_6}]]></dataSourceExpression>
+          <subreportExpression><![CDATA[$P{SUBREPORT_6}]]></subreportExpression>
+        </subreport>
+      </band>
+    </groupHeader>
+  </group>
+  <group name="CSV_CLIENTS">
+    <groupHeader>
+      <band height="60">
+        <break>
+          <reportElement uuid="db2a972a-c2f4-4913-bff8-9d5991a5ef90" x="0" y="3" width="100" height="1"/>
+        </break>
+        <subreport>
+          <reportElement uuid="70afc3c7-92cc-4336-8b87-63e4dec01ec3" x="2" y="9" width="748" height="46">
+            <property name="net.sf.jasperreports.export.xls.sheet.name" value="FTA_RANGE_CLIENTS"/>
+          </reportElement>
+          <subreportParameter name="p_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_zone">
+            <subreportParameterExpression><![CDATA[$P{p_zone}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_number">
+            <subreportParameterExpression><![CDATA[$P{p_client_number}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_locn_code">
+            <subreportParameterExpression><![CDATA[$P{p_client_locn_code}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_admin_org_unit_no">
+            <subreportParameterExpression><![CDATA[$P{p_org_unit_no}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_id">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_type_code">
+            <subreportParameterExpression><![CDATA[$P{p_file_type_code_1}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_forest_file_id">
+            <subreportParameterExpression><![CDATA[$P{p_forest_file_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_status_st">
+            <subreportParameterExpression><![CDATA[$P{p_file_status_st}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_to">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_type">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_name">
+            <subreportParameterExpression><![CDATA[$P{p_client_name}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_client_type">
+            <subreportParameterExpression><![CDATA[$P{p_file_client_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_provision_year">
+            <subreportParameterExpression><![CDATA[$P{p_year}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_from">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <dataSourceExpression><![CDATA[$P{DATA_7}]]></dataSourceExpression>
+          <subreportExpression><![CDATA[$P{SUBREPORT_7}]]></subreportExpression>
+        </subreport>
+      </band>
+    </groupHeader>
+  </group>
+  <group name="CSV_CLIENT_OFFER">
+    <groupHeader>
+      <band height="60">
+        <break>
+          <reportElement uuid="db2a972a-c2f4-4913-bff8-9d5991a5ef90" x="0" y="3" width="100" height="1"/>
+        </break>
+        <subreport>
+          <reportElement uuid="70afc3c7-92cc-4336-8b87-63e4dec01ec3" x="2" y="9" width="748" height="46">
+            <property name="net.sf.jasperreports.export.xls.sheet.name" value="FTA_RANGE_LICENSEE"/>
+          </reportElement>
+          <subreportParameter name="p_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_zone">
+            <subreportParameterExpression><![CDATA[$P{p_zone}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_number">
+            <subreportParameterExpression><![CDATA[$P{p_client_number}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_locn_code">
+            <subreportParameterExpression><![CDATA[$P{p_client_locn_code}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_admin_org_unit_no">
+            <subreportParameterExpression><![CDATA[$P{p_org_unit_no}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_id">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_type_code">
+            <subreportParameterExpression><![CDATA[$P{p_file_type_code_1}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_forest_file_id">
+            <subreportParameterExpression><![CDATA[$P{p_forest_file_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_status_st">
+            <subreportParameterExpression><![CDATA[$P{p_file_status_st}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_to">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_type">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_name">
+            <subreportParameterExpression><![CDATA[$P{p_client_name}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_client_type">
+            <subreportParameterExpression><![CDATA[$P{p_file_client_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_provision_year">
+            <subreportParameterExpression><![CDATA[$P{p_year}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_from">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <dataSourceExpression><![CDATA[$P{DATA_8}]]></dataSourceExpression>
+          <subreportExpression><![CDATA[$P{SUBREPORT_8}]]></subreportExpression>
+        </subreport>
+      </band>
+    </groupHeader>
+  </group>
+  <group name="CSV_NON_USE_PKG">
+    <groupHeader>
+      <band height="53">
+        <break>
+          <reportElement uuid="db2a972a-c2f4-4913-bff8-9d5991a5ef90" x="0" y="2" width="100" height="1"/>
+        </break>
+        <subreport>
+          <reportElement uuid="70afc3c7-92cc-4336-8b87-63e4dec01ec3" x="2" y="5" width="748" height="46">
+            <property name="net.sf.jasperreports.export.xls.sheet.name" value="FTA_NON_USE_PKG"/>
+          </reportElement>
+          <subreportParameter name="p_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_zone">
+            <subreportParameterExpression><![CDATA[$P{p_zone}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_number">
+            <subreportParameterExpression><![CDATA[$P{p_client_number}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_locn_code">
+            <subreportParameterExpression><![CDATA[$P{p_client_locn_code}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_admin_org_unit_no">
+            <subreportParameterExpression><![CDATA[$P{p_org_unit_no}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_id">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_expiry_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_expiry_date_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_to">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_type_code">
+            <subreportParameterExpression><![CDATA[$P{p_file_type_code_1}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_forest_file_id">
+            <subreportParameterExpression><![CDATA[$P{p_forest_file_id}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_authorized_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_authorized_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_status_st">
+            <subreportParameterExpression><![CDATA[$P{p_file_status_st}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_to">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_mgmt_unit_type">
+            <subreportParameterExpression><![CDATA[$P{p_mgmt_unit_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_client_name">
+            <subreportParameterExpression><![CDATA[$P{p_client_name}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_file_client_type">
+            <subreportParameterExpression><![CDATA[$P{p_file_client_type}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_to">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_to}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_non_billable_non_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_non_billable_non_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_issue_date_from">
+            <subreportParameterExpression><![CDATA[$P{p_billing_period_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_provision_year">
+            <subreportParameterExpression><![CDATA[$P{p_year}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_total_annual_use_from">
+            <subreportParameterExpression><![CDATA[$P{p_total_annual_use_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <subreportParameter name="p_temporary_increase_from">
+            <subreportParameterExpression><![CDATA[$P{p_temporary_increase_from}]]></subreportParameterExpression>
+          </subreportParameter>
+          <dataSourceExpression><![CDATA[$P{DATA_9}]]></dataSourceExpression>
+          <subreportExpression><![CDATA[$P{SUBREPORT_9}]]></subreportExpression>
+        </subreport>
+      </band>
+    </groupHeader>
+  </group>
+  <background>
+    <band splitType="Stretch"/>
+  </background>
+  <pageHeader>
+    <band height="65" splitType="Stretch">
+      <printWhenExpression><![CDATA[1==2]]></printWhenExpression>
+      <staticText>
+        <reportElement uuid="00c2ff63-ff63-4feb-97d4-6938ec6c710f" x="123" y="25" width="40" height="20"/>
+        <textElement/>
+        <text><![CDATA[PAGE1]]></text>
+      </staticText>
+      <textField>
+        <reportElement uuid="458a66a9-2bb0-46e2-8d98-4953c765c02a" x="163" y="25" width="31" height="20"/>
+        <textElement/>
+        <textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement uuid="1c80f5c4-5b36-445c-af98-4940184079e7" x="2" y="1" width="100" height="20">
+          <property name="net.sf.jasperreports.text.truncate.at.char" value="true"/>
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$P{SUBREPORT_EXT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement uuid="7d47fae7-7e51-47a2-ba31-7e023345b649" x="2" y="23" width="100" height="20">
+          <property name="net.sf.jasperreports.text.truncate.at.char" value="true"/>
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$P{ROOT_DIR}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement uuid="f62046cc-adb0-483d-a144-1f4b3d99614a" x="2" y="45" width="100" height="20">
+          <property name="net.sf.jasperreports.text.truncate.at.char" value="true"/>
+          <property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+        </reportElement>
+        <textElement/>
+        <textFieldExpression><![CDATA[$P{SUBREPORT_DIR}]]></textFieldExpression>
+      </textField>
+    </band>
+  </pageHeader>
+</jasperReport>

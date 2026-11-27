@@ -1,17 +1,18 @@
 import { DocumentPdf } from '@carbon/icons-react';
-import { Button, Column, Grid, Select, SelectItem, TextInput } from '@carbon/react';
+import { Button, Select, SelectItem } from '@carbon/react';
 import { useEffect, useState, type FC, type FormEvent } from 'react';
 
 import SectionTile from '@/components/SectionTile';
+import YearSelect from '@/components/YearSelect';
 import { useNotification } from '@/context/notification/useNotification';
 import { useDefaultOrgUnitIn } from '@/hooks/useDefaultOrgUnit';
 import { downloadBlob } from '@/lib/downloadBlob';
+import { FIRST_BILLING_YEAR } from '@/lib/years';
 import PageLayout from '@/pages/PageLayout';
 import { getPreBillingReport } from '@/services/billing';
 import { getBillingReportDistricts, type CodeOption } from '@/services/codeLists';
 
 import { currentYear, useDistrictScope } from '../useDistrictScope';
-import '../billing.scss';
 
 /**
  * FTA685 — Pre Billing Report Submission: the FTA408 Pre-Billing Report for a
@@ -40,7 +41,7 @@ const PreBillingReport: FC = () => {
       .catch(() =>
         notify.display({
           kind: 'error',
-          title: 'Could not load the district list',
+          title: 'Could not load the district list.',
           subtitle: 'Reload the page to try again.',
           timeout: 6000,
         }),
@@ -63,7 +64,7 @@ const PreBillingReport: FC = () => {
     } catch (err) {
       notify.display({
         kind: 'error',
-        title: 'Could not produce the report',
+        title: 'Could not produce the report.',
         subtitle: err instanceof Error ? err.message : 'Request failed',
         timeout: 6000,
       });
@@ -78,9 +79,9 @@ const PreBillingReport: FC = () => {
       subtitle="See what the next range billing run will charge and reverse in a district, and which tenures it will refuse."
     >
       <SectionTile title="Report" icon={DocumentPdf}>
-        <form onSubmit={(e) => void onSubmit(e)}>
-          <Grid narrow>
-            <Column sm={4} md={4} lg={6}>
+        <form className="fsp-search__form" onSubmit={(e) => void onSubmit(e)}>
+          <div className="fsp-search__field-grid">
+            <div className="fsp-search__wide-cell">
               <Select
                 id="pre-district"
                 labelText="District"
@@ -93,25 +94,20 @@ const PreBillingReport: FC = () => {
                   <SelectItem key={d.code} value={d.code} text={d.description} />
                 ))}
               </Select>
-            </Column>
-            <Column sm={4} md={2} lg={3}>
-              <TextInput
-                id="pre-year"
-                labelText="Billing Year"
-                placeholder="e.g. 2025"
-                value={year}
-                onChange={(e) => setYear(e.target.value.replace(/\D/g, ''))}
-                maxLength={4}
-                inputMode="numeric"
-                autoComplete="off"
-              />
-            </Column>
-            <Column sm={4} md={2} lg={3} className="billing__go">
-              <Button type="submit" size="md" renderIcon={DocumentPdf} disabled={!canSubmit}>
-                {busy ? 'Producing…' : 'Submit'}
-              </Button>
-            </Column>
-          </Grid>
+            </div>
+            <YearSelect
+              id="pre-year"
+              labelText="Billing Year"
+              value={year}
+              onChange={setYear}
+              first={FIRST_BILLING_YEAR}
+            />
+          </div>
+          <div className="fsp-search__actions">
+            <Button type="submit" size="md" renderIcon={DocumentPdf} disabled={!canSubmit}>
+              {busy ? 'Producing…' : 'Submit'}
+            </Button>
+          </div>
         </form>
       </SectionTile>
     </PageLayout>
