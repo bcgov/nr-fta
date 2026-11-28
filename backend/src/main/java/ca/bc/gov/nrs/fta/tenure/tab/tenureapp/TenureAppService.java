@@ -1,6 +1,5 @@
 package ca.bc.gov.nrs.fta.tenure.tab.tenureapp;
 
-import ca.bc.gov.nrs.fta.shared.sql.ClientNameSql;
 import ca.bc.gov.nrs.fta.tenure.tab.MissingTable;
 import ca.bc.gov.nrs.fta.tenure.tab.tenureapp.TenureAppDtos.TenureAppCpRejectionDto;
 import ca.bc.gov.nrs.fta.tenure.tab.tenureapp.TenureAppDtos.TenureAppCpRequestDto;
@@ -9,11 +8,8 @@ import ca.bc.gov.nrs.fta.tenure.tab.tenureapp.TenureAppDtos.TenureAppRowDto;
 import ca.bc.gov.nrs.fta.tenure.tab.tenureapp.TenureAppDtos.TenureAppTabDto;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -333,52 +329,6 @@ public class TenureAppService {
           """
           + ORDER;
 
-  /**
-   * FTA_950X_TEN_APP_CUT_PERM_REQ.GET as FTA950 called it: by file only. Its other filters
-   * ({@code col = NVL(:p, col)} with every {@code :p} null, and the same through
-   * {@code FTA_UTILS.CONVERT_TO_DATE}) still drop a request whose column is null — notably one
-   * not yet accepted — so they are kept as IS NOT NULL.
-   */
-  private static final String CP_REQUEST_SQL =
-      """
-      SELECT '' || cpr.cutting_permit_request_guid AS request_guid,
-             cpr.hva_skey, cpr.cutting_permit_id, cpr.request_date,
-             cpr.cutting_permit_request_code, cpr.cp_request_status_code,
-             cpr.accepted_user_id, cpr.accepted_date, cpr.rationale_detail
-        FROM the.cutting_permit_request cpr
-       WHERE cpr.forest_file_id = :forestFileId
-         AND cpr.hva_skey IS NOT NULL
-         AND cpr.cutting_permit_id IS NOT NULL
-         AND cpr.request_date IS NOT NULL
-         AND cpr.cutting_permit_request_code IS NOT NULL
-         AND cpr.cp_request_status_code IS NOT NULL
-         AND cpr.create_user IS NOT NULL
-         AND cpr.accepted_date IS NOT NULL
-       ORDER BY cpr.request_date DESC, cpr.cutting_permit_id
-      """;
-
-  /*
-   * The package's joins for a request's descriptions and rationale document, read as separate
-   * lookups: not every FTA database has these tables (CP_REQUEST_STATUS_CODE is missing from
-   * some), and a missing one should cost only its column, not the whole list.
-   */
-  private static final String CP_REQUEST_CODES_SQL =
-      "SELECT cutting_permit_request_code AS code, description FROM the.cutting_permit_request_code";
-
-  private static final String CP_REQUEST_STATUSES_SQL =
-      "SELECT cp_request_status_code AS code, description FROM the.cp_request_status_code";
-
-  private static final String CP_REQUEST_DOCUMENTS_SQL =
-      """
-      SELECT DISTINCT '' || tpd.support_cp_request_guid AS request_guid
-        FROM the.tenure_permit_document tpd
-        JOIN the.cp_external_document_sdw ceds
-          ON ceds.cp_external_document_sdw_guid = tpd.cp_external_document_sdw_guid
-        JOIN the.cutting_permit_request cpr
-          ON cpr.cutting_permit_request_guid = tpd.support_cp_request_guid
-       WHERE cpr.forest_file_id = :forestFileId
-      """;
-
   /** FTA_950X_TEN_APP_CP_REJ.GET_REJECTS for the file (any CP). */
   private static final String CP_REJECTION_SQL =
       """
@@ -393,42 +343,24 @@ public class TenureAppService {
        ORDER BY ta.submission_date DESC
       """;
 
-  /** FTA_950X_TEN_APP_PROF_DEC.GET — the declarations on one application of the file. */
-  private static final String PROF_DEC_SQL =
-      """
-      SELECT ta.tenure_app_id, ta.forest_file_id, ta.submission_id,
-             ppd.declaration_type_code, dtc.description AS declaration_type_desc,
-             ppd.declaration_date, ppd.client_number, ppd.client_location_code,
-             %s AS client_name,
-             pp.last_name || ', ' || pp.first_name || ' ' || pp.middle_name AS declarant_name,
-             pp.certification_reference_id, pp.professional_identifier_code,
-             pp.phone_number, pp.email_address, pp.web_site_address,
-             ppd.declarant_comments,
-             (SELECT LISTAGG(cb.cut_block_id, ', ') WITHIN GROUP (ORDER BY cb.cut_block_id)
-                FROM the.cut_block cb
-               WHERE cb.forest_file_id = :forestFileId
-                 AND cb.cutting_permit_id = :cuttingPermitId
-                 AND cb.hva_skey = :hvaSkey) AS cut_block_ids
-        FROM the.prfsnl_party_dclrtn ppd
-        JOIN the.professional_party pp ON pp.professional_party_guid = ppd.professional_party_guid
-        JOIN the.tenure_application ta ON ta.tenure_app_id = ppd.tenure_app_id
-        JOIN the.declaration_type_code dtc
-          ON dtc.declaration_type_code = ppd.declaration_type_code
-        LEFT JOIN the.forest_client fc ON fc.client_number = ppd.client_number
-       WHERE ta.tenure_app_id = :tenureAppId
-         AND ta.forest_file_id = :forestFileId
-       ORDER BY ppd.declaration_date DESC
-      """.formatted(ClientNameSql.displayName("fc"));
+  /** The tab's notice when the smart-form list can't be read. */
+  static final String SMART_FORM_UNAVAILABLE =
+      "Smart form applications could not be read: FTA_950X_TEN_APP_CUT_PERM_REQ reported an"
+          + " error.";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TenureAppService.class);
 
   private final NamedParameterJdbcTemplate jdbc;
   private final TenureAppCpRequestLegacy cpRequestLegacy;
+  private final TenureAppProfDecLegacy profDecLegacy;
 
   public TenureAppService(
-      NamedParameterJdbcTemplate jdbc, TenureAppCpRequestLegacy cpRequestLegacy) {
+      NamedParameterJdbcTemplate jdbc,
+      TenureAppCpRequestLegacy cpRequestLegacy,
+      TenureAppProfDecLegacy profDecLegacy) {
     this.jdbc = jdbc;
     this.cpRequestLegacy = cpRequestLegacy;
+    this.profDecLegacy = profDecLegacy;
   }
 
   /**
@@ -458,7 +390,7 @@ public class TenureAppService {
     List<TenureAppRowDto> applications = MissingTable.orEmpty(
         () -> jdbc.query(applicationsSql(fileType), p, this::row),
         "Spatial submissions", unavailable);
-    List<TenureAppCpRequestDto> requests = cpRequests(forestFileId, p, unavailable);
+    List<TenureAppCpRequestDto> requests = cpRequests(forestFileId, unavailable);
     List<TenureAppCpRejectionDto> rejections = MissingTable.orEmpty(
         () -> jdbc.query(CP_REJECTION_SQL, p, (rs, n) ->
         new TenureAppCpRejectionDto(
@@ -472,105 +404,40 @@ public class TenureAppService {
         fileType, columns, warning, requests, rejections, applications, unavailable);
   }
 
-  /** The smart-form CP requests, with their descriptions and rationale flag where readable. */
-  private List<TenureAppCpRequestDto> cpRequests(
-      String forestFileId, MapSqlParameterSource p, List<String> unavailable) {
-    List<String> missing = new ArrayList<>();
-    List<Map<String, Object>> rows = MissingTable.orEmpty(
-        () -> jdbc.queryForList(CP_REQUEST_SQL, p), "Smart form applications", missing);
-    if (!missing.isEmpty()) {
-      // Our account can't read CUTTING_PERMIT_REQUEST here; legacy's own package can, as it
-      // runs with its owner's rights.
-      try {
-        return cpRequestLegacy.requests(forestFileId);
-      } catch (DataAccessException | IllegalStateException e) {
-        LOGGER.warn("FTA_950X_TEN_APP_CUT_PERM_REQ.GET failed too: {}",
-            e instanceof DataAccessException d ? d.getMostSpecificCause().getMessage()
-                : e.getMessage());
-        unavailable.addAll(missing);
-        return List.of();
-      }
-    }
-    if (rows.isEmpty()) {
+  /**
+   * The smart-form CP requests through legacy's own package (it reads the request, code and
+   * document tables with its owner's rights). A failure costs only this list, with a notice.
+   */
+  private List<TenureAppCpRequestDto> cpRequests(String forestFileId, List<String> unavailable) {
+    try {
+      return cpRequestLegacy.requests(forestFileId);
+    } catch (DataAccessException | IllegalStateException e) {
+      String why = e instanceof DataAccessException d
+          ? d.getMostSpecificCause().getMessage() : e.getMessage();
+      LOGGER.warn("FTA_950X_TEN_APP_CUT_PERM_REQ.GET failed for {}: {}", forestFileId, why);
+      unavailable.add(SMART_FORM_UNAVAILABLE);
       return List.of();
     }
-    // A missing code table only leaves its codes undescribed, as legacy's outer joins would.
-    Map<String, String> requestDescs = descriptions(CP_REQUEST_CODES_SQL, "CP request types");
-    Map<String, String> statusDescs = descriptions(CP_REQUEST_STATUSES_SQL, "CP request states");
-    Set<String> withDocument = new HashSet<>(MissingTable.orEmpty(
-        () -> jdbc.queryForList(CP_REQUEST_DOCUMENTS_SQL, p, String.class),
-        "Rationale documents", unavailable));
-    return rows.stream().map(r -> {
-      String guid = (String) r.get("request_guid");
-      String requestCode = (String) r.get("cutting_permit_request_code");
-      String statusCode = (String) r.get("cp_request_status_code");
-      return new TenureAppCpRequestDto(
-          guid,
-          r.get("hva_skey") instanceof Number n ? n.longValue() : null,
-          (String) r.get("cutting_permit_id"),
-          localDate(r.get("request_date")),
-          requestCode,
-          requestDescs.get(requestCode),
-          statusCode,
-          statusDescs.get(statusCode),
-          (String) r.get("accepted_user_id"),
-          localDate(r.get("accepted_date")),
-          (String) r.get("rationale_detail"),
-          guid != null && withDocument.contains(guid));
-    }).toList();
   }
 
-  /** A code table as code → description; empty (logged) when this database lacks it. */
-  private Map<String, String> descriptions(String sql, String what) {
-    Map<String, String> m = new HashMap<>();
-    MissingTable.orEmpty(() -> jdbc.query(sql, Map.of(), (rs, n) -> {
-      m.put(rs.getString("code"), rs.getString("description"));
-      return n;
-    }), what, new ArrayList<>());
-    return m;
-  }
-
-  private static LocalDate localDate(Object v) {
-    if (v instanceof java.sql.Timestamp t) {
-      return t.toLocalDateTime().toLocalDate();
-    }
-    if (v instanceof java.sql.Date d) {
-      return d.toLocalDate();
-    }
-    if (v instanceof java.time.LocalDateTime t) {
-      return t.toLocalDate();
-    }
-    return v instanceof LocalDate d ? d : null;
-  }
-
-  /** The professional declarations on one of the file's applications. */
+  /**
+   * The professional declarations on one of the file's applications, through legacy's
+   * {@code FTA_950X_TEN_APP_PROF_DEC} (it reads the professional party and declaration type
+   * tables with its owner's rights).
+   *
+   * @throws ResponseStatusException 500 with the package's message when it reports an error
+   */
   public List<TenureAppProfDecDto> professionalDeclarations(
       String forestFileId, long tenureAppId, String cuttingPermitId, Long hvaSkey) {
-    MapSqlParameterSource p = new MapSqlParameterSource()
-        .addValue("forestFileId", forestFileId)
-        .addValue("tenureAppId", tenureAppId, Types.NUMERIC)
-        .addValue("cuttingPermitId",
-            cuttingPermitId == null || cuttingPermitId.isBlank() ? null : cuttingPermitId.trim(),
-            Types.VARCHAR)
-        .addValue("hvaSkey", hvaSkey, Types.NUMERIC);
-    return jdbc.query(PROF_DEC_SQL, p, (rs, n) -> new TenureAppProfDecDto(
-        rs.getObject("tenure_app_id", Long.class),
-        rs.getString("forest_file_id"),
-        rs.getObject("submission_id", Long.class),
-        rs.getString("declaration_type_code"),
-        rs.getString("declaration_type_desc"),
-        date(rs, "declaration_date"),
-        rs.getString("client_number"),
-        rs.getString("client_location_code"),
-        rs.getString("client_name"),
-        trimToNull(rs.getString("declarant_name")),
-        rs.getString("certification_reference_id"),
-        rs.getString("professional_identifier_code"),
-        rs.getString("phone_number"),
-        rs.getString("email_address"),
-        rs.getString("web_site_address"),
-        rs.getString("declarant_comments"),
-        rs.getString("cut_block_ids")));
+    String cp = cuttingPermitId == null || cuttingPermitId.isBlank()
+        ? null : cuttingPermitId.trim();
+    try {
+      return profDecLegacy.declarations(forestFileId, tenureAppId, cp, hvaSkey);
+    } catch (IllegalStateException e) {
+      LOGGER.warn("FTA_950X_TEN_APP_PROF_DEC.GET failed for {}/{}: {}",
+          forestFileId, tenureAppId, e.getMessage());
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
   }
 
   /** The branch of FTA_950X_TEN_APP.GET for the file type. */
@@ -635,13 +502,5 @@ public class TenureAppService {
 
   private static boolean yes(Object v) {
     return v != null && "Y".equals(v.toString().trim());
-  }
-
-  private static String trimToNull(String s) {
-    if (s == null) {
-      return null;
-    }
-    String t = s.trim();
-    return t.isEmpty() || ",".equals(t) ? null : t;
   }
 }

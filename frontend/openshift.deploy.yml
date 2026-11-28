@@ -70,17 +70,16 @@ parameters:
   # and this default is the one place it is set.
   - name: VITE_APP_NAME
     value: Forest Tenure Administration
-  # GBS, opened by Tenure Billing's G.B.S. button. Blank uses the production URL
-  # (src/lib/externalUrls.ts); legacy's test environments used
-  # https://testapps.for.gov.bc.ca/gbs/GBSMainServlet?GBS04CLINUM=
+  # GBS, opened by Tenure Billing's G.B.S. button (src/lib/externalUrls.ts). Set per environment
+  # through the GitHub variable VITE_GBS_URL; blank disables the button.
   - name: VITE_GBS_URL
-    description: GBS URL for the G.B.S. button; blank means production
+    description: GBS URL for the G.B.S. button; blank disables it
     required: false
-  # SNC (Status and Clearance), opened by the Tenure Application tab's SNC link. Blank uses the
-  # production URL (src/lib/externalUrls.ts); legacy's test environment used
-  # https://testapps.nrs.gov.bc.ca/int/sncsc-web/viewConflicts/
+  # SNC (Status and Clearance), opened by the Tenure Application tab's SNC link
+  # (src/lib/externalUrls.ts). Set per environment through the GitHub variable VITE_SNC_URL;
+  # blank shows SNC unlinked.
   - name: VITE_SNC_URL
-    description: SNC web URL for the Tenure Application SNC link; blank means production
+    description: SNC web URL for the Tenure Application SNC link; blank shows it unlinked
     required: false
 
 objects:

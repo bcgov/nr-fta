@@ -37,10 +37,10 @@ window.config = {
   // Display
   VITE_APP_NAME: "$(escape "${VITE_APP_NAME:-Forest Tenure Administration}")",
   // GBS, opened by FTA680's G.B.S. button — read by src/lib/externalUrls.ts.
-  // Blank falls back to the production URL legacy used.
+  // Set per environment; blank disables the button.
   VITE_GBS_URL: "$(escape "${VITE_GBS_URL:-}")",
   // SNC, opened by the Tenure Application tab's SNC link — read by src/lib/externalUrls.ts.
-  // Blank falls back to the production URL legacy used.
+  // Set per environment; blank shows SNC unlinked.
   VITE_SNC_URL: "$(escape "${VITE_SNC_URL:-}")"
 };
 EOF

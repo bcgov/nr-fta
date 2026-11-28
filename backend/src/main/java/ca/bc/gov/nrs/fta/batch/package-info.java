@@ -7,18 +7,18 @@
  * <h2>The pattern (copy it for a new job)</h2>
  *
  * <ol>
- *   <li><b>A sub-package per job</b>, e.g. {@code batch.rangebilling}, holding a
+ *   <li><b>A sub-package per job</b>, e.g. {@code batch.cancelmark}, holding a
  *       {@code *Package} class that calls the legacy PL/SQL over JDBC (no re-implementation) and
  *       a {@code *Job} class.
  *   <li><b>The job</b> is a {@code @Component} implementing {@link
  *       ca.bc.gov.nrs.fta.batch.BatchJob}, with its id, lock times and legacy name as
  *       constants, and one scheduled method that only hands over to the runner:
  *       <pre>{@code
- * static final String NAME = "range-billing";      // lock name, property prefix, URL segment
+ * static final String NAME = "cancel-mark";        // lock name, property prefix, URL segment
  * static final String LOCK_AT_MOST = "PT2H";
  * static final String LOCK_AT_LEAST = "PT1M";
  *
- * @Scheduled(cron = "${fta.batch.range-billing.cron:-}", zone = BatchJob.ZONE)
+ * @Scheduled(cron = "${fta.batch.cancel-mark.cron:-}", zone = BatchJob.ZONE)
  * @SchedulerLock(name = NAME, lockAtMostFor = LOCK_AT_MOST, lockAtLeastFor = LOCK_AT_LEAST)
  * public void scheduled() {
  *   runner.runScheduled(this);
@@ -45,10 +45,8 @@
  *       call ran on an auto-commit connection (a plain {@code JdbcTemplate} call does the same);
  *       a {@code BasicStore.put} turned auto-commit off and the batch committed or rolled back
  *       itself.
- *   <li><b>Tests</b>: mock the {@code *Package} (and {@code EmailSender} if the job mails a
- *       user); assert the
- *       {@code @SchedulerLock} name and the {@code @Scheduled} cron property by reflection (see
- *       {@code RangeBillingJobTest}).
+ *   <li><b>Tests</b>: mock the {@code *Package}; assert the {@code @SchedulerLock} name and the {@code @Scheduled} cron property by reflection (see
+ *       {@code CancelMarkJobTest}).
  * </ol>
  *
  * <h2>Shared pieces</h2>
@@ -63,6 +61,11 @@
  *   <li>The lock itself: {@code configuration.SchedulerLockConfiguration} (table
  *       {@code THE.FTA_SHEDLOCK}, database time).
  * </ul>
+ *
+ * <p>Legacy's third job, {@code fta_batch_690_tenure_approval} (range billing), is not a batch
+ * here: FTA690's Submit bills the request while the user waits ({@code
+ * billing.service.RangeBillingProcessor}, a ShedLock lock per district and year) and the FTA411
+ * summary downloads instead of being e-mailed.
  *
  * <p>{@code fta.batch.user-id} (legacy {@code batch.user}; default {@code IDIR\SA_FTA}) is the id
  * scheduled runs are recorded under. Legacy used it only to open its WebADE connection — none of

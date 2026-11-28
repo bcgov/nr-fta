@@ -91,11 +91,18 @@
   max-inline-size: min(40rem, calc(100vw - 2rem));
 
   // A message of several lines (a refused Prepare lists one refusal per row) keeps its line
-  // breaks, and a long list scrolls inside the toast rather than running off the screen.
+  // breaks; long words wrap rather than widen the toast.
   .#{variables.$bcgov-prefix}--toast-notification__subtitle {
     white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+
+  // Only a long message scrolls inside the toast (NotificationProvider adds toast--long); a scroll
+  // box on short text can overflow by a pixel of line height and show a stray scrollbar.
+  &.toast--long .#{variables.$bcgov-prefix}--toast-notification__subtitle {
     max-block-size: 50vh;
     overflow-y: auto;
+    overflow-x: hidden;
   }
 
   &.slide-in {

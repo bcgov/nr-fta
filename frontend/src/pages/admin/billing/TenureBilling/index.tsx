@@ -253,9 +253,27 @@ const TenureBilling: FC = () => {
           lowContrast
           hideCloseButton
           className="billing__caution"
-          title="Caution:"
-          subtitle="Prepare looks only at the instructions on screen. A prepared but not yet approved instruction that you leave unchanged may be removed. To change one tenure without affecting the others, search for that tenure alone."
-        />
+          title="CAUTION:"
+        >
+          {/* Legacy FTA680's caution, word for word. */}
+          <div className="billing__caution-text">
+            <p>
+              If you are changing the billing instructions below please be aware that any changes
+              you make will either overwrite or delete the previous set of billing instructions
+              currently shown on the screen that have been previously prepared but not yet approved.
+              This means that it will only look at the new instructions you&apos;ve entered so if
+              you do not change instructions on previously prepared instructions that is displayed
+              on the screen it will be deleted if the certified timestamp is later than the date the
+              tenure was billed last.
+            </p>
+            <p>
+              If you do not want to affect previous instructions please type in the specific range
+              tenure you want to change the billing instruction for and hit GO and only that range
+              tenure will show up in the list. This will ensure that the other instructions that
+              were previously prepared are not affected.
+            </p>
+          </div>
+        </InlineNotification>
       </SectionTile>
 
       {(rows !== null || loading) && (
@@ -357,7 +375,8 @@ const TenureBilling: FC = () => {
                                 kind="ghost"
                                 size="sm"
                                 renderIcon={Launch}
-                                href={gbsUrl()}
+                                href={gbsUrl() ?? undefined}
+                                disabled={!gbsUrl()}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >

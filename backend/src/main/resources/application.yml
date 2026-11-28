@@ -80,11 +80,6 @@ fta:
   batch:
     # The id scheduled runs are recorded under (legacy batch.user). No batch package takes it.
     user-id: ${FTA_BATCH_USER_ID:IDIR\SA_FTA}
-    # FTA_690_TENURE_APPROVAL: invoices the FTA690-queued range billing requests and e-mails each
-    # submitter the FTA411 summary. Legacy (Automate) runs it nightly at 23:00. Off unless
-    # FTA_BATCH_RANGE_BILLING_CRON is set on the pods, so it never runs alongside legacy's.
-    range-billing:
-      cron: ${FTA_BATCH_RANGE_BILLING_CRON:-}
     # FTA_102_RANGE_REPLACE: applies pending range tenure replacements (the package acts only on
     # what is due). Legacy (Automate) runs it nightly just after midnight. Off unless
     # FTA_BATCH_RANGE_REPLACE_CRON is set on the pods.

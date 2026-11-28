@@ -63,12 +63,18 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [notificationClass, notificationContent]);
 
+  // Only a long message (e.g. a refused Prepare's one-refusal-per-row list) gets a scroll box:
+  // on short text a scroll box can overflow by a pixel of line height and show a stray scrollbar.
+  const subtitle = notificationContent?.subtitle;
+  const long =
+    typeof subtitle === 'string' && (subtitle.split('\n').length > 8 || subtitle.length > 600);
+
   return (
     <NotificationContext.Provider value={value}>
       {children}
       {notificationContent && (
         <ToastNotification
-          className={notificationClass}
+          className={long ? `${notificationClass} toast--long` : notificationClass}
           lowContrast
           aria-label="closes notification"
           caption={notificationContent.caption}
