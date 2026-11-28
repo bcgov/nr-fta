@@ -58,15 +58,15 @@ class BatchAdminAuthorizationRulesTest {
   @ParameterizedTest(name = "{0} {1} as {2} is {3}")
   @CsvSource({
     "GET, /api/fta/admin/batch, FTA_ADMIN, 404",
-    "GET, /api/fta/admin/batch/range-billing, FTA_ADMIN, 404",
-    "POST, /api/fta/admin/batch/range-billing/run, FTA_ADMIN, 404",
+    "GET, /api/fta/admin/batch/cancel-mark, FTA_ADMIN, 404",
+    "POST, /api/fta/admin/batch/cancel-mark/run, FTA_ADMIN, 404",
     "POST, /api/fta/admin/batch/range-replace/run, FTA_ADMIN, 404",
     "GET, /api/fta/admin/batch, FTA_VIEWER, 403",
-    "POST, /api/fta/admin/batch/range-billing/run, FTA_VIEWER, 403",
-    "POST, /api/fta/admin/batch/range-billing/run, FTA_RANGE_HEADQUARTERS_ADMIN, 403",
-    "GET, /api/fta/admin/batch/range-billing, FTA_RANGE_HEADQUARTERS_ADMIN, 403",
+    "POST, /api/fta/admin/batch/cancel-mark/run, FTA_VIEWER, 403",
+    "POST, /api/fta/admin/batch/cancel-mark/run, FTA_RANGE_HEADQUARTERS_ADMIN, 403",
+    "GET, /api/fta/admin/batch/cancel-mark, FTA_RANGE_HEADQUARTERS_ADMIN, 403",
     "POST, /api/fta/admin/batch/range-replace/run, FTA_RANGE_DISTRICT_ADMIN, 403",
-    "POST, /api/fta/admin/batch/range-billing/run, FTA_HARVEST_AUTH_SENIOR_ADMIN, 403",
+    "POST, /api/fta/admin/batch/cancel-mark/run, FTA_HARVEST_AUTH_SENIOR_ADMIN, 403",
   })
   void enforcesTheRoleMatrix(String method, String path, String role, int expected)
       throws Exception {

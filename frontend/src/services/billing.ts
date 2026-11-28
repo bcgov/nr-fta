@@ -72,9 +72,35 @@ export const getInvoicePreview = (forestFileId: string, calendarYear: string) =>
     `/api/fta/admin/billing/invoice-preview${toQuery({ forestFileId, calendarYear })}`,
   );
 
-/** FTA690 Submit: queue a range billing run for a district and year. */
+/** An FTA690 request's state; mirrors the backend BillingRequestDto. */
+export type BillingRequestStatus = 'QUEUED' | 'PROCESSING' | 'COMPLETE' | 'FAILED';
+
+/** One FTA690 billing request and its outcome; mirrors the backend BillingRequestDto. */
+export interface BillingRequest {
+  rangeBillRequestId: number;
+  orgUnitNo: number | null;
+  orgUnitCode: string | null;
+  orgUnitName: string | null;
+  calendarYear: number | null;
+  submitUserid: string | null;
+  submitDate: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  status: BillingRequestStatus;
+  messageText: string | null;
+  totalInvoices: number | null;
+  firstInvoiceNumber: string | null;
+  lastInvoiceNumber: string | null;
+  totalInvoiceValue: number | null;
+}
+
+/** FTA690 Submit: records the request, bills it, and returns the outcome (a few seconds). */
 export const submitBillingApproval = (orgUnitNo: string, calendarYear: string) =>
-  apiPost<void>('/api/fta/admin/billing/approval', { orgUnitNo, calendarYear });
+  apiPost<BillingRequest>('/api/fta/admin/billing/approval', { orgUnitNo, calendarYear });
+
+/** The FTA411 Approval Summary of a processed request, as a PDF. */
+export const getBillingRequestSummary = (id: number) =>
+  apiGetForBlob(`/api/fta/admin/billing/approval/requests/${id}/summary`);
 
 /** FTA685: the FTA408 Pre-Billing Report for a district and year, as a PDF. */
 export const getPreBillingReport = (orgUnitNo: string, calendarYear: string) =>

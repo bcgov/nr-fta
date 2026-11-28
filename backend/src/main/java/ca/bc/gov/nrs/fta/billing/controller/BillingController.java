@@ -2,6 +2,7 @@ package ca.bc.gov.nrs.fta.billing.controller;
 
 import ca.bc.gov.nrs.fta.billing.dto.BillingApprovalRequest;
 import ca.bc.gov.nrs.fta.billing.dto.BillingInstructionRowDto;
+import ca.bc.gov.nrs.fta.billing.dto.BillingRequestDto;
 import ca.bc.gov.nrs.fta.billing.dto.BillingInstructionsCriteria;
 import ca.bc.gov.nrs.fta.billing.dto.InvoicePreviewDto;
 import ca.bc.gov.nrs.fta.billing.dto.PrepareInstructionsRequest;
@@ -11,6 +12,7 @@ import ca.bc.gov.nrs.fta.billing.service.BillingInstructionsService;
 import ca.bc.gov.nrs.fta.billing.service.InvoicePreviewService;
 import ca.bc.gov.nrs.fta.billing.service.PostBillingReport;
 import ca.bc.gov.nrs.fta.billing.service.PreBillingReport;
+import ca.bc.gov.nrs.fta.billing.service.RangeBillingProcessor;
 import ca.bc.gov.nrs.fta.util.JwtPrincipalUtil;
 import java.util.List;
 import org.springframework.http.ContentDisposition;
@@ -20,6 +22,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,7 +35,9 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>FTA680 Tenure Billing Instructions: {@code GET /instructions},
  *       {@code POST /instructions/prepare}</li>
  *   <li>FTA695 Invoice Preview: {@code GET /invoice-preview}</li>
- *   <li>FTA690 Tenure Approval Submission: {@code POST /approval}</li>
+ *   <li>FTA690 Tenure Approval Submission: {@code POST /approval} (submits and bills, returning
+ *       the outcome) and the FTA411 Approval Summary PDF
+ *       {@code GET /approval/requests/{id}/summary}</li>
  *   <li>FTA685 Pre Billing Report (FTA408): {@code GET /pre-billing-report}, a PDF</li>
  *   <li>FTA686 Post Billing Report (FTA409): {@code GET /post-billing-report}, a PDF</li>
  * </ul>
@@ -46,6 +51,7 @@ public class BillingController {
   private final BillingInstructionsService instructions;
   private final InvoicePreviewService invoicePreview;
   private final BillingApprovalService approval;
+  private final RangeBillingProcessor rangeBilling;
   private final PreBillingReport preBillingReport;
   private final PostBillingReport postBillingReport;
 
@@ -53,11 +59,13 @@ public class BillingController {
       BillingInstructionsService instructions,
       InvoicePreviewService invoicePreview,
       BillingApprovalService approval,
+      RangeBillingProcessor rangeBilling,
       PreBillingReport preBillingReport,
       PostBillingReport postBillingReport) {
     this.instructions = instructions;
     this.invoicePreview = invoicePreview;
     this.approval = approval;
+    this.rangeBilling = rangeBilling;
     this.preBillingReport = preBillingReport;
     this.postBillingReport = postBillingReport;
   }
@@ -88,13 +96,21 @@ public class BillingController {
     return ResponseEntity.ok(invoicePreview.preview(forestFileId, calendarYear));
   }
 
+  /** Submit: the request row is committed, billed while the user waits, and read back. */
   @PostMapping("/approval")
-  public ResponseEntity<Void> approval(
+  public ResponseEntity<BillingRequestDto> approval(
       @RequestBody BillingApprovalRequest request,
       JwtAuthenticationToken principal) {
     String userId = JwtPrincipalUtil.getAuditUserId(principal);
-    approval.submit(request, userId);
-    return ResponseEntity.status(HttpStatus.CREATED).build();
+    long id = approval.submit(request, userId);
+    rangeBilling.bill(id, request.orgUnitNo(), request.calendarYear(), userId);
+    return ResponseEntity.status(HttpStatus.CREATED).body(approval.request(id));
+  }
+
+  /** The FTA411 Approval Summary of a processed request, a PDF. */
+  @GetMapping("/approval/requests/{id}/summary")
+  public ResponseEntity<byte[]> approvalSummary(@PathVariable long id) {
+    return pdf("FTA411-approval-summary-" + id + ".pdf", approval.summaryPdf(id));
   }
 
   @GetMapping("/pre-billing-report")

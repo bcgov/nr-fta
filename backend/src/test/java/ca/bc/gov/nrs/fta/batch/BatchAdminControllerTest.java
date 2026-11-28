@@ -28,29 +28,29 @@ class BatchAdminControllerTest {
   private final BatchAdminController controller;
 
   BatchAdminControllerTest() {
-    when(job.name()).thenReturn("range-billing");
-    when(job.legacyName()).thenReturn("fta_batch_690_tenure_approval");
+    when(job.name()).thenReturn("cancel-mark");
+    when(job.legacyName()).thenReturn("fta_batch_520_cancel_mark");
     when(job.lockAtMostFor()).thenReturn(Duration.ofHours(4));
     controller = new BatchAdminController(List.of(job), runner, history,
-        new MockEnvironment().withProperty("fta.batch.range-billing.cron", "0 0 2 * * *"));
+        new MockEnvironment().withProperty("fta.batch.cancel-mark.cron", "0 0 2 * * *"));
   }
 
   @Test
   void listsJobsWithCronAndLastRun() {
-    BatchRun run = new BatchRun("range-billing", Trigger.SCHEDULE, "IDIR\\SA_FTA",
+    BatchRun run = new BatchRun("cancel-mark", Trigger.SCHEDULE, "IDIR\\SA_FTA",
         Instant.EPOCH, Instant.EPOCH, Status.SUCCEEDED, "ok");
     history.record(run);
 
     assertThat(controller.list()).containsExactly(new BatchAdminController.JobView(
-        "range-billing", "fta_batch_690_tenure_approval", "0 0 2 * * *", run));
+        "cancel-mark", "fta_batch_520_cancel_mark", "0 0 2 * * *", run));
   }
 
   @Test
   void runStartsTheJobWith202() {
-    BatchRun started = BatchRun.running("range-billing", Trigger.MANUAL, "", Instant.EPOCH);
+    BatchRun started = BatchRun.running("cancel-mark", Trigger.MANUAL, "", Instant.EPOCH);
     when(runner.startManual(eq(job), any())).thenReturn(Optional.of(started));
 
-    var response = controller.run("range-billing", null);
+    var response = controller.run("cancel-mark", null);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
     assertThat(response.getBody()).isEqualTo(started);
@@ -60,7 +60,7 @@ class BatchAdminControllerTest {
   void runWhileRunningIs409() {
     when(runner.startManual(eq(job), any())).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> controller.run("range-billing", null))
+    assertThatThrownBy(() -> controller.run("cancel-mark", null))
         .isInstanceOfSatisfying(ResponseStatusException.class,
             e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
   }

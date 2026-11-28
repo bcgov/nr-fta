@@ -26,6 +26,13 @@ const InvoicePreviewModal: FC<Props> = ({ forestFileId, fetcher, onClose }) => {
   const notify = useNotification();
   const { data, loading, error } = useApiResource<InvoicePreview>(fetcher, [fetcher]);
 
+  // A new preview clears the snackbar a previous one left (e.g. another tenure's refusal).
+  useEffect(() => {
+    notify.clear();
+    // On opening only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forestFileId]);
+
   useEffect(() => {
     if (!error) return;
     notify.display({

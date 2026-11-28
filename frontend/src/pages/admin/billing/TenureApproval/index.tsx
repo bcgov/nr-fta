@@ -7,18 +7,27 @@ import SectionTile from '@/components/SectionTile';
 import YearSelect from '@/components/YearSelect';
 import { useNotification } from '@/context/notification/useNotification';
 import { useDefaultOrgUnitIn } from '@/hooks/useDefaultOrgUnit';
+import { downloadBlob } from '@/lib/downloadBlob';
+import { safeErrorMessage } from '@/lib/errorMessage';
 import { FIRST_BILLING_YEAR } from '@/lib/years';
 import PageLayout from '@/pages/PageLayout';
-import { submitBillingApproval } from '@/services/billing';
+import { getBillingRequestSummary, submitBillingApproval } from '@/services/billing';
 import { getDistrictOrgUnits, type CodeOption } from '@/services/codeLists';
 
 import { useDistrictScope } from '../useDistrictScope';
 
+const money = new Intl.NumberFormat('en-CA', {
+  style: 'currency',
+  currency: 'CAD',
+  currencyDisplay: 'narrowSymbol',
+});
+
 /**
- * FTA690 — Tenure Approval Submission, as legacy
- * FTA_690_TENURE_APPROVAL.SUBMIT: queue a range billing run for a district and
- * year. The 690 batch job picks the request up and creates the invoices from
- * the prepared billing instructions; one request per district and year a day.
+ * FTA690 — Tenure Approval Submission. Submit records a range billing request for a district
+ * and year (legacy FTA_690_TENURE_APPROVAL.SUBMIT) and the server bills it there and then — a
+ * few seconds — where legacy waited for the nightly 690 batch. On success the FTA411 Approval
+ * Summary downloads, which legacy e-mailed to the submitter; on failure the package's message is
+ * shown.
  */
 const TenureApproval: FC = () => {
   const notify = useNotification();
@@ -33,7 +42,7 @@ const TenureApproval: FC = () => {
     if (defaultDistrict) setChosen((c) => c || defaultDistrict);
   }, [defaultDistrict]);
   const [year, setYear] = useState('');
-  // Queuing a billing run invoices every prepared tenure in the district.
+  // Billing invoices every prepared tenure in the district.
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
@@ -58,21 +67,49 @@ const TenureApproval: FC = () => {
   const district = districts.find((d) => d.code === orgUnitNo)?.description ?? '';
   const canSubmit = orgUnitNo !== '' && /^\d{4}$/.test(year);
 
-  // ConfirmationModal shows the error and stays open if this throws.
+  // ConfirmationModal shows a busy button while this runs, and a toast if it throws.
   const onSubmit = async () => {
-    await submitBillingApproval(orgUnitNo, year);
-    notify.display({
-      kind: 'success',
-      title: 'Submit successful.',
-      subtitle: `Billing for ${district}, ${year} is queued.`,
-      timeout: 5000,
-    });
+    notify.clear();
+    const r = await submitBillingApproval(orgUnitNo, year);
+    const what = `${district}, ${year}`;
+    if (r.status !== 'COMPLETE') {
+      notify.display({
+        kind: 'error',
+        title: 'Billing failed.',
+        subtitle: `${what}: ${r.messageText || 'no invoices were created.'}`,
+        timeout: 10000,
+      });
+      return;
+    }
+    const total = r.totalInvoiceValue == null ? '' : `, ${money.format(r.totalInvoiceValue)}`;
+    const numbers = r.firstInvoiceNumber
+      ? ` (${r.firstInvoiceNumber}${r.lastInvoiceNumber && r.lastInvoiceNumber !== r.firstInvoiceNumber ? ` – ${r.lastInvoiceNumber}` : ''})`
+      : '';
+    try {
+      downloadBlob(
+        await getBillingRequestSummary(r.rangeBillRequestId),
+        `FTA411-approval-summary-${r.rangeBillRequestId}.pdf`,
+      );
+      notify.display({
+        kind: 'success',
+        title: 'Billing complete.',
+        subtitle: `${what}: ${r.totalInvoices ?? 0} invoice(s)${numbers}${total}.`,
+        timeout: 8000,
+      });
+    } catch (e) {
+      notify.display({
+        kind: 'warning',
+        title: 'Billing complete, but the approval summary could not be downloaded.',
+        subtitle: `${what}: ${r.totalInvoices ?? 0} invoice(s)${numbers}${total}. ${safeErrorMessage(e)}`,
+        timeout: 10000,
+      });
+    }
   };
 
   return (
     <PageLayout
       title="Tenure Approval Submission"
-      subtitle="Queue the range billing run that invoices a district's prepared billing instructions."
+      subtitle="Run the range billing that invoices a district's prepared billing instructions."
     >
       <SectionTile title="Billing run" icon={SendAlt}>
         <form
@@ -122,8 +159,8 @@ const TenureApproval: FC = () => {
         errorTitle="Could not submit"
         onConfirm={onSubmit}
       >
-        The range billing run for {district}, {year} will be queued. It invoices every tenure whose
-        billing instructions are prepared.
+        Billing for {district}, {year} runs now. It invoices every tenure whose billing instructions
+        are prepared, then downloads the approval summary.
       </ConfirmationModal>
     </PageLayout>
   );

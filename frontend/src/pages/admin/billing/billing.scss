@@ -3,6 +3,15 @@
 .billing__caution {
   max-width: none;
   margin-top: 1rem;
+
+  // Legacy's caution is two paragraphs, set under the title like body text.
+  .billing__caution-text {
+    flex-basis: 100%;
+  }
+
+  .billing__caution-text p + p {
+    margin-top: 0.5rem;
+  }
 }
 
 .billing__instr {

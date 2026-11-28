@@ -51,7 +51,7 @@ In OpenShift deployments these come from the K8s Secret built by `openshift.depl
 | `S3_SECRET_ACCESS_KEY` | Bucket secret key (GitHub secret) | - |
 | `S3_REGION` | Bucket region | `ca-central-1` |
 | `S3_LINK_EXPIRY` | Life of the e-mailed (presigned) permit link, ISO-8601, at most `P7D` | `P7D` |
-| `FTA_BATCH_RANGE_REPLACE_CRON`, `FTA_BATCH_CANCEL_MARK_CRON`, `FTA_BATCH_RANGE_BILLING_CRON` | Batch job schedules; set on the pods only, through the optional ConfigMap `nr-fta-backend-batch-schedules-<zone>` (never in Git) | `-` (off) |
+| `FTA_BATCH_RANGE_REPLACE_CRON`, `FTA_BATCH_CANCEL_MARK_CRON` | Batch job schedules; set on the pods only, through the optional ConfigMap `nr-fta-backend-batch-schedules-<zone>` (never in Git) | `-` (off) |
 
 CORS origins are **not** read from an `ALLOWED_ORIGINS` variable. They come from
 `ca.bc.gov.nrs.frontend.url` in `application.yml`, which is `http://localhost:3000`.

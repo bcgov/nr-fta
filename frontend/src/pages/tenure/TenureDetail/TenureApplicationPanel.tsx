@@ -377,16 +377,19 @@ const TenureApplicationPanel: FC<SharedTenurePanelProps> = ({
                   <TableCell>{date(r.issuanceDate)}</TableCell>
                   <TableCell>
                     {/* Legacy 950x: an SNC link to the application's status request. */}
-                    {r.clearanceStatusRequestUri ? (
+                    {!r.clearanceStatusRequestUri ? (
+                      '—'
+                    ) : sncUrl(r.clearanceStatusRequestUri) ? (
                       <a
-                        href={sncUrl(r.clearanceStatusRequestUri)}
+                        href={sncUrl(r.clearanceStatusRequestUri) ?? undefined}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
                         SNC
                       </a>
                     ) : (
-                      '—'
+                      // No SNC URL configured for this environment: the request exists, unlinked.
+                      'SNC'
                     )}
                   </TableCell>
                   <TableCell>{yesNo(r.exhibitAImage)}</TableCell>
